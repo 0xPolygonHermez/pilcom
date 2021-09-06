@@ -1,0 +1,235 @@
+/*
+This state machine is able to builds any number of 4 bytes (32 bits)
+
+
+Example for building numbers: 0x307, 0x405, 0x509 and 0
+        SET     freeIN  out     out'
+w^0     1       3       0       3
+w^1     0       7       3       0x307
+w^2     1       4       0x307   4
+w^3     0       8       4       0x405
+w^4     1       5       0x405   5
+w^5     0       9       5       0x509
+w^6     1       0       0x509   0
+w^7     0       0       0       0
+
+*/
+
+
+pol constant BYTE2;   // All the numbers between 0x0000 and 0xFFFF
+
+namespace byte4;
+    /////// Constant Polynomials 
+    pol constant SET;    // 1, 0, 1, 0, 1, 0 ......
+
+    /////// State Polynomials 
+    pol commited freeIN;
+    pol commited out;
+
+    freeIN in BYTE2
+
+    out' = SET*freeIN + 
+           (1-SET)*(out * 2**16 + freeIN);
+
+
+
+namespace main
+
+///////////
+// Definitions
+///////////
+
+    /////// Constant Polynomials 
+
+    pol constant STEP;  // 0, 1, 2, 3, .......
+
+    /////// State Polynomials 
+    pol commited A2, A1, A0;
+    pol commited B2, B1, B0;
+    pol commited C2, C1, C0;
+    pol commited D2, D1, D0;
+    pol commited E2, E1, E0;
+    pol commited SR2, SR1, SR0;          // State Root
+    pol commited CONST;
+    pol commited FREE2, FREE1, FREE0;
+    pol commited CTX;                    // Call Cntext
+    pol commited SP;                     // Stack Pointer
+    pol commited PC;                     // EVM Program counter
+    pol commited GAS;
+    pol commited MAXMEM;
+    pol commited zkPC;                   // Program Counter of current micro instruction
+
+    ///////  Instruction related polynomials
+    pol commited inA, inB, inC, inD, inE, inSR, inFREE, inCTX, inSP, inPC, inGAS, inMAXMEM, inSTEP;
+    pol commited setA, setB, setC, setD, setE, setSR, setCTX, setSP, setPC, setGAS, setMAXMEM, JUMP, JUMPC;
+    pol commited CONST; 
+    pol commited offset;
+    pol commited inc;
+    pol commited isStack;
+    pol commited isCode;
+    pol commited ind;
+    pol commited isCtx;
+
+    // operations
+    pol commited mWR, mRD;
+    pol commited sWR, sRD;
+    pol commited arith;
+    pol commited hashWR, hashE, hashRD;
+    pol commited ecRecover;
+    pol commited comparator;
+    pol commited bin;
+    pol commited assertAB;
+    pol commited opcodeRomMap;
+
+    ///////  Intermediary commited polynomials
+    pol commited isNeg;
+    pol commited isMaxMem;
+
+    ///////  Intermediary polynomials
+    pol op0, op1, op2;
+    pol addr;
+    pol diffMem;
+    pol maxMemCalculated;
+    pol instruction;
+
+///////////
+// Input Format checks;
+///////////
+
+    inA*(inA-1) = 0;
+    inB*(inB-1) = 0;
+    inC*(inC-1) = 0;
+    inD*(inD-1) = 0;
+    inE*(inE-1) = 0;
+    inSR*(inSR-1) = 0;
+    inCTX*(inSR-1) = 0;
+    inSP*(inSR-1) = 0;
+    inPC*(inSR-1) = 0;
+    inGAS*(inSR-1) = 0;
+    inMAXMEM*(inSR-1) = 0;
+    inFREE*(inSR-1) = 0;
+
+    setA*(setA-1) = 0;
+    setB*(setB-1) = 0;
+    setC*(setC-1) = 0;
+    setD*(setD-1) = 0;
+    setE*(setE-1) = 0;
+    setSR*(setSR-1) = 0;
+    setCTX*(setCTX-1) = 0;
+    setSP*(setSP-1) = 0;
+    setPC*(setPC-1) = 0;
+    setGAS*(setGAS-1) = 0;
+    setMAXMEM*(setMAXMEM-1) = 0;
+    JMP*(JMP-1) = 0;
+    JMPC*(JMPC-1) = 0;
+
+    isStack*(isStack-1) = 0;
+    isCode*(isCode-1) = 0;
+    ind*(ind-1) = 0;
+    isCtx*(isCtx-1) = 0;
+
+    iNeg*(iNeg-1) = 0;
+    isMaxMem*(isMaxMem-1) = 0;
+
+    2**31 + CONST in byte4.out;
+    2**31 + offset in byte4.out;
+    2**15 + inc in BYTE2;
+
+    mWR*(mWR-1) = 0;
+    mRD*(mRD-1) = 0;
+    sWR*(sWR-1) = 0;
+    sRD*(sRD-1) = 0;
+    arith*(arith-1) = 0;
+    hashWR*(hashWR-1) = 0;
+    hashE*(hashE-1)  = 0;
+    hashRD*(hashRD-1)  = 0;
+    ecRecover*(ecRecover-1) = 0;
+    comparator*(comparator-1) = 0;
+    bin*(bin-1) = 0;
+    assertAB*(assertAB-1) = 0;
+    opcodeRomMap*(opcodeRomMap-1) = 0;
+
+
+///////////
+// Intermediary calculations and checks
+///////////
+
+
+    /////// op 
+    op0 = 
+        A0 * inA +
+        B0 * inB +
+        C0 * inC +
+        D0 * inD +
+        E0 * inE +
+        FREE0 * inFREE +
+        SR0 * inSR +
+        CTX * inCTX +
+        SP * inSP +
+        PC * inPC +
+        GAS * inGAS +
+        MAXMEM * inMAXMEM +
+        STEP * inSTEP +
+        CONST;
+
+    op1 = 
+        A1 * inA +
+        B1 * inB +
+        C1 * inC +
+        D1 * inD +
+        E1 * inE +
+        FREE1 * inFREE +
+        SR1 * inSR;
+
+    op2 = 
+        A2 * inA +
+        B2 * inB +
+        C2 * inC +
+        D2 * inD +
+        E2 * inE +
+        FREE2 * inFREE +
+        SR2 * inSR;
+
+    
+    /////// addr
+
+    addr = useCTX*CTX*2**34 + isStack*2**33 + isCode*2**32 + ind*E0 + offset;
+
+    /////// isNeg
+
+    isNeg*2**32 + op0  in byte4.out;
+
+    /////// MAXMEM intermediary vals New State
+
+    diffMem = isMaxMem* ( (isStack*isCode*addr - MAXMEM) -
+                       (MAXMEM - isStack*isCode*addr) ) +
+              (MAXMEM - isStack*isCode*addr);
+
+    diffMem in byte4.out;
+    maxMemCalculated = isMaxMem*(addr - MAXMEM) + MAXMEM;
+
+///////////
+// Calculate New State
+///////////
+
+    A0' = setA * (op0 - A0) + A0;
+    B0' = setB * (op0 - B0) + B0;
+    C0' = setC * (op0 - C0) + C0;
+    D0' = setD * (op0 - D0) + D0;
+    E0' = setE * (op0 - E0) + E0;
+    SR0' = setSR * (op0 - SR0) + SR0;
+    CTX' = setCTX * (op0 - CTX) + CTX;
+    SP' = setSP * (op0 - (SP +inc*isStack)) + (SP +inc*isStack);
+    PC' = setPC * (op0 - (PC +inc*isCode)) + (PC +inc*isStack);
+    GAS' = setGAS * (op0 - GAS) + A0;
+
+
+    MAXMEM' = setMAXMEM * (op0 - maxMemCalculated) + maxMemCalculated;
+
+    zkPC' = JMP         *   (addr - (zkPC+1)) + 
+            JMPC* isNeg *   (addr - (zkPC+1)) + 
+                            (zkPC+1)   ;
+
+
+
+
