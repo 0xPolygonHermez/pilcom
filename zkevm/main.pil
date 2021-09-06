@@ -40,7 +40,7 @@ namespace main
 ///////////
 
     /////// Constant Polynomials 
-
+    pol constant ROM;           // This is the instrucion + 2**200 * line
     pol constant STEP;  // 0, 1, 2, 3, .......
 
     /////// State Polynomials 
@@ -229,6 +229,60 @@ namespace main
     zkPC' = JMP         *   (addr - (zkPC+1)) + 
             JMPC* isNeg *   (addr - (zkPC+1)) + 
                             (zkPC+1)   ;
+
+
+    instruction =
+        2**0   * (2**31 + CONST) + 
+        2**32  * (2**31 + offset) + 
+        2**64  * (2**15 + inc) + 
+        2**101 * inA + 
+        2**102 * inB + 
+        2**103 * inC + 
+        2**104 * inD + 
+        2**105 * inE + 
+        2**106 * inSR + 
+        2**107 * inCTX + 
+        2**108 * inSP + 
+        2**109 * inPC + 
+        2**110 * inGAS + 
+        2**111 * inSTEP + 
+        2**112 * inFREE +
+        2**121 * setA +
+        2**122 * setB +
+        2**123 * setC +
+        2**124 * setD +
+        2**125 * setE +
+        2**126 * setSR +
+        2**127 * setCTX +
+        2**128 * setSP +
+        2**129 * setPC +
+        2**130 * setGAS +
+        2**131 * setMAXMEM +
+        2**132 * JMP +
+        2**141 * isStack +
+        2**142 * isCode +
+        2**148 * isCtx +
+        2**149 * ind +
+        2**151 * mWR +
+        2**152 * mRD +
+        2**153 * sWR +
+        2**154 * sRD +
+        2**155 * arith +
+        2**156 * hashWR +
+        2**157 * hashE +
+        2**158 * hashRD +
+        2**159 * ecRecover +
+        2**160 * comparator +
+        2**161 * bin +
+        2**162 * assertAB +
+        2**163 * opcodeRomMap +
+        2**200 * zkPC;
+
+    (A0-B0)*assertAB = 0;
+    (A1-B1)*assertAB = 0;
+    (A2-B2)*assertAB = 0;
+
+    instruction in ROM;
 
 
 
