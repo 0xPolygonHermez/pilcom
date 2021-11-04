@@ -1,0 +1,33 @@
+{
+  "name": "zkpil",
+  "version": "0.0.1",
+  "description": "Polynomial Identity Language (pil)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build_parser_pil": "mkdir -p build; ./node_modules/.bin/jison src/pil_parser.jison -o build/pil_parser.js",
+    "build": "npm run build_parser_pil"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hermeznetwork/zkpil.git"
+  },
+  "keywords": [
+    "pil",
+    "polynomial",
+    "zero",
+    "knowledge",
+    "snark",
+    "zkevm",
+    "hermez"
+  ],
+  "author": "Jordi Baylina",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/hermeznetwork/zkpil/issues"
+  },
+  "homepage": "https://github.com/hermeznetwork/zkpil#readme",
+  "devDependencies": {
+    "jison": "^0.4.18"
+  }
+}
