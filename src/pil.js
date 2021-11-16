@@ -42,7 +42,7 @@ async function run() {
     console.log("plookupIdentities: " + out.plookupIdentities.length);
     console.log("polIdentities: " + out.polIdentities.length);
 
-    await fs.promises.writeFile(outputFile, JSON.stringify(out, null, 1) + "\n");
+    await fs.promises.writeFile(outputFile.trim(), JSON.stringify(out, null, 1) + "\n", "utf8");
     
 }
 

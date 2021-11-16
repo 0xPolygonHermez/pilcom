@@ -52,6 +52,7 @@ module.exports = async function compile(Fr, fileName, ctx) {
                 if (ctx.references[ctx.namespace + "." + s.names[j]]) error(s, `name already defined ${ctx.namespace + "." +s.names[j]}`);
                 ctx.references[ctx.namespace + "." + s.names[j]] = {
                     type: "cmP",
+                    elementType: s.elementType,
                     id: ctx.nCommitments++
                 }
             }
@@ -60,6 +61,7 @@ module.exports = async function compile(Fr, fileName, ctx) {
                 if (ctx.references[ctx.namespace + "." + s.names[j]]) error(s, `name already defined ${ctx.namespace + "." + s.names[j]}`);
                 ctx.references[ctx.namespace + "." + s.names[j]] = {
                     type: "constP",
+                    elementType: s.elementType,
                     id: ctx.nConstants++
                 }
             }
@@ -304,6 +306,7 @@ function ctx2json(ctx) {
             const ref = ctx.references[n];
             out.references[n] = {
                 type: ref.type,
+                elementType: ref.elementType,
                 id: ref.id   
             };
         }

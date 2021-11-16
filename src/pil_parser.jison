@@ -15,6 +15,17 @@ constant(?=[^a-zA-Z$_0-9])                  { return 'constant'; }
 namespace(?=[^a-zA-Z$_0-9])                 { return 'namespace'; }
 include(?=[^a-zA-Z$_0-9])                   { return 'INCLUDE'; }
 in(?=[^a-zA-Z$_0-9])                        { return 'in'; }
+bool(?=[^a-zA-Z$_0-9])                      { return 'bool'; }
+u8(?=[^a-zA-Z$_0-9])                        { return 'u8'; }
+u16(?=[^a-zA-Z$_0-9])                       { return 'u16'; }
+u32(?=[^a-zA-Z$_0-9])                       { return 'u32'; }
+u64(?=[^a-zA-Z$_0-9])                       { return 'u64'; }
+s8(?=[^a-zA-Z$_0-9])                        { return 's8'; }
+s16(?=[^a-zA-Z$_0-9])                       { return 's16'; }
+s32(?=[^a-zA-Z$_0-9])                       { return 's32'; }
+s64(?=[^a-zA-Z$_0-9])                       { return 's64'; }
+field(?=[^a-zA-Z$_0-9])                     { return 'field'; }
+
 \"[^"]+\"                                   { yytext = yytext.slice(1,-1); return 'STRING'; }
 [a-zA-Z_][a-zA-Z$_0-9]*                     { return 'IDENTIFIER'; }
 \*\*                                        { return '**'; }
@@ -148,19 +159,42 @@ plookupIdentity
 
 
 polCommitedDeclaration
-    : 'pol' 'commited' polNamesList
+    : 'pol' elementType 'commited' polNamesList
         {
-            $$ = {type: "POLCOMMTEDDECLARATION", names: $3}
+            $$ = {type: "POLCOMMTEDDECLARATION", names: $4, elementType: $2}
+            setLines($$, @1, @4);
+        }
+    | 'pol' 'commited' polNamesList
+        {
+            $$ = {type: "POLCOMMTEDDECLARATION", names: $3, elementType: "field"}
             setLines($$, @1, @3);
         }
     ;
 
 polConstantDeclaration
-    : 'pol' 'constant' polNamesList
+    : 'pol' elementType 'constant' polNamesList
         {
-            $$ = {type: "POLCONSTANTDECLARATION", names: $3}
+            $$ = {type: "POLCONSTANTDECLARATION", names: $4, elementType: $2}
             setLines($$, @1, @3);
         }
+    | 'pol' 'constant' polNamesList
+        {
+            $$ = {type: "POLCONSTANTDECLARATION", names: $3, elementType: "field"}
+            setLines($$, @1, @3);
+        }
+    ;
+
+elementType
+    : bool
+    | u8
+    | u16
+    | u32
+    | u64
+    | s8
+    | s16
+    | s32
+    | s64
+    | field
     ;
 
 polNamesList
