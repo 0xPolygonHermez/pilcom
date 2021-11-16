@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "description": "Polynomial Identity Language (pil)",
   "main": "index.js",
+  "bin": {
+    "zkpil": "src/pil.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build_parser_pil": "mkdir -p build; ./node_modules/.bin/jison src/pil_parser.jison -o build/pil_parser.js",
