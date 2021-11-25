@@ -1,8 +1,6 @@
 const path = require("path");
 const fs = require("fs");
 const pil_parser = require("../build/pil_parser.js").parser;
-const exp = require("constants");
-const { deepStrictEqual } = require("assert");
 
 module.exports = async function compile(Fr, fileName, ctx) {
 
@@ -348,7 +346,7 @@ function expression2JSON(ctx, e, deps) {
             if (!main) {
                 deps.push(ref.id);
             }
-            out.expId = ref.id;
+            out.id = ref.id;
             out.op = "exp"
         }
         out.next = e.next;
