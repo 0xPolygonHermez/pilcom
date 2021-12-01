@@ -39,6 +39,8 @@ field(?=[^a-zA-Z$_0-9])                     { return 'field'; }
 \=                                          { return '='; }
 \(                                          { return '('; }
 \)                                          { return ')'; }
+\[                                          { return '['; }
+\]                                          { return ']'; }
 <<EOF>>                                     { return 'EOF'; }
 .                                           { console.log("INVALID: " + yytext); return 'INVALID'}
 
@@ -150,10 +152,36 @@ polIdentity
     ;
 
 plookupIdentity
-    : expression 'in' expression
+    : puSide 'in' puSide
         {
-            $$ = {type: "PLOOKUPIDENTITY", f: $1, t: $3}
+            $$ = {type: "PLOOKUPIDENTITY", f: $1.pols, t: $3.pols, selF: $1.sel, selT: $3.sel};
             setLines($$, @1, @3);
+        }
+    ;
+
+puSide
+    : '[' expressionList ']'
+        {
+            $$ = {pols:$2, sel:  null};
+        }
+    | expression '*' '[' expressionList ']'
+        {
+            $$ = {pols:$4, sel:  $1};
+        }
+    | expression
+        {
+            $$ = {pols:[$1], sel:  null};
+        }
+    ;
+
+expressionList
+    : expressionList ',' expression
+        {
+            $1.push($3);
+        }
+    | expression
+        {
+            $$ = [$1];
         }
     ;
 

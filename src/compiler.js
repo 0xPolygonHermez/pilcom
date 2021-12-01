@@ -1,6 +1,7 @@
 const path = require("path");
 const fs = require("fs");
 const pil_parser = require("../build/pil_parser.js").parser;
+const Scalar = require("ffjavascript").Scalar;
 
 module.exports = async function compile(Fr, fileName, ctx) {
 
@@ -79,13 +80,39 @@ module.exports = async function compile(Fr, fileName, ctx) {
             ctx.expressions.push(s.expression);
             ctx.polIdentities.push({fileName: fileName, namespace: ctx.namespace, e: eidx});
         } else if (s.type == "PLOOKUPIDENTITY") {
-            const efidx = ctx.expressions.length;
-            addFilename(s.f, fileName, ctx.namespace);
-            ctx.expressions.push(s.f);
-            const etidx = ctx.expressions.length;
-            addFilename(s.t, fileName, ctx.namespace);
-            ctx.expressions.push(s.t);
-            ctx.plookupIdentities.push({fileName: fileName, namespace: ctx.namespace, f: efidx, t: etidx});
+            const pu = {
+                fileName: fileName, 
+                namespace: ctx.namespace,
+                f: [],
+                t: [],
+                selF: null,
+                selT: null
+            }
+            for (let j=0; j<s.f.length; j++) {
+                const efidx = ctx.expressions.length;
+                addFilename(s.f[j], fileName, ctx.namespace);
+                ctx.expressions.push(s.f[j]);
+                pu.f.push(efidx);
+            }
+            if (s.selF) {
+                const selFidx = ctx.expressions.length;
+                addFilename(s.selF, fileName, ctx.namespace);
+                ctx.expressions.push(s.selF);
+                pu.selF = selFidx;
+            }
+            for (let j=0; j<s.t.length; j++) {
+                const etidx = ctx.expressions.length;
+                addFilename(s.t[j], fileName, ctx.namespace);
+                ctx.expressions.push(s.t[j]);
+                pu.t.push(etidx);
+            }
+            if (s.selT) {
+                const selTidx = ctx.expressions.length;
+                addFilename(s.selT, fileName, ctx.namespace);
+                ctx.expressions.push(s.selT);
+                pu.selT = selFidx;
+            }
+            ctx.plookupIdentities.push(pu);
         } else {
             error(s, `Invalid line type: ${s.type}`);
         }
@@ -98,8 +125,18 @@ module.exports = async function compile(Fr, fileName, ctx) {
         }
         for (let i=0; i<ctx.plookupIdentities.length; i++) {
             ctx.namespace = ctx.plookupIdentities[i].namespace;
-            ctx.expressions[ctx.plookupIdentities[i].f] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].f]);
-            ctx.expressions[ctx.plookupIdentities[i].t] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].t]);
+            for (j=0; j<ctx.plookupIdentities[i].f.length; j++) {
+                ctx.expressions[ctx.plookupIdentities[i].f[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].f[j]]);
+            } 
+            if (ctx.plookupIdentities[i].selF !== null) {
+                ctx.expressions[ctx.plookupIdentities[i].selF] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].selF]);
+            }
+            for (j=0; j<ctx.plookupIdentities[i].t.length; j++) {
+                ctx.expressions[ctx.plookupIdentities[i].t[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].t[j]]);
+            } 
+            if (ctx.plookupIdentities[i].selT !== null) {
+                ctx.expressions[ctx.plookupIdentities[i].selT] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].selT]);
+            }
         }
         for (let i=0; i<ctx.expressions.length; i++) {
             if (!ctx.expressions[i].simplified) error(ctx.expressions[i], "Unused expression");
@@ -109,8 +146,18 @@ module.exports = async function compile(Fr, fileName, ctx) {
             reduceto2(ctx, ctx.expressions[ctx.polIdentities[i].e]);
         }
         for (let i=0; i<ctx.plookupIdentities.length; i++) {
-            reduceto1(ctx, ctx.expressions[ctx.plookupIdentities[i].f]);
-            reduceto1(ctx, ctx.expressions[ctx.plookupIdentities[i].t]);
+            for (j=0; j<ctx.plookupIdentities[i].f.length; j++) {
+                reduceto1(ctx, ctx.expressions[ctx.plookupIdentities[i].f[j]]);
+            }
+            if (ctx.plookupIdentities[i].selF) {
+                reduceto1(ctx, ctx.expressions[ctx.plookupIdentities[i].selF]);
+            }
+            for (j=0; j<ctx.plookupIdentities[i].t.length; j++) {
+                reduceto1(ctx, ctx.expressions[ctx.plookupIdentities[i].t[j]]);
+            }
+            if (ctx.plookupIdentities[i].selT) {
+                reduceto1(ctx, ctx.expressions[ctx.plookupIdentities[i].selT]);
+            }
         }
     }
 
@@ -180,7 +227,7 @@ function simplifyExpression(Fr, ctx, e) {
                 if (Fr.isZero(Fr.e(b.value))) {
                     return a;
                 } else {
-                    return {simplified:true, op: "addc", deg:a.deg, const: b.value, value: [a], first_line: e.first_line}
+                    return {simplified:true, op: "addc", deg:a.deg, const: b.value, values: [a], first_line: e.first_line}
                 }
             } else {
                 e.deg = Math.max(a.deg, b.deg);
@@ -200,7 +247,7 @@ function simplifyExpression(Fr, ctx, e) {
                 if (Fr.isZero(Fr.e(a.value))) {
                     return {simplified:true, op:"neg", deg:b.deg, values: [b], first_line: e.first_line};
                 } else {
-                    return {simplified:true, op: "addc", deg: b.deg, const: a.value, value: {op:"neg", deg:b.deg, values: [b]}, first_line: e.first_line};
+                    return {simplified:true, op: "addc", deg: b.deg, const: a.value, values: [{op:"neg", deg:b.deg, values: [b]}], first_line: e.first_line};
                 }
             }
         } else {
@@ -240,7 +287,7 @@ function simplifyExpression(Fr, ctx, e) {
                 } else if (Fr.eq(Fr.e(b.value), Fr.one)) {
                     return a;
                 } else {
-                    return {simplified:true, op: "mulc", deg:a.deg, const: b.value, value: [a], first_line: e.first_line}
+                    return {simplified:true, op: "mulc", deg:a.deg, const: b.value, values: [a], first_line: e.first_line}
                 }
             } else {
                 e.deg = a.deg +  b.deg;
@@ -254,7 +301,7 @@ function simplifyExpression(Fr, ctx, e) {
         e.values[1] = simplifyExpression(Fr, ctx, e.values[1]);
         const b = e.values[1];
         if ((a.op == "number") && (b.op == "number")) {
-            return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.exp(Fr.e(a.value), Fr.e(b.value))), first_line: e.first_line}
+            return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.exp(Fr.e(a.value), Scalar.e(b.value))), first_line: e.first_line}
         } else {
             error(e, "Exponentiation can only be applied between constants");
         }
@@ -319,7 +366,12 @@ function ctx2json(ctx) {
     }
 
     for (let i=0; i<ctx.plookupIdentities.length; i++) {
-        out.plookupIdentities.push([ctx.plookupIdentities[i].f, ctx.plookupIdentities[i].t]);
+        const pu = {};
+        pu.f = ctx.plookupIdentities[i].f;
+        pu.t = ctx.plookupIdentities[i].t;
+        pu.selF = ctx.plookupIdentities[i].selF;
+        pu.selT = ctx.plookupIdentities[i].selT;
+        out.plookupIdentities.push(pu);
     }
 
     return out;
@@ -334,6 +386,7 @@ function expression2JSON(ctx, e, deps) {
     const out = {
         op: e.op
     }
+    out.deg = e.deg;
     if (e.op == "pol") {
         const ref = ctx.references[e.namespace + '.' + e.name];
         if (ref.type=="cmP") {
@@ -351,7 +404,7 @@ function expression2JSON(ctx, e, deps) {
         }
         out.next = e.next;
     }
-    if (e.idQ) out.idQ = e.idQ;
+    if (typeof e.idQ != "undefined") out.idQ = e.idQ;
     if (typeof e.values != "undefined") {
         out.values = [];
         for (let i=0; i<e.values.length; i++) {
