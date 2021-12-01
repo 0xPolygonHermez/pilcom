@@ -1,6 +1,6 @@
 {
   "name": "zkpil",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Polynomial Identity Language (pil)",
   "main": "index.js",
   "bin": {
