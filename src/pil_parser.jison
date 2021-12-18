@@ -25,6 +25,7 @@ s16(?=[^a-zA-Z$_0-9])                       { return 's16'; }
 s32(?=[^a-zA-Z$_0-9])                       { return 's32'; }
 s64(?=[^a-zA-Z$_0-9])                       { return 's64'; }
 field(?=[^a-zA-Z$_0-9])                     { return 'field'; }
+public(?=[^a-zA-Z$_0-9])                     { return 'public'; }
 
 \"[^"]+\"                                   { yytext = yytext.slice(1,-1); return 'STRING'; }
 [a-zA-Z_][a-zA-Z$_0-9]*                     { return 'IDENTIFIER'; }
@@ -41,6 +42,7 @@ field(?=[^a-zA-Z$_0-9])                     { return 'field'; }
 \)                                          { return ')'; }
 \[                                          { return '['; }
 \]                                          { return ']'; }
+\:                                          { return ':'; }
 <<EOF>>                                     { return 'EOF'; }
 .                                           { console.log("INVALID: " + yytext); return 'INVALID'}
 
@@ -126,6 +128,10 @@ statment
         {
             $$ = $1
         }
+    | publicDeclaration
+        {
+            $$ = $1
+        }
     ;
 
 include
@@ -198,6 +204,15 @@ polCommitedDeclaration
             setLines($$, @1, @3);
         }
     ;
+
+publicDeclaration
+    : 'public' IDENTIFIER '=' polId '[' NUMBER ']'
+        {
+            $$ = {type: "PUBLICDECLARATION", name: $2, pol: $4, idx: $6}
+            setLines($$, @1, @4);
+        }
+    ;
+
 
 polConstantDeclaration
     : 'pol' elementType 'constant' polNamesList
@@ -323,6 +338,11 @@ e1
         {
             $$ = {op: "number", value: $1 }
             setLines($$, @1);
+        }
+    | ':' IDENTIFIER
+        {
+            $$ = {op: "public", name: $2 }
+            setLines($$, @1, @2);
         }
     | '(' expression ')'
         {

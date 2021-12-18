@@ -9,10 +9,12 @@ module.exports = async function compile(Fr, fileName, ctx) {
     if (!ctx) {
         ctx = {
             references: {},
+            publics:{},
             nCommitments: 0,
             nConstants: 0,
             nIm: 0,
             nQ: 0,
+            nPublic: 0,
             expressions: [],
             polIdentities: [],
             plookupIdentities: [],
@@ -113,6 +115,17 @@ module.exports = async function compile(Fr, fileName, ctx) {
                 pu.selT = selFidx;
             }
             ctx.plookupIdentities.push(pu);
+        } else if (s.type == "PUBLICDECLARATION") {
+            if (ctx.publics[s.name]) error(s, `name already defined ${s.name}`);
+            let ns = s.pol.namespace;
+            if (ns == "this") ns = ctx.namespace;
+            if (typeof ctx.references[ns + "." + s.pol.name] == "undefined" ) error(s, `polyomial not defined ${ns + "." +s.pol.name}`);
+            ctx.publics[s.name] = {
+                polType: ctx.references[ns + "." + s.pol.name].type,
+                polId: ctx.references[ns + "." + s.pol.name].id,
+                idx: Number(s.idx),
+                id: ctx.nPublic++
+            };
         } else {
             error(s, `Invalid line type: ${s.type}`);
         }
@@ -181,7 +194,7 @@ function simplifyExpression(Fr, ctx, e) {
     e.simplified = true;
     if (e.op == "pol") {
         const ref = ctx.references[e.namespace + '.' + e.name];
-        if (!ref) error(e, `polynomial ${e.namespace + '.' + e.name} not defined`);
+        if (!ref) error(e, `polinomial ${e.namespace + '.' + e.name} not defined`);
         if ((ref.type == "cmP") || (ref.type == "constP")) {
             e.deg = 1;
         } else if (ref.type == "imP") {
@@ -197,6 +210,13 @@ function simplifyExpression(Fr, ctx, e) {
         e.deg = 0;
         return e;
     }
+    if (e.op == "public") {
+        const ref = ctx.publics[e.name];
+        if (!ref) error(e, `public ${e.name} not defined`);
+        e.id = ref.id;
+        e.deg = 0;
+        return e;
+    }    
     if (e.op == "neg") {
         e.values[0] = simplifyExpression(Fr, ctx, e.values[0]);
         const a = e.values[0];
@@ -340,6 +360,7 @@ function ctx2json(ctx) {
         nQ: ctx.nQ,
         nIm: ctx.nIm,
         nConstants: ctx.nConstants,
+        publics: [], 
         references: {},
         expressions: [],
         polIdentities: [],
@@ -354,6 +375,14 @@ function ctx2json(ctx) {
                 elementType: ref.elementType,
                 id: ref.id   
             };
+        }
+    }
+
+    for (n in ctx.publics) {
+        if (ctx.publics.hasOwnProperty(n)) {  
+            const pub = ctx.publics[n];
+            out.publics[pub.id] = pub;
+            out.publics[pub.id].name = n;
         }
     }
 
@@ -403,6 +432,11 @@ function expression2JSON(ctx, e, deps) {
             out.op = "exp"
         }
         out.next = e.next;
+    }
+    if (e.op == "public") {
+        const ref = ctx.publics[e.name];
+        out.id = ref.id;
+        out.op = "public";
     }
     if (typeof e.idQ != "undefined") out.idQ = e.idQ;
     if (typeof e.values != "undefined") {
