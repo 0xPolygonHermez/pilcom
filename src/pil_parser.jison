@@ -100,7 +100,12 @@ statmentList
     ;
 
 statment
-    : polCommitedDeclaration
+    : plookupIdentity
+        {
+            $$ = $1;
+        }
+
+    | polCommitedDeclaration
         {
             $$ = $1;
         }
@@ -117,10 +122,6 @@ statment
             $$ = $1;
         }
     | polIdentity
-        {
-            $$ = $1;
-        }
-    | plookupIdentity
         {
             $$ = $1;
         }
@@ -166,13 +167,13 @@ plookupIdentity
     ;
 
 puSide
-    : '[' expressionList ']'
+    : expression '[' expressionList ']'
+        {
+            $$ = {pols:$3, sel:  $1};
+        }
+    | '[' expressionList ']'
         {
             $$ = {pols:$2, sel:  null};
-        }
-    | expression '*' '[' expressionList ']'
-        {
-            $$ = {pols:$4, sel:  $1};
         }
     | expression
         {
