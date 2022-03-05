@@ -131,7 +131,7 @@ break;
 case 15:
 
             this.$ = {type: "POLIDENTITY", expression: { op: "sub", values: [$$[$0-2],$$[$0]] }};
-            setLines(this.$.expression, _$[$0-2], _$[$0]);
+            setLines(this.$, _$[$0-2], _$[$0]);
         
 break;
 case 16:

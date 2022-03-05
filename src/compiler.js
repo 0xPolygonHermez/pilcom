@@ -80,11 +80,12 @@ module.exports = async function compile(Fr, fileName, ctx) {
             const eidx = ctx.expressions.length;
             addFilename(s.expression, fileName, ctx.namespace);
             ctx.expressions.push(s.expression);
-            ctx.polIdentities.push({fileName: fileName, namespace: ctx.namespace, e: eidx});
+            ctx.polIdentities.push({fileName: fileName, namespace: ctx.namespace, line: s.first_line, e: eidx});
         } else if (s.type == "PLOOKUPIDENTITY") {
             const pu = {
                 fileName: fileName, 
                 namespace: ctx.namespace,
+                line: s.first_line,
                 f: [],
                 t: [],
                 selF: null,
@@ -112,7 +113,7 @@ module.exports = async function compile(Fr, fileName, ctx) {
                 const selTidx = ctx.expressions.length;
                 addFilename(s.selT, fileName, ctx.namespace);
                 ctx.expressions.push(s.selT);
-                pu.selT = selFidx;
+                pu.selT = selTidx;
             }
             ctx.plookupIdentities.push(pu);
         } else if (s.type == "PUBLICDECLARATION") {
@@ -391,7 +392,11 @@ function ctx2json(ctx) {
     }
 
     for (let i=0; i<ctx.polIdentities.length; i++) {
-        out.polIdentities.push(ctx.polIdentities[i].e);
+        out.polIdentities.push({
+            e: ctx.polIdentities[i].e,
+            fileName: ctx.polIdentities[i].fileName,
+            line: ctx.polIdentities[i].line
+        });
     }
 
     for (let i=0; i<ctx.plookupIdentities.length; i++) {
@@ -400,6 +405,8 @@ function ctx2json(ctx) {
         pu.t = ctx.plookupIdentities[i].t;
         pu.selF = ctx.plookupIdentities[i].selF;
         pu.selT = ctx.plookupIdentities[i].selT;
+        pu.fileName = ctx.plookupIdentities[i].fileName;
+        pu.line = ctx.plookupIdentities[i].line;
         out.plookupIdentities.push(pu);
     }
 

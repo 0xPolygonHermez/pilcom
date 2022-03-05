@@ -154,7 +154,7 @@ polIdentity
     : expression '=' expression
         {
             $$ = {type: "POLIDENTITY", expression: { op: "sub", values: [$1,$3] }};
-            setLines($$.expression, @1, @3);
+            setLines($$, @1, @3);
         }
     ;
 
