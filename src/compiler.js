@@ -19,6 +19,7 @@ module.exports = async function compile(Fr, fileName, ctx) {
             polIdentities: [],
             plookupIdentities: [],
             namespace: "GLOBAL",
+            constants: {}
         }
         isMain = true;
     } else {
@@ -48,13 +49,17 @@ module.exports = async function compile(Fr, fileName, ctx) {
             lastLineAllowsCommand = false;
         } else if (s.type == "NAMESPACE") {
             ctx.namespace = s.namespace;
-        } else if (s.type == "POLCOMMTEDDECLARATION") {
+            const se = simplifyExpression(Fr, ctx, s.exp);
+            if (se.op != "number") error(s, "Size is not constant expression");
+            ctx.polDeg = se.value;
+        } else if (s.type == "POLCOMMTDECLARATION") {
             for (let j=0; j<s.names.length; j++) {
                 if (ctx.references[ctx.namespace + "." + s.names[j]]) error(s, `name already defined ${ctx.namespace + "." +s.names[j]}`);
                 ctx.references[ctx.namespace + "." + s.names[j]] = {
                     type: "cmP",
                     elementType: s.elementType,
-                    id: ctx.nCommitments++
+                    id: ctx.nCommitments++,
+                    polDeg: ctx.polDeg
                 }
             }
         } else if (s.type == "POLCONSTANTDECLARATION") {
@@ -63,7 +68,8 @@ module.exports = async function compile(Fr, fileName, ctx) {
                 ctx.references[ctx.namespace + "." + s.names[j]] = {
                     type: "constP",
                     elementType: s.elementType,
-                    id: ctx.nConstants++
+                    id: ctx.nConstants++,
+                    polDeg: ctx.polDeg
                 }
             }
         } else if (s.type == "POLDEFINITION") {
@@ -73,7 +79,8 @@ module.exports = async function compile(Fr, fileName, ctx) {
             if (ctx.references[ctx.namespace + "." + s.name]) error(s, `name already defined ${ctx.namespace + "." + s.name}`);
             ctx.references[ctx.namespace + "." + s.name] = {
                 type: "imP",
-                id: eidx
+                id: eidx,
+                polDeg: ctx.polDeg
             }
             ctx.nIm++;
         } else if (s.type == "POLIDENTITY") {
@@ -127,6 +134,11 @@ module.exports = async function compile(Fr, fileName, ctx) {
                 idx: Number(s.idx),
                 id: ctx.nPublic++
             };
+        } else if (s.type == "CONSTANTDEF") {
+            if (ctx.constants[s.name]) error(s, `name already defined ${s.name}`);
+            const se = simplifyExpression(Fr, ctx, s.exp);
+            if (se.op != "number") error(s, "Not a constant expression");
+            ctx.constants[s.name] = se.value;
         } else {
             error(s, `Invalid line type: ${s.type}`);
         }
@@ -327,6 +339,10 @@ function simplifyExpression(Fr, ctx, e) {
             error(e, "Exponentiation can only be applied between constants");
         }
     }
+    if (e.op == "constant") {
+        return {simplified:true, op: "number", deg:0, value: ctx.constants[e.name]};
+    }
+
     error(e, `invalid operation: ${e.op}`);
 }
 
@@ -374,7 +390,8 @@ function ctx2json(ctx) {
             out.references[n] = {
                 type: ref.type,
                 elementType: ref.elementType,
-                id: ref.id   
+                id: ref.id,
+                polDeg: ref.polDeg
             };
         }
     }

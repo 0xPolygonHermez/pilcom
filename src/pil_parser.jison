@@ -10,7 +10,7 @@
 \/\/.*                                      { /* console.log("SINGLE LINE COMMENT: "+yytext); */ }
 (0x[0-9A-Fa-f][0-9A-Fa-f_]*)|([0-9][0-9_]*) { yytext = yytext.replace(/\_/g, ""); return 'NUMBER'; }
 pol(?=[^a-zA-Z$_0-9])                       { return 'pol'; }
-commited(?=[^a-zA-Z$_0-9])                  { return 'commited'; }
+commit(?=[^a-zA-Z$_0-9])                    { return 'commit'; }
 constant(?=[^a-zA-Z$_0-9])                  { return 'constant'; }
 namespace(?=[^a-zA-Z$_0-9])                 { return 'namespace'; }
 include(?=[^a-zA-Z$_0-9])                   { return 'INCLUDE'; }
@@ -25,10 +25,11 @@ s16(?=[^a-zA-Z$_0-9])                       { return 's16'; }
 s32(?=[^a-zA-Z$_0-9])                       { return 's32'; }
 s64(?=[^a-zA-Z$_0-9])                       { return 's64'; }
 field(?=[^a-zA-Z$_0-9])                     { return 'field'; }
-public(?=[^a-zA-Z$_0-9])                     { return 'public'; }
+public(?=[^a-zA-Z$_0-9])                    { return 'public'; }
 
 \"[^"]+\"                                   { yytext = yytext.slice(1,-1); return 'STRING'; }
 [a-zA-Z_][a-zA-Z$_0-9]*                     { return 'IDENTIFIER'; }
+\%[a-zA-Z_][a-zA-Z$_0-9]*                   { yytext = yytext.slice(1); return 'CONSTANTID'; }
 \*\*                                        { return '**'; }
 \+                                          { return '+'; }
 \-                                          { return '-'; }
@@ -105,7 +106,7 @@ statment
             $$ = $1;
         }
 
-    | polCommitedDeclaration
+    | polCommitDeclaration
         {
             $$ = $1;
         }
@@ -130,6 +131,10 @@ statment
             $$ = $1
         }
     | publicDeclaration
+        {
+            $$ = $1
+        }
+    | constantDef
         {
             $$ = $1
         }
@@ -193,15 +198,15 @@ expressionList
     ;
 
 
-polCommitedDeclaration
-    : 'pol' elementType 'commited' polNamesList
+polCommitDeclaration
+    : 'pol' elementType 'commit' polNamesList
         {
-            $$ = {type: "POLCOMMTEDDECLARATION", names: $4, elementType: $2}
+            $$ = {type: "POLCOMMTDECLARATION", names: $4, elementType: $2}
             setLines($$, @1, @4);
         }
-    | 'pol' 'commited' polNamesList
+    | 'pol' 'commit' polNamesList
         {
-            $$ = {type: "POLCOMMTEDDECLARATION", names: $3, elementType: "field"}
+            $$ = {type: "POLCOMMTDECLARATION", names: $3, elementType: "field"}
             setLines($$, @1, @3);
         }
     ;
@@ -254,10 +259,18 @@ polNamesList
     ;
 
 namespaceDef
-    : 'namespace' IDENTIFIER
+    : 'namespace' IDENTIFIER '(' expression ')'
         {
-            $$ = {type: "NAMESPACE", namespace: $2}
-            setLines($$, @1, @2);
+            $$ = {type: "NAMESPACE", namespace: $2, exp: $4}
+            setLines($$, @1, @5);
+        }
+    ;
+
+constantDef
+    : 'constant' CONSTANTID '=' expression
+        {
+            $$ = {type: "CONSTANTDEF", name: $2, exp: $4}
+            setLines($$, @1, @4);
         }
     ;
 
@@ -338,6 +351,11 @@ e1
     | NUMBER
         {
             $$ = {op: "number", value: $1 }
+            setLines($$, @1);
+        }
+    | CONSTANTID
+        {
+            $$ = {op: "constant", name: $1 }
             setLines($$, @1);
         }
     | ':' IDENTIFIER

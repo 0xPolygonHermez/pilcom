@@ -29,9 +29,14 @@ async function run() {
 
     const outputFile = typeof(argv.output) === "string" ?  argv.output : fileName + ".json";
 
+    /*
     const bn128 = await ffjavascript.getCurveFromName("bn128");
+    const F = bn128.Fr;
+    */
 
-    const out = await compile(bn128.Fr, fullFileName);
+    const F = new ffjavascript.F1Field((1n<<64n)-(1n<<32n)+1n );
+
+    const out = await compile(F, fullFileName);
 
     console.log(JSON.stringify(out, null, 1));
     
