@@ -43,6 +43,8 @@ public(?=[^a-zA-Z$_0-9])                    { return 'public'; }
 \)                                          { return ')'; }
 \[                                          { return '['; }
 \]                                          { return ']'; }
+\{                                          { return '{'; }
+\}                                          { return '}'; }
 \:                                          { return ':'; }
 <<EOF>>                                     { return 'EOF'; }
 .                                           { console.log("INVALID: " + yytext); return 'INVALID'}
@@ -55,6 +57,8 @@ public(?=[^a-zA-Z$_0-9])                    { return 'public'; }
 %left '+' '-'
 %left '*'
 %left '**'
+%left '[' ']'
+%left '.'
 %right UMINUS UPLUS
 
 
@@ -172,11 +176,11 @@ plookupIdentity
     ;
 
 puSide
-    : expression '[' expressionList ']'
+    : expression '{' expressionList '}'
         {
             $$ = {pols:$3, sel:  $1};
         }
-    | '[' expressionList ']'
+    | '{' expressionList '}'
         {
             $$ = {pols:$2, sel:  null};
         }
@@ -212,7 +216,7 @@ polCommitDeclaration
     ;
 
 publicDeclaration
-    : 'public' IDENTIFIER '=' polId '[' NUMBER ']'
+    : 'public' IDENTIFIER '=' polId '(' NUMBER ')'
         {
             $$ = {type: "PUBLICDECLARATION", name: $2, pol: $4, idx: $6}
             setLines($$, @1, @4);
@@ -247,14 +251,32 @@ elementType
     ;
 
 polNamesList
-    : polNamesList ',' IDENTIFIER
+    : polNamesList ',' polName
         {
             $1.push($3);
             $$ = $1;
         }
-    | IDENTIFIER
+    | polName
         {
             $$ = [$1];
+        }
+    ;
+
+polName
+    : IDENTIFIER
+        {
+            $$ = {
+                name: $1,
+                type: "single"
+            }
+        }
+    | IDENTIFIER '[' expression ']'
+        {
+            $$ = {
+                name: $1,
+                type: "array",
+                expLen: $3
+            }
         }
     ;
 
@@ -376,12 +398,24 @@ polId
             $1.next= true;
             $$ = $1;
         }
+    | IDENTIFIER '.' IDENTIFIER '[' expression ']'
+        {
+            $$ = {op: "pol", next: false, namespace: $1, name: $3, idxExp: $5}
+            setLines($$, @1, @6);
+        }
     | IDENTIFIER '.' IDENTIFIER
         {
             $$ = {op: "pol", next: false, namespace: $1, name: $3}
+            setLines($$, @1, @3);
+        }
+    | IDENTIFIER '[' expression ']'
+        {
+            $$ = {op: "pol", next: false, namespace: "this", name: $1, idxExp: $3}
+            setLines($$, @1, @4);
         }
     | IDENTIFIER
         {
             $$ = {op: "pol", next: false, namespace: "this", name: $1}
+            setLines($$, @1, @1);
         }
     ;

@@ -1,0 +1,17 @@
+
+namespace Arrays2(2**16);
+    pol constant d[2];
+    pol commit c;
+
+    d[0]+d[1] = c*d[0];
+
+namespace Arrays1(2**16);
+    pol commit a, b[3], c;
+
+    a*b[0] = 1;
+    b[1]*b[1] = b[2]*Arrays2.d[1];
+
+    b[1] {b[0], a} in Arrays2.d[0] { Arrays2.c, Arrays2.d[1]};
+
+
+

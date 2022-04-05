@@ -19,7 +19,8 @@ module.exports = async function compile(Fr, fileName, ctx) {
             polIdentities: [],
             plookupIdentities: [],
             namespace: "GLOBAL",
-            constants: {}
+            constants: {},
+            Fr: Fr
         }
         isMain = true;
     } else {
@@ -51,25 +52,57 @@ module.exports = async function compile(Fr, fileName, ctx) {
             ctx.namespace = s.namespace;
             const se = simplifyExpression(Fr, ctx, s.exp);
             if (se.op != "number") error(s, "Size is not constant expression");
-            ctx.polDeg = se.value;
+            ctx.polDeg = Number(se.value);
         } else if (s.type == "POLCOMMTDECLARATION") {
             for (let j=0; j<s.names.length; j++) {
-                if (ctx.references[ctx.namespace + "." + s.names[j]]) error(s, `name already defined ${ctx.namespace + "." +s.names[j]}`);
-                ctx.references[ctx.namespace + "." + s.names[j]] = {
-                    type: "cmP",
-                    elementType: s.elementType,
-                    id: ctx.nCommitments++,
-                    polDeg: ctx.polDeg
+                if (ctx.references[ctx.namespace + "." + s.names[j].name]) error(s, `name already defined ${ctx.namespace + "." +s.names[j]}`);
+                if  (s.names[j].type == "array") {
+                    const se = simplifyExpression(Fr, ctx, s.names[j].expLen);
+                    if (se.op != "number") error(s, "Array Size is not constant expression");
+                    ctx.references[ctx.namespace + "." + s.names[j].name] = {
+                        type: "cmP",
+                        elementType: s.elementType,
+                        id: ctx.nCommitments,
+                        polDeg: ctx.polDeg,
+                        isArray: true,
+                        len: Number(se.value)
+                    }
+                    ctx.nCommitments += Number(se.value);
+                } else {
+                    ctx.references[ctx.namespace + "." + s.names[j].name] = {
+                        type: "cmP",
+                        elementType: s.elementType,
+                        id: ctx.nCommitments,
+                        polDeg: ctx.polDeg,
+                        isArray: false,
+                    }
+                    ctx.nCommitments += 1;
                 }
             }
         } else if (s.type == "POLCONSTANTDECLARATION") {
             for (let j=0; j<s.names.length; j++) {
-                if (ctx.references[ctx.namespace + "." + s.names[j]]) error(s, `name already defined ${ctx.namespace + "." + s.names[j]}`);
-                ctx.references[ctx.namespace + "." + s.names[j]] = {
-                    type: "constP",
-                    elementType: s.elementType,
-                    id: ctx.nConstants++,
-                    polDeg: ctx.polDeg
+                if (ctx.references[ctx.namespace + "." + s.names[j].name]) error(s, `name already defined ${ctx.namespace + "." + s.names[j]}`);
+                if  (s.names[j].type == "array") {
+                    const se = simplifyExpression(Fr, ctx, s.names[j].expLen);
+                    if (se.op != "number") error(s, "Array Size is not constant expression");
+                    ctx.references[ctx.namespace + "." + s.names[j].name] = {
+                        type: "constP",
+                        elementType: s.elementType,
+                        id: ctx.nConstants,
+                        polDeg: ctx.polDeg,
+                        isArray: true,
+                        len: Number(se.value)
+                    }
+                    ctx.nConstants += Number(se.value);
+                } else {
+                    ctx.references[ctx.namespace + "." + s.names[j].name] = {
+                        type: "constP",
+                        elementType: s.elementType,
+                        id: ctx.nConstants,
+                        polDeg: ctx.polDeg,
+                        isArray: false,
+                    }
+                    ctx.nConstants += 1;
                 }
             }
         } else if (s.type == "POLDEFINITION") {
@@ -128,9 +161,20 @@ module.exports = async function compile(Fr, fileName, ctx) {
             let ns = s.pol.namespace;
             if (ns == "this") ns = ctx.namespace;
             if (typeof ctx.references[ns + "." + s.pol.name] == "undefined" ) error(s, `polyomial not defined ${ns + "." +s.pol.name}`);
+            if ((s.pol.idxExp) && (!ctx.references[ns + "." + s.pol.name].isArray)) error(s, `${ns + "." + s.pol.name} is not an Array`);
+            if ((!s.pol.idxExp) && (ctx.references[ns + "." + s.pol.name].isArray)) error(s, `${ns + "." + s.pol.name}: index of an array not specified`);
+            let offset;
+            if ((s.pol.idxExp) && (ctx.references[ns + "." + s.pol.name].isArray)) {
+                const se = simplifyExpression(Fr, ctx, s.pol.idxExp);
+                if (se.op != "number") error(s, "Index is not constant expression");
+                offset = Number(se.value);
+            } else {
+                offset = 0;
+            }
+            error(s, `${ns + "." + s.pol.name}: index of an array not specified`);
             ctx.publics[s.name] = {
                 polType: ctx.references[ns + "." + s.pol.name].type,
-                polId: ctx.references[ns + "." + s.pol.name].id,
+                polId: Number(ctx.references[ns + "." + s.pol.name].id) + offset,
                 idx: Number(s.idx),
                 id: ctx.nPublic++
             };
@@ -387,12 +431,24 @@ function ctx2json(ctx) {
     for (n in ctx.references) {
         if (ctx.references.hasOwnProperty(n)) {  
             const ref = ctx.references[n];
-            out.references[n] = {
-                type: ref.type,
-                elementType: ref.elementType,
-                id: ref.id,
-                polDeg: ref.polDeg
-            };
+            if (ref.isArray) {
+                out.references[n] = {
+                    type: ref.type,
+                    elementType: ref.elementType,
+                    id: ref.id,
+                    polDeg: ref.polDeg,
+                    isArray: true,
+                    len: ref.len
+                };
+            } else {
+                out.references[n] = {
+                    type: ref.type,
+                    elementType: ref.elementType,
+                    id: ref.id,
+                    polDeg: ref.polDeg,
+                    isArray: false
+                };
+            }
         }
     }
 
@@ -442,13 +498,25 @@ function expression2JSON(ctx, e, deps) {
     out.deg = e.deg;
     if (e.op == "pol") {
         const ref = ctx.references[e.namespace + '.' + e.name];
+        if (!ref) error(e,  `${e.namespace + "." + e.name} reference not defned`);
+        if ((e.idxExp) && (!ctx.references[e.namespace + "." + e.name].isArray)) error(e, `${e.namespace + "." + e.name} is not an Array`);
+        if ((!e.idxExp) && (ctx.references[e.namespace + "." + e.name].isArray)) error(e, `${e.namespace + "." + e.name}: index of an array not specified`);
+        let offset;
+        if ((e.idxExp) && (ctx.references[e.namespace + "." + e.name].isArray)) {
+            const se = simplifyExpression(ctx.Fr, ctx, e.idxExp);
+            if (se.op != "number") error(e, "Index is not constant expression");
+            offset = Number(se.value);
+        } else {
+            offset = 0;
+        }
         if (ref.type=="cmP") {
-            out.id = ref.id;
+            out.id = Number(ref.id)+offset;
             out.op = "cm";
         } else if (ref.type=="constP") {
-            out.id = ref.id;
+            out.id = Number(ref.id)+offset;
             out.op = "const"
         } else if (ref.type=="imP") {
+            if (offset != 0) error(e, "Intermediate cannot have an offset")
             if (!main) {
                 deps.push(ref.id);
             }
