@@ -171,7 +171,6 @@ module.exports = async function compile(Fr, fileName, ctx) {
             } else {
                 offset = 0;
             }
-            error(s, `${ns + "." + s.pol.name}: index of an array not specified`);
             ctx.publics[s.name] = {
                 polType: ctx.references[ns + "." + s.pol.name].type,
                 polId: Number(ctx.references[ns + "." + s.pol.name].id) + offset,

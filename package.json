@@ -4,7 +4,8 @@
   "description": "Polynomial Identity Language (pil)",
   "main": "index.js",
   "bin": {
-    "zkpil": "src/pil.js"
+    "zkpil": "src/pil.js",
+    "pilverifier": "src/main_pilverifier"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

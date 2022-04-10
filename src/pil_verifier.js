@@ -91,7 +91,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
     }
 
     for (let i=0; i<pil.plookupIdentities.length; i++) {
-        const pi = pil.plookupIdentities[i];
+        const pi =pil.plookupIdentities[i];
 
         for (let j=0; j<pi.t.length; j++) {
             await calculateExpression(pi.t[j]);

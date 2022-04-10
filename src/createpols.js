@@ -19,6 +19,7 @@ module.exports.createCommitedPols = function createCommitedPols(pil) {
                         pols[nameSpace][namePol][i] = polsArray[ref.id + i];
                         polsArrayDef[ref.id + i] = {
                             name: refName,
+                            id: ref.id + i,
                             idx: i,
                             elementType: ref.elementType,
                             polDeg: ref.polDeg
@@ -29,6 +30,7 @@ module.exports.createCommitedPols = function createCommitedPols(pil) {
                     pols[nameSpace][namePol] = polsArray[ref.id];
                     polsArrayDef[ref.id] = {
                         name: refName,
+                        id: ref.id,
                         elementType: ref.elementType,
                         polDeg: ref.polDeg
                     }
@@ -69,6 +71,7 @@ module.exports.createConstantPols = function createConstantPols(pil) {
                         pols[nameSpace][namePol][i] = polsArray[ref.id + i];
                         polsArrayDef[ref.id + i] = {
                             name: refName,
+                            id: ref.id + i,
                             idx: i,
                             elementType: ref.elementType,
                             polDeg: ref.polDeg
@@ -79,6 +82,7 @@ module.exports.createConstantPols = function createConstantPols(pil) {
                     pols[nameSpace][namePol] = polsArray[ref.id];
                     polsArrayDef[ref.id] = {
                         name: refName,
+                        id: ref.id,
                         elementType: ref.elementType,
                         polDeg: ref.polDeg
                     }
