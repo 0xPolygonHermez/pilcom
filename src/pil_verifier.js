@@ -192,7 +192,6 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
             r = pols.exps[exp.id].v_n;
             if (exp.next) r = getPrime(r);
         } else if (exp.op == "number") {
-            N = pols.const[0].v_n.length;
             v = F.e(exp.value);
             r = new Array(N);
             for (let i=0; i<N; i++) r[i] = v;

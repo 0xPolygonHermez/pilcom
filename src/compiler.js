@@ -536,6 +536,9 @@ function expression2JSON(ctx, e, deps) {
             out.values.push( expression2JSON(ctx, e.values[i], deps));
         }
     }
+    if (typeof e.value !== "undefined") {
+        out.value = e.value;
+    }
     if (typeof e.const !== "undefined") {
         out.const = e.const;
     }
