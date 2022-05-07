@@ -1,3 +1,5 @@
+const { log2, getKs } = require("./utils.js");
+
 module.exports = async function verifyPil(F, pil, cmPols, constPols) {
 
     const res = [];
@@ -132,6 +134,54 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
         }
     }
 
+
+    for (let i=0; i<pil.permutationIdentities.length; i++) {
+        const pi =pil.permutationIdentities[i];
+
+        for (let j=0; j<pi.t.length; j++) {
+            await calculateExpression(pi.t[j]);
+        }
+        if (pi.selT !== null) {
+            await calculateExpression(pi.selT);
+        }
+        for (let j=0; j<pi.f.length; j++) {
+            await calculateExpression(pi.f[j]);
+        }
+        if (pi.selF !== null) {
+            await calculateExpression(pi.selF);
+        }
+
+        let t = {};
+        for (let j=0; j<N; j++) {
+            if ((pi.selT==null) || (!F.isZero(pols.exps[pi.selT].v_n[j]))) {
+                const vals = []
+                for (let k=0; k<pi.t.length; k++) {
+                    vals.push(F.toString(pols.exps[pi.t[k]].v_n[j]));
+                }
+                t[vals.join(",")] = true;
+            }
+        }
+
+        for (let j=0; j<N; j++) {
+            if ((pi.selF==null) || (!F.isZero(pols.exps[pi.selF].v_n[j]))) {
+                const vals = []
+                for (let k=0; k<pi.f.length; k++) {
+                    vals.push(F.toString(pols.exps[pi.f[k]].v_n[j]));
+                }
+                const v = vals.join(",");
+                if (!t[v]) {
+                    res.push(`${pi[i].fileName}:${pi.line}:  permutation not found w=${j} values: ${v}`);
+                    j=N;  // Do not continue checking
+                }
+                delete t[v];
+            }
+        }
+
+        if (Object.keys(t).length !=0) {
+            res.push(`${pi.fileName}:${pi.line}:  permutation failed. values remaining: ${Object.keys(t).length}`);
+        }
+    }
+
     for (let i=0; i<pil.polIdentities.length; i++) {
         await calculateExpression(pil.polIdentities[i].e);
 
@@ -143,6 +193,39 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
             }
         }
     }
+
+    for (let i=0; i<pil.connectionIdentities.length; i++) {
+        ci = pil.connectionIdentities[i];
+        for (let j=0; j<ci.pols.length; j++) {
+            await calculateExpression(ci.pols[j]);
+        }
+        for (let j=0; j<ci.connections.length; j++) {
+            await calculateExpression(ci.connections[j]);
+        }
+
+        cm = getConnectionMap(F, N, ci.pols.length);
+
+        for (let j=0; j<ci.pols.length; j++) {
+            for (let k=0; k<N; k++) {
+                const v1 = pols.exps[ci.pols[j]].v_n[k];
+
+                const [cp, cw] = cm[ pols.exps[ci.connections[j]].v_n[k]];
+                if (typeof cp == "undefined") res.push(`${ci.fileName}:${pil.polIdentities[i].line}: invalid copy value w=${j},${k} val=${F.toString(v1)} `);
+                const v2 = pols.exps[ci.pols[cp]].v_n[cw];
+
+                if (!F.eq(v1, v2)) {
+                    res.push(`${ci.fileName}:${pil.polIdentities[i].line}: connection does not match p1=${j} w1=${k} p2=${cp}, w2=${cw} val= ${F.toString(v1)} != ${F.toString(v2)}`);
+                    k=N;
+                    j=ci.pols.length;
+                }
+            }
+        }
+
+
+
+    }
+
+
 
     return res;
 
@@ -237,6 +320,31 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
         }
     }
 }
+
+
+const cacheConnectionMaps = {};
+
+function getConnectionMap(F, N, nk) {
+    const kc = F.p.toString()+ "_" + N.toString() + "_" + nk.toString();
+    if (cacheConnectionMaps[kc]) return cacheConnectionMaps[kc];
+
+    const pow = log2(N);
+
+    const m = {};
+    const ks = [1n, ...getKs(F, pow, nk-1)];
+    let w = F.one;
+    for (let i=0; i<N; i++ ) {
+        for (j=0; j<ks.length; j++) {
+            m[ F.mul(ks[j], w) ] = [j, i];
+        }
+        w = F.mul(w, F.FFT.w[pow]);
+    }
+
+    cacheConnectionMaps[kc] = m;
+    return m;
+}
+
+
 
 
 

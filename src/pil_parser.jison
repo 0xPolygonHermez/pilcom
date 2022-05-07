@@ -15,6 +15,8 @@ constant(?=[^a-zA-Z$_0-9])                  { return 'constant'; }
 namespace(?=[^a-zA-Z$_0-9])                 { return 'namespace'; }
 include(?=[^a-zA-Z$_0-9])                   { return 'INCLUDE'; }
 in(?=[^a-zA-Z$_0-9])                        { return 'in'; }
+is(?=[^a-zA-Z$_0-9])                        { return 'is'; }
+connect(?=[^a-zA-Z$_0-9])                 { return 'connect'; }
 bool(?=[^a-zA-Z$_0-9])                      { return 'bool'; }
 u8(?=[^a-zA-Z$_0-9])                        { return 'u8'; }
 u16(?=[^a-zA-Z$_0-9])                       { return 'u16'; }
@@ -109,7 +111,14 @@ statment
         {
             $$ = $1;
         }
-
+    | permutationIdentity
+        {
+            $$ = $1;
+        }
+    | connectIdentity
+        {
+            $$ = $1;
+        }
     | polCommitDeclaration
         {
             $$ = $1;
@@ -172,6 +181,21 @@ plookupIdentity
         {
             $$ = {type: "PLOOKUPIDENTITY", f: $1.pols, t: $3.pols, selF: $1.sel, selT: $3.sel};
             setLines($$, @1, @3);
+        }
+    ;
+
+permutationIdentity
+    : puSide 'is' puSide
+        {
+            $$ = {type: "PERMUTATIONIDENTITY", f: $1.pols, t: $3.pols, selF: $1.sel, selT: $3.sel};
+            setLines($$, @1, @3);
+        }
+    ;
+
+connectIdentity
+    : '{' expressionList '}' 'connect' '{' expressionList '}'
+        {
+            $$ = {type: "CONNECTIONIDENTITY", pols: $2, connections: $6}
         }
     ;
 

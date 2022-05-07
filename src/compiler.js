@@ -18,6 +18,8 @@ module.exports = async function compile(Fr, fileName, ctx) {
             expressions: [],
             polIdentities: [],
             plookupIdentities: [],
+            permutationIdentities: [],
+            connectionIdentities: [],
             namespace: "GLOBAL",
             constants: {},
             Fr: Fr
@@ -121,7 +123,7 @@ module.exports = async function compile(Fr, fileName, ctx) {
             addFilename(s.expression, fileName, ctx.namespace);
             ctx.expressions.push(s.expression);
             ctx.polIdentities.push({fileName: fileName, namespace: ctx.namespace, line: s.first_line, e: eidx});
-        } else if (s.type == "PLOOKUPIDENTITY") {
+        } else if (s.type == "PLOOKUPIDENTITY" || s.type == "PERMUTATIONIDENTITY") {
             const pu = {
                 fileName: fileName, 
                 namespace: ctx.namespace,
@@ -155,7 +157,34 @@ module.exports = async function compile(Fr, fileName, ctx) {
                 ctx.expressions.push(s.selT);
                 pu.selT = selTidx;
             }
-            ctx.plookupIdentities.push(pu);
+            if (pu.f.length != pu.t.length ) error(s, `${s.type} with diferent number of elements`);
+            if (s.type == "PLOOKUPIDENTITY") {
+                ctx.plookupIdentities.push(pu);
+            } else {
+                ctx.permutationIdentities.push(pu);
+            }
+        } else if (s.type == "CONNECTIONIDENTITY") {
+            const ci = {
+                fileName: fileName, 
+                namespace: ctx.namespace,
+                line: s.first_line,
+                pols: [],
+                connections: [],
+            }
+            for (let j=0; j<s.pols.length; j++) {
+                const efidx = ctx.expressions.length;
+                addFilename(s.pols[j], fileName, ctx.namespace);
+                ctx.expressions.push(s.pols[j]);
+                ci.pols.push(efidx);
+            }
+            for (let j=0; j<s.connections.length; j++) {
+                const etidx = ctx.expressions.length;
+                addFilename(s.connections[j], fileName, ctx.namespace);
+                ctx.expressions.push(s.connections[j]);
+                ci.connections.push(etidx);
+            }
+            if (ci.pols.length != ci.connections.length ) error(s, `connection with diferent number of elements`);
+            ctx.connectionIdentities.push(ci);
         } else if (s.type == "PUBLICDECLARATION") {
             if (ctx.publics[s.name]) error(s, `name already defined ${s.name}`);
             let ns = s.pol.namespace;
@@ -207,6 +236,31 @@ module.exports = async function compile(Fr, fileName, ctx) {
                 ctx.expressions[ctx.plookupIdentities[i].selT] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].selT]);
             }
         }
+        for (let i=0; i<ctx.permutationIdentities.length; i++) {
+            ctx.namespace = ctx.permutationIdentities[i].namespace;
+            for (j=0; j<ctx.permutationIdentities[i].f.length; j++) {
+                ctx.expressions[ctx.permutationIdentities[i].f[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].f[j]]);
+            } 
+            if (ctx.permutationIdentities[i].selF !== null) {
+                ctx.expressions[ctx.permutationIdentities[i].selF] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].selF]);
+            }
+            for (j=0; j<ctx.permutationIdentities[i].t.length; j++) {
+                ctx.expressions[ctx.permutationIdentities[i].t[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].t[j]]);
+            } 
+            if (ctx.permutationIdentities[i].selT !== null) {
+                ctx.expressions[ctx.permutationIdentities[i].selT] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].selT]);
+            }
+        }
+        for (let i=0; i<ctx.connectionIdentities.length; i++) {
+            ctx.namespace = ctx.connectionIdentities[i].namespace;
+            for (j=0; j<ctx.connectionIdentities[i].pols.length; j++) {
+                ctx.expressions[ctx.connectionIdentities[i].pols[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.connectionIdentities[i].pols[j]]);
+            } 
+            for (j=0; j<ctx.connectionIdentities[i].connections.length; j++) {
+                ctx.expressions[ctx.connectionIdentities[i].connections[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.connectionIdentities[i].connections[j]]);
+            } 
+        }
+
         for (let i=0; i<ctx.expressions.length; i++) {
             if (!ctx.expressions[i].simplified) error(ctx.expressions[i], "Unused expression");
             if (!ctx.expressions[i].deg>2) error(ctx.expressions[i], "Degree greater than 2");
@@ -228,6 +282,28 @@ module.exports = async function compile(Fr, fileName, ctx) {
                 reduceto1(ctx, ctx.expressions[ctx.plookupIdentities[i].selT]);
             }
         }
+        for (let i=0; i<ctx.permutationIdentities.length; i++) {
+            for (j=0; j<ctx.permutationIdentities[i].f.length; j++) {
+                reduceto1(ctx, ctx.expressions[ctx.permutationIdentities[i].f[j]]);
+            }
+            if (ctx.permutationIdentities[i].selF) {
+                reduceto1(ctx, ctx.expressions[ctx.permutationIdentities[i].selF]);
+            }
+            for (j=0; j<ctx.permutationIdentities[i].t.length; j++) {
+                reduceto1(ctx, ctx.expressions[ctx.permutationIdentities[i].t[j]]);
+            }
+            if (ctx.permutationIdentities[i].selT) {
+                reduceto1(ctx, ctx.expressions[ctx.permutationIdentities[i].selT]);
+            }
+        }
+        for (let i=0; i<ctx.connectionIdentities.length; i++) {
+            for (j=0; j<ctx.connectionIdentities[i].pols.length; j++) {
+                reduceto1(ctx, ctx.expressions[ctx.connectionIdentities[i].pols[j]]);
+            }
+            for (j=0; j<ctx.connectionIdentities[i].connections.length; j++) {
+                reduceto1(ctx, ctx.expressions[ctx.connectionIdentities[i].connections[j]]);
+            }
+        }    
     }
 
     if (isMain) {
@@ -425,6 +501,8 @@ function ctx2json(ctx) {
         expressions: [],
         polIdentities: [],
         plookupIdentities: [],
+        permutationIdentities: [],
+        connectionIdentities: []
     };
 
     for (n in ctx.references) {
@@ -480,6 +558,26 @@ function ctx2json(ctx) {
         pu.fileName = ctx.plookupIdentities[i].fileName;
         pu.line = ctx.plookupIdentities[i].line;
         out.plookupIdentities.push(pu);
+    }
+
+    for (let i=0; i<ctx.permutationIdentities.length; i++) {
+        const pu = {};
+        pu.f = ctx.permutationIdentities[i].f;
+        pu.t = ctx.permutationIdentities[i].t;
+        pu.selF = ctx.permutationIdentities[i].selF;
+        pu.selT = ctx.permutationIdentities[i].selT;
+        pu.fileName = ctx.permutationIdentities[i].fileName;
+        pu.line = ctx.permutationIdentities[i].line;
+        out.permutationIdentities.push(pu);
+    }
+
+    for (let i=0; i<ctx.connectionIdentities.length; i++) {
+        const pu = {};
+        pu.pols = ctx.connectionIdentities[i].pols;
+        pu.connections = ctx.connectionIdentities[i].connections;
+        pu.fileName = ctx.connectionIdentities[i].fileName;
+        pu.line = ctx.connectionIdentities[i].line;
+        out.connectionIdentities.push(pu);
     }
 
     return out;
