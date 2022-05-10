@@ -22,7 +22,8 @@ module.exports = async function compile(Fr, fileName, ctx) {
             connectionIdentities: [],
             namespace: "GLOBAL",
             constants: {},
-            Fr: Fr
+            Fr: Fr,
+            includedFiles: {}
         }
         isMain = true;
     } else {
@@ -44,12 +45,15 @@ module.exports = async function compile(Fr, fileName, ctx) {
         s.fileName = fileName;
         if (s.type == "INCLUDE") {
             const fullFileNameI = path.resolve(fileDir, s.file);
-            const oldNamespace = ctx.namespace;
-            ctx.namespace = "GLOBAL";
-            await compile(Fr, fullFileNameI, ctx);
-            ctx.namespace = oldNamespace;
-            if (pendingCommands.length>0) error(s, "command not allowed before include");
-            lastLineAllowsCommand = false;
+            if (!ctx.includedFiles[fullFileNameI]) {       // If a file included twice just ignore
+                ctx.includedFiles[fullFileNameI] = true;
+                const oldNamespace = ctx.namespace;
+                ctx.namespace = "GLOBAL";
+                await compile(Fr, fullFileNameI, ctx);
+                ctx.namespace = oldNamespace;
+                if (pendingCommands.length>0) error(s, "command not allowed before include");
+                lastLineAllowsCommand = false;
+            }
         } else if (s.type == "NAMESPACE") {
             ctx.namespace = s.namespace;
             const se = simplifyExpression(Fr, ctx, s.exp);
@@ -239,16 +243,16 @@ module.exports = async function compile(Fr, fileName, ctx) {
         for (let i=0; i<ctx.permutationIdentities.length; i++) {
             ctx.namespace = ctx.permutationIdentities[i].namespace;
             for (j=0; j<ctx.permutationIdentities[i].f.length; j++) {
-                ctx.expressions[ctx.permutationIdentities[i].f[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].f[j]]);
+                ctx.expressions[ctx.permutationIdentities[i].f[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.permutationIdentities[i].f[j]]);
             } 
             if (ctx.permutationIdentities[i].selF !== null) {
-                ctx.expressions[ctx.permutationIdentities[i].selF] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].selF]);
+                ctx.expressions[ctx.permutationIdentities[i].selF] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.permutationIdentities[i].selF]);
             }
             for (j=0; j<ctx.permutationIdentities[i].t.length; j++) {
-                ctx.expressions[ctx.permutationIdentities[i].t[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].t[j]]);
+                ctx.expressions[ctx.permutationIdentities[i].t[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.permutationIdentities[i].t[j]]);
             } 
             if (ctx.permutationIdentities[i].selT !== null) {
-                ctx.expressions[ctx.permutationIdentities[i].selT] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].selT]);
+                ctx.expressions[ctx.permutationIdentities[i].selT] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.permutationIdentities[i].selT]);
             }
         }
         for (let i=0; i<ctx.connectionIdentities.length; i++) {
@@ -326,7 +330,7 @@ function simplifyExpression(Fr, ctx, e) {
     e.simplified = true;
     if (e.op == "pol") {
         const ref = ctx.references[e.namespace + '.' + e.name];
-        if (!ref) error(e, `polinomial ${e.namespace + '.' + e.name} not defined`);
+        if (!ref) error(e, `polynomial ${e.namespace + '.' + e.name} not defined`);
         if ((ref.type == "cmP") || (ref.type == "constP")) {
             e.deg = 1;
         } else if (ref.type == "imP") {

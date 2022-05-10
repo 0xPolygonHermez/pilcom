@@ -45,6 +45,8 @@ async function run() {
     console.log("Constant Pols: " + out.nConstants);
     console.log("Im Pols: " + out.nIm);
     console.log("plookupIdentities: " + out.plookupIdentities.length);
+    console.log("permutationIdentities: " + out.permutationIdentities.length);
+    console.log("connectionIdentities: " + out.connectionIdentities.length);
     console.log("polIdentities: " + out.polIdentities.length);
 
     await fs.promises.writeFile(outputFile.trim(), JSON.stringify(out, null, 1) + "\n", "utf8");
