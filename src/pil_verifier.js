@@ -170,7 +170,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
                 }
                 const v = vals.join(",");
                 if (!t[v]) {
-                    res.push(`${pi[i].fileName}:${pi.line}:  permutation not found w=${j} values: ${v}`);
+                    res.push(`${pi.fileName}:${pi.line}:  permutation not found w=${j} values: ${v}`);
                     j=N;  // Do not continue checking
                 }
                 delete t[v];
