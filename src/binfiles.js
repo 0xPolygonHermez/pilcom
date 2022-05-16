@@ -248,6 +248,7 @@ module.exports.importPolynomials = async function exportPolynomials(F, fileName,
     const fd =await fs.promises.open(fileName, "r");
 
     for (let i=0; i<polsDef.length; i++) {
+        console.log(`Reading pol ${i+1}/${polsDef.length}`);
         const N = polsDef[i].polDeg;
         if (polsDef[i].elementType == "bool") {
             pols[i] = await readBool(fd, N);
