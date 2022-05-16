@@ -10,8 +10,12 @@ module.exports.exportPolynomials = async function exportPolynomials(F, fileName,
     const fd =await fs.promises.open(fileName, "w+");
 
     for (let i=0; i<pols.length; i++) {
+        console.log(`Writing pol ${i+1}/${pols.length}`);
         const N = polsDef[i].polDeg;
-        assert(pols[i].length==N);
+        if (pols[i].length!=N) {
+            console.log(JSON.stringify(polsDef[i], null, 1));
+            throw new Error(`Polynomial ${i} does not have the right length`);
+        }
         let buff;
         if (polsDef[i].elementType == "bool") {
             buff = writeBool(pols[i]);
