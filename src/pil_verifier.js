@@ -34,6 +34,15 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
     for (let i=0; i<pil.expressions.length; i++) pols.exps[i] = {};
     for (let i=0; i<pil.nConstants; i++) pols.const[i] = {};
 
+
+    toF = (a) => {
+        switch (typeof(a)) {
+            case "bigint": return a;
+            case "boolean": return a ? 1n : 0n;
+            default: return BigInt(a);
+        }
+    }
+
 // 1.- Prepare commited polynomials. 
     for (let i=0; i<cmPols.length;) {
         console.log(`Preparing polynomial ${refCm[i].name}`);
@@ -52,7 +61,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
                 if (typeof cmPols[i+k][j] === "undefined" ) {
                     throw new Error(`Commit Polynomial ${refCm[i].name} has no value a to pos ${j}`);
                 }
-                pols.cm[i+k].v_n[j] = F.e(cmPols[i+k][j]);
+                pols.cm[i+k].v_n[j] = toF(cmPols[i+k][j]);
             }
         }
         i+=k;
@@ -75,13 +84,15 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
                 if (typeof constPols[i+k][j] === "undefined" ) {
                     throw new Error(`Constant Polynomial ${refConst[i].name} has no value a to pos ${j}`);
                 }
-                pols.const[i+k].v_n[j] = F.e(constPols[i+k][j]);
+                pols.const[i+k].v_n[j] = toF(constPols[i+k][j]);
             }
         }
         i+=k;
     }
 
     for (let i=0; i<pil.publics.length; i++) {
+        console.log(`Preparing public ${i+1}/${pil.publics.length}`);
+
         if (pil.publics[i].polType == "cmP") {
             pols.publics[i] = pols.cm[pil.publics[i].polId].v_n[pil.publics[i].idx];
         } else if (pil.polType == "exp") {
@@ -93,6 +104,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
     }
 
     for (let i=0; i<pil.plookupIdentities.length; i++) {
+        console.log(`Checking plookupIdentities ${i+1}/${pil.plookupIdentities.length}`);
         const pi =pil.plookupIdentities[i];
 
         for (let j=0; j<pi.t.length; j++) {
@@ -136,6 +148,8 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
 
 
     for (let i=0; i<pil.permutationIdentities.length; i++) {
+        console.log(`Checking permutationIdentities ${i+1}/${pil.permutationIdentities.length}`);
+
         const pi =pil.permutationIdentities[i];
 
         for (let j=0; j<pi.t.length; j++) {
@@ -183,6 +197,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
     }
 
     for (let i=0; i<pil.polIdentities.length; i++) {
+        console.log(`Checking identities ${i+1}/${pil.polIdentities.length}`);
         await calculateExpression(pil.polIdentities[i].e);
 
         for (let j=0; j<N; j++) {
@@ -195,6 +210,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
     }
 
     for (let i=0; i<pil.connectionIdentities.length; i++) {
+        console.log(`Checking connectionIdentities ${i+1}/${pil.connectionIdentities.length}`);
         ci = pil.connectionIdentities[i];
         for (let j=0; j<ci.pols.length; j++) {
             await calculateExpression(ci.pols[j]);
