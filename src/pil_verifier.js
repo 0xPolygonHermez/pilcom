@@ -43,6 +43,8 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
         }
     }
 
+
+
 // 1.- Prepare commited polynomials. 
     for (let i=0; i<cmPols.length;) {
         console.log(`Preparing polynomial ${refCm[i].name}`);
@@ -100,6 +102,41 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
             pols.publics[i] = pols.exps[pil.publics[i].polId].v_n[pil.publics[i].idx];
         } else {
             throw new Error(`Invalid public type: ${polType.type}`);
+        }
+    }
+
+    for (let i=0; i<pil.connectionIdentities.length; i++) {
+        console.log(`Checking connectionIdentities ${i+1}/${pil.connectionIdentities.length}`);
+        ci = pil.connectionIdentities[i];
+        for (let j=0; j<ci.pols.length; j++) {
+            await calculateExpression(ci.pols[j]);
+        }
+        for (let j=0; j<ci.connections.length; j++) {
+            await calculateExpression(ci.connections[j]);
+        }
+
+        console.log("start generating cm");
+        let cm = getConnectionMap(F, N, ci.pols.length);
+
+        for (let j=0; j<ci.pols.length; j++) {
+            for (let k=0; k<N; k++) {
+                if (k%10000 == 0) console.log(`${k+1}/${N}`);
+                const v1 = pols.exps[ci.pols[j]].v_n[k];
+
+                const a = pols.exps[ci.connections[j]].v_n[k]
+                const a1 = Number(a >> 32n);
+                const a2 = Number(a & 0xFFFFFFFFn);
+    
+                const [cp, cw] = cm[ a1 ][a2];
+                if (typeof cp == "undefined") res.push(`${ci.fileName}:${pil.polIdentities[i].line}: invalid copy value w=${j},${k} val=${F.toString(v1)} `);
+                const v2 = pols.exps[ci.pols[cp]].v_n[cw];
+
+                if (!F.eq(v1, v2)) {
+                    res.push(`${ci.fileName}:${pil.polIdentities[i].line}: connection does not match p1=${j} w1=${k} p2=${cp}, w2=${cw} val= ${F.toString(v1)} != ${F.toString(v2)}`);
+                    k=N;
+                    j=ci.pols.length;
+                }
+            }
         }
     }
 
@@ -208,39 +245,6 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
             }
         }
     }
-
-    for (let i=0; i<pil.connectionIdentities.length; i++) {
-        console.log(`Checking connectionIdentities ${i+1}/${pil.connectionIdentities.length}`);
-        ci = pil.connectionIdentities[i];
-        for (let j=0; j<ci.pols.length; j++) {
-            await calculateExpression(ci.pols[j]);
-        }
-        for (let j=0; j<ci.connections.length; j++) {
-            await calculateExpression(ci.connections[j]);
-        }
-
-        cm = getConnectionMap(F, N, ci.pols.length);
-
-        for (let j=0; j<ci.pols.length; j++) {
-            for (let k=0; k<N; k++) {
-                const v1 = pols.exps[ci.pols[j]].v_n[k];
-
-                const [cp, cw] = cm[ pols.exps[ci.connections[j]].v_n[k]];
-                if (typeof cp == "undefined") res.push(`${ci.fileName}:${pil.polIdentities[i].line}: invalid copy value w=${j},${k} val=${F.toString(v1)} `);
-                const v2 = pols.exps[ci.pols[cp]].v_n[cw];
-
-                if (!F.eq(v1, v2)) {
-                    res.push(`${ci.fileName}:${pil.polIdentities[i].line}: connection does not match p1=${j} w1=${k} p2=${cp}, w2=${cw} val= ${F.toString(v1)} != ${F.toString(v2)}`);
-                    k=N;
-                    j=ci.pols.length;
-                }
-            }
-        }
-
-
-
-    }
-
 
 
     return res;
@@ -351,7 +355,11 @@ function getConnectionMap(F, N, nk) {
     let w = F.one;
     for (let i=0; i<N; i++ ) {
         for (j=0; j<ks.length; j++) {
-            m[ F.mul(ks[j], w) ] = [j, i];
+            const a = F.mul(ks[j], w);
+            const a1 = Number(a >> 32n);
+            const a2 = Number(a & 0xFFFFFFFFn);
+            if (!m[a1]) m[a1] = {};
+            m[a1][a2] = [j, i];
         }
         w = F.mul(w, F.FFT.w[pow]);
     }
