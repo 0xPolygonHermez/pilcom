@@ -10,6 +10,7 @@ const argv = require("yargs")
     .version(version)
     .usage("pil <source.pil> -o <output.json>")
     .alias("o", "output")
+    .alias("c", "ccodegeneration")
     .argv;
 
 async function run() {
@@ -28,6 +29,8 @@ async function run() {
     const fileName = path.basename(fullFileName, ".zkasm");
 
     const outputFile = typeof(argv.output) === "string" ?  argv.output : fileName + ".json";
+
+    const cCodeGeneration = argv.ccodegeneration;
 
     /*
     const bn128 = await ffjavascript.getCurveFromName("bn128");
@@ -51,9 +54,11 @@ async function run() {
 
     await fs.promises.writeFile(outputFile.trim(), JSON.stringify(out, null, 1) + "\n", "utf8");
     
-    await fs.promises.writeFile("commit_pols.hpp", generateCCode(out, "cmP"), "utf8");
-
-    await fs.promises.writeFile("constant_pols.hpp", generateCCode(out, "constP"), "utf8");
+    if (cCodeGeneration)
+    {
+        await fs.promises.writeFile("commit_pols.hpp", generateCCode(out, "cmP"), "utf8");
+        await fs.promises.writeFile("constant_pols.hpp", generateCCode(out, "constP"), "utf8");
+    }
 }
 
 run().then(()=> {
