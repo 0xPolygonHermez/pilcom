@@ -99,11 +99,15 @@ function generateCCode(pols, type) {
     let initialization = [];
     let degree = [];
     let offset = 0;
+    let localOffset = [];
+    let localInitialization = [];
 
     // Init the declaration and initialization arrays
     for (var i=0; i<namespaces.length; i++) {
         declaration[i] = "";
         initialization[i] = "";
+        localOffset[i] = 0;
+        localInitialization[i] = "";
     }
 
     // Calculate the number of polynomials of the requested type and the sufix
@@ -164,11 +168,15 @@ function generateCCode(pols, type) {
                 if (pol.isArray) {
                     for (var a = 0; a < pol.len; a++) {
                         initialization[namespaceId] += "        " + name + "[" + a + "] = (" + ctype + " *)((uint8_t *)pAddress + " + offset + ");\n";
+                        localInitialization[namespaceId] += "        " + name + "[" + a + "] = (" + ctype + " *)((uint8_t *)pAddress + " + localOffset[namespaceId] + "*degree);\n";
                         offset += csize*pol.polDeg;
+                        localOffset[namespaceId] += csize;
                     }
                 } else {
                     initialization[namespaceId] += "        " + name + " = (" + ctype + " *)((uint8_t *)pAddress + " + offset + ");\n"
+                    localInitialization[namespaceId] += "        " + name + " = (" + ctype + " *)((uint8_t *)pAddress + " + localOffset[namespaceId] + "*degree);\n"
                     offset += csize*pol.polDeg;
+                    localOffset[namespaceId] += csize;
                 }
                 degree[namespaceId] = pol.polDeg;
                 break;
@@ -186,7 +194,13 @@ function generateCCode(pols, type) {
         cText += initialization[i];
         cText += "    }\n";
         cText += "\n";
+        cText += "    " + namespaces[i] + sufix + "Pols (void * pAddress, uint64_t degree)\n";
+        cText += "    {\n";
+        cText += localInitialization[i];
+        cText += "    }\n";
+        cText += "\n";
         cText += "    static uint64_t degree (void) { return " + degree[i] + "; }\n"
+        cText += "    static uint64_t size (void) { return " + localOffset[i] + "; }\n"
         cText += "};\n";
         cText += "\n";
     }
