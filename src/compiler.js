@@ -204,10 +204,12 @@ module.exports = async function compile(Fr, fileName, ctx) {
             } else {
                 offset = 0;
             }
+            const se = simplifyExpression(Fr, ctx, s.idx);
+            if (se.op != "number") error(s, "Index of a public is not constant expression");
             ctx.publics[s.name] = {
                 polType: ctx.references[ns + "." + s.pol.name].type,
                 polId: Number(ctx.references[ns + "." + s.pol.name].id) + offset,
-                idx: Number(s.idx),
+                idx: Number(se.value),
                 id: ctx.nPublic++
             };
         } else if (s.type == "CONSTANTDEF") {

@@ -240,7 +240,7 @@ polCommitDeclaration
     ;
 
 publicDeclaration
-    : 'public' IDENTIFIER '=' polId '(' NUMBER ')'
+    : 'public' IDENTIFIER '=' polId '(' expression ')'
         {
             $$ = {type: "PUBLICDECLARATION", name: $2, pol: $4, idx: $6}
             setLines($$, @1, @4);
