@@ -149,7 +149,7 @@ function generateCCode(pols, type) {
                 if (pol.elementType=="field") { ctype="FieldElement"; csize=8; }
                 else if (pol.elementType=="u8") { ctype="uint8_t"; csize=1; }
                 else if (pol.elementType=="u16") { ctype="uint16_t"; csize=2; }
-                else if (pol.elementType=="u32") { ctype="uint32_t"; csize=8; }
+                else if (pol.elementType=="u32") { ctype="uint32_t"; csize=4; }
                 else if (pol.elementType=="u64") { ctype="uint64_t"; csize=8; }
                 else if (pol.elementType=="s8") { ctype="int8_t"; csize=1; }
                 else if (pol.elementType=="s16") { ctype="int16_t"; csize=2; }
