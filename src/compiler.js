@@ -484,7 +484,7 @@ function reduceto2(ctx, e) {
 }
 
 function reduceto1(ctx, e) {
-    if (e.deg==1) return;
+    if (e.deg<=1) return;
     if (e.deg>2) error(e, "Degre too high");
     e.idQ = ctx.nQ++
     e.deg = 1;
