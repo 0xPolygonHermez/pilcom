@@ -1,6 +1,6 @@
 const { log2, getKs } = require("./utils.js");
 
-module.exports = async function verifyPil(F, pil, cmPols, constPols) {
+module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}) {
 
     const res = [];
 
@@ -45,7 +45,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
 
 
 
-// 1.- Prepare commited polynomials. 
+// 1.- Prepare commited polynomials.
     for (let i=0; i<cmPols.length;) {
         console.log(`Preparing polynomial ${refCm[i].name}`);
         let nPols;
@@ -126,7 +126,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
                 const a = pols.exps[ci.connections[j]].v_n[k]
                 const a1 = Number(a >> 32n);
                 const a2 = Number(a & 0xFFFFFFFFn);
-    
+
                 const [cp, cw] = cm[ a1 ][a2];
                 if (typeof cp == "undefined") res.push(`${ci.fileName}:${pil.polIdentities[i].line}: invalid copy value w=${j},${k} val=${F.toString(v1)} `);
                 const v2 = pols.exps[ci.pols[cp]].v_n[cw];
@@ -177,7 +177,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
                 const v = vals.join(",");
                 if (!t[v]) {
                     res.push(`${pil.plookupIdentities[i].fileName}:${pil.plookupIdentities[i].line}:  plookup not found w=${j} values: ${v}`);
-                    j=N;  // Do not continue checking
+                    if (!config.continueOnError) j=N;  // Do not continue checking
                 }
             }
         }
@@ -222,7 +222,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
                 const v = vals.join(",");
                 if (!t[v]) {
                     res.push(`${pi.fileName}:${pi.line}:  permutation not found w=${j} values: ${v}`);
-                    j=N;  // Do not continue checking
+                    if (!config.continueOnError) j=N;  // Do not continue checking
                 }
                 delete t[v];
             }
@@ -241,7 +241,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
             const v = pols.exps[pil.polIdentities[i].e].v_n[j]
             if (!F.isZero(v)) {
                 res.push(`${pil.polIdentities[i].fileName}:${pil.polIdentities[i].line}: identity does not match w=${j} val=${F.toString(v)} `);
-                j=N;
+                if (!config.continueOnError) j=N;
             }
         }
     }
@@ -318,17 +318,17 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols) {
 
     async function calculateExpression(expId) {
         console.log("calculateExpression: "+ expId);
-    
+
         if ((pols.exps[expId])&&(pols.exps[expId].v_n)) return pols.exps[expId].v_n;
-    
+
         await calculateDependencies(pil.expressions[expId]);
-    
+
         const p = eval(pil.expressions[expId]);
-    
+
         pols.exps[expId].v_n = p;
         return pols.exps[expId].v_n;
     }
-    
+
     async function calculateDependencies(exp) {
         if (exp.op == "exp") {
             await calculateExpression(exp.id);
