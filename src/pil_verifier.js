@@ -353,6 +353,7 @@ function getConnectionMap(F, N, nk) {
     const m = {};
     const ks = [1n, ...getKs(F, pow, nk-1)];
     let w = F.one;
+    const wi = F.w ? F.w[pow] : F.FFT.w[pow];
     for (let i=0; i<N; i++ ) {
         for (j=0; j<ks.length; j++) {
             const a = F.mul(ks[j], w);
@@ -361,7 +362,7 @@ function getConnectionMap(F, N, nk) {
             if (!m[a1]) m[a1] = {};
             m[a1][a2] = [j, i];
         }
-        w = F.mul(w, F.FFT.w[pow]);
+        w = F.mul(w, wi);
     }
 
     cacheConnectionMaps[kc] = m;

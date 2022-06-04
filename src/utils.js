@@ -5,29 +5,11 @@ exports.log2 = function log2( V )
 }
 
 
-exports.getKs = function getKs(Fr, pow, n) {
-
-    const ks = [];
-    while (ks.length<n) {
-
-        let k = ks.length>0 ? ks[ks.length-1]+1n : Fr.two;
-        while (isIncluded(k, ks, pow)) Fr.add(k, Fr.one);
-        ks.push(k);
+exports.getKs = function getKs(Fr, n) {
+    const ks = [Fr.k];
+    for (let i=1; i<n; i++) {
+        ks[i] = Fr.mul(ks[i-1], ks[0]);
     }
-
     return ks;
-
-    function isIncluded(k, kArr, pow) {
-        const domainSize= 2**pow;
-        let w = Fr.one;
-        for (let i=0; i<domainSize; i++) {
-            if (Fr.eq(k, w)) return true;
-            for (let j=0; j<kArr.length; j++) {
-                if (Fr.eq(k, Fr.mul(kArr[j], w))) return true;
-            }
-            w = Fr.mul(w, Fr.FFT.w[pow]);
-        }
-        return false;
-    }
 }
 

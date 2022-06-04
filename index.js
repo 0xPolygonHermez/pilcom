@@ -5,3 +5,4 @@ module.exports.createConstantPols = require("./src/createpols.js").createConstan
 module.exports.verifyPil = require("./src/pil_verifier.js")
 module.exports.exportPolynomials = require("./src/binfiles.js").exportPolynomials;
 module.exports.importPolynomials = require("./src/binfiles.js").importPolynomials;
+module.exports.getKs = require("./src/utils.js").getKs;
