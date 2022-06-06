@@ -1,8 +1,8 @@
 module.exports.createCommitedPols = function createCommitedPols(pil) {
-    pols = {};
-    polsArray = [];
-    polsDef = {};
-    polsArrayDef = [];
+    const pols = {};
+    const polsArray = [];
+    const polsDef = {};
+    const polsArrayDef = [];
     for (let i=0; i<pil.nCommitments; i++) polsArray.push([]);
     for (refName in pil.references) {
         if (pil.references.hasOwnProperty(refName)) {
@@ -23,7 +23,7 @@ module.exports.createCommitedPols = function createCommitedPols(pil) {
                             idx: i,
                             elementType: ref.elementType,
                             polDeg: ref.polDeg
-                        }        
+                        }
                         polsDef[nameSpace][namePol][i] = polsArrayDef[ref.id + i];
                     }
                 } else {
@@ -75,7 +75,7 @@ module.exports.createConstantPols = function createConstantPols(pil) {
                             idx: i,
                             elementType: ref.elementType,
                             polDeg: ref.polDeg
-                        }        
+                        }
                         polsDef[nameSpace][namePol][i] = polsArrayDef[ref.id + i];
                     }
                 } else {

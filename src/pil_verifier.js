@@ -1,7 +1,9 @@
+const { options } = require("yargs");
 const { log2, getKs } = require("./utils.js");
 
 module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}) {
 
+    if (typeof config.normalize == "undefined") config.normalize = true;
     const res = [];
 
     const refCm = {};
@@ -45,6 +47,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
 
 
 
+
 // 1.- Prepare commited polynomials.
     for (let i=0; i<cmPols.length;) {
         console.log(`Preparing polynomial ${refCm[i].name}`);
@@ -58,13 +61,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
             if (cmPols[i+k].length!= N) {
                 throw new Error(`Commit Polynomial ${refCm[i].name} does not have the right size: ${cmPols[i+k].length} and should be ${N}`);
             }
-            pols.cm[i+k].v_n = [];
-            for (let j=0; j<N; j++) {
-                if (typeof cmPols[i+k][j] === "undefined" ) {
-                    throw new Error(`Commit Polynomial ${refCm[i].name} has no value a to pos ${j}`);
-                }
-                pols.cm[i+k].v_n[j] = toF(cmPols[i+k][j]);
-            }
+            pols.cm[i+k].v_n = cmPols[i+k];
         }
         i+=k;
     }
@@ -81,16 +78,24 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
             if (constPols[i+k].length!= N) {
                 throw new Error(`Constant Polynomial ${refConst[i].name} does not have the right size: ${constPols[i+k].length} and should be ${N}`);
             }
-            pols.const[i+k].v_n = [];
-            for (let j=0; j<N; j++) {
-                if (typeof constPols[i+k][j] === "undefined" ) {
-                    throw new Error(`Constant Polynomial ${refConst[i].name} has no value a to pos ${j}`);
-                }
-                pols.const[i+k].v_n[j] = toF(constPols[i+k][j]);
-            }
+            pols.const[i+k].v_n = constPols[i+k];
         }
         i+=k;
     }
+
+    if (config.normalize) {
+        for (let i=0; i<pols.cm.length; i++) {
+            for (let k=0; k<N; k++) {
+                pols.cm[i].v_n[k] = toF(pols.cm[i].v_n[k]);
+            }
+        }
+        for (let i=0; i<pols.const.length; i++) {
+            for (let k=0; k<N; k++) {
+                pols.const[i].v_n[k] = toF(pols.const[i].v_n[k]);
+            }
+        }
+    }
+
 
     for (let i=0; i<pil.publics.length; i++) {
         console.log(`Preparing public ${i+1}/${pil.publics.length}`);
@@ -100,6 +105,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
         } else if (pil.polType == "exp") {
             calculateExpression(pil.publics[i].polId);
             pols.publics[i] = pols.exps[pil.publics[i].polId].v_n[pil.publics[i].idx];
+            delete pols.exps[pil.publics[i].polId].v_n;
         } else {
             throw new Error(`Invalid public type: ${polType.type}`);
         }
@@ -138,6 +144,14 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
                 }
             }
         }
+
+        for (let j=0; j<ci.pols.length; j++) {
+            delete pols.exps[ci.pols[j]].v_n;
+        }
+        for (let j=0; j<ci.connections.length; j++) {
+            delete pols.exps[ci.connections[j]].v_n;
+        }
+
     }
 
     for (let i=0; i<pil.plookupIdentities.length; i++) {
@@ -181,6 +195,20 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
                 }
             }
         }
+
+        for (let j=0; j<pi.t.length; j++) {
+            delete pols.exps[pi.t[j]].v_n;
+        }
+        if (pi.selT !== null) {
+            delete pols.exps[pi.selT].v_n;
+        }
+        for (let j=0; j<pi.f.length; j++) {
+            delete pols.exps[pi.f[j]].v_n;
+        }
+        if (pi.selF !== null) {
+            delete pols.exps[pi.selF].v_n;
+        }
+
     }
 
 
@@ -231,6 +259,20 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
         if (Object.keys(t).length !=0) {
             res.push(`${pi.fileName}:${pi.line}:  permutation failed. values remaining: ${Object.keys(t).length}`);
         }
+
+        for (let j=0; j<pi.t.length; j++) {
+            delete pols.exps[pi.t[j]].v_n;
+        }
+        if (pi.selT !== null) {
+            delete pols.exps[pi.selT].v_n;
+        }
+        for (let j=0; j<pi.f.length; j++) {
+            delete pols.exps[pi.f[j]].v_n;
+        }
+        if (pi.selF !== null) {
+            delete pols.exps[pi.selF].v_n;
+        }
+
     }
 
     for (let i=0; i<pil.polIdentities.length; i++) {
@@ -244,6 +286,8 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
                 if (!config.continueOnError) j=N;
             }
         }
+
+        delete pols.exps[pil.polIdentities[i].e].v_n;
     }
 
 
@@ -351,7 +395,7 @@ function getConnectionMap(F, N, nk) {
     const pow = log2(N);
 
     const m = {};
-    const ks = [1n, ...getKs(F, pow, nk-1)];
+    const ks = [1n, ...getKs(F, nk-1)];
     let w = F.one;
     const wi = F.w ? F.w[pow] : F.FFT.w[pow];
     for (let i=0; i<N; i++ ) {

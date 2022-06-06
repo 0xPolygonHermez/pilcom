@@ -11,12 +11,12 @@ const { F1Field } = require("ffjavascript");
 
 const argv = require("yargs")
     .version(version)
-    .usage("main_starkgen <commit.bin> -p <pil.json> -c <constant.bin>")
+    .usage("main_pilverifier.js <commit.bin> -p <pil.json> -c <constant.bin>")
     .alias("p", "pil")
     .alias("c", "constant")
     .argv;
 
-async function run() {    
+async function run() {
 
     const F = new F1Field("0xFFFFFFFF00000001");
 
@@ -40,10 +40,10 @@ async function run() {
     const [constPols, constPolsArray, constPolsDef, constPolsArrayDef] =  createConstantPols(pil);
 
 
-    const pols = await importPolynomials(F, commitFile, cmPolsDefArray, 2**16);
     const polsConst = await importPolynomials(F, constantFile, constPolsArrayDef, 2**16);
+    const pols = await importPolynomials(F, commitFile, cmPolsDefArray, 2**16);
 
-    const res = await verifyPil(F, pil, pols, polsConst);
+    const res = await verifyPil(F, pil, pols, polsConst, {normalize: false});
 
     if (res.length != 0) {
         console.log("Pil does not pass");
