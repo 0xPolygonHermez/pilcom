@@ -3,7 +3,7 @@ const { log2, getKs } = require("./utils.js");
 
 module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}) {
 
-    if (typeof config.normalize == "undefined") config.normalize = true;
+    if (typeof config.normalize == "undefined") config.normalize = false;
     const res = [];
 
     const refCm = {};
@@ -134,11 +134,15 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
                 const a2 = Number(a & 0xFFFFFFFFn);
 
                 const [cp, cw] = cm[ a1 ][a2];
-                if (typeof cp == "undefined") res.push(`${ci.fileName}:${pil.polIdentities[i].line}: invalid copy value w=${j},${k} val=${F.toString(v1)} `);
+                if (typeof cp == "undefined") {
+                    res.push(`${ci.fileName}:${pil.polIdentities[i].line}: invalid copy value w=${j},${k} val=${F.toString(v1)} `);
+                    console.log(res[res.length-1]);
+                }
                 const v2 = pols.exps[ci.pols[cp]].v_n[cw];
 
                 if (!F.eq(v1, v2)) {
                     res.push(`${ci.fileName}:${pil.polIdentities[i].line}: connection does not match p1=${j} w1=${k} p2=${cp}, w2=${cw} val= ${F.toString(v1)} != ${F.toString(v2)}`);
+                    console.log(res[res.length-1]);
                     k=N;
                     j=ci.pols.length;
                 }
@@ -191,6 +195,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
                 const v = vals.join(",");
                 if (!t[v]) {
                     res.push(`${pil.plookupIdentities[i].fileName}:${pil.plookupIdentities[i].line}:  plookup not found w=${j} values: ${v}`);
+                    console.log(res[res.length-1]);
                     if (!config.continueOnError) j=N;  // Do not continue checking
                 }
             }
@@ -250,6 +255,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
                 const v = vals.join(",");
                 if (!t[v]) {
                     res.push(`${pi.fileName}:${pi.line}:  permutation not found w=${j} values: ${v}`);
+                    console.log(res[res.length-1]);
                     if (!config.continueOnError) j=N;  // Do not continue checking
                 }
                 delete t[v];
@@ -258,6 +264,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
 
         if (Object.keys(t).length !=0) {
             res.push(`${pi.fileName}:${pi.line}:  permutation failed. values remaining: ${Object.keys(t).length}`);
+            console.log(res[res.length-1]);
         }
 
         for (let j=0; j<pi.t.length; j++) {
@@ -283,6 +290,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
             const v = pols.exps[pil.polIdentities[i].e].v_n[j]
             if (!F.isZero(v)) {
                 res.push(`${pil.polIdentities[i].fileName}:${pil.polIdentities[i].line}: identity does not match w=${j} val=${F.toString(v)} `);
+                console.log(res[res.length-1]);
                 if (!config.continueOnError) j=N;
             }
         }

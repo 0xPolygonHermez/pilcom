@@ -1,7 +1,9 @@
 const path = require("path");
 const fs = require("fs");
-const pil_parser = require("../build/pil_parser.js").parser;
+const pil_parser = require("../build/pil_parser.js");
 const Scalar = require("ffjavascript").Scalar;
+
+const oldParseError = pil_parser.Parser.prototype.parseError;
 
 module.exports = async function compile(Fr, fileName, ctx) {
 
@@ -35,7 +37,14 @@ module.exports = async function compile(Fr, fileName, ctx) {
 
     const src = await fs.promises.readFile(fullFileName, "utf8") + "\n";
 
-    const sts = pil_parser.parse(src);
+    const myErr = function (str, hash) {
+        str = fullFileName + " -> " + str;
+        oldParseError(str, hash);
+    };
+    pil_parser.Parser.prototype.parseError = myErr;
+
+    const parser = new pil_parser.Parser();
+    const sts = parser.parse(src);
 
     let pendingCommands = [];
     let lastLineAllowsCommand = false;
@@ -67,7 +76,6 @@ module.exports = async function compile(Fr, fileName, ctx) {
                     if (se.op != "number") error(s, "Array Size is not constant expression");
                     ctx.references[ctx.namespace + "." + s.names[j].name] = {
                         type: "cmP",
-                        elementType: s.elementType,
                         id: ctx.nCommitments,
                         polDeg: ctx.polDeg,
                         isArray: true,
@@ -77,7 +85,6 @@ module.exports = async function compile(Fr, fileName, ctx) {
                 } else {
                     ctx.references[ctx.namespace + "." + s.names[j].name] = {
                         type: "cmP",
-                        elementType: s.elementType,
                         id: ctx.nCommitments,
                         polDeg: ctx.polDeg,
                         isArray: false,
@@ -93,7 +100,6 @@ module.exports = async function compile(Fr, fileName, ctx) {
                     if (se.op != "number") error(s, "Array Size is not constant expression");
                     ctx.references[ctx.namespace + "." + s.names[j].name] = {
                         type: "constP",
-                        elementType: s.elementType,
                         id: ctx.nConstants,
                         polDeg: ctx.polDeg,
                         isArray: true,
@@ -103,7 +109,6 @@ module.exports = async function compile(Fr, fileName, ctx) {
                 } else {
                     ctx.references[ctx.namespace + "." + s.names[j].name] = {
                         type: "constP",
-                        elementType: s.elementType,
                         id: ctx.nConstants,
                         polDeg: ctx.polDeg,
                         isArray: false,
@@ -129,7 +134,7 @@ module.exports = async function compile(Fr, fileName, ctx) {
             ctx.polIdentities.push({fileName: fileName, namespace: ctx.namespace, line: s.first_line, e: eidx});
         } else if (s.type == "PLOOKUPIDENTITY" || s.type == "PERMUTATIONIDENTITY") {
             const pu = {
-                fileName: fileName, 
+                fileName: fileName,
                 namespace: ctx.namespace,
                 line: s.first_line,
                 f: [],
@@ -169,7 +174,7 @@ module.exports = async function compile(Fr, fileName, ctx) {
             }
         } else if (s.type == "CONNECTIONIDENTITY") {
             const ci = {
-                fileName: fileName, 
+                fileName: fileName,
                 namespace: ctx.namespace,
                 line: s.first_line,
                 pols: [],
@@ -231,13 +236,13 @@ module.exports = async function compile(Fr, fileName, ctx) {
             ctx.namespace = ctx.plookupIdentities[i].namespace;
             for (j=0; j<ctx.plookupIdentities[i].f.length; j++) {
                 ctx.expressions[ctx.plookupIdentities[i].f[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].f[j]]);
-            } 
+            }
             if (ctx.plookupIdentities[i].selF !== null) {
                 ctx.expressions[ctx.plookupIdentities[i].selF] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].selF]);
             }
             for (j=0; j<ctx.plookupIdentities[i].t.length; j++) {
                 ctx.expressions[ctx.plookupIdentities[i].t[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].t[j]]);
-            } 
+            }
             if (ctx.plookupIdentities[i].selT !== null) {
                 ctx.expressions[ctx.plookupIdentities[i].selT] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].selT]);
             }
@@ -246,13 +251,13 @@ module.exports = async function compile(Fr, fileName, ctx) {
             ctx.namespace = ctx.permutationIdentities[i].namespace;
             for (j=0; j<ctx.permutationIdentities[i].f.length; j++) {
                 ctx.expressions[ctx.permutationIdentities[i].f[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.permutationIdentities[i].f[j]]);
-            } 
+            }
             if (ctx.permutationIdentities[i].selF !== null) {
                 ctx.expressions[ctx.permutationIdentities[i].selF] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.permutationIdentities[i].selF]);
             }
             for (j=0; j<ctx.permutationIdentities[i].t.length; j++) {
                 ctx.expressions[ctx.permutationIdentities[i].t[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.permutationIdentities[i].t[j]]);
-            } 
+            }
             if (ctx.permutationIdentities[i].selT !== null) {
                 ctx.expressions[ctx.permutationIdentities[i].selT] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.permutationIdentities[i].selT]);
             }
@@ -261,10 +266,10 @@ module.exports = async function compile(Fr, fileName, ctx) {
             ctx.namespace = ctx.connectionIdentities[i].namespace;
             for (j=0; j<ctx.connectionIdentities[i].pols.length; j++) {
                 ctx.expressions[ctx.connectionIdentities[i].pols[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.connectionIdentities[i].pols[j]]);
-            } 
+            }
             for (j=0; j<ctx.connectionIdentities[i].connections.length; j++) {
                 ctx.expressions[ctx.connectionIdentities[i].connections[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.connectionIdentities[i].connections[j]]);
-            } 
+            }
         }
 
         for (let i=0; i<ctx.expressions.length; i++) {
@@ -309,7 +314,7 @@ module.exports = async function compile(Fr, fileName, ctx) {
             for (j=0; j<ctx.connectionIdentities[i].connections.length; j++) {
                 reduceto1(ctx, ctx.expressions[ctx.connectionIdentities[i].connections[j]]);
             }
-        }    
+        }
     }
 
     if (isMain) {
@@ -321,7 +326,7 @@ function error(l, err) {
     if (err instanceof Error) {
         err.message = `ERROR ${l.fileName}:${l.first_line}: ${err.message}`
         throw(err);
-    } else { 
+    } else {
         const msg = `ERROR ${l.fileName}:${l.first_line}: ${err}`;
         throw new Error(msg);
     }
@@ -354,7 +359,7 @@ function simplifyExpression(Fr, ctx, e) {
         e.id = ref.id;
         e.deg = 0;
         return e;
-    }    
+    }
     if (e.op == "neg") {
         e.values[0] = simplifyExpression(Fr, ctx, e.values[0]);
         const a = e.values[0];
@@ -502,7 +507,7 @@ function ctx2json(ctx) {
         nQ: ctx.nQ,
         nIm: ctx.nIm,
         nConstants: ctx.nConstants,
-        publics: [], 
+        publics: [],
         references: {},
         expressions: [],
         polIdentities: [],
@@ -512,12 +517,11 @@ function ctx2json(ctx) {
     };
 
     for (n in ctx.references) {
-        if (ctx.references.hasOwnProperty(n)) {  
+        if (ctx.references.hasOwnProperty(n)) {
             const ref = ctx.references[n];
             if (ref.isArray) {
                 out.references[n] = {
                     type: ref.type,
-                    elementType: ref.elementType,
                     id: ref.id,
                     polDeg: ref.polDeg,
                     isArray: true,
@@ -526,7 +530,6 @@ function ctx2json(ctx) {
             } else {
                 out.references[n] = {
                     type: ref.type,
-                    elementType: ref.elementType,
                     id: ref.id,
                     polDeg: ref.polDeg,
                     isArray: false
@@ -536,7 +539,7 @@ function ctx2json(ctx) {
     }
 
     for (n in ctx.publics) {
-        if (ctx.publics.hasOwnProperty(n)) {  
+        if (ctx.publics.hasOwnProperty(n)) {
             const pub = ctx.publics[n];
             out.publics[pub.id] = pub;
             out.publics[pub.id].name = n;

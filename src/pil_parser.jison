@@ -17,16 +17,6 @@ include(?=[^a-zA-Z$_0-9])                   { return 'INCLUDE'; }
 in(?=[^a-zA-Z$_0-9])                        { return 'in'; }
 is(?=[^a-zA-Z$_0-9])                        { return 'is'; }
 connect(?=[^a-zA-Z$_0-9])                 { return 'connect'; }
-bool(?=[^a-zA-Z$_0-9])                      { return 'bool'; }
-u8(?=[^a-zA-Z$_0-9])                        { return 'u8'; }
-u16(?=[^a-zA-Z$_0-9])                       { return 'u16'; }
-u32(?=[^a-zA-Z$_0-9])                       { return 'u32'; }
-u64(?=[^a-zA-Z$_0-9])                       { return 'u64'; }
-s8(?=[^a-zA-Z$_0-9])                        { return 's8'; }
-s16(?=[^a-zA-Z$_0-9])                       { return 's16'; }
-s32(?=[^a-zA-Z$_0-9])                       { return 's32'; }
-s64(?=[^a-zA-Z$_0-9])                       { return 's64'; }
-field(?=[^a-zA-Z$_0-9])                     { return 'field'; }
 public(?=[^a-zA-Z$_0-9])                    { return 'public'; }
 
 \"[^"]+\"                                   { yytext = yytext.slice(1,-1); return 'STRING'; }
@@ -227,14 +217,9 @@ expressionList
 
 
 polCommitDeclaration
-    : 'pol' elementType 'commit' polNamesList
+    : 'pol' 'commit' polNamesList
         {
-            $$ = {type: "POLCOMMTDECLARATION", names: $4, elementType: $2}
-            setLines($$, @1, @4);
-        }
-    | 'pol' 'commit' polNamesList
-        {
-            $$ = {type: "POLCOMMTDECLARATION", names: $3, elementType: "field"}
+            $$ = {type: "POLCOMMTDECLARATION", names: $3}
             setLines($$, @1, @3);
         }
     ;
@@ -249,30 +234,13 @@ publicDeclaration
 
 
 polConstantDeclaration
-    : 'pol' elementType 'constant' polNamesList
+    : 'pol' 'constant' polNamesList
         {
-            $$ = {type: "POLCONSTANTDECLARATION", names: $4, elementType: $2}
-            setLines($$, @1, @3);
-        }
-    | 'pol' 'constant' polNamesList
-        {
-            $$ = {type: "POLCONSTANTDECLARATION", names: $3, elementType: "field"}
+            $$ = {type: "POLCONSTANTDECLARATION", names: $3}
             setLines($$, @1, @3);
         }
     ;
 
-elementType
-    : bool
-    | u8
-    | u16
-    | u32
-    | u64
-    | s8
-    | s16
-    | s32
-    | s64
-    | field
-    ;
 
 polNamesList
     : polNamesList ',' polName
