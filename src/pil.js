@@ -76,7 +76,7 @@ run().then(()=> {
 
 function generateCCode(pols, type) {
 
-    let cText = "";
+    let code = "";
 
     // List all cmP pols namespaces
     let namespaces = [];
@@ -99,6 +99,7 @@ function generateCCode(pols, type) {
     let initialization = [];
     let degree = [];
     let offset = 0;
+    let offset_transpositioned = 0;
     let localOffset = [];
     let localInitialization = [];
 
@@ -124,12 +125,24 @@ function generateCCode(pols, type) {
         fileDefine = "CONSTANT_POLS_HPP";
     }
 
-    cText += "#ifndef " + fileDefine + "\n";
-    cText += "#define " + fileDefine + "\n";
-    cText += "\n";
-    cText += "#include <cstdint>\n";
-    cText += "#include \"ff/ff.hpp\"\n";
-    cText += "\n";
+    code += "#ifndef " + fileDefine + "\n";
+    code += "#define " + fileDefine + "\n";
+    code += "\n";
+    code += "#include <cstdint>\n";
+    code += "#include \"ff/ff.hpp\"\n";
+    code += "\n";
+
+    code += "class GeneratedPol\n";
+    code += "{\n";
+    code += "private:\n";
+    code += "    FieldElement * pData;\n";
+    code += "public:\n";
+    code += "    GeneratedPol() : pData(NULL) {};\n";
+    //code += "    void Init (FieldElement * pAddress) { pData = pAddress; };\n";
+    //code += "    FieldElement operator[](int i) { return pData[i]; };\n";
+    code += "    FieldElement & operator[](int i) { return pData[i*" + numPols + "]; };\n";
+    code += "    FieldElement * operator=(FieldElement * pAddress) { pData = pAddress; return pData; };\n";
+    code += "};\n\n";
 
     // For each cmP pol, add it to the proper namespace array
     for (var i = 0; i < numPols; i++) {
@@ -146,7 +159,7 @@ function generateCCode(pols, type) {
                 }
                 let ctype = "";
                 let csize = 0;
-                if (pol.elementType=="field") { ctype="FieldElement"; csize=8; }
+                /*if (pol.elementType=="field") { ctype="FieldElement"; csize=8; }
                 else if (pol.elementType=="u8") { ctype="uint8_t"; csize=1; }
                 else if (pol.elementType=="u16") { ctype="uint16_t"; csize=2; }
                 else if (pol.elementType=="u32") { ctype="uint32_t"; csize=4; }
@@ -158,24 +171,29 @@ function generateCCode(pols, type) {
                 else if (pol.elementType=="bool") { ctype="uint8_t"; csize=1; }
                 else {
                     console.log("elementType="+pol.elementType);
-                }
+                }*/
+                ctype="FieldElement";
+                csize=8;
 
                 let array = "";
                 if (pol.isArray) {
                     array="["+pol.len+"]";
                 }
-                declaration[namespaceId] += "    " + ctype + " * " + name + array + ";\n";
+                //declaration[namespaceId] += "    " + ctype + " * " + name + array + ";\n";
+                declaration[namespaceId] += "    GeneratedPol " + name + array + ";\n";
                 if (pol.isArray) {
                     for (var a = 0; a < pol.len; a++) {
-                        initialization[namespaceId] += "        " + name + "[" + a + "] = (" + ctype + " *)((uint8_t *)pAddress + " + offset + ");\n";
+                        initialization[namespaceId] += "        " + name + "[" + a + "] = (" + ctype + " *)((uint8_t *)pAddress + " + offset_transpositioned + ");\n";
                         localInitialization[namespaceId] += "        " + name + "[" + a + "] = (" + ctype + " *)((uint8_t *)pAddress + " + localOffset[namespaceId] + "*degree);\n";
                         offset += csize*pol.polDeg;
+                        offset_transpositioned += csize;
                         localOffset[namespaceId] += csize;
                     }
                 } else {
-                    initialization[namespaceId] += "        " + name + " = (" + ctype + " *)((uint8_t *)pAddress + " + offset + ");\n"
+                    initialization[namespaceId] += "        " + name + " = (" + ctype + " *)((uint8_t *)pAddress + " + offset_transpositioned + ");\n"
                     localInitialization[namespaceId] += "        " + name + " = (" + ctype + " *)((uint8_t *)pAddress + " + localOffset[namespaceId] + "*degree);\n"
                     offset += csize*pol.polDeg;
+                    offset_transpositioned += csize;
                     localOffset[namespaceId] += csize;
                 }
                 degree[namespaceId] = pol.polDeg;
@@ -184,49 +202,49 @@ function generateCCode(pols, type) {
         }
     }
     for (var i=0; i<namespaces.length; i++) {
-        cText += "class " + namespaces[i] + sufix + "Pols\n";
-        cText += "{\n";
-        cText += "public:\n";
-        cText += declaration[i];
-        cText += "\n";
-        cText += "    " + namespaces[i] + sufix + "Pols (void * pAddress)\n";
-        cText += "    {\n";
-        cText += initialization[i];
-        cText += "    }\n";
-        cText += "\n";
-        cText += "    " + namespaces[i] + sufix + "Pols (void * pAddress, uint64_t degree)\n";
-        cText += "    {\n";
-        cText += localInitialization[i];
-        cText += "    }\n";
-        cText += "\n";
-        cText += "    static uint64_t degree (void) { return " + degree[i] + "; }\n"
-        cText += "    static uint64_t size (void) { return " + localOffset[i] + "; }\n"
-        cText += "};\n";
-        cText += "\n";
+        code += "class " + namespaces[i] + sufix + "Pols\n";
+        code += "{\n";
+        code += "public:\n";
+        code += declaration[i];
+        code += "\n";
+        code += "    " + namespaces[i] + sufix + "Pols (void * pAddress)\n";
+        code += "    {\n";
+        code += initialization[i];
+        code += "    }\n";
+        code += "\n";
+        code += "    " + namespaces[i] + sufix + "Pols (void * pAddress, uint64_t degree)\n";
+        code += "    {\n";
+        code += localInitialization[i];
+        code += "    }\n";
+        code += "\n";
+        code += "    static uint64_t degree (void) { return " + degree[i] + "; }\n"
+        code += "    static uint64_t size (void) { return " + localOffset[i] + "; }\n"
+        code += "};\n";
+        code += "\n";
     }
 
-    cText += "class " + sufix + "Pols\n";
-    cText += "{\n";
-    cText += "public:\n";
+    code += "class " + sufix + "Pols\n";
+    code += "{\n";
+    code += "public:\n";
     
     for (var i=0; i<namespaces.length; i++) {
-        cText += "    " + namespaces[i] + sufix + "Pols " + namespaces[i] + ";\n"
+        code += "    " + namespaces[i] + sufix + "Pols " + namespaces[i] + ";\n"
     }
-    cText += "\n";
-    cText += "    " + sufix + "Pols (void * pAddress) : ";
+    code += "\n";
+    code += "    " + sufix + "Pols (void * pAddress) : ";
     for (var i=0; i<namespaces.length; i++) {
-        cText += namespaces[i] + "(pAddress)";
+        code += namespaces[i] + "(pAddress)";
         if (i<(namespaces.length-1)) {
-            cText += ", ";
+            code += ", ";
         } else {
-            cText += " ";
+            code += " ";
         }
     }
-    cText += "{}\n";
-    cText += "\n";
-    cText += "    static uint64_t size (void) { return " + offset + "; }\n"
-    cText += "};\n"
-    cText += "\n";
-    cText += "#endif" + " // " + fileDefine + "\n";
-    return cText;
+    code += "{}\n";
+    code += "\n";
+    code += "    static uint64_t size (void) { return " + offset + "; }\n"
+    code += "};\n"
+    code += "\n";
+    code += "#endif" + " // " + fileDefine + "\n";
+    return code;
 }
