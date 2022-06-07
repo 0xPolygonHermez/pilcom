@@ -138,8 +138,6 @@ function generateCCode(pols, type) {
     code += "    FieldElement * pData;\n";
     code += "public:\n";
     code += "    GeneratedPol() : pData(NULL) {};\n";
-    //code += "    void Init (FieldElement * pAddress) { pData = pAddress; };\n";
-    //code += "    FieldElement operator[](int i) { return pData[i]; };\n";
     code += "    FieldElement & operator[](int i) { return pData[i*" + numPols + "]; };\n";
     code += "    FieldElement * operator=(FieldElement * pAddress) { pData = pAddress; return pData; };\n";
     code += "};\n\n";
@@ -159,7 +157,7 @@ function generateCCode(pols, type) {
                 }
                 let ctype = "";
                 let csize = 0;
-                /*if (pol.elementType=="field") { ctype="FieldElement"; csize=8; }
+                if (pol.elementType=="field") { ctype="FieldElement"; csize=8; }
                 else if (pol.elementType=="u8") { ctype="uint8_t"; csize=1; }
                 else if (pol.elementType=="u16") { ctype="uint16_t"; csize=2; }
                 else if (pol.elementType=="u32") { ctype="uint32_t"; csize=4; }
@@ -171,9 +169,7 @@ function generateCCode(pols, type) {
                 else if (pol.elementType=="bool") { ctype="uint8_t"; csize=1; }
                 else {
                     console.log("elementType="+pol.elementType);
-                }*/
-                ctype="FieldElement";
-                csize=8;
+                }
 
                 let array = "";
                 if (pol.isArray) {
