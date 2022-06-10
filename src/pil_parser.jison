@@ -73,13 +73,13 @@ function setLines(dst, first, last) {
 allStatments
     : statmentList EOF
         {
-            console.log(JSON.stringify($1, null, 1));
+            // console.log(JSON.stringify($1, null, 1));
             $$ = $1;
             return $$
         }
     | statmentList ';' EOF
         {
-            console.log(JSON.stringify($1, null, 1));
+            // console.log(JSON.stringify($1, null, 1));
             $$ = $1;
             return $$
         }

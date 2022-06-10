@@ -85,14 +85,14 @@ var $0 = $$.length - 1;
 switch (yystate) {
 case 1:
 
-            console.log(JSON.stringify($$[$0-1], null, 1));
+            // console.log(JSON.stringify($$[$0-1], null, 1));
             this.$ = $$[$0-1];
             return this.$
         
 break;
 case 2:
 
-            console.log(JSON.stringify($$[$0-2], null, 1));
+            // console.log(JSON.stringify($$[$0-2], null, 1));
             this.$ = $$[$0-2];
             return this.$
         
