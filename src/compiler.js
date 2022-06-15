@@ -49,7 +49,7 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
 
     let pendingCommands = [];
     let lastLineAllowsCommand = false;
-    const excludeInclude = (isMain && config && config.excludeInclude) ? [...config.excludeInclude] : [];
+    const excludeModules = (isMain && config && config.excludeModules) ? [...config.excludeModules] : [];
     const excludeSelF = (isMain && config && config.excludeSelF) ? [...config.excludeSelF].map((value) => value.includes('.') ? value : ('Main.' + value)) : [];
 
     if (isMain && config && config.defines && typeof config.defines === 'object') {
@@ -62,7 +62,7 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
         const s = sts[i];
         s.fileName = fileName;
         if (s.type == "INCLUDE") {
-            if (excludeInclude.includes(s.file)) {
+            if (excludeModules.includes(s.file)) {
                 console.log(`NOTICE: include ${s.file} was ignored`);
                 continue;
             }
