@@ -147,14 +147,12 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
             ctx.expressions.push(s.expression);
             ctx.polIdentities.push({fileName: fileName, namespace: ctx.namespace, line: s.first_line, e: eidx});
         } else if (s.type == "PLOOKUPIDENTITY" || s.type == "PERMUTATIONIDENTITY") {
-            // console.log([s.first_line, s.last_line, s.selF]);
             if (Array.isArray(excludeSelF) && s.selF) {
                 let _ops = Array.isArray(s.selF) ? [...s.selF] : [s.selF];
                 let _opsIndex = 0;
                 let _exclude = false;
                 while (_opsIndex < _ops.length) {
                     const _op = _ops[_opsIndex];
-                    // console.log(['_op', _opsIndex, _op, _op.values]);
                     ++_opsIndex;
                     if (Array.isArray(_op.values)) {
                         _ops = _ops.concat(_op.values);
@@ -206,10 +204,8 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
             if (pu.f.length != pu.t.length ) error(s, `${s.type} with diferent number of elements`);
             if (s.type == "PLOOKUPIDENTITY") {
                 ctx.plookupIdentities.push(pu);
-                // console.log(`adding plookup identity (${ctx.plookupIdentities.length}) on ${fileName}:${s.first_line}-${s.last_line}`)
             } else {
                 ctx.permutationIdentities.push(pu);
-                // console.log(`adding permutation identity (${ctx.permutationIdentities.length}) on ${fileName}:${s.first_line}-${s.last_line}`)
             }
         } else if (s.type == "CONNECTIONIDENTITY") {
             const ci = {
