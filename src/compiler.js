@@ -5,7 +5,7 @@ const Scalar = require("ffjavascript").Scalar;
 
 const oldParseError = pil_parser.Parser.prototype.parseError;
 
-module.exports = async function compile(Fr, fileName, ctx) {
+module.exports = async function compile(Fr, fileName, ctx, config = {}) {
 
     let isMain;
     if (!ctx) {
@@ -25,7 +25,8 @@ module.exports = async function compile(Fr, fileName, ctx) {
             namespace: "GLOBAL",
             constants: {},
             Fr: Fr,
-            includedFiles: {}
+            includedFiles: {},
+            config
         }
         isMain = true;
     } else {
@@ -48,17 +49,29 @@ module.exports = async function compile(Fr, fileName, ctx) {
 
     let pendingCommands = [];
     let lastLineAllowsCommand = false;
+    const excludeModules = (isMain && config && config.excludeModules) ? [...config.excludeModules] : [];
+    const excludeSelF = (isMain && config && config.excludeSelF) ? [...config.excludeSelF].map((value) => value.includes('.') ? value : ('Main.' + value)) : [];
+
+    if (isMain && config && config.defines && typeof config.defines === 'object') {
+        for (const name in config.defines) {
+            ctx.constants[name] = BigInt(config.defines[name]);
+        }
+    }
 
     for (let i=0; i<sts.length; i++) {
         const s = sts[i];
         s.fileName = fileName;
         if (s.type == "INCLUDE") {
+            if (excludeModules.includes(s.file)) {
+                console.log(`NOTICE: include ${s.file} was ignored`);
+                continue;
+            }
             const fullFileNameI = path.resolve(fileDir, s.file);
             if (!ctx.includedFiles[fullFileNameI]) {       // If a file included twice just ignore
                 ctx.includedFiles[fullFileNameI] = true;
                 const oldNamespace = ctx.namespace;
                 ctx.namespace = "GLOBAL";
-                await compile(Fr, fullFileNameI, ctx);
+                await compile(Fr, fullFileNameI, ctx, config);
                 ctx.namespace = oldNamespace;
                 if (pendingCommands.length>0) error(s, "command not allowed before include");
                 lastLineAllowsCommand = false;
@@ -133,6 +146,27 @@ module.exports = async function compile(Fr, fileName, ctx) {
             ctx.expressions.push(s.expression);
             ctx.polIdentities.push({fileName: fileName, namespace: ctx.namespace, line: s.first_line, e: eidx});
         } else if (s.type == "PLOOKUPIDENTITY" || s.type == "PERMUTATIONIDENTITY") {
+            if (Array.isArray(excludeSelF) && s.selF) {
+                let _ops = Array.isArray(s.selF) ? [...s.selF] : [s.selF];
+                let _opsIndex = 0;
+                let _exclude = false;
+                while (_opsIndex < _ops.length) {
+                    const _op = _ops[_opsIndex];
+                    ++_opsIndex;
+                    if (Array.isArray(_op.values)) {
+                        _ops = _ops.concat(_op.values);
+                        continue;
+                    }
+                    if (_op.op !== 'pol') continue;
+                    const selFname = (_op.namespace == 'this' ? ctx.namespace : _op.namespace) + '.' + _op.name;
+                    if (excludeSelF.includes(selFname)) {
+                        console.log(`NOTICE: EXCLUDED plookup or permutation with selF ${selFname} on ${fileName}:${s.first_line}-${s.last_line}`);
+                        _exclude = true;
+                        continue;
+                    }
+                }
+                if (_exclude) continue;
+            }
             const pu = {
                 fileName: fileName,
                 namespace: ctx.namespace,
@@ -218,6 +252,10 @@ module.exports = async function compile(Fr, fileName, ctx) {
                 id: ctx.nPublic++
             };
         } else if (s.type == "CONSTANTDEF") {
+            if (ctx.config && ctx.config.defines && typeof ctx.config.defines[s.name] !== 'undefined') {
+                console.log(`NOTICE: Ignore constant definition ${s.name} on ${fileName}:${s.first_line} because it was pre-defined`);
+                return;
+            }
             if (ctx.constants[s.name]) error(s, `name already defined ${s.name}`);
             const se = simplifyExpression(Fr, ctx, s.exp);
             if (se.op != "number") error(s, "Not a constant expression");
