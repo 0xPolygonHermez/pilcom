@@ -1,7 +1,6 @@
 const path = require("path");
 const fs = require("fs");
 const pil_parser = require("../build/pil_parser.js");
-const { config } = require("process");
 const Scalar = require("ffjavascript").Scalar;
 
 const oldParseError = pil_parser.Parser.prototype.parseError;
