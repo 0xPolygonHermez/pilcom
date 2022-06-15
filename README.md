@@ -19,7 +19,7 @@ const pil = await compile(Fr, "pil/main.pil");
 const pilConfig = {
     defines: {N: Math.max(verifyPilFlag ? minDegree : 2 ** 16)},
     excludeSelF: ['sRD','sWR', 'memAlign' ],
-    excludeInclude: ['storage', 'mem_align']
+    excludeModules: ['storage', 'mem_align']
 };
 
 const pil = await compile(Fr, "pil/main.pil", null,  pilConfig);
