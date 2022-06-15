@@ -58,12 +58,12 @@ module.exports.generateCCode = async function generate(pols, type)
     code += "#include \"goldilocks/goldilocks_base_field.hpp\"\n";
     code += "\n";
 
-    code += "class GeneratedPol\n";
+    code += "class " + sufix + "GeneratedPol\n";
     code += "{\n";
     code += "private:\n";
     code += "    Goldilocks::Element * pData;\n";
     code += "public:\n";
-    code += "    GeneratedPol() : pData(NULL) {};\n";
+    code += "    " + sufix + "GeneratedPol() : pData(NULL) {};\n";
     code += "    Goldilocks::Element & operator[](int i) { return pData[i*" + numPols + "]; };\n";
     code += "    Goldilocks::Element * operator=(Goldilocks::Element * pAddress) { pData = pAddress; return pData; };\n";
     code += "};\n\n";
@@ -103,7 +103,7 @@ module.exports.generateCCode = async function generate(pols, type)
                     array="["+pol.len+"]";
                 }
                 //declaration[namespaceId] += "    " + ctype + " * " + name + array + ";\n";
-                declaration[namespaceId] += "    GeneratedPol " + name + array + ";\n";
+                declaration[namespaceId] += "    " + sufix + "GeneratedPol " + name + array + ";\n";
                 if (pol.isArray) {
                     for (var a = 0; a < pol.len; a++) {
                         initialization[namespaceId] += "        " + name + "[" + a + "] = (" + ctype + " *)((uint8_t *)pAddress + " + offset_transpositioned + ");\n";
