@@ -149,6 +149,7 @@ break;
 case 21:
 
             this.$ = {type: "CONNECTIONIDENTITY", pols: $$[$0-5], connections: $$[$0-1]}
+            setLines(this.$, _$[$0-6], _$[$0]);
         
 break;
 case 22:

@@ -186,6 +186,7 @@ connectIdentity
     : '{' expressionList '}' 'connect' '{' expressionList '}'
         {
             $$ = {type: "CONNECTIONIDENTITY", pols: $2, connections: $6}
+            setLines($$, @1, @7);
         }
     ;
 
