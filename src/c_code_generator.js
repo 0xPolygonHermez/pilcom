@@ -1,4 +1,10 @@
 
+function filter_name(name)
+{
+    if (name == "assert") return "assert_pol";
+    return name;
+}
+
 module.exports.generateCCode = async function generate(pols, type)
 {
 
@@ -6,6 +12,7 @@ module.exports.generateCCode = async function generate(pols, type)
 
     // List all cmP pols namespaces
     let namespaces = [];
+    let numberOfPols = [];
     for (var key in pols.references) {
         var pol = pols.references[key];
         if (pol.type == type) {
@@ -15,7 +22,8 @@ module.exports.generateCCode = async function generate(pols, type)
                 if (namespaces[i] == namespace) break;
             }
             if (i==namespaces.length) {
-                namespaces[namespaces.length] = namespace;
+                namespaces[i] = namespace;
+                numberOfPols[i] = 0;
             }
         }
     }
@@ -24,17 +32,16 @@ module.exports.generateCCode = async function generate(pols, type)
     let declaration = [];
     let initialization = [];
     let degree = [];
+    let maxDegree = 0;
     let offset = 0;
     let offset_transpositioned = 0;
     let localOffset = [];
-    let localInitialization = [];
 
     // Init the declaration and initialization arrays
     for (var i=0; i<namespaces.length; i++) {
         declaration[i] = "";
         initialization[i] = "";
         localOffset[i] = 0;
-        localInitialization[i] = "";
     }
 
     // Calculate the number of polynomials of the requested type and the sufix
@@ -58,14 +65,19 @@ module.exports.generateCCode = async function generate(pols, type)
     code += "#include \"goldilocks/goldilocks_base_field.hpp\"\n";
     code += "\n";
 
-    code += "class " + sufix + "GeneratedPol\n";
+    code += "class " + sufix + "Pol\n";
     code += "{\n";
     code += "private:\n";
-    code += "    Goldilocks::Element * pData;\n";
+    code += "    Goldilocks::Element * _pAddress;\n";
+    code += "    uint64_t _degree;\n";
+    code += "    uint64_t _index;\n";
     code += "public:\n";
-    code += "    " + sufix + "GeneratedPol() : pData(NULL) {};\n";
-    code += "    Goldilocks::Element & operator[](int i) { return pData[i*" + numPols + "]; };\n";
-    code += "    Goldilocks::Element * operator=(Goldilocks::Element * pAddress) { pData = pAddress; return pData; };\n";
+    code += "    " + sufix + "Pol(Goldilocks::Element * pAddress, uint64_t degree, uint64_t index) : _pAddress(pAddress), _degree(degree), _index(index) {};\n";
+    code += "    Goldilocks::Element & operator[](int i) { return _pAddress[i*" + numPols + "]; };\n";
+    code += "    Goldilocks::Element * operator=(Goldilocks::Element * pAddress) { _pAddress = pAddress; return _pAddress; };\n\n";
+    code += "    Goldilocks::Element * address (void) { return _pAddress; }\n";
+    code += "    uint64_t degree (void) { return _degree; }\n";
+    code += "    uint64_t index (void) { return _index; }\n";
     code += "};\n\n";
 
     // For each cmP pol, add it to the proper namespace array
@@ -103,23 +115,28 @@ module.exports.generateCCode = async function generate(pols, type)
                     array="["+pol.len+"]";
                 }
                 //declaration[namespaceId] += "    " + ctype + " * " + name + array + ";\n";
-                declaration[namespaceId] += "    " + sufix + "GeneratedPol " + name + array + ";\n";
+                declaration[namespaceId] += "    " + sufix + "Pol " + filter_name(name) + array + ";\n";
                 if (pol.isArray) {
+                    initialization[namespaceId] += "        " + filter_name(name) + "{\n";
                     for (var a = 0; a < pol.len; a++) {
-                        initialization[namespaceId] += "        " + name + "[" + a + "] = (" + ctype + " *)((uint8_t *)pAddress + " + offset_transpositioned + ");\n";
-                        localInitialization[namespaceId] += "        " + name + "[" + a + "] = (" + ctype + " *)((uint8_t *)pAddress + " + localOffset[namespaceId] + "*degree);\n";
+                        let comma = ",";
+                        if (a == pol.len-1) comma = "";
+                        initialization[namespaceId] += "            " + sufix + "Pol((" + ctype + " *)((uint8_t *)pAddress + " + offset_transpositioned + "), degree, " + (i+a) + ")" + comma + "\n";
                         offset += csize*pol.polDeg;
                         offset_transpositioned += csize;
                         localOffset[namespaceId] += csize;
+                        numberOfPols[namespaceId] += 1;
                     }
+                    initialization[namespaceId] += "        },\n";
                 } else {
-                    initialization[namespaceId] += "        " + name + " = (" + ctype + " *)((uint8_t *)pAddress + " + offset_transpositioned + ");\n"
-                    localInitialization[namespaceId] += "        " + name + " = (" + ctype + " *)((uint8_t *)pAddress + " + localOffset[namespaceId] + "*degree);\n"
+                    initialization[namespaceId] += "        " + filter_name(name) + "((" + ctype + " *)((uint8_t *)pAddress + " + offset_transpositioned + "), degree, " + i + "),\n"
                     offset += csize*pol.polDeg;
                     offset_transpositioned += csize;
                     localOffset[namespaceId] += csize;
+                    numberOfPols[namespaceId] += 1;
                 }
                 degree[namespaceId] = pol.polDeg;
+                maxDegree = Math.max(maxDegree, pol.polDeg);
                 break;
             }
         }
@@ -129,19 +146,22 @@ module.exports.generateCCode = async function generate(pols, type)
         code += "{\n";
         code += "public:\n";
         code += declaration[i];
+        code += "private:\n";
+        code += "    void * _pAddress;\n";
+        code += "    uint64_t _degree;\n";
+        code += "public:\n";
         code += "\n";
-        code += "    " + namespaces[i] + sufix + "Pols (void * pAddress)\n";
-        code += "    {\n";
+        code += "    " + namespaces[i] + sufix + "Pols (void * pAddress, uint64_t degree) :\n";
         code += initialization[i];
-        code += "    }\n";
+        code += "        _pAddress(pAddress),\n";
+        code += "        _degree(degree) {};\n";
         code += "\n";
-        code += "    " + namespaces[i] + sufix + "Pols (void * pAddress, uint64_t degree)\n";
-        code += "    {\n";
-        code += localInitialization[i];
-        code += "    }\n";
-        code += "\n";
-        code += "    static uint64_t degree (void) { return " + degree[i] + "; }\n"
-        code += "    static uint64_t size (void) { return " + localOffset[i] + "; }\n"
+        code += "    static uint64_t pilDegree (void) { return " + degree[i] + "; }\n"
+        code += "    static uint64_t pilSize (void) { return " + localOffset[i] + "; }\n"
+        code += "    static uint64_t numPols (void) { return " + numberOfPols[i] + "; }\n\n"
+        code += "    void * address (void) { return _pAddress; }\n";
+        code += "    uint64_t degree (void) { return _degree; }\n";
+        code += "    uint64_t size (void) { return _degree*" + numberOfPols[i] + "*sizeof(Goldilocks::Element); }\n";
         code += "};\n";
         code += "\n";
     }
@@ -153,20 +173,27 @@ module.exports.generateCCode = async function generate(pols, type)
     for (var i=0; i<namespaces.length; i++) {
         code += "    " + namespaces[i] + sufix + "Pols " + namespaces[i] + ";\n"
     }
+
+    code += "private:\n";
+    code += "    void * _pAddress;\n";
+    code += "    uint64_t _degree;\n";
+
+    code += "public:\n";
     code += "\n";
-    code += "    " + sufix + "Pols (void * pAddress) : ";
+    code += "    " + sufix + "Pols (void * pAddress, uint64_t degree) :\n";
     for (var i=0; i<namespaces.length; i++) {
-        code += namespaces[i] + "(pAddress)";
-        if (i<(namespaces.length-1)) {
-            code += ", ";
-        } else {
-            code += " ";
-        }
+        code += "        " + namespaces[i] + "(pAddress, degree),\n";
     }
-    code += "{}\n";
+    code += "        _pAddress(pAddress),\n";
+    code += "        _degree(degree) {}\n";
     code += "\n";
-    code += "    static uint64_t size (void) { return " + offset + "; }\n"
-    code += "};\n"
+    code += "    static uint64_t pilSize (void) { return " + offset + "; }\n";
+    code += "    static uint64_t pilDegree (void) { return " + maxDegree + "; }\n";
+    code += "    static uint64_t numPols (void) { return " + numPols + "; }\n\n";
+    code += "    void * address (void) { return _pAddress; }\n";
+    code += "    uint64_t degree (void) { return _degree; }\n";
+    code += "    uint64_t size (void) { return _degree*" + numPols + "*sizeof(Goldilocks::Element); }\n";
+    code += "};\n";
     code += "\n";
     code += "#endif" + " // " + fileDefine + "\n";
     return code;
