@@ -266,6 +266,14 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
     }
 
     if (isMain) {
+        for (n in ctx.publics) {
+            if (ctx.publics.hasOwnProperty(n)) {
+                const pub = ctx.publics[n];
+                if (pub.polType == "imP") {
+                    ctx.expressions[pub.polId] = simplifyExpression(Fr, ctx, ctx.expressions[pub.polId] );
+                }
+            }
+        }
         for (let i=0; i<ctx.polIdentities.length; i++) {
             ctx.namespace = ctx.polIdentities[i].namespace;
             ctx.expressions[ctx.polIdentities[i].e] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.polIdentities[i].e]);

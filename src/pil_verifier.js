@@ -102,8 +102,8 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
 
         if (pil.publics[i].polType == "cmP") {
             pols.publics[i] = pols.cm[pil.publics[i].polId].v_n[pil.publics[i].idx];
-        } else if (pil.polType == "exp") {
-            calculateExpression(pil.publics[i].polId);
+        } else if (pil.publics[i].polType == "imP") {
+            await calculateExpression(pil.publics[i].polId);
             pols.publics[i] = pols.exps[pil.publics[i].polId].v_n[pil.publics[i].idx];
             delete pols.exps[pil.publics[i].polId].v_n;
         } else {
