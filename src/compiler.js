@@ -1,9 +1,11 @@
 const path = require("path");
 const fs = require("fs");
-const pil_parser = require("../build/pil_parser.js").parser;
+const pil_parser = require("../build/pil_parser.js");
 const Scalar = require("ffjavascript").Scalar;
 
-module.exports = async function compile(Fr, fileName, ctx) {
+const oldParseError = pil_parser.Parser.prototype.parseError;
+
+module.exports = async function compile(Fr, fileName, ctx, config = {}) {
 
     let isMain;
     if (!ctx) {
@@ -23,7 +25,8 @@ module.exports = async function compile(Fr, fileName, ctx) {
             namespace: "GLOBAL",
             constants: {},
             Fr: Fr,
-            includedFiles: {}
+            includedFiles: {},
+            config
         }
         isMain = true;
     } else {
@@ -35,21 +38,40 @@ module.exports = async function compile(Fr, fileName, ctx) {
 
     const src = await fs.promises.readFile(fullFileName, "utf8") + "\n";
 
-    const sts = pil_parser.parse(src);
+    const myErr = function (str, hash) {
+        str = fullFileName + " -> " + str;
+        oldParseError(str, hash);
+    };
+    pil_parser.Parser.prototype.parseError = myErr;
+
+    const parser = new pil_parser.Parser();
+    const sts = parser.parse(src);
 
     let pendingCommands = [];
     let lastLineAllowsCommand = false;
+    const excludeModules = (isMain && config && config.excludeModules) ? [...config.excludeModules] : [];
+    const excludeSelF = (isMain && config && config.excludeSelF) ? [...config.excludeSelF].map((value) => value.includes('.') ? value : ('Main.' + value)) : [];
+
+    if (isMain && config && config.defines && typeof config.defines === 'object') {
+        for (const name in config.defines) {
+            ctx.constants[name] = BigInt(config.defines[name]);
+        }
+    }
 
     for (let i=0; i<sts.length; i++) {
         const s = sts[i];
         s.fileName = fileName;
         if (s.type == "INCLUDE") {
+            if (excludeModules.includes(s.file)) {
+                console.log(`NOTICE: include ${s.file} was ignored`);
+                continue;
+            }
             const fullFileNameI = path.resolve(fileDir, s.file);
             if (!ctx.includedFiles[fullFileNameI]) {       // If a file included twice just ignore
                 ctx.includedFiles[fullFileNameI] = true;
                 const oldNamespace = ctx.namespace;
                 ctx.namespace = "GLOBAL";
-                await compile(Fr, fullFileNameI, ctx);
+                await compile(Fr, fullFileNameI, ctx, config);
                 ctx.namespace = oldNamespace;
                 if (pendingCommands.length>0) error(s, "command not allowed before include");
                 lastLineAllowsCommand = false;
@@ -67,7 +89,6 @@ module.exports = async function compile(Fr, fileName, ctx) {
                     if (se.op != "number") error(s, "Array Size is not constant expression");
                     ctx.references[ctx.namespace + "." + s.names[j].name] = {
                         type: "cmP",
-                        elementType: s.elementType,
                         id: ctx.nCommitments,
                         polDeg: ctx.polDeg,
                         isArray: true,
@@ -77,7 +98,6 @@ module.exports = async function compile(Fr, fileName, ctx) {
                 } else {
                     ctx.references[ctx.namespace + "." + s.names[j].name] = {
                         type: "cmP",
-                        elementType: s.elementType,
                         id: ctx.nCommitments,
                         polDeg: ctx.polDeg,
                         isArray: false,
@@ -93,7 +113,6 @@ module.exports = async function compile(Fr, fileName, ctx) {
                     if (se.op != "number") error(s, "Array Size is not constant expression");
                     ctx.references[ctx.namespace + "." + s.names[j].name] = {
                         type: "constP",
-                        elementType: s.elementType,
                         id: ctx.nConstants,
                         polDeg: ctx.polDeg,
                         isArray: true,
@@ -103,7 +122,6 @@ module.exports = async function compile(Fr, fileName, ctx) {
                 } else {
                     ctx.references[ctx.namespace + "." + s.names[j].name] = {
                         type: "constP",
-                        elementType: s.elementType,
                         id: ctx.nConstants,
                         polDeg: ctx.polDeg,
                         isArray: false,
@@ -128,8 +146,29 @@ module.exports = async function compile(Fr, fileName, ctx) {
             ctx.expressions.push(s.expression);
             ctx.polIdentities.push({fileName: fileName, namespace: ctx.namespace, line: s.first_line, e: eidx});
         } else if (s.type == "PLOOKUPIDENTITY" || s.type == "PERMUTATIONIDENTITY") {
+            if (Array.isArray(excludeSelF) && s.selF) {
+                let _ops = Array.isArray(s.selF) ? [...s.selF] : [s.selF];
+                let _opsIndex = 0;
+                let _exclude = false;
+                while (_opsIndex < _ops.length) {
+                    const _op = _ops[_opsIndex];
+                    ++_opsIndex;
+                    if (Array.isArray(_op.values)) {
+                        _ops = _ops.concat(_op.values);
+                        continue;
+                    }
+                    if (_op.op !== 'pol') continue;
+                    const selFname = (_op.namespace == 'this' ? ctx.namespace : _op.namespace) + '.' + _op.name;
+                    if (excludeSelF.includes(selFname)) {
+                        console.log(`NOTICE: EXCLUDED plookup or permutation with selF ${selFname} on ${fileName}:${s.first_line}-${s.last_line}`);
+                        _exclude = true;
+                        continue;
+                    }
+                }
+                if (_exclude) continue;
+            }
             const pu = {
-                fileName: fileName, 
+                fileName: fileName,
                 namespace: ctx.namespace,
                 line: s.first_line,
                 f: [],
@@ -169,7 +208,7 @@ module.exports = async function compile(Fr, fileName, ctx) {
             }
         } else if (s.type == "CONNECTIONIDENTITY") {
             const ci = {
-                fileName: fileName, 
+                fileName: fileName,
                 namespace: ctx.namespace,
                 line: s.first_line,
                 pols: [],
@@ -213,6 +252,10 @@ module.exports = async function compile(Fr, fileName, ctx) {
                 id: ctx.nPublic++
             };
         } else if (s.type == "CONSTANTDEF") {
+            if (ctx.config && ctx.config.defines && typeof ctx.config.defines[s.name] !== 'undefined') {
+                console.log(`NOTICE: Ignore constant definition ${s.name} on ${fileName}:${s.first_line} because it was pre-defined`);
+                return;
+            }
             if (ctx.constants[s.name]) error(s, `name already defined ${s.name}`);
             const se = simplifyExpression(Fr, ctx, s.exp);
             if (se.op != "number") error(s, "Not a constant expression");
@@ -223,6 +266,14 @@ module.exports = async function compile(Fr, fileName, ctx) {
     }
 
     if (isMain) {
+        for (n in ctx.publics) {
+            if (ctx.publics.hasOwnProperty(n)) {
+                const pub = ctx.publics[n];
+                if (pub.polType == "imP") {
+                    ctx.expressions[pub.polId] = simplifyExpression(Fr, ctx, ctx.expressions[pub.polId] );
+                }
+            }
+        }
         for (let i=0; i<ctx.polIdentities.length; i++) {
             ctx.namespace = ctx.polIdentities[i].namespace;
             ctx.expressions[ctx.polIdentities[i].e] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.polIdentities[i].e]);
@@ -231,13 +282,13 @@ module.exports = async function compile(Fr, fileName, ctx) {
             ctx.namespace = ctx.plookupIdentities[i].namespace;
             for (j=0; j<ctx.plookupIdentities[i].f.length; j++) {
                 ctx.expressions[ctx.plookupIdentities[i].f[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].f[j]]);
-            } 
+            }
             if (ctx.plookupIdentities[i].selF !== null) {
                 ctx.expressions[ctx.plookupIdentities[i].selF] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].selF]);
             }
             for (j=0; j<ctx.plookupIdentities[i].t.length; j++) {
                 ctx.expressions[ctx.plookupIdentities[i].t[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].t[j]]);
-            } 
+            }
             if (ctx.plookupIdentities[i].selT !== null) {
                 ctx.expressions[ctx.plookupIdentities[i].selT] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].selT]);
             }
@@ -246,13 +297,13 @@ module.exports = async function compile(Fr, fileName, ctx) {
             ctx.namespace = ctx.permutationIdentities[i].namespace;
             for (j=0; j<ctx.permutationIdentities[i].f.length; j++) {
                 ctx.expressions[ctx.permutationIdentities[i].f[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.permutationIdentities[i].f[j]]);
-            } 
+            }
             if (ctx.permutationIdentities[i].selF !== null) {
                 ctx.expressions[ctx.permutationIdentities[i].selF] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.permutationIdentities[i].selF]);
             }
             for (j=0; j<ctx.permutationIdentities[i].t.length; j++) {
                 ctx.expressions[ctx.permutationIdentities[i].t[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.permutationIdentities[i].t[j]]);
-            } 
+            }
             if (ctx.permutationIdentities[i].selT !== null) {
                 ctx.expressions[ctx.permutationIdentities[i].selT] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.permutationIdentities[i].selT]);
             }
@@ -261,10 +312,10 @@ module.exports = async function compile(Fr, fileName, ctx) {
             ctx.namespace = ctx.connectionIdentities[i].namespace;
             for (j=0; j<ctx.connectionIdentities[i].pols.length; j++) {
                 ctx.expressions[ctx.connectionIdentities[i].pols[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.connectionIdentities[i].pols[j]]);
-            } 
+            }
             for (j=0; j<ctx.connectionIdentities[i].connections.length; j++) {
                 ctx.expressions[ctx.connectionIdentities[i].connections[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.connectionIdentities[i].connections[j]]);
-            } 
+            }
         }
 
         for (let i=0; i<ctx.expressions.length; i++) {
@@ -309,7 +360,7 @@ module.exports = async function compile(Fr, fileName, ctx) {
             for (j=0; j<ctx.connectionIdentities[i].connections.length; j++) {
                 reduceto1(ctx, ctx.expressions[ctx.connectionIdentities[i].connections[j]]);
             }
-        }    
+        }
     }
 
     if (isMain) {
@@ -321,7 +372,7 @@ function error(l, err) {
     if (err instanceof Error) {
         err.message = `ERROR ${l.fileName}:${l.first_line}: ${err.message}`
         throw(err);
-    } else { 
+    } else {
         const msg = `ERROR ${l.fileName}:${l.first_line}: ${err}`;
         throw new Error(msg);
     }
@@ -354,7 +405,7 @@ function simplifyExpression(Fr, ctx, e) {
         e.id = ref.id;
         e.deg = 0;
         return e;
-    }    
+    }
     if (e.op == "neg") {
         e.values[0] = simplifyExpression(Fr, ctx, e.values[0]);
         const a = e.values[0];
@@ -502,7 +553,7 @@ function ctx2json(ctx) {
         nQ: ctx.nQ,
         nIm: ctx.nIm,
         nConstants: ctx.nConstants,
-        publics: [], 
+        publics: [],
         references: {},
         expressions: [],
         polIdentities: [],
@@ -512,12 +563,11 @@ function ctx2json(ctx) {
     };
 
     for (n in ctx.references) {
-        if (ctx.references.hasOwnProperty(n)) {  
+        if (ctx.references.hasOwnProperty(n)) {
             const ref = ctx.references[n];
             if (ref.isArray) {
                 out.references[n] = {
                     type: ref.type,
-                    elementType: ref.elementType,
                     id: ref.id,
                     polDeg: ref.polDeg,
                     isArray: true,
@@ -526,7 +576,6 @@ function ctx2json(ctx) {
             } else {
                 out.references[n] = {
                     type: ref.type,
-                    elementType: ref.elementType,
                     id: ref.id,
                     polDeg: ref.polDeg,
                     isArray: false
@@ -536,7 +585,7 @@ function ctx2json(ctx) {
     }
 
     for (n in ctx.publics) {
-        if (ctx.publics.hasOwnProperty(n)) {  
+        if (ctx.publics.hasOwnProperty(n)) {
             const pub = ctx.publics[n];
             out.publics[pub.id] = pub;
             out.publics[pub.id].name = n;
