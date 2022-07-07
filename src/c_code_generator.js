@@ -108,6 +108,7 @@ module.exports.generateCCode = async function generate(pols, type)
                 else if (pol.elementType=="bool") { ctype="uint8_t"; csize=1; }
                 else {
                     console.log("elementType="+pol.elementType);
+                    ctype="Goldilocks::Element"; csize=8; 
                 }
 
                 let array = "";
