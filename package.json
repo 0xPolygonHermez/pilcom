@@ -1,5 +1,5 @@
 {
-  "name": "zkpil",
+  "name": "pilcom",
   "version": "0.0.8",
   "description": "Polynomial Identity Language (pil)",
   "main": "index.js",
@@ -14,7 +14,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hermeznetwork/zkpil.git"
+    "url": "git+https://github.com/0xpolygonhermez/pilcom.git"
   },
   "keywords": [
     "pil",
@@ -28,9 +28,9 @@
   "author": "Jordi Baylina",
   "license": "GPL-3.0",
   "bugs": {
-    "url": "https://github.com/hermeznetwork/zkpil/issues"
+    "url": "https://github.com/0xpolygonhermez/pilcom/issues"
   },
-  "homepage": "https://github.com/hermeznetwork/zkpil#readme",
+  "homepage": "https://github.com/0xpolygonhermez/pilcom#readme",
   "devDependencies": {
     "ffjavascript": "^0.2.55",
     "jison": "^0.4.18",
