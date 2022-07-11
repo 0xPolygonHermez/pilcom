@@ -4,7 +4,7 @@
   "description": "Polynomial Identity Language (pil)",
   "main": "index.js",
   "bin": {
-    "zkpil": "src/pil.js",
+    "pilcom": "src/pil.js",
     "pilverifier": "src/main_pilverifier.js"
   },
   "scripts": {
@@ -26,14 +26,17 @@
     "hermez"
   ],
   "author": "Jordi Baylina",
-  "license": "GPL-3.0",
+  "license": "UNLICENSED",
   "bugs": {
     "url": "https://github.com/0xpolygonhermez/pilcom/issues"
   },
   "homepage": "https://github.com/0xpolygonhermez/pilcom#readme",
   "devDependencies": {
+    "chai": "^4.3.6",
     "ffjavascript": "^0.2.55",
     "jison": "^0.4.18",
+    "mocha": "^10.0.0",
+    "tmp-promise": "^3.0.3",
     "yargs": "^17.2.1"
   }
 }

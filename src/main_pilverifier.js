@@ -5,7 +5,7 @@ const version = require("../package").version;
 
 const { importPolynomials } = require("./binfiles.js");
 
-const { compile, verifyPil, createCommitedPols, createConstantPols } = require("../index");
+const { compile, verifyPil, useConstantPolsArray, useCommitPolsArray } = require("../index");
 
 const { F1Field } = require("ffjavascript");
 
@@ -36,14 +36,21 @@ async function run() {
 
     const pil = await compile(F, pilFile);
 
-    const [cmPols, cmPolsArray, cmPolsDef, cmPolsDefArray] =  createCommitedPols(pil);
-    const [constPols, constPolsArray, constPolsDef, constPolsArrayDef] =  createConstantPols(pil);
+    const n = pil.references[Object.keys(pil.references)[0]].polDeg;
 
+    const constBuffBuff = new SharedArrayBuffer(pil.nConstants*8*n);
+    const constBuff = new BigUint64Array(constBuffBuff)
 
-    const polsConst = await importPolynomials(F, constantFile, constPolsArrayDef, 2**16);
-    const pols = await importPolynomials(F, commitFile, cmPolsDefArray, 2**16);
+    const cmBuffBuff = new SharedArrayBuffer(pil.nCommitments*8*n);
+    const cmBuff = new BigUint64Array(cmBuffBuff)
 
-    const res = await verifyPil(F, pil, pols, polsConst, {normalize: false});
+    const constPols =  useConstantPolsArray(pil, constBuff, 0);
+    const cmPols =  useCommitPolsArray(pil, cmBuff, 0);
+
+    await constPols.loadFromFile(constantFile);
+    await cmPols.loadFromFile(commitFile);
+
+    const res = await verifyPil(F, pil, cmPols, constPols);
 
     if (res.length != 0) {
         console.log("Pil does not pass");

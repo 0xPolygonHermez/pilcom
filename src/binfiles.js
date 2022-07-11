@@ -83,3 +83,46 @@ module.exports.importPolynomials = async function importPolynomials(F, fileName,
 
     return pols;
 }
+
+
+module.exports.importPolynomialsToBuffer = async function importPolynomialsToBuffer(buff, pos,  fileName, polsDef) {
+
+    const nPols = polsDef.length;
+    assert(nPols>0);
+    const N = polsDef[0].polDeg;
+
+    const fd =await fs.promises.open(fileName, "r");
+    const buff8 = new Uint8Array(buff.buffer, buff.byteOffset + pos, N*nPols*8);
+
+    await readBigBuffer(fd, buff8);
+    await fd.close();
+
+    async function  readBigBuffer(fd, buff8) {
+        const MaxBuffSize = 1024*1024*32;  //  256Mb
+        for (let i=0; i<buff8.byteLength; i+= MaxBuffSize) {
+            const n = Math.min(buff8.byteLength -i, MaxBuffSize);
+            await fd.read(buff8, {offset: i, position: 0, length: n});
+        }
+    }
+}
+
+module.exports.exportPolynomialsFromBuffer = async function importPolynomialsToBuffer(filename, buff, pos, polsDef) {
+    const nPols = polsDef.length;
+    const n = polsDef[0].polDeg;
+
+    const buff8 = new Uint8Array(buff.buffer, buff.byteOffset + pos, nPols*n*8);
+
+    const fd =await fs.promises.open(fileName, "w+");
+    await writeBigBuffer(fd, buff8);
+    await fd.close();
+
+    async function writeBigBuffer(fd, buff8) {
+        const MaxBuffSize = 1024*1024*32;  //  256Mb
+        for (let i=0; i<buff8.byteLength; i+= MaxBuffSize) {
+            const n = Math.min(buff8.byteLength -i, MaxBuffSize);
+            const sb = new Uint8Array(buff8.buffer, buff8.byteOffset+i, n);
+            await fd.write(sb);
+        }
+    }
+}
+

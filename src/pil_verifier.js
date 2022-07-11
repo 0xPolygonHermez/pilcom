@@ -1,9 +1,9 @@
+const { assert } = require("chai");
 const { options } = require("yargs");
 const { log2, getKs } = require("./utils.js");
 
 module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}) {
 
-    if (typeof config.normalize == "undefined") config.normalize = false;
     const res = [];
 
     const refCm = {};
@@ -30,72 +30,32 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
         publics: []
     };
 
-    const N = cmPols[0].length;
+    const N = cmPols.$$n;
 
     for (let i=0; i<pil.nCommitments; i++) pols.cm[i] = {};
     for (let i=0; i<pil.expressions.length; i++) pols.exps[i] = {};
     for (let i=0; i<pil.nConstants; i++) pols.const[i] = {};
 
-
-    toF = (a) => {
-        switch (typeof(a)) {
-            case "bigint": return a;
-            case "boolean": return a ? 1n : 0n;
-            default: return BigInt(a);
-        }
-    }
-
-
-
-
 // 1.- Prepare commited polynomials.
-    for (let i=0; i<cmPols.length;) {
-        console.log(`Preparing polynomial ${refCm[i].name}`);
-        let nPols;
-        if (refCm[i].isArray) {
-            nPols = refCm[i].len;
-        } else {
-            nPols = 1;
-        }
-        for (k=0; k<nPols; k++) {
-            if (cmPols[i+k].length!= N) {
-                throw new Error(`Commit Polynomial ${refCm[i].name} does not have the right size: ${cmPols[i+k].length} and should be ${N}`);
-            }
-            pols.cm[i+k].v_n = cmPols[i+k];
-        }
-        i+=k;
+    for (let i=0; i<cmPols.$$nPols; i++) {
+        pols.cm[i].v_n = new Proxy({
+            buffer: cmPols.$$buffer,
+            size: cmPols.$$nPols,
+            offset: i,
+            prime: false,
+            deg: cmPols.$$n
+        }, polHandle);
     }
 
-    for (let i=0; i<constPols.length;) {
-        console.log(`Preparing constant polynomial ${refConst[i].name}`);
-        let nPols;
-        if (refConst[i].isArray) {
-            nPols = refConst[i].len;
-        } else {
-            nPols = 1;
-        }
-        for (k=0; k<nPols; k++) {
-            if (constPols[i+k].length!= N) {
-                throw new Error(`Constant Polynomial ${refConst[i].name} does not have the right size: ${constPols[i+k].length} and should be ${N}`);
-            }
-            pols.const[i+k].v_n = constPols[i+k];
-        }
-        i+=k;
+    for (let i=0; i<constPols.$$nPols; i++) {
+        pols.const[i].v_n = new Proxy({
+            buffer: constPols.$$buffer,
+            size: constPols.$$nPols,
+            offset: i,
+            prime: false,
+            deg: constPols.$$n
+        }, polHandle);
     }
-
-    if (config.normalize) {
-        for (let i=0; i<pols.cm.length; i++) {
-            for (let k=0; k<N; k++) {
-                pols.cm[i].v_n[k] = toF(pols.cm[i].v_n[k]);
-            }
-        }
-        for (let i=0; i<pols.const.length; i++) {
-            for (let k=0; k<N; k++) {
-                pols.const[i].v_n[k] = toF(pols.const[i].v_n[k]);
-            }
-        }
-    }
-
 
     for (let i=0; i<pil.publics.length; i++) {
         console.log(`Preparing public ${i+1}/${pil.publics.length}`);
@@ -339,10 +299,10 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
             for (let i=0; i<a.length; i++) r[i] = F.neg(a[i]);
         } else if (exp.op == "cm") {
             r = pols.cm[exp.id].v_n;
-            if (exp.next) r = getPrime(r);
+            if (exp.next) r = r.prime;
         } else if (exp.op == "const") {
             r = pols.const[exp.id].v_n;
-            if (exp.next) r = getPrime(r);
+            if (exp.next) r = r.prime;
         } else if (exp.op == "exp") {
             r = pols.exps[exp.id].v_n;
             if (exp.next) r = getPrime(r);
@@ -419,6 +379,33 @@ function getConnectionMap(F, N, nk) {
 
     cacheConnectionMaps[kc] = m;
     return m;
+}
+
+
+
+
+const polHandle = {
+    get( obj, prop) {
+        if (!isNaN(prop)) {
+            assert(prop<obj.deg, "Out of range");
+            if (obj.prime) {
+                return obj.buffer[obj.offset + obj.size*((Number(prop)+1)%obj.deg)];
+            } else {
+                return obj.buffer[obj.offset + obj.size*prop];
+            }
+        } else if (prop == "prime") {
+            assert(obj.prime == false, "Prime of a prime")
+            return new Proxy({
+                buffer: obj.buffer,
+                size: obj.size,
+                offset: obj.offset,
+                prime: true,
+                deg: obj.deg
+            }, polHandle);
+        } else if (prop == "length") {
+            return obj.deg;
+        }
+    }
 }
 
 
