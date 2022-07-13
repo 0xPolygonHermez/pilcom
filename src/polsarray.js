@@ -149,7 +149,6 @@ class PolsArray {
         for (let i=0; i<this.$$n; i++) {
             for (let j=0; j<this.$$nPols; j++) {
                 buff[p++] = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + 0xffffffff00000001n) : this.$$array[j][i];
-                buff[p++] = this.$$array[j][i];
             }
         }
         return buff;
