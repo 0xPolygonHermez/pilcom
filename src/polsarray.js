@@ -90,10 +90,14 @@ class PolsArray {
         let i=0;
         let j=0;
         let p=0;
-        for (let k=0; k<totalSize; k+= buff.length) {
-            const n= Math.min(buff.length, totalSize-k);
-            await fd.read(buff8, {offset: 0, position: p, length: n*8});
-            p += n;
+        let n;
+        for (let k=0; k<totalSize; k+= n) {
+            console.log(`loading ${fileName}.. ${k/1024/1024} of ${totalSize/1024/1024}` );
+            n= Math.min(buff.length, totalSize-k);
+            const res = await fd.read(buff8, {offset: 0, position: p, length: n*8});
+            if (n*8 != res.bytesRead) console.log(`n: ${n*8} bytesRead: ${res.bytesRead} div: ${res.bytesRead/8}`);
+            n = res.bytesRead/8;
+            p += n*8;
             for (let l=0; l<n; l++) {
                 this.$$array[i++][j] = buff[l];
                 if (i==this.$$nPols) {
