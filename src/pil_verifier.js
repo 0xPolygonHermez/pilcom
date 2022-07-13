@@ -38,23 +38,11 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
 
 // 1.- Prepare commited polynomials.
     for (let i=0; i<cmPols.$$nPols; i++) {
-        pols.cm[i].v_n = new Proxy({
-            buffer: cmPols.$$buffer,
-            size: cmPols.$$nPols,
-            offset: i,
-            prime: false,
-            deg: cmPols.$$n
-        }, polHandle);
+        pols.cm[i].v_n = cmPols.$$array[i];
     }
 
     for (let i=0; i<constPols.$$nPols; i++) {
-        pols.const[i].v_n = new Proxy({
-            buffer: constPols.$$buffer,
-            size: constPols.$$nPols,
-            offset: i,
-            prime: false,
-            deg: constPols.$$n
-        }, polHandle);
+        pols.const[i].v_n = constPols.$$array[i];
     }
 
     for (let i=0; i<pil.publics.length; i++) {
@@ -299,10 +287,10 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
             for (let i=0; i<a.length; i++) r[i] = F.neg(a[i]);
         } else if (exp.op == "cm") {
             r = pols.cm[exp.id].v_n;
-            if (exp.next) r = r.prime;
+            if (exp.next) r = getPrime(r);
         } else if (exp.op == "const") {
             r = pols.const[exp.id].v_n;
-            if (exp.next) r = r.prime;
+            if (exp.next) r = getPrime(r);
         } else if (exp.op == "exp") {
             r = pols.exps[exp.id].v_n;
             if (exp.next) r = getPrime(r);
@@ -379,33 +367,6 @@ function getConnectionMap(F, N, nk) {
 
     cacheConnectionMaps[kc] = m;
     return m;
-}
-
-
-
-
-const polHandle = {
-    get( obj, prop) {
-        if (!isNaN(prop)) {
-            assert(prop<obj.deg, "Out of range");
-            if (obj.prime) {
-                return obj.buffer[obj.offset + obj.size*((Number(prop)+1)%obj.deg)];
-            } else {
-                return obj.buffer[obj.offset + obj.size*prop];
-            }
-        } else if (prop == "prime") {
-            assert(obj.prime == false, "Prime of a prime")
-            return new Proxy({
-                buffer: obj.buffer,
-                size: obj.size,
-                offset: obj.offset,
-                prime: true,
-                deg: obj.deg
-            }, polHandle);
-        } else if (prop == "length") {
-            return obj.deg;
-        }
-    }
 }
 
 

@@ -9,7 +9,5 @@ module.exports.verifyPil = require("./src/pil_verifier.js")
 module.exports.getKs = require("./src/utils.js").getKs;
 module.exports.newConstantPolsArray = require("./src/polsarray.js").newConstantPolsArray;
 module.exports.newCommitPolsArray = require("./src/polsarray.js").newCommitPolsArray;
-module.exports.useConstantPolsArray = require("./src/polsarray.js").useConstantPolsArray;
-module.exports.useCommitPolsArray = require("./src/polsarray.js").useCommitPolsArray;
 
 

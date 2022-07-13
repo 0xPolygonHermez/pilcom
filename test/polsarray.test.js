@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const assert = chai.assert;
 var tmp = require('tmp-promise');
-const { compile, newConstantPolsArray, newCommitPolsArray, useConstantPolsArray, useCommitPolsArray } = require("..");
+const { compile, newConstantPolsArray, newCommitPolsArray } = require("..");
 
 
 describe("PolsArray", async function () {
@@ -37,8 +37,8 @@ describe("PolsArray", async function () {
 
         const buff2 = new BigInt64Array(constPols.$$n*constPols.$$nPols + cmPols.$$n*cmPols.$$nPols);
 
-        const constPols2 = useConstantPolsArray(pil, buff2, 0);
-        const cmPols2 = useCommitPolsArray(pil, buff2, constPols.$$n*constPols.$$nPols*8);
+        const constPols2 = newConstantPolsArray(pil, buff2, 0);
+        const cmPols2 = newCommitPolsArray(pil, buff2, constPols.$$n*constPols.$$nPols*8);
         await constPols2.loadFromFile(fileNameConst);
         await cmPols2.loadFromFile(fileNameCm);
 

@@ -2,55 +2,17 @@ const fs= require("fs");
 
 function newConstantPolsArray(pil) {
     const pa = new PolsArray(pil, "constant");
-    const buff = new SharedArrayBuffer(pa.$$n*pa.$$nPols*8);
-    pa.$$buffer = new BigUint64Array(buff);
     return pa;
 }
 
 function newCommitPolsArray(pil) {
     const pa = new PolsArray(pil, "commit");
-    const buff = new SharedArrayBuffer(pa.$$n*pa.$$nPols*8);
-    pa.$$buffer = new BigUint64Array(buff);
-    return pa;
-}
-
-function useConstantPolsArray(pil, buff, pos) {
-    const pa = new PolsArray(pil, "constant");
-    pa.$$buffer = new BigUint64Array(buff.buffer, buff.byteOffset + pos, pa.$$n*pa.$$nPols);
-    return pa;
-}
-
-function useCommitPolsArray(pil, buff, pos) {
-    const pa = new PolsArray(pil, "commit");
-    pa.$$buffer = new BigUint64Array(buff.buffer, buff.byteOffset + pos, pa.$$n*pa.$$nPols);
     return pa;
 }
 
 module.exports.newConstantPolsArray = newConstantPolsArray;
 module.exports.newCommitPolsArray = newCommitPolsArray;
-module.exports.useConstantPolsArray = useConstantPolsArray;
-module.exports.useCommitPolsArray = useCommitPolsArray;
 
-
-function createPolProxy(polArray, idPol, n) {
-    const pol={
-        polArray: polArray,
-        deg: n,
-        idPol: idPol
-    };
-    return new Proxy(pol, {
-        get( obj, prop) {
-            if (!isNaN(prop)) {
-                return obj.polArray.$$buffer[obj.polArray.$$nPols * prop +  obj.idPol];
-            } else if (prop == "length") {
-                return obj.deg
-            }
-        },
-        set( obj, prop, v) {
-            obj.polArray.$$buffer[obj.polArray.$$nPols * prop +  obj.idPol] = v;
-        },
-    })
-}
 
 class PolsArray {
     constructor(pil, type) {
@@ -78,7 +40,8 @@ class PolsArray {
                         this[nameSpace][namePol] = [];
                         this.$$def[nameSpace][namePol] = [];
                         for (let i=0; i<ref.len; i++) {
-                            const polProxy = createPolProxy(this, ref.id + i, ref.polDeg);
+                            const polProxy = new Array(ref.polDeg);
+//                            const polProxy = createPolProxy(this, ref.id + i, ref.polDeg);
                             this[nameSpace][namePol][i] = polProxy;
                             this.$$defArray[ref.id + i] = {
                                 name: refName,
@@ -91,7 +54,8 @@ class PolsArray {
                             this.$$array[ref.id+i] = polProxy;
                         }
                     } else {
-                        const polProxy = createPolProxy(this, ref.id, ref.polDeg);
+                        const polProxy = new Array(ref.polDeg);
+                        // const polProxy = createPolProxy(this, ref.id, ref.polDeg);
                         this[nameSpace][namePol] = polProxy;
                         this.$$defArray[ref.id] = {
                             name: refName,
@@ -115,35 +79,74 @@ class PolsArray {
     }
 
     async loadFromFile(fileName) {
-        const buff8 = new Uint8Array(this.$$buffer.buffer, this.$$buffer.byteOffset, this.$$n*this.$$nPols*8);
 
         const fd =await fs.promises.open(fileName, "r");
-        await readBigBuffer(fd, buff8);
-        await fd.close();
 
-        async function  readBigBuffer(fd, buff8) {
-            const MaxBuffSize = 1024*1024*32;  //  256Mb
-            for (let i=0; i<buff8.byteLength; i+= MaxBuffSize) {
-                const n = Math.min(buff8.byteLength -i, MaxBuffSize);
-                await fd.read(buff8, {offset: i, position: i, length: n});
+        const MaxBuffSize = 1024*1024*32;  //  256Mb
+        const totalSize = this.$$nPols*this.$$n;
+        const buff = new BigUint64Array(Math.min(totalSize, MaxBuffSize));
+        const buff8 = new Uint8Array(buff.buffer);
+
+        let i=0;
+        let j=0;
+        let p=0;
+        for (let k=0; k<totalSize; k+= buff.length) {
+            const n= Math.min(buff.length, totalSize-k);
+            await fd.read(buff8, {offset: 0, position: p, length: n*8});
+            p += n;
+            for (let l=0; l<n; l++) {
+                this.$$array[i++][j] = buff[l];
+                if (i==this.$$nPols) {
+                    i=0;
+                    j++;
+                }
             }
         }
+
+        await fd.close();
+
     }
 
     async saveToFile(fileName) {
-        const buff8 = new Uint8Array(this.$$buffer.buffer, this.$$buffer.byteOffset, this.$$n*this.$$nPols*8);
 
         const fd =await fs.promises.open(fileName, "w+");
-        await writeBigBuffer(fd, buff8);
-        await fd.close();
 
-        async function writeBigBuffer(fd, buff8) {
-            const MaxBuffSize = 1024*1024*32;  //  256Mb
-            for (let i=0; i<buff8.byteLength; i+= MaxBuffSize) {
-                const n = Math.min(buff8.byteLength -i, MaxBuffSize);
-                const sb = new Uint8Array(buff8.buffer, buff8.byteOffset+i, n);
-                await fd.write(sb);
+        const MaxBuffSize = 1024*1024*32;  //  256Mb
+        const totalSize = this.$$nPols*this.$$n;
+        const buff = new BigUint64Array(Math.min(totalSize, MaxBuffSize));
+
+        let p=0;
+        for (let i=0; i<this.$$n; i++) {
+            for (let j=0; j<this.$$nPols; j++) {
+                buff[p++] = this.$$array[j][i];
+                if (p == buff.length) {
+                    const buff8 = new Uint8Array(buff.buffer);
+                    await fd.write(buff8);
+                    p=0;
+                }
             }
         }
+
+        if (p) {
+            const buff8 = new Uint8Array(buff.buffer, 0, p*8);
+            await fd.write(buff8);
+        }
+
+        await fd.close();
+    }
+
+    writeToBuff(buff, pos) {
+        if (typeof buff == "undefined") {
+            const constBuffBuff = new SharedArrayBuffer(this.$$n*this.$$nPols*8);
+            buff = new BigUint64Array(constBuffBuff);
+        }
+        const buff64 = new BigUint64Array(buff.buffer, buff.byteOffset + pos, this.$$n*this.$$nPols);
+        let p=0;
+        for (let i=0; i<this.$$n; i++) {
+            for (let j=0; j<this.$$nPols; j++) {
+                buff[p++] = this.$$array[j][i];
+            }
+        }
+        return buff;
     }
 }
