@@ -1,20 +1,31 @@
-# zkPIL
+# pilcom
+Polynomial Identity Language (pil) compiler
 
-Polynomial Identity Language
+## General info
 
-The zkevm directory includes the source code zkEVM PIL.
-
-## usage
-### usage as command line
+## Setup
+Install dependencies:
 ```sh
-node src/pil.js <input.pil> <output.pil.json>
+$ npm install
 ```
-### usage inside javascript
+## Usage
+
+### Command line
+Generate json file from pil file:
+```sh
+$ node src/pil.js <input.pil> -o <output.pil.json>
+```
+Generate C++ code from pil file (.hpp files will be generated in the `./pols_generated` folder):
+```sh
+$ node src/pil.js <input.pil> -c
+```
+
+### Javascript
+Basic usage:
 ```javascript
 const pil = await compile(Fr, "pil/main.pil");
 ```
-### advanced use inside javascript
-
+Advanced usage:
 ```javascript
 const pilConfig = {
     defines: {N: Math.max(verifyPilFlag ? minDegree : 2 ** 16)},
@@ -24,8 +35,7 @@ const pilConfig = {
 
 const pil = await compile(Fr, "pil/main.pil", null,  pilConfig);
 ```
-
-### modules information
+Modules information:
 ```javascript
 const pilModuleInfo = {
     mem_align: {
@@ -72,9 +82,9 @@ const pilModuleInfo = {
 ```
 
 ## License
-```
-Copyright
-Polygon pilcom was developed by Polygon. While we plan to adopt an open source license, we haven’t selected one yet, so all rights are reserved for the time being. Please reach out to us if you have thoughts on licensing.
-Disclaimer
+
+### Copyright
+Polygon zkevm-proverjs was developed by Polygon. While we plan to adopt an open source license, we haven’t selected one yet, so all rights are reserved for the time being. Please reach out to us if you have thoughts on licensing.  
+  
+### Disclaimer
 This code has not yet been audited, and should not be used in any production systems.
-```
