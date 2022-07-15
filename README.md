@@ -4,9 +4,9 @@ Polynomial Identity Language (pil) compiler
 ## General info
 
 ## Setup
-Install dependencies:
 ```sh
 $ npm install
+$ npm run build
 ```
 ## Usage
 
