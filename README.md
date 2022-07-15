@@ -1,4 +1,4 @@
-# pilcom
+# PIL compiler
 Polynomial Identity Language (pil) compiler
 
 ## General info
