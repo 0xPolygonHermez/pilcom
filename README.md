@@ -1,8 +1,6 @@
 # PIL Compiler
 Polynomial Identity Language (pil) compiler
 
-## General info
-
 ## Setup
 ```sh
 $ npm install
