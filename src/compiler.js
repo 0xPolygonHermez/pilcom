@@ -421,6 +421,7 @@ function simplifyExpression(Fr, ctx, e) {
         const a = e.values[0];
         e.values[1] = simplifyExpression(Fr, ctx, e.values[1]);
         const b = e.values[1];
+        /*
         if (a.op == "number") {
             if (b.op == "number") {
                 return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.add(Fr.e(a.value), Fr.e(b.value))), first_line: e.first_line}
@@ -443,12 +444,19 @@ function simplifyExpression(Fr, ctx, e) {
                 return e;
             }
         }
+        */
+        if ((a.op == "number") && (b.op == "number")) {
+            return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.add(Fr.e(a.value), Fr.e(b.value))), first_line: e.first_line}
+        }
+        e.deg = Math.max(a.deg, b.deg);
+        return e;
     }
     if (e.op == "sub") {
         e.values[0] = simplifyExpression(Fr, ctx, e.values[0]);
         const a = e.values[0];
         e.values[1] = simplifyExpression(Fr, ctx, e.values[1]);
         const b = e.values[1];
+        /*
         if (a.op == "number") {
             if (b.op == "number") {
                 return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.sub(Fr.e(a.value), Fr.e(b.value)))}
@@ -471,12 +479,19 @@ function simplifyExpression(Fr, ctx, e) {
                 return e;
             }
         }
+        */
+        if ((a.op == "number") && (b.op == "number")) {
+            return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.sub(Fr.e(a.value), Fr.e(b.value))), first_line: e.first_line}
+        }
+        e.deg = Math.max(a.deg, b.deg);
+        return e;
     }
     if (e.op == "mul") {
         e.values[0] = simplifyExpression(Fr, ctx, e.values[0]);
         const a = e.values[0];
         e.values[1] = simplifyExpression(Fr, ctx, e.values[1]);
         const b = e.values[1];
+        /*
         if (a.op == "number") {
             if (b.op == "number") {
                 return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.mul(Fr.e(a.value), Fr.e(b.value))), first_line: e.first_line}
@@ -503,6 +518,12 @@ function simplifyExpression(Fr, ctx, e) {
                 return e;
             }
         }
+        */
+        if ((a.op == "number") && (b.op == "number")) {
+            return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.mul(Fr.e(a.value), Fr.e(b.value))), first_line: e.first_line}
+        }
+        e.deg = a.deg +  b.deg;
+        return e;
     }
     if (e.op == "pow") {
         e.values[0] = simplifyExpression(Fr, ctx, e.values[0]);

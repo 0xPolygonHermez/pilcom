@@ -141,7 +141,7 @@ class PolsArray {
 
     writeToBuff(buff, pos) {
         if (typeof buff == "undefined") {
-            const constBuffBuff = new SharedArrayBuffer(this.$$n*this.$$nPols*8);
+            const constBuffBuff = new ArrayBuffer(this.$$n*this.$$nPols*8);
             buff = new BigUint64Array(constBuffBuff);
         }
         const buff64 = new BigUint64Array(buff.buffer, buff.byteOffset + pos, this.$$n*this.$$nPols);
@@ -149,6 +149,19 @@ class PolsArray {
         for (let i=0; i<this.$$n; i++) {
             for (let j=0; j<this.$$nPols; j++) {
                 buff[p++] = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + 0xffffffff00000001n) : this.$$array[j][i];
+            }
+        }
+        return buff;
+    }
+
+    writeToBigBuffer(buff, pos) {
+        if (typeof buff == "undefined") {
+            buff = new BigBuffer(constBuffBuff);
+        }
+        let p=0;
+        for (let i=0; i<this.$$n; i++) {
+            for (let j=0; j<this.$$nPols; j++) {
+                buff.setElement(p++, (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + 0xffffffff00000001n) : this.$$array[j][i]);
             }
         }
         return buff;
