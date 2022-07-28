@@ -5,8 +5,8 @@ function newConstantPolsArray(pil) {
     return pa;
 }
 
-function newCommitPolsArray(pil) {
-    const pa = new PolsArray(pil, "commit");
+function newCommitPolsArray(pil, config) {
+    const pa = new PolsArray(pil, "commit", config);
     return pa;
 }
 
@@ -15,7 +15,7 @@ module.exports.newCommitPolsArray = newCommitPolsArray;
 
 
 class PolsArray {
-    constructor(pil, type) {
+    constructor(pil, type, config = {}) {
         if (type == "commit") {
             this.$$nPols = pil.nCommitments;
         } else if (type == "constant") {
@@ -33,6 +33,13 @@ class PolsArray {
                 if ((ref.type == "cmP" && type == "commit") ||
                     (ref.type == "constP" && type == "constant")) {
                     const [nameSpace, namePol] = refName.split(".");
+
+                    if (typeof(config.includeStateMachines) !== "undefined") {
+                        if (!(config.includeStateMachines.includes(nameSpace))) {
+                            continue;
+                        }
+                    }
+
                     if (!this[nameSpace]) this[nameSpace] = {};
                     if (!this.$$def[nameSpace]) this.$$def[nameSpace] = {};
 
@@ -57,25 +64,29 @@ class PolsArray {
                         const polProxy = new Array(ref.polDeg);
                         // const polProxy = createPolProxy(this, ref.id, ref.polDeg);
                         this[nameSpace][namePol] = polProxy;
-                        this.$$defArray[ref.id] = {
-                            name: refName,
-                            id: ref.id,
-                            elementType: ref.elementType,
-                            polDeg: ref.polDeg
+                        if (typeof(config.includeStateMachines) === "undefined") {
+                            this.$$defArray[ref.id] = {
+                                name: refName,
+                                id: ref.id,
+                                elementType: ref.elementType,
+                                polDeg: ref.polDeg
+                            }
+                            this.$$def[nameSpace][namePol] = this.$$defArray[ref.id];
+                            this.$$array[ref.id] = polProxy;
                         }
-                        this.$$def[nameSpace][namePol] = this.$$defArray[ref.id];
-                        this.$$array[ref.id] = polProxy;
                     }
                 }
             }
         }
-        for (let i=0; i<this.$$nPols; i++) {
-            if (!this.$$defArray[i]) {
-                throw new Error("Invalid pils sequence");
-            }
+        if (typeof(config.includeStateMachines) === "undefined") {
+                for (let i=0; i<this.$$nPols; i++) {
+                    if (!this.$$defArray[i]) {
+                        throw new Error("Invalid pils sequence");
+                    }
+                }
+            this.$$nPols = this.$$defArray.length;
+            this.$$n = this.$$defArray[0].polDeg;
         }
-        this.$$nPols = this.$$defArray.length;
-        this.$$n = this.$$defArray[0].polDeg;
     }
 
     async loadFromFile(fileName) {
