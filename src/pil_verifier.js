@@ -78,10 +78,12 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
                 const v1 = pols.exps[ci.pols[j]].v_n[k];
 
                 const a = pols.exps[ci.connections[j]].v_n[k]
-                const a1 = Number(a >> 32n);
-                const a2 = Number(a & 0xFFFFFFFFn);
+                const a1 = Number(a >> 48n);
+                const a2 = Number((a >> 32n)&0xFFFFn );
+                const a3 = Number(a&0xFFFFFFFFn );
 
-                const [cp, cw] = cm[ a1 ][a2];
+
+                const [cp, cw] = cm[a1][a2][a3];
                 if (typeof cp == "undefined") {
                     res.push(`${ci.fileName}:${pil.polIdentities[i].line}: invalid copy value w=${j},${k} val=${F.toString(v1)} `);
                     console.log(res[res.length-1]);
@@ -350,17 +352,20 @@ function getConnectionMap(F, N, nk) {
 
     const pow = log2(N);
 
-    const m = {};
+    const m = new Array(1<<16);
     const ks = [1n, ...getKs(F, nk-1)];
     let w = F.one;
     const wi = F.w ? F.w[pow] : F.FFT.w[pow];
     for (let i=0; i<N; i++ ) {
+        if ((i%10000) == 0) console.log(`Building cm.. ${i}/${N}`);
         for (j=0; j<ks.length; j++) {
             const a = F.mul(ks[j], w);
-            const a1 = Number(a >> 32n);
-            const a2 = Number(a & 0xFFFFFFFFn);
-            if (!m[a1]) m[a1] = {};
-            m[a1][a2] = [j, i];
+            const a1 = Number(a >> 48n);
+            const a2 = Number((a >> 32n)&0xFFFFn );
+            const a3 = Number(a&0xFFFFFFFFn );
+            if (!m[a1]) m[a1] = new Array(1<<16);
+            if (!m[a1][a2]) m[a1][a2] = {};
+            m[a1][a2][a3] = [j, i];
         }
         w = F.mul(w, wi);
     }
@@ -368,6 +373,7 @@ function getConnectionMap(F, N, nk) {
     cacheConnectionMaps[kc] = m;
     return m;
 }
+
 
 
 

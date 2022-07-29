@@ -92,7 +92,7 @@ class PolsArray {
         let p=0;
         let n;
         for (let k=0; k<totalSize; k+= n) {
-            console.log(`loading ${fileName}.. ${k/1024/1024} of ${totalSize/1024/1024}` );
+            console.log(`loading ${fileName}.. ${k} of ${totalSize}` );
             n= Math.min(buff.length, totalSize-k);
             const res = await fd.read(buff8, {offset: 0, position: p, length: n*8});
             if (n*8 != res.bytesRead) console.log(`n: ${n*8} bytesRead: ${res.bytesRead} div: ${res.bytesRead/8}`);
