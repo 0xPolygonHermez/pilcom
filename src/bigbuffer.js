@@ -1,5 +1,5 @@
 
-const MAX_BUFF_SIZE = 1<<9;
+const MAX_BUFF_SIZE = 1<<30;
 
 module.exports = class BigBuffer {
     constructor(length) {
