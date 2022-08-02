@@ -179,7 +179,7 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
                 poldef = ctx.namespace + "." + s.name;
                 const eidx = ctx.expressions.length;
                 s.expression.poldef = poldef;
-                addFilename(s.expression, fileName, ctx);
+                addFilename(s.expression, relativeFileName, ctx);
                 ctx.expressions.push(s.expression);
                 if (ctx.references[ctx.namespace + "." + s.name]) error(s, `name already defined ${ctx.namespace + "." + s.name}`);
                 ctx.references[ctx.namespace + "." + s.name] = {
@@ -190,12 +190,12 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
                 ctx.nIm++;
             } else if (s.type == "POLIDENTITY") {
                 const eidx = ctx.expressions.length;
-                addFilename(s.expression, fileName, ctx);
+                addFilename(s.expression, relativeFileName, ctx);
                 ctx.expressions.push(s.expression);
-                ctx.polIdentities.push({fileName: fileName, namespace: ctx.namespace, line: s.first_line, e: eidx});
+                ctx.polIdentities.push({fileName: relativeFileName, namespace: ctx.namespace, line: s.first_line, e: eidx});
             } else if (s.type == "PLOOKUPIDENTITY" || s.type == "PERMUTATIONIDENTITY") {
                 const pu = {
-                    fileName: fileName,
+                    fileName: relativeFileName,
                     namespace: ctx.namespace,
                     line: s.first_line,
                     f: [],
@@ -205,25 +205,25 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
                 }
                 for (let j=0; j<s.f.length; j++) {
                     const efidx = ctx.expressions.length;
-                    addFilename(s.f[j], fileName, ctx);
+                    addFilename(s.f[j], relativeFileName, ctx);
                     ctx.expressions.push(s.f[j]);
                     pu.f.push(efidx);
                 }
                 if (s.selF) {
                     const selFidx = ctx.expressions.length;
-                    addFilename(s.selF, fileName, ctx);
+                    addFilename(s.selF, relativeFileName, ctx);
                     ctx.expressions.push(s.selF);
                     pu.selF = selFidx;
                 }
                 for (let j=0; j<s.t.length; j++) {
                     const etidx = ctx.expressions.length;
-                    addFilename(s.t[j], fileName, ctx);
+                    addFilename(s.t[j], relativeFileName, ctx);
                     ctx.expressions.push(s.t[j]);
                     pu.t.push(etidx);
                 }
                 if (s.selT) {
                     const selTidx = ctx.expressions.length;
-                    addFilename(s.selT, fileName, ctx);
+                    addFilename(s.selT, relativeFileName, ctx);
                     ctx.expressions.push(s.selT);
                     pu.selT = selTidx;
                 }
@@ -235,7 +235,7 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
                 }
             } else if (s.type == "CONNECTIONIDENTITY") {
                 const ci = {
-                    fileName: fileName,
+                    fileName: relativeFileName,
                     namespace: ctx.namespace,
                     line: s.first_line,
                     pols: [],
@@ -243,13 +243,13 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
                 }
                 for (let j=0; j<s.pols.length; j++) {
                     const efidx = ctx.expressions.length;
-                    addFilename(s.pols[j], fileName, ctx);
+                    addFilename(s.pols[j], relativeFileName, ctx);
                     ctx.expressions.push(s.pols[j]);
                     ci.pols.push(efidx);
                 }
                 for (let j=0; j<s.connections.length; j++) {
                     const etidx = ctx.expressions.length;
-                    addFilename(s.connections[j], fileName, ctx);
+                    addFilename(s.connections[j], relativeFileName, ctx);
                     ctx.expressions.push(s.connections[j]);
                     ci.connections.push(etidx);
                 }
@@ -280,7 +280,7 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
                 };
             } else if (s.type == "CONSTANTDEF") {
                 if (ctx.config && ctx.config.defines && typeof ctx.config.defines[s.name] !== 'undefined') {
-                    console.log(`NOTICE: Ignore constant definition ${s.name} on ${fileName}:${s.first_line} because it was pre-defined`);
+                    console.log(`NOTICE: Ignore constant definition ${s.name} on ${relativeFileName}:${s.first_line} because it was pre-defined`);
                     return;
                 }
                 if (ctx.constants[s.name]) error(s, `name already defined ${s.name}`);
