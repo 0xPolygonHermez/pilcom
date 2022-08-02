@@ -85,9 +85,21 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
         }
     }
 
+    let relativeFileName;
+    if (isMain) {
+        relativeFileName = path.basename(fullFileName);
+        ctx.basePath = fileDir;
+    } else {
+        if (fullFileName.startsWith(ctx.basePath)) {
+            relativeFileName = fullFileName.substring(ctx.basePath.length+1);
+        } else {
+            relativeFileName = fullFileName;
+        }
+    }
+
     for (let i=0; i<sts.length; i++) {
         const s = sts[i];
-        ctx.fileName = s.fileName = fileName;
+        ctx.fileName = s.fileName = relativeFileName;
         ctx.line = s.first_line;
         if (s.type == "INCLUDE") {
             const fullFileNameI = path.resolve(fileDir, s.file);
