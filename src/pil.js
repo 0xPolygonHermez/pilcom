@@ -6,6 +6,7 @@ const version = require("../package").version;
 const compile = require("./compiler.js");
 const generate = require("./c_code_generator.js");
 const ffjavascript = require("ffjavascript");
+const tty = require('tty');
 
 const argv = require("yargs")
     .version(version)
@@ -13,6 +14,7 @@ const argv = require("yargs")
     .alias("o", "output")
     .alias("c", "ccodegeneration")
     .alias("P", "config")
+    .alias("v", "verbose")
     .argv;
 
 async function run() {
@@ -35,6 +37,13 @@ async function run() {
 
     const cCodeGeneration = argv.ccodegeneration;
     const codeGenerationName = typeof(argv.ccodegeneration) === "string" ? argv.ccodegeneration : "pols_generated";
+
+    if (argv.verbose) {
+        config.verbose = true;
+        if (typeof config.color === 'undefined') {
+            config.color = tty.isatty(process.stdout.fd);
+        }
+    }
 
     const F = new ffjavascript.F1Field((1n<<64n)-(1n<<32n)+1n );
 

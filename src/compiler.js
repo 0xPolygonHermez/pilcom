@@ -3,7 +3,6 @@ const fs = require("fs");
 const pil_parser = require("../build/pil_parser.js");
 const { check } = require("yargs");
 const Scalar = require("ffjavascript").Scalar;
-const tty = require('tty');
 
 const oldParseError = pil_parser.Parser.prototype.parseError;
 
@@ -15,9 +14,9 @@ class SkipNamespace extends Error {
     }
 }
 
-const ansiColor = tty.isatty(process.stdout.fd) ? (x) => '\x1b['+x+'m' : (x) => '';
-
 module.exports = async function compile(Fr, fileName, ctx, config = {}) {
+
+    const ansiColor = config.color ? (x) => '\x1b['+x+'m' : (x) => '';
 
     let isMain;
     if (!ctx) {
@@ -307,10 +306,14 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
         if (!skip) continue;
 
         if (insideIncludedDomain) {
-            let lineStr = srcLines.slice(s.first_line-1, Math.min(s.first_line+3, s.last_line)).join('\n');
-            const lineStrLines = s.last_line - s.first_line + 1;
-            if (lineStrLines > 3) lineStr += " ...";
-            console.log(`NOTE: ${relativeFileName}:${s.first_line} was ignored:\n${ansiColor(36)}${lineStr}${ansiColor(0)}\n`);
+            let verboseInfo = '';
+            if (config.verbose) {
+                verboseInfo = ':\n' + ansiColor(36) + srcLines.slice(s.first_line-1, Math.min(s.first_line+3, s.last_line)).join('\n');
+                const lineStrLines = s.last_line - s.first_line + 1;
+                if (lineStrLines > 3) verboseInfo += " ...";
+                verboseInfo += ansiColor(0) +'\n';
+            }
+            console.log(`NOTE: ${relativeFileName}:${s.first_line} was ignored${verboseInfo}`);
         }
 
         if (poldef) {

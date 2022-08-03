@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const version = require("../package").version;
+const tty = require('tty');
 
 const { importPolynomials } = require("./binfiles.js");
 
@@ -14,6 +15,8 @@ const argv = require("yargs")
     .usage("main_pilverifier.js <commit.bin> -p <pil.json> -c <constant.bin>")
     .alias("p", "pil")
     .alias("c", "constant")
+    .alias("P", "config")
+    .alias("v", "verbose")
     .argv;
 
 async function run() {
@@ -34,7 +37,16 @@ async function run() {
     const pilFile = typeof(argv.pil) === "string" ?  argv.pil.trim() : "main.pil.json";
     const constantFile = typeof(argv.constant) === "string" ?  argv.constant.trim() : "constant.bin";
 
-    const pil = await compile(F, pilFile);
+    const config = typeof(argv.config) === "string" ? JSON.parse(fs.readFileSync(argv.config.trim())) : {};
+
+    if (argv.verbose) {
+        config.verbose = true;
+        if (typeof config.color === 'undefined') {
+            config.color = tty.isatty(process.stdout.fd);
+        }
+    }
+
+    const pil = await compile(F, pilFile, null, config);
 
     const n = pil.references[Object.keys(pil.references)[0]].polDeg;
 
