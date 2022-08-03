@@ -38,7 +38,7 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
             Fr: Fr,
             includedFiles: {},
             config,
-            onlyNamespaces: true,
+            namespaces: true,
             skippedNamespaces: {},
             skippedPols: {}
         }
@@ -76,9 +76,9 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
     let lastLineAllowsCommand = false;
 
     if (isMain && config && config.namespaces) {
-        ctx.onlyNamespaces = {};
+        ctx.namespaces = {};
         for (const name of config.namespaces) {
-            ctx.onlyNamespaces[name] = true;
+            ctx.namespaces[name] = 0;
         }
     }
 
@@ -326,6 +326,13 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
     }
 
     if (isMain) {
+        if (typeof ctx.namespaces === 'object') {
+            let notFoundNamespaces = Object.keys(ctx.namespaces).filter(namespace => ctx.namespaces[namespace] === 0);
+            if (notFoundNamespaces.length) {
+                throw new Error('ERROR: namespaces not found: '+notFoundNamespaces.join(', '));
+            }
+        }
+
         for (n in ctx.publics) {
             if (ctx.publics.hasOwnProperty(n)) {
                 const pub = ctx.publics[n];
@@ -546,7 +553,11 @@ function addFilename(exp, fileName, ctx) {
 }
 
 function checkNamespace (namespace, ctx, exceptionToSkip = true) {
-    if (!namespace || ctx.onlyNamespaces === true || ctx.onlyNamespaces[namespace]) return true;
+    if (!namespace || ctx.namespaces === true) return true;
+    if (typeof ctx.namespaces[namespace] !== 'undefined') {
+        ++ctx.namespaces[namespace];
+        return true;
+    }
     if (!ctx.skippedNamespaces[namespace]) {
         ctx.skippedNamespaces[namespace] = 0;
         console.log(`NOTE: namespace ${namespace} was ignored`);
@@ -559,7 +570,7 @@ function checkNamespace (namespace, ctx, exceptionToSkip = true) {
 }
 
 function checkSkippedPols (namespace, name, ctx, exceptionToSkip = true) {
-    if (ctx.onlyNamespaces === true) return true;
+    if (ctx.namespaces === true) return true;
     if (!ctx.skippedPols[namespace + '.' + name]) return true;
     if (exceptionToSkip) {
         throw new SkipNamespace(namespace, name);
