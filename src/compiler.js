@@ -3,6 +3,7 @@ const fs = require("fs");
 const pil_parser = require("../build/pil_parser.js");
 const { check } = require("yargs");
 const Scalar = require("ffjavascript").Scalar;
+const tty = require('tty');
 
 const oldParseError = pil_parser.Parser.prototype.parseError;
 
@@ -13,6 +14,8 @@ class SkipNamespace extends Error {
         this.name = name;
     }
 }
+
+const ansiColor = tty.isatty(process.stdout.fd) ? (x) => '\x1b['+x+'m' : (x) => '';
 
 module.exports = async function compile(Fr, fileName, ctx, config = {}) {
 
@@ -59,6 +62,7 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
     const fileDir = path.dirname(fullFileName);
 
     const src = await fs.promises.readFile(fullFileName, "utf8") + "\n";
+    const srcLines = src.split(/(?:\r\n|\n|\r)/);
 
     const myErr = function (str, hash) {
         str = fullFileName + " -> " + str;
@@ -101,6 +105,7 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
         const s = sts[i];
         ctx.fileName = s.fileName = relativeFileName;
         ctx.line = s.first_line;
+
         if (s.type == "INCLUDE") {
             const fullFileNameI = path.resolve(fileDir, s.file);
             if (!ctx.includedFiles[fullFileNameI]) {       // If a file included twice just ignore
@@ -123,10 +128,12 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
 
         let skip = false;
         let poldef = false;
+        let insideIncludedDomain = false;
         const ctxExprLen = ctx.expressions.length;
 
         try {
             checkNamespace(ctx.namespace, ctx);
+            insideIncludedDomain = true;
             if (s.type == "POLCOMMTDECLARATION") {
                 for (let j=0; j<s.names.length; j++) {
                     if (ctx.references[ctx.namespace + "." + s.names[j].name]) error(s, `name already defined ${ctx.namespace + "." +s.names[j]}`);
@@ -298,6 +305,13 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
             }
         }
         if (!skip) continue;
+
+        if (insideIncludedDomain) {
+            let lineStr = srcLines.slice(s.first_line-1, Math.min(s.first_line+3, s.last_line)).join('\n');
+            const lineStrLines = s.last_line - s.first_line + 1;
+            if (lineStrLines > 3) lineStr += " ...";
+            console.log(`NOTE: ${relativeFileName}:${s.first_line} was ignored:\n${ansiColor(36)}${lineStr}${ansiColor(0)}\n`);
+        }
 
         if (poldef) {
             console.log(`adding ${poldef} to exclude`);
