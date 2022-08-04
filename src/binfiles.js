@@ -71,7 +71,7 @@ module.exports.importPolynomials = async function importPolynomials(F, fileName,
 
     for (let i=0; i<nChunks; i++) {
         console.log(`Reading chunk ${i+1}/${nChunks}`);
-        await fd.read(buff8, 0, buff8.byteLength );
+        await fd.read({buffer: buff8, offset: 0, length: buff8.byteLength});
         for (let j=0; j<chunkSize; j++) {
             for (let k=0; k<pols.length; k++) {
                 pols[k][i*chunkSize + j] = buff[j*pols.length + k];
@@ -101,7 +101,7 @@ module.exports.importPolynomialsToBuffer = async function importPolynomialsToBuf
         const MaxBuffSize = 1024*1024*32;  //  256Mb
         for (let i=0; i<buff8.byteLength; i+= MaxBuffSize) {
             const n = Math.min(buff8.byteLength -i, MaxBuffSize);
-            await fd.read(buff8, {offset: i, position: 0, length: n});
+            await fd.read({buffer: buff8, offset: i, position: 0, length: n});
         }
     }
 }

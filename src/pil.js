@@ -6,12 +6,15 @@ const version = require("../package").version;
 const compile = require("./compiler.js");
 const generate = require("./c_code_generator.js");
 const ffjavascript = require("ffjavascript");
+const tty = require('tty');
 
 const argv = require("yargs")
     .version(version)
-    .usage("pil <source.pil> -o <output.json>")
+    .usage("pil <source.pil> -o <output.json> [-P <pilconfig.json>]")
     .alias("o", "output")
     .alias("c", "ccodegeneration")
+    .alias("P", "config")
+    .alias("v", "verbose")
     .argv;
 
 async function run() {
@@ -30,21 +33,22 @@ async function run() {
     const fileName = path.basename(fullFileName, ".zkasm");
 
     const outputFile = typeof(argv.output) === "string" ?  argv.output : fileName + ".json";
+    const config = typeof(argv.config) === "string" ? JSON.parse(fs.readFileSync(argv.config.trim())) : {};
 
     const cCodeGeneration = argv.ccodegeneration;
     const codeGenerationName = typeof(argv.ccodegeneration) === "string" ? argv.ccodegeneration : "pols_generated";
 
-    /*
-    const bn128 = await ffjavascript.getCurveFromName("bn128");
-    const F = bn128.Fr;
-    */
+    if (argv.verbose) {
+        config.verbose = true;
+        if (typeof config.color === 'undefined') {
+            config.color = tty.isatty(process.stdout.fd);
+        }
+    }
 
     const F = new ffjavascript.F1Field((1n<<64n)-(1n<<32n)+1n );
 
-    const out = await compile(F, fullFileName);
+    const out = await compile(F, fullFileName, null, config);
 
-    console.log(JSON.stringify(out, null, 1));
-    
     console.log("Input Pol Commitmets: " + out.nCommitments);
     console.log("Q Pol Commitmets: " + out.nQ);
     console.log("Constant Pols: " + out.nConstants);
@@ -55,7 +59,7 @@ async function run() {
     console.log("polIdentities: " + out.polIdentities.length);
 
     await fs.promises.writeFile(outputFile.trim(), JSON.stringify(out, null, 1) + "\n", "utf8");
-    
+
     if (cCodeGeneration)
     {
         let directoryName = codeGenerationName;
@@ -75,7 +79,6 @@ async function run() {
 run().then(()=> {
     process.exit(0);
 }, (err) => {
-//    console.log(err);
     console.log(err.stack);
     if (err.pos) {
         console.error(`ERROR at ${err.errFile}:${err.pos.first_line},${err.pos.first_column}-${err.pos.last_line},${err.pos.last_column}   ${err.errStr}`);
