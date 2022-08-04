@@ -1,3 +1,5 @@
+const { F1Field } = require("ffjavascript");
+
 module.exports.compile = require("./src/compiler.js");
 // module.exports.createCommitedPols = require("./src/createpols.js").createCommitedPols;
 // module.exports.createConstantPols = require("./src/createpols.js").createConstantPols;
@@ -10,5 +12,6 @@ module.exports.getKs = require("./src/utils.js").getKs;
 module.exports.newConstantPolsArray = require("./src/polsarray.js").newConstantPolsArray;
 module.exports.newCommitPolsArray = require("./src/polsarray.js").newCommitPolsArray;
 module.exports.BigBuffer = require("./src/bigbuffer.js");
+module.exports.F = new F1Field(0xFFFFFFFF00000001n);
 
 
