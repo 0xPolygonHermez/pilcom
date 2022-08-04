@@ -25,64 +25,27 @@ const pil = await compile(Fr, "pil/main.pil");
 ```
 Advanced usage:
 ```javascript
-const pilConfig = {
-    defines: {N: Math.max(verifyPilFlag ? minDegree : 2 ** 16)},
-    excludeSelF: ['sRD','sWR', 'memAlign' ],
-    excludeModules: ['storage', 'mem_align']
-};
+const pilConfig =
+    { defines: {N: 2 ** 21},
+      namespaces: ['Global', 'Main', 'Rom', 'Byte4', 'Arith'],
+      verbose: true,
+      color: true,
+      disableUnusedError: true});
 
 const pil = await compile(Fr, "pil/main.pil", null,  pilConfig);
 ```
-Modules information:
-```javascript
-const pilModuleInfo = {
-    mem_align: {
-        selF: ['memAlign'],
-        minDegree: 2**21,
-        dependencies: []
-    },
-    arith: {
-        selF: ['arith'],
-        minDegree: 2**19,
-        dependencies: []
-    },
-    binary: {
-        selF: ['bin'],
-        minDegree: 2**21,
-        dependencies: ['poseidong', 'padding_pg']
-    },
-    poseidong: {
-        selF: ['sRD', 'sWR'],
-        minDegree: 2**21,
-        dependencies: ['padding_pg', 'storage']
-    },
-    padding_pg: {
-        selF: ['hashP', 'hashPLen', 'hashPDigest'],
-        minDegree: 2**21,
-        dependencies: ['storage']
-    },
-    storage: {
-        selF: ['sRD', 'sWR', 'hashPDigest'],
-        minDegree: 2**21,
-        dependencies: ['poseidong', 'padding_pg']
-    },
-    padding_kk: {
-        selF: ['hashK', 'hashKLen', 'hashKDigest'],
-        minDegree: 2**21,
-        dependencies: []
-    },
-    mem: {
-        selF: ['mOp'],
-        minDegree: 2**16,
-        dependencies: []
-    }
+- **define**: object (key, value) with constants to define, if constant is defined in pil, use value specified on config and shown a warning during compilation.
+- **namespaces**: list of namespace used, if namespace not present in this list, it will be ignored, and warning was shown. If any namespace of list, not was found in pils and exception was produced.
+- **verbose**: source code ignored inside a namespace was shown (first 3 lines).
+- **color**: verbose source code was shown with other color.
+- **disableUnusedError**: ignore error when found an unused expression.
+### Command Line
 
-```
-
+In command line compilation, could specify config with json file and using option -P or --config.
 ## License
 
 ### Copyright
-Polygon `pilcom` was developed by Polygon. While we plan to adopt an open source license, we haven’t selected one yet, so all rights are reserved for the time being. Please reach out to us if you have thoughts on licensing.  
-  
+Polygon `pilcom` was developed by Polygon. While we plan to adopt an open source license, we haven’t selected one yet, so all rights are reserved for the time being. Please reach out to us if you have thoughts on licensing.
+
 ### Disclaimer
 This code has not yet been audited, and should not be used in any production systems.
