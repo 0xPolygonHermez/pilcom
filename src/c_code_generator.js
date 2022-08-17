@@ -62,7 +62,7 @@ module.exports.generateCCode = async function generate(pols, type)
     code += "#define " + fileDefine + "\n";
     code += "\n";
     code += "#include <cstdint>\n";
-    code += "#include \"goldilocks/goldilocks_base_field.hpp\"\n";
+    code += "#include \"goldilocks_base_field.hpp\"\n";
     code += "#include \"zkassert.hpp\"\n";
     code += "\n";
 
@@ -108,7 +108,7 @@ module.exports.generateCCode = async function generate(pols, type)
                 else if (pol.elementType=="s64") { ctype="int64_t"; csize=8; }
                 else if (pol.elementType=="bool") { ctype="uint8_t"; csize=1; }
                 else {
-                    console.log("elementType="+pol.elementType);
+                    //console.log("elementType="+pol.elementType);
                     ctype="Goldilocks::Element"; csize=8; 
                 }
 
