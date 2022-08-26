@@ -42,10 +42,17 @@ const pil = await compile(Fr, "pil/main.pil", null,  pilConfig);
 ### Command Line
 
 In command line compilation, could specify config with json file and using option -P or --config.
+
 ## License
 
-### Copyright
-Polygon `pilcom` was developed by Polygon. While we plan to adopt an open source license, we haven’t selected one yet, so all rights are reserved for the time being. Please reach out to us if you have thoughts on licensing.
+Licensed under either of
+
+* Apache License, Version 2.0, (LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0)
+* MIT license (LICENSE-MIT or http://opensource.org/licenses/MIT)
+at your option.
+
+### Contribution
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
 
 ### Disclaimer
 This code has not yet been audited, and should not be used in any production systems.
