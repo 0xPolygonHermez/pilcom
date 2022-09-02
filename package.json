@@ -1,6 +1,6 @@
 {
   "name": "pilcom",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "Polynomial Identity Language (pil)",
   "main": "index.js",
   "bin": {
