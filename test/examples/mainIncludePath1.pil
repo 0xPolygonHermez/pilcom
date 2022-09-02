@@ -1,0 +1,5 @@
+namespace MainIncludePath1(%N);
+    include "path1/includePath.pil";
+
+    pol constant L1;    // 1, 0, 0, 0, 0
+    pol constant BYTE
