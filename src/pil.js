@@ -16,7 +16,7 @@ const argv = require("yargs")
     .alias("P", "config")
     .alias("v", "verbose")
     .alias("I", "include")
-    .alias("f", "includePathsFirst")
+    .alias("f", "includePathFirst")
     .argv;
 
 async function run() {
@@ -53,7 +53,7 @@ async function run() {
         config.includePaths = argv.include.split(',');
     }
 
-    if (argv.includePathsFirst) {
+    if (argv.includePathFirst) {
         config.includePathFirst = true;
     }
     const out = await compile(F, fullFileName, null, config);

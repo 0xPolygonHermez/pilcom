@@ -39,9 +39,16 @@ const pil = await compile(Fr, "pil/main.pil", null,  pilConfig);
 - **verbose**: source code ignored inside a namespace was shown (first 3 lines).
 - **color**: verbose source code was shown with other color.
 - **disableUnusedError**: ignore error when found an unused expression.
+- **compileFromString**: use to indicate to compiler that parameter fileName contains directly code of pil, to avoid to use a temporal directory on dynamic pil generation.
+- **includePaths**: an array of paths used to find includes.
+- **includePathFirst**: a boolean value (true), to force to find first on include path and after on current pil directory. Default: false
 ### Command Line
 
-In command line compilation, could specify config with json file and using option -P or --config.
+In command line compilation:
+- config with json file and using option -P or --config.
+- define include paths with option -I or --include, and paths separated by comma.
+- define includePathFirst with option -f.
+
 
 ## License
 
