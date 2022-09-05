@@ -216,7 +216,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
             }
         }
         for (const v in t) {
-            if (t[v] !== 0) continue;
+            if (t[v] === 0) continue;
             res.push(`${pi.fileName}:${pi.line}:  permutation failed. Remaining ${t[v]} values: ${v}`);
             console.log(res[res.length-1]);
         }
