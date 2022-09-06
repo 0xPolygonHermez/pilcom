@@ -40,7 +40,8 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
             config,
             namespaces: true,
             skippedNamespaces: {},
-            skippedPols: {}
+            skippedPols: {},
+            includePaths: (config && config.includePaths) ? (Array.isArray(config.includePaths) ? config.includePaths: [config.includePaths]): []
         }
         isMain = true;
     } else {
@@ -57,10 +58,39 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
 
     */
 
-    const fullFileName = path.resolve(process.cwd(), fileName);
-    const fileDir = path.dirname(fullFileName);
+    let fullFileName, fileDir, src;
+    let includePathIndex = 0;
+    let relativeFileName = '';
 
-    const src = await fs.promises.readFile(fullFileName, "utf8") + "\n";
+    if (isMain && config && config.compileFromString) {
+        relativeFileName = fullFileName = "(string)";
+        fileDir = '';
+        src = fileName;
+    }
+    else {
+        includePaths = [...ctx.includePaths];
+        const cwd = ctx.cwd ? ctx.cwd : process.cwd();
+
+        if (config && config.includePathFirst) {
+            directIncludePathIndex = includePaths.length;
+            includePaths.push(cwd);
+        }
+        else {
+            directIncludePathIndex = 0;
+            includePaths.unshift(cwd);
+        }
+        do {
+            fullFileName = path.resolve(includePaths[includePathIndex], fileName);
+            if (fs.existsSync(fullFileName)) break;
+            ++includePathIndex;
+        } while (includePathIndex < includePaths.length);
+
+        if (includePathIndex != directIncludePathIndex) {
+            relativeFileName = fileName;
+        }
+        fileDir = path.dirname(fullFileName);
+        src = await fs.promises.readFile(fullFileName, "utf8") + "\n";
+    }
     const srcLines = src.split(/(?:\r\n|\n|\r)/);
 
     const myErr = function (str, hash) {
@@ -88,15 +118,16 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
         }
     }
 
-    let relativeFileName;
-    if (isMain) {
-        relativeFileName = path.basename(fullFileName);
-        ctx.basePath = fileDir;
-    } else {
-        if (fullFileName.startsWith(ctx.basePath)) {
-            relativeFileName = fullFileName.substring(ctx.basePath.length+1);
+    if (relativeFileName === '') {
+        if (isMain) {
+            relativeFileName = path.basename(fullFileName);
+            ctx.basePath = fileDir;
         } else {
-            relativeFileName = fullFileName;
+            if (fullFileName.startsWith(ctx.basePath)) {
+                relativeFileName = fullFileName.substring(ctx.basePath.length+1);
+            } else {
+                relativeFileName = fullFileName;
+            }
         }
     }
 
@@ -106,12 +137,12 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
         ctx.line = s.first_line;
 
         if (s.type == "INCLUDE") {
-            const fullFileNameI = path.resolve(fileDir, s.file);
+            const fullFileNameI = config.includePaths ? s.file : path.resolve(fileDir, s.file);
             if (!ctx.includedFiles[fullFileNameI]) {       // If a file included twice just ignore
                 ctx.includedFiles[fullFileNameI] = true;
                 const oldNamespace = ctx.namespace;
                 ctx.namespace = "Global";
-                await compile(Fr, fullFileNameI, ctx, config);
+                await compile(Fr, fullFileNameI, {...ctx, cwd: fileDir}, config);
                 ctx.namespace = oldNamespace;
                 if (pendingCommands.length>0) error(s, "command not allowed before include");
                 lastLineAllowsCommand = false;

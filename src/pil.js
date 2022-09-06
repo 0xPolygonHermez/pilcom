@@ -15,6 +15,8 @@ const argv = require("yargs")
     .alias("c", "ccodegeneration")
     .alias("P", "config")
     .alias("v", "verbose")
+    .alias("I", "include")
+    .alias("f", "includePathFirst")
     .argv;
 
 async function run() {
@@ -47,6 +49,13 @@ async function run() {
 
     const F = new ffjavascript.F1Field((1n<<64n)-(1n<<32n)+1n );
 
+    if (argv.include) {
+        config.includePaths = argv.include.split(',');
+    }
+
+    if (argv.includePathFirst) {
+        config.includePathFirst = true;
+    }
     const out = await compile(F, fullFileName, null, config);
 
     console.log("Input Pol Commitmets: " + out.nCommitments);
