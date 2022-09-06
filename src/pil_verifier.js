@@ -192,7 +192,8 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
                 for (let k=0; k<pi.t.length; k++) {
                     vals.push(F.toString(pols.exps[pi.t[k]].v_n[j]));
                 }
-                t[vals.join(",")] = true;
+                const v = vals.join(",");
+                t[v] = (t[v] || 0) + 1;
             }
         }
 
@@ -203,17 +204,20 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
                     vals.push(F.toString(pols.exps[pi.f[k]].v_n[j]));
                 }
                 const v = vals.join(",");
+                const found = t[v] ?? false;
                 if (!t[v]) {
-                    res.push(`${pi.fileName}:${pi.line}:  permutation not found w=${j} values: ${v}`);
+                    res.push(`${pi.fileName}:${pi.line}:  permutation not `+(found === 0 ? 'enought ':'')+`found w=${j} values: ${v}`);
                     console.log(res[res.length-1]);
                     if (!config.continueOnError) j=N;  // Do not continue checking
                 }
-                delete t[v];
+                if (found !== false) {
+                    t[v] -= 1;
+                }
             }
         }
-
-        if (Object.keys(t).length !=0) {
-            res.push(`${pi.fileName}:${pi.line}:  permutation failed. values remaining: ${Object.keys(t).length}`);
+        for (const v in t) {
+            if (t[v] === 0) continue;
+            res.push(`${pi.fileName}:${pi.line}:  permutation failed. Remaining ${t[v]} values: ${v}`);
             console.log(res[res.length-1]);
         }
 
