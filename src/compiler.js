@@ -142,7 +142,10 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
                 ctx.includedFiles[fullFileNameI] = true;
                 const oldNamespace = ctx.namespace;
                 ctx.namespace = "Global";
-                await compile(Fr, fullFileNameI, {...ctx, cwd: fileDir}, config);
+                const oldCwd = ctx.cwd;
+                ctx.cwd = fileDir;
+                await compile(Fr, fullFileNameI, ctx, config);
+                ctx.cwd = oldCwd;
                 ctx.namespace = oldNamespace;
                 if (pendingCommands.length>0) error(s, "command not allowed before include");
                 lastLineAllowsCommand = false;
