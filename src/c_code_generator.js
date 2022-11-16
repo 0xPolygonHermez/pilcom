@@ -63,7 +63,6 @@ module.exports.generateCCode = async function generate(pols, type)
     code += "\n";
     code += "#include <cstdint>\n";
     code += "#include \"goldilocks_base_field.hpp\"\n";
-    code += "#include \"zkassert.hpp\"\n";
     code += "\n";
 
     code += "class " + sufix + "Pol\n";
@@ -74,11 +73,11 @@ module.exports.generateCCode = async function generate(pols, type)
     code += "    uint64_t _index;\n";
     code += "public:\n";
     code += "    " + sufix + "Pol(Goldilocks::Element * pAddress, uint64_t degree, uint64_t index) : _pAddress(pAddress), _degree(degree), _index(index) {};\n";
-    code += "    Goldilocks::Element & operator[](int i) { return _pAddress[i*" + numPols + "]; };\n";
-    code += "    Goldilocks::Element * operator=(Goldilocks::Element * pAddress) { _pAddress = pAddress; return _pAddress; };\n\n";
-    code += "    Goldilocks::Element * address (void) { return _pAddress; }\n";
-    code += "    uint64_t degree (void) { return _degree; }\n";
-    code += "    uint64_t index (void) { return _index; }\n";
+    code += "    inline Goldilocks::Element & operator[](int i) { return _pAddress[i*" + numPols + "]; };\n";
+    code += "    inline Goldilocks::Element * operator=(Goldilocks::Element * pAddress) { _pAddress = pAddress; return _pAddress; };\n\n";
+    code += "    inline Goldilocks::Element * address (void) { return _pAddress; }\n";
+    code += "    inline uint64_t degree (void) { return _degree; }\n";
+    code += "    inline uint64_t index (void) { return _index; }\n";
     code += "};\n\n";
 
     // For each cmP pol, add it to the proper namespace array
@@ -158,12 +157,12 @@ module.exports.generateCCode = async function generate(pols, type)
         code += "        _pAddress(pAddress),\n";
         code += "        _degree(degree) {};\n";
         code += "\n";
-        code += "    static uint64_t pilDegree (void) { return " + degree[i] + "; }\n"
-        code += "    static uint64_t pilSize (void) { return " + localOffset[i] + "; }\n"
-        code += "    static uint64_t numPols (void) { return " + numberOfPols[i] + "; }\n\n"
-        code += "    void * address (void) { return _pAddress; }\n";
-        code += "    uint64_t degree (void) { return _degree; }\n";
-        code += "    uint64_t size (void) { return _degree*" + numberOfPols[i] + "*sizeof(Goldilocks::Element); }\n";
+        code += "    inline static uint64_t pilDegree (void) { return " + degree[i] + "; }\n"
+        code += "    inline static uint64_t pilSize (void) { return " + localOffset[i] + "; }\n"
+        code += "    inline static uint64_t numPols (void) { return " + numberOfPols[i] + "; }\n\n"
+        code += "    inline void * address (void) { return _pAddress; }\n";
+        code += "    inline uint64_t degree (void) { return _degree; }\n";
+        code += "    inline uint64_t size (void) { return _degree*" + numberOfPols[i] + "*sizeof(Goldilocks::Element); }\n";
         code += "};\n";
         code += "\n";
     }
@@ -189,15 +188,14 @@ module.exports.generateCCode = async function generate(pols, type)
     code += "        _pAddress(pAddress),\n";
     code += "        _degree(degree) {}\n";
     code += "\n";
-    code += "    static uint64_t pilSize (void) { return " + offset + "; }\n";
-    code += "    static uint64_t pilDegree (void) { return " + maxDegree + "; }\n";
-    code += "    static uint64_t numPols (void) { return " + numPols + "; }\n\n";
-    code += "    void * address (void) { return _pAddress; }\n";
-    code += "    uint64_t degree (void) { return _degree; }\n";
-    code += "    uint64_t size (void) { return _degree*" + numPols + "*sizeof(Goldilocks::Element); }\n\n";
-    code += "    Goldilocks::Element &getElement (uint64_t pol, uint64_t evaluation)\n";
+    code += "    inline static uint64_t pilSize (void) { return " + offset + "; }\n";
+    code += "    inline static uint64_t pilDegree (void) { return " + maxDegree + "; }\n";
+    code += "    inline static uint64_t numPols (void) { return " + numPols + "; }\n\n";
+    code += "    inline void * address (void) { return _pAddress; }\n";
+    code += "    inline uint64_t degree (void) { return _degree; }\n";
+    code += "    inline uint64_t size (void) { return _degree*" + numPols + "*sizeof(Goldilocks::Element); }\n\n";
+    code += "    inline Goldilocks::Element &getElement (uint64_t pol, uint64_t evaluation)\n";
     code += "    {\n";
-    code += "        zkassert((pol < numPols()) && (evaluation < degree()));\n";
     code += "        return ((Goldilocks::Element *)_pAddress)[pol + evaluation * numPols()];\n";
     code += "    }\n";
     code += "};\n";
