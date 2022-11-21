@@ -73,7 +73,7 @@ module.exports.generateCCode = async function generate(pols, type)
     code += "    uint64_t _index;\n";
     code += "public:\n";
     code += "    " + sufix + "Pol(Goldilocks::Element * pAddress, uint64_t degree, uint64_t index) : _pAddress(pAddress), _degree(degree), _index(index) {};\n";
-    code += "    inline Goldilocks::Element & operator[](int i) { return _pAddress[i*" + numPols + "]; };\n";
+    code += "    inline Goldilocks::Element & operator[](uint64_t i) { return _pAddress[i*" + numPols + "]; };\n";
     code += "    inline Goldilocks::Element * operator=(Goldilocks::Element * pAddress) { _pAddress = pAddress; return _pAddress; };\n\n";
     code += "    inline Goldilocks::Element * address (void) { return _pAddress; }\n";
     code += "    inline uint64_t degree (void) { return _degree; }\n";
