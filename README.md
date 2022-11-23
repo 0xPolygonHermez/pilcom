@@ -39,13 +39,27 @@ const pil = await compile(Fr, "pil/main.pil", null,  pilConfig);
 - **verbose**: source code ignored inside a namespace was shown (first 3 lines).
 - **color**: verbose source code was shown with other color.
 - **disableUnusedError**: ignore error when found an unused expression.
+- **compileFromString**: use to indicate to compiler that parameter fileName contains directly code of pil, to avoid to use a temporal directory on dynamic pil generation.
+- **includePaths**: an array of paths used to find includes.
+- **includePathFirst**: a boolean value (true), to force to find first on include path and after on current pil directory. Default: false
 ### Command Line
 
-In command line compilation, could specify config with json file and using option -P or --config.
+In command line compilation:
+- config with json file and using option -P or --config.
+- define include paths with option -I or --include, and paths separated by comma.
+- define includePathFirst with option -f.
+
+
 ## License
 
-### Copyright
-Polygon `pilcom` was developed by Polygon. While we plan to adopt an open source license, we haven’t selected one yet, so all rights are reserved for the time being. Please reach out to us if you have thoughts on licensing.
+Licensed under either of
+
+* Apache License, Version 2.0, (LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0)
+* MIT license (LICENSE-MIT or http://opensource.org/licenses/MIT)
+at your option.
+
+### Contribution
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
 
 ### Disclaimer
 This code has not yet been audited, and should not be used in any production systems.

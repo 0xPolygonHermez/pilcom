@@ -28,7 +28,7 @@ module.exports.generateCCode = async function generate(pols, type)
         }
     }
 
-    
+
     let declaration = [];
     let initialization = [];
     let degree = [];
@@ -73,11 +73,13 @@ module.exports.generateCCode = async function generate(pols, type)
     code += "    uint64_t _index;\n";
     code += "public:\n";
     code += "    " + sufix + "Pol(Goldilocks::Element * pAddress, uint64_t degree, uint64_t index) : _pAddress(pAddress), _degree(degree), _index(index) {};\n";
+
     code += "    inline Goldilocks::Element & operator[](uint64_t i) { return _pAddress[i*" + numPols + "]; };\n";
     code += "    inline Goldilocks::Element * operator=(Goldilocks::Element * pAddress) { _pAddress = pAddress; return _pAddress; };\n\n";
     code += "    inline Goldilocks::Element * address (void) { return _pAddress; }\n";
     code += "    inline uint64_t degree (void) { return _degree; }\n";
     code += "    inline uint64_t index (void) { return _index; }\n";
+
     code += "};\n\n";
 
     // For each cmP pol, add it to the proper namespace array
@@ -108,7 +110,7 @@ module.exports.generateCCode = async function generate(pols, type)
                 else if (pol.elementType=="bool") { ctype="uint8_t"; csize=1; }
                 else {
                     //console.log("elementType="+pol.elementType);
-                    ctype="Goldilocks::Element"; csize=8; 
+                    ctype="Goldilocks::Element"; csize=8;
                 }
 
                 let array = "";
@@ -170,7 +172,7 @@ module.exports.generateCCode = async function generate(pols, type)
     code += "class " + sufix + "Pols\n";
     code += "{\n";
     code += "public:\n";
-    
+
     for (var i=0; i<namespaces.length; i++) {
         code += "    " + namespaces[i] + sufix + "Pols " + namespaces[i] + ";\n"
     }
