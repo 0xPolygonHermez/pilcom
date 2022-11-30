@@ -46,16 +46,21 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
     }
 
     for (let i=0; i<pil.publics.length; i++) {
-        console.log(`Preparing public ${i+1}/${pil.publics.length}`);
 
-        if (pil.publics[i].polType == "cmP") {
-            pols.publics[i] = pols.cm[pil.publics[i].polId].v_n[pil.publics[i].idx];
-        } else if (pil.publics[i].polType == "imP") {
-            await calculateExpression(pil.publics[i].polId);
-            pols.publics[i] = pols.exps[pil.publics[i].polId].v_n[pil.publics[i].idx];
-            delete pols.exps[pil.publics[i].polId].v_n;
+        if (config.publics) {
+            pols.publics[i] = BigInt(config.publics[i]);
+            console.log(`loading public[${i+1}/${pil.publics.length}] = ${pols.publics[i]}`);
         } else {
-            throw new Error(`Invalid public type: ${polType.type}`);
+            console.log(`preparing public ${i+1}/${pil.publics.length}`);
+            if (pil.publics[i].polType == "cmP") {
+                pols.publics[i] = pols.cm[pil.publics[i].polId].v_n[pil.publics[i].idx];
+            } else if (pil.publics[i].polType == "imP") {
+                await calculateExpression(pil.publics[i].polId);
+                pols.publics[i] = pols.exps[pil.publics[i].polId].v_n[pil.publics[i].idx];
+                delete pols.exps[pil.publics[i].polId].v_n;
+            } else {
+                throw new Error(`Invalid public type: ${polType.type}`);
+            }
         }
     }
 
@@ -210,15 +215,17 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
                     console.log(res[res.length-1]);
                     if (!config.continueOnError) j=N;  // Do not continue checking
                 }
-                if (found !== false) {
+                else {
                     t[v] -= 1;
                 }
             }
         }
-        for (const v in t) {
-            if (t[v] === 0) continue;
-            res.push(`${pi.fileName}:${pi.line}:  permutation failed. Remaining ${t[v]} values: ${v}`);
-            console.log(res[res.length-1]);
+        if (config.continueOnError) {
+            for (const v in t) {
+                if (t[v] === 0) continue;
+                res.push(`${pi.fileName}:${pi.line}:  permutation failed. Remaining ${t[v]} values: ${v}`);
+                console.log(res[res.length-1]);
+            }
         }
 
         for (let j=0; j<pi.t.length; j++) {

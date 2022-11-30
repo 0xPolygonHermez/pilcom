@@ -12,11 +12,12 @@ const { F1Field } = require("ffjavascript");
 
 const argv = require("yargs")
     .version(version)
-    .usage("main_pilverifier.js <commit.bin> -p <pil.json> -c <constant.bin>")
+    .usage("main_pilverifier.js <commit.bin> -p <pil.json> -c <constant.bin> [-u <publics.json>]")
     .alias("p", "pil")
     .alias("c", "constant")
     .alias("P", "config")
     .alias("v", "verbose")
+    .alias("u", "publics")
     .argv;
 
 async function run() {
@@ -35,6 +36,7 @@ async function run() {
     }
 
     const pilFile = typeof(argv.pil) === "string" ?  argv.pil.trim() : "main.pil.json";
+    const publics = typeof(argv.publics) === "string" ?  JSON.parse(fs.readFileSync(argv.publics.trim())) : false;
     const constantFile = typeof(argv.constant) === "string" ?  argv.constant.trim() : "constant.bin";
 
     const config = typeof(argv.config) === "string" ? JSON.parse(fs.readFileSync(argv.config.trim())) : {};
@@ -56,7 +58,7 @@ async function run() {
     await constPols.loadFromFile(constantFile);
     await cmPols.loadFromFile(commitFile);
 
-    const res = await verifyPil(F, pil, cmPols, constPols);
+    const res = await verifyPil(F, pil, cmPols, constPols, {publics});
 
     if (res.length != 0) {
         console.log("Pil does not pass");
