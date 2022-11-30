@@ -75,7 +75,11 @@ class PolsArray {
             }
         }
         this.$$nPols = this.$$defArray.length;
-        this.$$n = this.$$defArray[0].polDeg;
+        if (this.$$defArray.length>0) {
+            this.$$n = this.$$defArray[0].polDeg;
+        } else {
+            this.$$n = 0;
+        }
     }
 
     async loadFromFile(fileName) {
