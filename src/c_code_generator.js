@@ -2,6 +2,7 @@
 function filter_name(name)
 {
     if (name == "assert") return "assert_pol";
+    if (name == "return") return "return_pol";
     return name;
 }
 
