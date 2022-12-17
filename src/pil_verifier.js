@@ -83,9 +83,9 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
                 const v1 = pols.exps[ci.pols[j]].v_n[k];
 
                 const a = pols.exps[ci.connections[j]].v_n[k]
-                const a1 = Number(a >> 48n);
-                const a2 = Number((a >> 32n)&0xFFFFn );
-                const a3 = Number(a&0xFFFFFFFFn );
+                const a1 = Number(a >> 52n);
+                const a2 = Number((a >> 40n)&0xFFFn );
+                const a3 = Number(a&0xFFFFFFFFFFn );
 
 
                 const [cp, cw] = cm[a1][a2][a3];
@@ -371,9 +371,9 @@ function getConnectionMap(F, N, nk) {
         if ((i%10000) == 0) console.log(`Building cm.. ${i}/${N}`);
         for (j=0; j<ks.length; j++) {
             const a = F.mul(ks[j], w);
-            const a1 = Number(a >> 48n);
-            const a2 = Number((a >> 32n)&0xFFFFn );
-            const a3 = Number(a&0xFFFFFFFFn );
+            const a1 = Number(a >> 52n);
+            const a2 = Number((a >> 40n)&0xFFFn );
+            const a3 = Number(a&0xFFFFFFFFFFn );
             if (!m[a1]) m[a1] = new Array(1<<16);
             if (!m[a1][a2]) m[a1][a2] = {};
             m[a1][a2][a3] = [j, i];
