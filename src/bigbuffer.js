@@ -5,10 +5,12 @@ module.exports = class BigBuffer {
     constructor(length) {
         const nBuffers = Math.floor((length-1)/MAX_BUFF_SIZE) +1;
         this.buffers = [];
-        for (let i=0; i<nBuffers-1; i++) {
+        if (length > 0) {
+          for (let i=0; i<nBuffers-1; i++) {
             this.buffers[i] = new BigUint64Array(MAX_BUFF_SIZE);
+          }
+          this.buffers[nBuffers-1] = new BigUint64Array(length - MAX_BUFF_SIZE * (nBuffers -1));
         }
-        this.buffers[nBuffers-1] = new BigUint64Array(length - MAX_BUFF_SIZE * (nBuffers -1));
         this.length = length;
         this.isBigBuffer = true;
     }
