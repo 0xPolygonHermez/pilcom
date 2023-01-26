@@ -42,7 +42,7 @@ describe("Permutation Check Verification", async function () {
             cmPols.PermutationExample.a2[i] = BigInt(a2[i]);
         }
         const res = await verifyPil(F, pil, cmPols, constPols);
-        assert.equal(res, "(string):7:  permutation failed. Remaining 1 values: 1:4");
+        assert.equal(res, "(string):7:  permutation failed. Remaining 1 values: 4");
     });
 
 });
