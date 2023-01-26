@@ -202,6 +202,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
             }
         }
 
+        let showRemainingErrors = true;
         for (let j=0; j<N; j++) {
             if ((pi.selF==null) || (!F.isZero(pols.exps[pi.selF].v_n[j]))) {
                 const vals = []
@@ -213,14 +214,17 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
                 if (!t[v]) {
                     res.push(`${pi.fileName}:${pi.line}:  permutation not `+(found === 0 ? 'enought ':'')+`found w=${j} values: ${v}`);
                     console.log(res[res.length-1]);
-                    if (!config.continueOnError) j=N;  // Do not continue checking
+                    if (!config.continueOnError) {
+                        j=N;  // Do not continue checking
+                        showRemainingErrors = false;
+                    }
                 }
                 else {
                     t[v] -= 1;
                 }
             }
         }
-        if (config.continueOnError) {
+        if (showRemainingErrors) {
             for (const v in t) {
                 if (t[v] === 0) continue;
                 res.push(`${pi.fileName}:${pi.line}:  permutation failed. Remaining ${t[v]} values: ${v}`);
