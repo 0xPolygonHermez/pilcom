@@ -6,7 +6,7 @@ function filter_name(name)
     return name;
 }
 
-module.exports.generateCCode = async function generate(pols, type)
+module.exports.generateCCode = async function generate(pols, type, namespaceName)
 {
 
     let code = "";
@@ -52,11 +52,11 @@ module.exports.generateCCode = async function generate(pols, type)
     if (type == "cmP") {
         numPols = pols.nCommitments;
         sufix = "Commit";
-        fileDefine = "COMMIT_POLS_HPP";
+        fileDefine = "COMMIT_POLS_HPP_" + namespaceName;
     } else if (type == "constP") {
         numPols = pols.nConstants;
         sufix = "Constant";
-        fileDefine = "CONSTANT_POLS_HPP";
+        fileDefine = "CONSTANT_POLS_HPP_" + namespaceName;
     }
 
     code += "#ifndef " + fileDefine + "\n";
@@ -65,6 +65,9 @@ module.exports.generateCCode = async function generate(pols, type)
     code += "#include <cstdint>\n";
     code += "#include \"goldilocks_base_field.hpp\"\n";
     code += "\n";
+
+    code += "namespace " + namespaceName + "\n";
+    code += "{\n\n";
 
     code += "class " + sufix + "Pol\n";
     code += "{\n";
@@ -203,6 +206,9 @@ module.exports.generateCCode = async function generate(pols, type)
     code += "    }\n";
     code += "};\n";
     code += "\n";
+    
+    code += "} // namespace\n\n"; // namespace name
+
     code += "#endif" + " // " + fileDefine + "\n";
     return code;
 }

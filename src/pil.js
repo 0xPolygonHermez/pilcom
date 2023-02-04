@@ -13,6 +13,7 @@ const argv = require("yargs")
     .usage("pil <source.pil> -o <output.json> [-P <pilconfig.json>]")
     .alias("o", "output")
     .alias("c", "ccodegeneration")
+    .alias("n", "namespace")
     .alias("P", "config")
     .alias("v", "verbose")
     .alias("I", "include")
@@ -39,6 +40,8 @@ async function run() {
 
     const cCodeGeneration = argv.ccodegeneration;
     const codeGenerationName = typeof(argv.ccodegeneration) === "string" ? argv.ccodegeneration : "pols_generated";
+
+    const namespaceName = typeof(argv.namespace) === "string" ? argv.namespace : "invalid_namespace";
 
     if (argv.verbose) {
         config.verbose = true;
@@ -71,6 +74,12 @@ async function run() {
 
     if (cCodeGeneration)
     {
+        if (namespaceName == "invalid_namespace")
+        {
+            console.log("You need to specify a namespace value using -n");
+            process.exit(1);
+        }
+
         let directoryName = codeGenerationName;
 
         // Create directory if it does not exist
@@ -78,9 +87,9 @@ async function run() {
             fs.mkdirSync(directoryName);
         }
 
-        const code = await generate.generateCCode(out, "cmP");
+        const code = await generate.generateCCode(out, "cmP", namespaceName);
         await fs.promises.writeFile(directoryName + "/" + "commit_pols.hpp", code, "utf8");
-        const code2 = await generate.generateCCode(out, "constP");
+        const code2 = await generate.generateCCode(out, "constP", namespaceName);
         await fs.promises.writeFile(directoryName + "/" + "constant_pols.hpp", code2, "utf8");
     }
 }
