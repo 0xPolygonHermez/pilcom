@@ -132,22 +132,25 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
 
         let t = {};
         for (let j=0; j<N; j++) {
-            if ((pi.selT==null) || (!F.isZero(pols.exps[pi.selT].v_n[j]))) {
+            const selTValue = pi.selT == null ? F.zero : pols.exps[pi.selT].v_n[j];
+            if (!F.isZero(selTValue)) {
                 const vals = []
                 for (let k=0; k<pi.t.length; k++) {
                     vals.push(F.toString(pols.exps[pi.t[k]].v_n[j]));
                 }
-                t[vals.join(",")] = true;
+                const v = selTValue + ':' + vals.join(",");
+                t[v] = true;
             }
         }
 
         for (let j=0; j<N; j++) {
-            if ((pi.selF==null) || (!F.isZero(pols.exps[pi.selF].v_n[j]))) {
+            const selFValue = pi.selF == null ? F.zero : pols.exps[pi.selF].v_n[j];
+            if (!F.isZero(selFValue)) {
                 const vals = []
                 for (let k=0; k<pi.f.length; k++) {
                     vals.push(F.toString(pols.exps[pi.f[k]].v_n[j]));
                 }
-                const v = vals.join(",");
+                const v = selFValue + ':' + vals.join(",");
                 if (!t[v]) {
                     res.push(`${pil.plookupIdentities[i].fileName}:${pil.plookupIdentities[i].line}:  plookup not found w=${j} values: ${v}`);
                     console.log(res[res.length-1]);
@@ -192,24 +195,26 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
 
         let t = {};
         for (let j=0; j<N; j++) {
-            if ((pi.selT==null) || (!F.isZero(pols.exps[pi.selT].v_n[j]))) {
+            const selTValue = pi.selT == null ? F.zero : pols.exps[pi.selT].v_n[j];
+            if (!F.isZero(selTValue)) {
                 const vals = []
                 for (let k=0; k<pi.t.length; k++) {
                     vals.push(F.toString(pols.exps[pi.t[k]].v_n[j]));
                 }
-                const v = vals.join(",");
+                const v = selTValue + ':' + vals.join(",");
                 t[v] = (t[v] || 0) + 1;
             }
         }
 
         let showRemainingErrors = true;
         for (let j=0; j<N; j++) {
-            if ((pi.selF==null) || (!F.isZero(pols.exps[pi.selF].v_n[j]))) {
+            const selFValue = pi.selF == null ? F.zero : pols.exps[pi.selF].v_n[j];
+            if (!F.isZero(selFValue)) {
                 const vals = []
                 for (let k=0; k<pi.f.length; k++) {
                     vals.push(F.toString(pols.exps[pi.f[k]].v_n[j]));
                 }
-                const v = vals.join(",");
+                const v = selFValue + ':' + vals.join(",");
                 const found = t[v] ?? false;
                 if (!t[v]) {
                     res.push(`${pi.fileName}:${pi.line}:  permutation not `+(found === 0 ? 'enought ':'')+`found w=${j} values: ${v}`);
