@@ -49,7 +49,7 @@ module.exports.generateCCode = async function generate(pols, type, namespaceName
     var numPols = 0;
     var sufix = "";
     var fileDefine = "";
-    const defineSuffix = namespaceName === false ? "" : ("_"+namespaceName);
+    const defineSuffix = (namespaceName === false ? "" : ("_"+namespaceName)).toUpperCase();
     if (type == "cmP") {
         numPols = pols.nCommitments;
         sufix = "Commit";
