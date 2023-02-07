@@ -41,7 +41,7 @@ async function run() {
     const cCodeGeneration = argv.ccodegeneration;
     const codeGenerationName = typeof(argv.ccodegeneration) === "string" ? argv.ccodegeneration : "pols_generated";
 
-    const namespaceName = typeof(argv.namespace) === "string" ? argv.namespace : "invalid_namespace";
+    const namespaceName = typeof(argv.namespace) === "string" ? argv.namespace : false;
 
     if (argv.verbose) {
         config.verbose = true;
@@ -74,12 +74,6 @@ async function run() {
 
     if (cCodeGeneration)
     {
-        if (namespaceName == "invalid_namespace")
-        {
-            console.log("You need to specify a namespace value using -n");
-            process.exit(1);
-        }
-
         let directoryName = codeGenerationName;
 
         // Create directory if it does not exist

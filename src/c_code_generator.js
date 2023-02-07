@@ -6,7 +6,7 @@ function filter_name(name)
     return name;
 }
 
-module.exports.generateCCode = async function generate(pols, type, namespaceName)
+module.exports.generateCCode = async function generate(pols, type, namespaceName = false)
 {
 
     let code = "";
@@ -14,12 +14,13 @@ module.exports.generateCCode = async function generate(pols, type, namespaceName
     // List all cmP pols namespaces
     let namespaces = [];
     let numberOfPols = [];
-    for (var key in pols.references) {
-        var pol = pols.references[key];
+    for (let key in pols.references) {
+        let pol = pols.references[key];
         if (pol.type == type) {
             const stringArray = key.split(".");
             const namespace = stringArray[0];
-            for (var i=0; i<namespaces.length; i++) {
+            let i;
+            for (i=0; i<namespaces.length; i++) {
                 if (namespaces[i] == namespace) break;
             }
             if (i==namespaces.length) {
@@ -39,25 +40,27 @@ module.exports.generateCCode = async function generate(pols, type, namespaceName
     let localOffset = [];
 
     // Init the declaration and initialization arrays
-    for (var i=0; i<namespaces.length; i++) {
+    for (let i=0; i<namespaces.length; i++) {
         declaration[i] = "";
         initialization[i] = "";
         localOffset[i] = 0;
     }
 
     // Calculate the number of polynomials of the requested type and the sufix
-    var numPols = 0;
-    var sufix = "";
-    var fileDefine = "";
+    let numPols = 0;
+    let sufix = "";
+    let fileDefine = "";
+    const defineSuffix = (namespaceName === false ? "" : ("_"+namespaceName));
     if (type == "cmP") {
         numPols = pols.nCommitments;
         sufix = "Commit";
-        fileDefine = "COMMIT_POLS_HPP_" + namespaceName;
+        fileDefine = "COMMIT_POLS_HPP";
     } else if (type == "constP") {
         numPols = pols.nConstants;
         sufix = "Constant";
-        fileDefine = "CONSTANT_POLS_HPP_" + namespaceName;
+        fileDefine = "CONSTANT_POLS_HPP";
     }
+    fileDefine += defineSuffix;
 
     code += "#ifndef " + fileDefine + "\n";
     code += "#define " + fileDefine + "\n";
@@ -66,8 +69,10 @@ module.exports.generateCCode = async function generate(pols, type, namespaceName
     code += "#include \"goldilocks_base_field.hpp\"\n";
     code += "\n";
 
-    code += "namespace " + namespaceName + "\n";
-    code += "{\n\n";
+    if (namespaceName !== false) {
+        code += "namespace " + namespaceName + "\n";
+        code += "{\n\n";
+    }
 
     code += "class " + sufix + "Pol\n";
     code += "{\n";
@@ -87,9 +92,9 @@ module.exports.generateCCode = async function generate(pols, type, namespaceName
     code += "};\n\n";
 
     // For each cmP pol, add it to the proper namespace array
-    for (var i = 0; i < numPols; i++) {
-        for (var key in pols.references) {
-            var pol = pols.references[key];
+    for (let i = 0; i < numPols; i++) {
+        for (let key in pols.references) {
+            let pol = pols.references[key];
             if ( (pol.type == type) && (pol.id==i) ) {
                 const nameArray = key.split(".");
                 const namespace = nameArray[0];
@@ -125,7 +130,7 @@ module.exports.generateCCode = async function generate(pols, type, namespaceName
                 declaration[namespaceId] += "    " + sufix + "Pol " + filter_name(name) + array + ";\n";
                 if (pol.isArray) {
                     initialization[namespaceId] += "        " + filter_name(name) + "{\n";
-                    for (var a = 0; a < pol.len; a++) {
+                    for (let a = 0; a < pol.len; a++) {
                         let comma = ",";
                         if (a == pol.len-1) comma = "";
                         initialization[namespaceId] += "            " + sufix + "Pol((" + ctype + " *)((uint8_t *)pAddress + " + offset_transpositioned + "), degree, " + (i+a) + ")" + comma + "\n";
@@ -148,7 +153,7 @@ module.exports.generateCCode = async function generate(pols, type, namespaceName
             }
         }
     }
-    for (var i=0; i<namespaces.length; i++) {
+    for (let i=0; i<namespaces.length; i++) {
         code += "class " + namespaces[i] + sufix + "Pols\n";
         code += "{\n";
         code += "public:\n";
@@ -177,7 +182,7 @@ module.exports.generateCCode = async function generate(pols, type, namespaceName
     code += "{\n";
     code += "public:\n";
 
-    for (var i=0; i<namespaces.length; i++) {
+    for (let i=0; i<namespaces.length; i++) {
         code += "    " + namespaces[i] + sufix + "Pols " + namespaces[i] + ";\n"
     }
 
@@ -188,7 +193,7 @@ module.exports.generateCCode = async function generate(pols, type, namespaceName
     code += "public:\n";
     code += "\n";
     code += "    " + sufix + "Pols (void * pAddress, uint64_t degree) :\n";
-    for (var i=0; i<namespaces.length; i++) {
+    for (let i=0; i<namespaces.length; i++) {
         code += "        " + namespaces[i] + "(pAddress, degree),\n";
     }
     code += "        _pAddress(pAddress),\n";
@@ -206,8 +211,10 @@ module.exports.generateCCode = async function generate(pols, type, namespaceName
     code += "    }\n";
     code += "};\n";
     code += "\n";
-    
-    code += "} // namespace\n\n"; // namespace name
+
+    if (namespaceName !== false) {
+        code += "} // namespace\n\n"; // namespace name
+    }
 
     code += "#endif" + " // " + fileDefine + "\n";
     return code;
