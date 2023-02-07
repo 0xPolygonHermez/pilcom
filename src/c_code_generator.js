@@ -19,7 +19,8 @@ module.exports.generateCCode = async function generate(pols, type, namespaceName
         if (pol.type == type) {
             const stringArray = key.split(".");
             const namespace = stringArray[0];
-            for (let i=0; i<namespaces.length; i++) {
+            let i;
+            for (i=0; i<namespaces.length; i++) {
                 if (namespaces[i] == namespace) break;
             }
             if (i==namespaces.length) {
