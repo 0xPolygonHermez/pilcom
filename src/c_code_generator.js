@@ -6,7 +6,7 @@ function filter_name(name)
     return name;
 }
 
-module.exports.generateCCode = async function generate(pols, type, namespaceName)
+module.exports.generateCCode = async function generate(pols, type, namespaceName = false)
 {
 
     let code = "";
@@ -49,14 +49,15 @@ module.exports.generateCCode = async function generate(pols, type, namespaceName
     var numPols = 0;
     var sufix = "";
     var fileDefine = "";
+    const defineSuffix = namespaceName === false ? "" : ("_"+namespaceName);
     if (type == "cmP") {
         numPols = pols.nCommitments;
         sufix = "Commit";
-        fileDefine = "COMMIT_POLS_HPP_" + namespaceName;
+        fileDefine = "COMMIT_POLS_HPP" + defineSuffix;
     } else if (type == "constP") {
         numPols = pols.nConstants;
         sufix = "Constant";
-        fileDefine = "CONSTANT_POLS_HPP_" + namespaceName;
+        fileDefine = "CONSTANT_POLS_HPP" + defineSuffix;
     }
 
     code += "#ifndef " + fileDefine + "\n";
@@ -66,8 +67,10 @@ module.exports.generateCCode = async function generate(pols, type, namespaceName
     code += "#include \"goldilocks_base_field.hpp\"\n";
     code += "\n";
 
-    code += "namespace " + namespaceName + "\n";
-    code += "{\n\n";
+    if (namespaceName !== false) {
+        code += "namespace " + namespaceName + "\n";
+        code += "{\n\n";
+    }
 
     code += "class " + sufix + "Pol\n";
     code += "{\n";
@@ -206,8 +209,10 @@ module.exports.generateCCode = async function generate(pols, type, namespaceName
     code += "    }\n";
     code += "};\n";
     code += "\n";
-    
-    code += "} // namespace\n\n"; // namespace name
+
+    if (namespaceName !== false) {
+        code += "} // namespace\n\n"; // namespace name
+    }
 
     code += "#endif" + " // " + fileDefine + "\n";
     return code;
