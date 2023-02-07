@@ -15,7 +15,7 @@ $ node src/pil.js <input.pil> -o <output.pil.json>
 ```
 Generate C++ code from pil file (.hpp files will be generated in the `./pols_generated` folder):
 ```sh
-$ node src/pil.js <input.pil> -c
+$ node src/pil.js <input.pil> -c -n namespace
 ```
 
 ### Javascript
