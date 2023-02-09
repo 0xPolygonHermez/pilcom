@@ -12,8 +12,9 @@ const { F1Field } = require("ffjavascript");
 
 const argv = require("yargs")
     .version(version)
-    .usage("main_pilverifier.js <commit.bin> -p <pil.json> -c <constant.bin> [-u <publics.json>]")
+    .usage("main_pilverifier.js <commit.bin> -p <input.pil> [-j <input_pil.json>] -c <constant.bin> [-u <publics.json>]")
     .alias("p", "pil")
+    .alias("j", "pil-json")
     .alias("c", "constant")
     .alias("P", "config")
     .alias("v", "verbose")
@@ -28,14 +29,16 @@ async function run() {
     if (argv._.length == 0) {
         console.log("You need to specify a commit file file file");
         process.exit(1);
+    } else if (typeof(argv.pil) === "string" && typeof(argv.pilJson) === "string") {
+        console.log("The options '-p' and '-j' exclude each other.");
+        process.exit(1);
     } else if (argv._.length == 1) {
         commitFile = argv._[0];
-    } else  {
+    } else {
         console.log("Only one commit file at a time is permited");
         process.exit(1);
     }
 
-    const pilFile = typeof(argv.pil) === "string" ?  argv.pil.trim() : "main.pil.json";
     const publics = typeof(argv.publics) === "string" ?  JSON.parse(fs.readFileSync(argv.publics.trim())) : false;
     const constantFile = typeof(argv.constant) === "string" ?  argv.constant.trim() : "constant.bin";
 
@@ -48,7 +51,13 @@ async function run() {
         }
     }
 
-    const pil = await compile(F, pilFile, null, config);
+    let pil;
+    if (typeof(argv.pilJson) === "string") {
+        pil = JSON.parse(fs.readFileSync(argv.pilJson.trim()));
+    } else {
+        const pilFile = typeof(argv.pil) === "string" ?  argv.pil.trim() : "main.pil";
+        pil = await compile(F, pilFile, null, config);
+    }
 
     const n = pil.references[Object.keys(pil.references)[0]].polDeg;
 
