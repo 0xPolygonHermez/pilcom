@@ -4,7 +4,6 @@ const path = require("path");
 const fs = require("fs");
 const version = require("../package").version;
 const compile = require("./compiler.js");
-const generate = require("./c_code_generator.js");
 const ffjavascript = require("ffjavascript");
 const tty = require('tty');
 
@@ -12,8 +11,6 @@ const argv = require("yargs")
     .version(version)
     .usage("pil <source.pil> -o <output.json> [-P <pilconfig.json>]")
     .alias("o", "output")
-    .alias("c", "ccodegeneration")
-    .alias("n", "namespace")
     .alias("P", "config")
     .alias("v", "verbose")
     .alias("I", "include")
@@ -37,11 +34,6 @@ async function run() {
 
     const outputFile = typeof(argv.output) === "string" ?  argv.output : fileName + ".json";
     const config = typeof(argv.config) === "string" ? JSON.parse(fs.readFileSync(argv.config.trim())) : {};
-
-    const cCodeGeneration = argv.ccodegeneration;
-    const codeGenerationName = typeof(argv.ccodegeneration) === "string" ? argv.ccodegeneration : "pols_generated";
-
-    const namespaceName = typeof(argv.namespace) === "string" ? argv.namespace : false;
 
     if (argv.verbose) {
         config.verbose = true;
@@ -71,21 +63,6 @@ async function run() {
     console.log("polIdentities: " + out.polIdentities.length);
 
     await fs.promises.writeFile(outputFile.trim(), JSON.stringify(out, null, 1) + "\n", "utf8");
-
-    if (cCodeGeneration)
-    {
-        let directoryName = codeGenerationName;
-
-        // Create directory if it does not exist
-        if (!fs.existsSync(directoryName)){
-            fs.mkdirSync(directoryName);
-        }
-
-        const code = await generate.generateCCode(out, "cmP", namespaceName);
-        await fs.promises.writeFile(directoryName + "/" + "commit_pols.hpp", code, "utf8");
-        const code2 = await generate.generateCCode(out, "constP", namespaceName);
-        await fs.promises.writeFile(directoryName + "/" + "constant_pols.hpp", code2, "utf8");
-    }
 }
 
 run().then(()=> {
