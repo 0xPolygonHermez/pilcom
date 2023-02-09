@@ -215,7 +215,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
                     vals.push(F.toString(pols.exps[pi.f[k]].v_n[j]));
                 }
                 const v = selFValue + ':' + vals.join(",");
-                const found = t[v] ?? false;
+                const found = (t[v] === null || t[v] === undefined) ? false : t[v];
                 if (!t[v]) {
                     res.push(`${pi.fileName}:${pi.line}:  permutation not `+(found === 0 ? 'enought ':'')+`found w=${j} values: ${v}`);
                     console.log(res[res.length-1]);
