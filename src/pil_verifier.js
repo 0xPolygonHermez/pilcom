@@ -132,7 +132,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
 
         let t = {};
         for (let j=0; j<N; j++) {
-            const selTValue = pi.selT == null ? F.zero : pols.exps[pi.selT].v_n[j];
+            const selTValue = pi.selT == null ? F.one : pols.exps[pi.selT].v_n[j];
             if (!F.isZero(selTValue)) {
                 const vals = []
                 for (let k=0; k<pi.t.length; k++) {
@@ -144,7 +144,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
         }
 
         for (let j=0; j<N; j++) {
-            const selFValue = pi.selF == null ? F.zero : pols.exps[pi.selF].v_n[j];
+            const selFValue = pi.selF == null ? F.one : pols.exps[pi.selF].v_n[j];
             if (!F.isZero(selFValue)) {
                 const vals = []
                 for (let k=0; k<pi.f.length; k++) {
@@ -195,7 +195,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
 
         let t = {};
         for (let j=0; j<N; j++) {
-            const selTValue = pi.selT == null ? F.zero : pols.exps[pi.selT].v_n[j];
+            const selTValue = pi.selT == null ? F.one : pols.exps[pi.selT].v_n[j];
             if (!F.isZero(selTValue)) {
                 const vals = []
                 for (let k=0; k<pi.t.length; k++) {
@@ -208,7 +208,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
 
         let showRemainingErrors = true;
         for (let j=0; j<N; j++) {
-            const selFValue = pi.selF == null ? F.zero : pols.exps[pi.selF].v_n[j];
+            const selFValue = pi.selF == null ? F.one : pols.exps[pi.selF].v_n[j];
             if (!F.isZero(selFValue)) {
                 const vals = []
                 for (let k=0; k<pi.f.length; k++) {
