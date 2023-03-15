@@ -1,6 +1,6 @@
 const { assert } = require("chai");
 const { options } = require("yargs");
-const { log2, getKs } = require("./utils.js");
+const { log2, getKs, getRoots } = require("./utils.js");
 
 module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}) {
 
@@ -90,13 +90,13 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
 
                 const [cp, cw] = cm[a1][a2][a3];
                 if (typeof cp == "undefined") {
-                    res.push(`${ci.fileName}:${pil.polIdentities[i].line}: invalid copy value w=${j},${k} val=${F.toString(v1)} `);
+                    res.push(`${ci.fileName}:${pil.connectionIdentities[i].line}: invalid copy value w=${j},${k} val=${F.toString(v1)} `);
                     console.log(res[res.length-1]);
                 }
                 const v2 = pols.exps[ci.pols[cp]].v_n[cw];
 
                 if (!F.eq(v1, v2)) {
-                    res.push(`${ci.fileName}:${pil.polIdentities[i].line}: connection does not match p1=${j} w1=${k} p2=${cp}, w2=${cw} val= ${F.toString(v1)} != ${F.toString(v2)}`);
+                    res.push(`${ci.fileName}:${pil.connectionIdentities[i].line}: connection does not match p1=${j} w1=${k} p2=${cp}, w2=${cw} val= ${F.toString(v1)} != ${F.toString(v2)}`);
                     console.log(res[res.length-1]);
                     k=N;
                     j=ci.pols.length;
@@ -375,7 +375,8 @@ function getConnectionMap(F, N, nk) {
     const m = new Array(1<<16);
     const ks = [1n, ...getKs(F, nk-1)];
     let w = F.one;
-    const wi = F.w ? F.w[pow] : F.FFT.w[pow];
+    const roots = getRoots(F);
+    const wi = roots[pow];
     for (let i=0; i<N; i++ ) {
         if ((i%10000) == 0) console.log(`Building cm.. ${i}/${N}`);
         for (j=0; j<ks.length; j++) {
