@@ -13,3 +13,9 @@ exports.getKs = function getKs(Fr, n) {
     return ks;
 }
 
+exports.getRoots = function getRoots(Fr) {
+    let roots = Array(33);
+    roots[32] = Fr.e(7277203076849721926n);
+    for (let i=31; i>=0; i--) roots[i] = Fr.square(roots[i+1]);
+    return roots;
+}
