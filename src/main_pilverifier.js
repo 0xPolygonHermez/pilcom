@@ -24,8 +24,6 @@ const argv = require("yargs")
 async function run() {
 
     const F = new F1Field("0xFFFFFFFF00000001");
-    F.w[32] = F.e(7277203076849721926n);
-    for (let i=31; i>=0; i--) F.w[i] = F.square(F.w[i+1]);
 
     let commitFile;
     if (argv._.length == 0) {
