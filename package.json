@@ -8,7 +8,7 @@
     "pilverifier": "src/main_pilverifier.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "mocha",
     "build_parser_pil": "mkdir -p build; ./node_modules/.bin/jison src/pil_parser.jison -o build/pil_parser.js",
     "build": "npm run build_parser_pil"
   },
