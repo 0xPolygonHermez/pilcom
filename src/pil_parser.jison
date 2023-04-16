@@ -8,16 +8,48 @@
 \s+                                         { /* skip whitespace */ }
 \/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/ { /* console.log("MULTILINE COMMENT: "+yytext); */  }
 \/\/.*                                      { /* console.log("SINGLE LINE COMMENT: "+yytext); */ }
+
+pol                                         { return 'pol'; }
+commit                                      { return 'commit'; }
+constant                                    { return 'constant'; }
+namespace                                   { return 'namespace'; }
+include                                     { return 'INCLUDE'; }
+in                                          { return 'in'; }
+is                                          { return 'is'; }
+connect                                     { return 'connect'; }
+public                                      { return 'public'; }
+
+var                                         { return 'var' }
+expr                                        { return 'expr' }
+refpol                                      { return 'refpol' }
+refvar                                      { return 'refvar' }
+refexpr                                     { return 'refexpr' }
+
+challenge                                   { return 'challenge' }
+
+for                                         { return 'for' }
+while                                       { return 'while' }
+do                                          { return 'do' }
+break                                       { return 'break' }
+continue                                    { return 'continue' }
+if                                          { return 'if' }
+elseif                                      { return 'elseif' }
+else                                        { return 'else' }
+switch                                      { return 'switch' }
+case                                        { return 'case' }
+
+when                                        { return 'when' }
+subproof                                    { return 'subproof' }
+aggregable                                  { return 'aggregable' }
+stage                                       { return 'stage' }
+
+function                                    { return 'function' }
+return                                      { return 'return' }
+
+\.\.\.                                      { return '...' }
+\.\.                                        { return '..' }
+
 (0x[0-9A-Fa-f][0-9A-Fa-f_]*)|([0-9][0-9_]*) { yytext = yytext.replace(/\_/g, ""); return 'NUMBER'; }
-pol(?=[^a-zA-Z$_0-9])                       { return 'pol'; }
-commit(?=[^a-zA-Z$_0-9])                    { return 'commit'; }
-constant(?=[^a-zA-Z$_0-9])                  { return 'constant'; }
-namespace(?=[^a-zA-Z$_0-9])                 { return 'namespace'; }
-include(?=[^a-zA-Z$_0-9])                   { return 'INCLUDE'; }
-in(?=[^a-zA-Z$_0-9])                        { return 'in'; }
-is(?=[^a-zA-Z$_0-9])                        { return 'is'; }
-connect(?=[^a-zA-Z$_0-9])                 { return 'connect'; }
-public(?=[^a-zA-Z$_0-9])                    { return 'public'; }
 
 \"[^"]+\"                                   { yytext = yytext.slice(1,-1); return 'STRING'; }
 [a-zA-Z_][a-zA-Z$_0-9]*                     { return 'IDENTIFIER'; }
@@ -27,9 +59,18 @@ public(?=[^a-zA-Z$_0-9])                    { return 'public'; }
 \-                                          { return '-'; }
 \*                                          { return '*'; }
 \'                                          { return "'"; }
-\;                                          { return ';'; }
+\;                                          { return 'CS'; }
 \,                                          { return ','; }
 \.                                          { return '.'; }
+\&\&                                        { return 'AND'; }
+\|\|                                        { return 'OR'; }
+\<                                          { return 'LT'; }
+\>                                          { return 'GT'; }
+\<\=                                        { return 'LE'; }
+\>\=                                        { return 'GE'; }
+\=\=\=                                      { return '==='; }
+\!\=                                        { return 'NE'; }
+\=\=                                        { return 'EQ'; }
 \=                                          { return '='; }
 \(                                          { return '('; }
 \)                                          { return ')'; }
@@ -38,21 +79,28 @@ public(?=[^a-zA-Z$_0-9])                    { return 'public'; }
 \{                                          { return '{'; }
 \}                                          { return '}'; }
 \:                                          { return ':'; }
+\!                                          { return '!'; }
 <<EOF>>                                     { return 'EOF'; }
 .                                           { console.log("INVALID: " + yytext); return 'INVALID'}
 
 /lex
 
-%left ';'
-%left EMPTY
+%left CS
+%nonassoc EMPTY
+%nonassoc NUMBER CONSTANTID
+%nonassoc else
+%nonassoc elseif
+%left "'"
 %left ','
 %left '+' '-'
+%left OR
+%left AND
 %left '*'
 %left '**'
 %left '[' ']'
 %left '.'
-%right UMINUS UPLUS
-
+%right UMINUS UPLUS ':' '!'
+%nonassoc '('
 
 %{
 const util = require('util');
@@ -77,7 +125,7 @@ allStatments
             $$ = $1;
             return $$
         }
-    | statmentList ';' EOF
+    | statmentList CS EOF
         {
             // console.log(JSON.stringify($1, null, 1));
             $$ = $1;
@@ -85,8 +133,20 @@ allStatments
         }
     ;
 
+blockStatmentList
+    : blockStatmentList CS %prec EMPTY
+        {
+            $$ = $1;
+        }
+    | statmentList %prec EMPTY
+        {
+            $$ = $1;
+        }
+    | %prec EMPTY
+    ;
+
 statmentList
-    : statmentList ';' statment
+    : statmentList CS statment
         {
             $1.push($3);
         }
@@ -121,6 +181,10 @@ statment
         {
             $$ = $1;
         }
+    | subproofDef
+        {
+            $$ = $1;
+        }
     | polDef
         {
             $$ = $1;
@@ -141,51 +205,171 @@ statment
         {
             $$ = $1
         }
+    | codeBlock
+        {
+            $$ = { type: "Code", statments: $1 };
+        }
+    | when expression "{" whenBody "}"
+        {
+            $$ = { type: "When", statments: $1 };
+        }
+    ;
+
+whenBody
+    : whenBody CS polIdentity
+        {
+            $$ = $1;
+            $$.push($3);
+        }
+    | whenBody CS
+        {
+            $$ = $1;
+        }
+    | polIdentity
+        {
+            $$ = [$1];
+        }
+    ;
+
+codeBlock
+    : codeVarDeclaration
+        {
+           setLines($$, @1, @1);
+        }
+    | for '(' codeForInit CS condExpression CS expressionList ')' '{' blockStatmentList '}'
+        {
+           setLines($$, @1, @11);
+        }
+    | while '(' condExpression ')' '{' blockStatmentList '}'
+        {
+
+           setLines($$, @1, @7);
+        }
+    | do '{' blockStatmentList '}' while '(' condExpression ')'
+        {
+
+           setLines($$, @1, @8);
+        }
+    | switch '(' expression ')' '{' codeCaseList '}'
+        {
+
+           setLines($$, @1, @7);
+        }
+    | if '(' condExpression ')' '{' blockStatmentList '}' codeElseIf
+        {
+            console.log('#### IF1 ####');
+            $$ = {conditions: [{type: 'if', expression: $3, statment: $6 }].concat($8.conditions) };
+            setLines($$, @1, @8);
+        }
+    | if '(' condExpression ')' '{' blockStatmentList '}' codeElseIf else '{' blockStatmentList '}'
+        {
+           console.log('#### IF2 ####');
+           $$ = { conditions: [{type: 'if', expression: $3, statment: $6 }].concat($8.conditions) };
+           $$.conditions.push({type: 'else', statment: $11 });
+           setLines($$, @1, @9);
+        }
+    | continue
+        {
+           setLines($$, @1, @1);
+        }
+    | break
+        {
+           setLines($$, @1, @1);
+        }
+    ;
+
+codeElseIf
+    : codeElseIf elseif '(' condExpression ')' '{' statmentList '}'
+        {
+            console.log('#### IF3 ####');
+            console.log($1);
+            $1.conditions.push({type:'elseif', expression: $4, statments: $7});
+            $$ = $1;
+            setLines($$, @1, @8);
+        }
+    |
+        {
+            console.log('#### IF4 ####');
+            $$ = { conditions: [] };
+            setLines($$, @0, @0);
+       }
+    ;
+
+codeCaseList
+    : codeCaseList codeCaseItem
+    | codeCaseItem
+    ;
+
+codeCaseItem
+    : case expression ':' statmentList
+    | else statmentList
+    ;
+
+codeForInit
+    : codeVarDeclaration
+    | codeVarAssigment
+    ;
+
+codeVarDeclaration
+    : var codeVarInit
+    | expr codeVarInit
+    | refpol codeVarInit
+    | refexpr codeVarInit
+    | refvar codeVarInit
+    ;
+
+codeVarInit
+    : IDENTIFIER
+    | IDENTIFIER '=' expression
+    ;
+
+codeVarAssignment
+    : IDENTIFIER '=' expression
     ;
 
 include
     : INCLUDE STRING
         {
-            $$ = {type: "INCLUDE", file: $2}
+            $$ = {type: "Include", file: $2}
         }
     ;
 
 polDef
-    : 'pol' IDENTIFIER '=' expression
+    : pol IDENTIFIER '=' expression
         {
-            $$ = {type: "POLDEFINITION", name: $2, expression: $4};
+            $$ = {type: "PolDefinition", name: $2, expression: $4};
             setLines($$, @1, @3);
         }
     ;
 
 polIdentity
-    : expression '=' expression
+    : expression '===' expression
         {
-            $$ = {type: "POLIDENTITY", expression: { op: "sub", values: [$1,$3] }};
+            $$ = {type: "PolIdentity", expression: { op: "sub", values: [$1,$3] }};
             setLines($$, @1, @3);
         }
     ;
 
 plookupIdentity
-    : puSide 'in' puSide
+    : puSide in puSide
         {
-            $$ = {type: "PLOOKUPIDENTITY", f: $1.pols, t: $3.pols, selF: $1.sel, selT: $3.sel};
+            $$ = {type: "PlookupIdentity", f: $1.pols, t: $3.pols, selF: $1.sel, selT: $3.sel};
             setLines($$, @1, @3);
         }
     ;
 
 permutationIdentity
-    : puSide 'is' puSide
+    : puSide is puSide
         {
-            $$ = {type: "PERMUTATIONIDENTITY", f: $1.pols, t: $3.pols, selF: $1.sel, selT: $3.sel};
+            $$ = {type: "PermutationIdentity", f: $1.pols, t: $3.pols, selF: $1.sel, selT: $3.sel};
             setLines($$, @1, @3);
         }
     ;
 
 connectIdentity
-    : '{' expressionList '}' 'connect' '{' expressionList '}'
+    : '{' expressionList '}' connect '{' expressionList '}'
         {
-            $$ = {type: "CONNECTIONIDENTITY", pols: $2, connections: $6}
+            $$ = {type: "ConnectionIdentity", pols: $2, connections: $6}
             setLines($$, @1, @7);
         }
     ;
@@ -216,28 +400,27 @@ expressionList
         }
     ;
 
-
 polCommitDeclaration
-    : 'pol' 'commit' polNamesList
+    : pol commit polNamesList
         {
-            $$ = {type: "POLCOMMTDECLARATION", names: $3}
+            $$ = {type: "PolCommitDeclaration", names: $3}
             setLines($$, @1, @3);
         }
     ;
 
 publicDeclaration
-    : 'public' IDENTIFIER '=' polId '(' expression ')'
+    : public IDENTIFIER '=' polId '(' expression ')'
         {
-            $$ = {type: "PUBLICDECLARATION", name: $2, pol: $4, idx: $6}
+            $$ = {type: "PublicDeclaration", name: $2, pol: $4, idx: $6}
             setLines($$, @1, @4);
         }
     ;
 
 
 polConstantDeclaration
-    : 'pol' 'constant' polNamesList
+    : pol constant polNamesList
         {
-            $$ = {type: "POLCONSTANTDECLARATION", names: $3}
+            $$ = {type: "PolConstantDeclaration", names: $3}
             setLines($$, @1, @3);
         }
     ;
@@ -274,17 +457,29 @@ polName
     ;
 
 namespaceDef
-    : 'namespace' IDENTIFIER '(' expression ')'
+    : namespace IDENTIFIER subproof IDENTIFIER
         {
-            $$ = {type: "NAMESPACE", namespace: $2, exp: $4}
+            $$ = {type: "Namespace", name: $2, subproof: $4}
+            setLines($$, @1, @4);
+        }
+    | namespace IDENTIFIER '(' expression ')'
+        {
+            $$ = {type: "Namespace", name: $2, subproof: false, exp: $4}
+            setLines($$, @1, @5);
+        }
+    ;
+subproofDef
+    : subproof IDENTIFIER '(' expressionList ')'
+        {
+            $$ = {type: "Subproof", name: $2, exp: $4}
             setLines($$, @1, @5);
         }
     ;
 
 constantDef
-    : 'constant' CONSTANTID '=' expression
+    : constant CONSTANTID '=' expression
         {
-            $$ = {type: "CONSTANTDEF", name: $2, exp: $4}
+            $$ = {type: "ConstantDefinition", name: $2, exp: $4}
             setLines($$, @1, @4);
         }
     ;
@@ -296,10 +491,65 @@ expression
         }
     ;
 
+condExpression
+    : expression EQ expression
+        {
+            $$ = { op: "eq", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression NE expression
+        {
+            $$ = { op: "ne", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression LT expression
+        {
+            $$ = { op: "lt", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression GT expression
+        {
+            $$ = { op: "gt", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression LE expression
+        {
+            $$ = { op: "le", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression GE expression
+        {
+            $$ = { op: "ge", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    ;
+
+condExpression
+    : condExpression AND condExpression
+        {
+            $$ = { op: "and", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | condExpression OR condExpression
+        {
+            $$ = { op: "or", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | '!' condExpression
+        {
+            $$ = { op: "not", values: [$2] };
+            setLines($$, @1, @2);
+        }
+    | '(' condExpression ')'
+        {
+            $$ = $2;
+        }
+    ;
 
 e5
     : e5 '+' e4
         {
+            // $$ = yy.parser.calculate.add($1,$3);
             $$ = { op: "add", values: [$1, $3] };
             setLines($$, @1, @3);
         }
@@ -354,29 +604,29 @@ e2
         {
             $$ = $1;
         }
-    ;
-
-
-e1
-    : polId
-        {
-            $$ = $1
-            setLines($$, @1);
-        }
-    | NUMBER
-        {
-            $$ = {op: "number", value: $1 }
-            setLines($$, @1);
-        }
-    | CONSTANTID
-        {
-            $$ = {op: "constant", name: $1 }
-            setLines($$, @1);
-        }
     | ':' IDENTIFIER
         {
             $$ = {op: "public", name: $2 }
             setLines($$, @1, @2);
+        }
+    | polId
+        {
+            $$ = $1
+            setLines($$, @1);
+        }
+    ;
+
+
+e1
+    : NUMBER %prec EMPTY
+        {
+            $$ = {op: "number", value: $1 }
+            setLines($$, @1);
+        }
+    | CONSTANTID %prec EMPTY
+        {
+            $$ = {op: "constant", name: $1 }
+            setLines($$, @1);
         }
     | '(' expression ')'
         {
@@ -386,9 +636,14 @@ e1
     ;
 
 polId
-    : polId "'"
+    : polId "'" %prec LOWER_PREC
         {
             $1.next= true;
+            $$ = $1;
+        }
+    | polId "'" e1
+        {
+            $1.next= $3;
             $$ = $1;
         }
     | IDENTIFIER '.' IDENTIFIER '[' expression ']'

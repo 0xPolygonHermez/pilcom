@@ -1,8 +1,13 @@
+// import {Expressions} from './expressions.js';
+
 const path = require("path");
 const fs = require("fs");
 const pil_parser = require("../build/pil_parser.js");
 const { check } = require("yargs");
 const Scalar = require("ffjavascript").Scalar;
+const Expressions = require("./expressions.js");
+const Definitions = require("./definitions.js");
+
 
 const oldParseError = pil_parser.Parser.prototype.parseError;
 
@@ -14,769 +19,668 @@ class SkipNamespace extends Error {
     }
 }
 
-module.exports = async function compile(Fr, fileName, ctx, config = {}) {
+class Compiler {
 
-    const ansiColor = config.color ? (x) => '\x1b['+x+'m' : (x) => '';
-
-    let isMain;
-    if (!ctx) {
-        ctx = {
-            references: {},
-            publics:{},
-            nCommitments: 0,
-            nConstants: 0,
-            nIm: 0,
-            nQ: 0,
-            nPublic: 0,
-            expressions: [],
-            polIdentities: [],
-            plookupIdentities: [],
-            permutationIdentities: [],
-            connectionIdentities: [],
-            namespace: "Global",
-            constants: {},
-            Fr: Fr,
-            includedFiles: {},
-            config,
-            namespaces: true,
-            skippedNamespaces: {},
-            skippedPols: {},
-            includePaths: (config && config.includePaths) ? (Array.isArray(config.includePaths) ? config.includePaths: [config.includePaths]): []
-        }
-        isMain = true;
-    } else {
-        isMain = false;
+    constructor(Fr) {
+        this.Fr = Fr;
+        this.references = new Definitions(Fr);
+        this.constants = new Definitions(Fr);
+        this.publics = new Definitions(Fr);
+        this.expressions = new Expressions(Fr, this, this.references, this.publics, this.constants);
     }
 
-    /* config example:
-
-        {
-            disableUnusedError: true,
-            namespaces: ['Main', 'Global', 'Rom'],
-            defines: { N: 2 ** 18 }
-        }
-
-    */
-
-    let fullFileName, fileDir, src;
-    let includePathIndex = 0;
-    let relativeFileName = '';
-
-    if (isMain && config && config.compileFromString) {
-        relativeFileName = fullFileName = "(string)";
-        fileDir = '';
-        src = fileName;
+    initContext() {
+        this.subproofs = {};
+        this.nCommitments = 0;
+        this.nConstants = 0;
+        this.nIm = 0;
+        this.nQ = 0;
+        this.nPublic = 0;
+        this.polIdentities = [];
+        this.plookupIdentities = [];
+        this.permutationIdentities = [];
+        this.connectionIdentities = [];
+        this.namespace = "Global";
+        this.includedFiles = {};
+        this.namespaces = true;
+        this.skippedNamespaces = {};
+        this.skippedPols = {};
+        this.includePaths = (this.config && this.config.includePaths) ? (Array.isArray(this.config.includePaths) ? this.config.includePaths: [this.config.includePaths]): [];
+        this.relativeFileName = '';
     }
-    else {
-        includePaths = [...ctx.includePaths];
-        const cwd = ctx.cwd ? ctx.cwd : process.cwd();
+    async compile(fileName, config = {}) {
+        const isMain = true;
+        this.initContext();
 
-        if (config && config.includePathFirst) {
-            directIncludePathIndex = includePaths.length;
-            includePaths.push(cwd);
-        }
-        else {
-            directIncludePathIndex = 0;
-            includePaths.unshift(cwd);
-        }
-        do {
-            fullFileName = path.resolve(includePaths[includePathIndex], fileName);
-            if (fs.existsSync(fullFileName)) break;
-            ++includePathIndex;
-        } while (includePathIndex < includePaths.length);
-
-        if (includePathIndex != directIncludePathIndex) {
-            relativeFileName = fileName;
-        }
-        fileDir = path.dirname(fullFileName);
-        src = await fs.promises.readFile(fullFileName, "utf8") + "\n";
-    }
-    const srcLines = src.split(/(?:\r\n|\n|\r)/);
-
-    const myErr = function (str, hash) {
-        str = fullFileName + " -> " + str;
-        oldParseError(str, hash);
-    };
-    pil_parser.Parser.prototype.parseError = myErr;
-
-    const parser = new pil_parser.Parser();
-    const sts = parser.parse(src);
-
-    let pendingCommands = [];
-    let lastLineAllowsCommand = false;
-
-    if (isMain && config && config.namespaces) {
-        ctx.namespaces = {};
-        for (const name of config.namespaces) {
-            ctx.namespaces[name] = 0;
-        }
-    }
-
-    if (isMain && config && config.defines && typeof config.defines === 'object') {
-        for (const name in config.defines) {
-            ctx.constants[name] = BigInt(config.defines[name]);
-        }
-    }
-
-    if (relativeFileName === '') {
-        if (isMain) {
-            relativeFileName = path.basename(fullFileName);
-            ctx.basePath = fileDir;
+        if (config) {
+            this.config = config;
+            if (this.config.namespaces) {
+                this.namespaces = {};
+                for (const name of this.config.namespaces) {
+                    this.namespaces[name] = 0;
+                }
+            }
+            if (this.config.defines && typeof this.config.defines === 'object') {
+                for (const name in this.config.defines) {
+                    this.constants.define(name, this.Fr.e(this.config.defines[name]));
+                }
+            }
         } else {
-            if (fullFileName.startsWith(ctx.basePath)) {
-                relativeFileName = fullFileName.substring(ctx.basePath.length+1);
-            } else {
-                relativeFileName = fullFileName;
-            }
+            this.config = {};
         }
-    }
+        const ansiColor = this.config.color ? (x) => '\x1b['+x+'m' : (x) => '';
 
-    for (let i=0; i<sts.length; i++) {
-        const s = sts[i];
-        ctx.fileName = s.fileName = relativeFileName;
-        ctx.line = s.first_line;
+        await this.parseSource(fileName, true);
 
-        if (s.type == "INCLUDE") {
-            const fullFileNameI = config.includePaths ? s.file : path.resolve(fileDir, s.file);
-            if (!ctx.includedFiles[fullFileNameI]) {       // If a file included twice just ignore
-                ctx.includedFiles[fullFileNameI] = true;
-                const oldNamespace = ctx.namespace;
-                ctx.namespace = "Global";
-                const oldCwd = ctx.cwd;
-                ctx.cwd = fileDir;
-                await compile(Fr, fullFileNameI, ctx, config);
-                ctx.cwd = oldCwd;
-                ctx.namespace = oldNamespace;
-                if (pendingCommands.length>0) error(s, "command not allowed before include");
-                lastLineAllowsCommand = false;
-            }
-            continue;
-        } else if (s.type == "NAMESPACE") {
-            ctx.namespace = s.namespace;
-            const se = simplifyExpression(Fr, ctx, s.exp);
-            if (se.op != "number") error(s, "Size is not constant expression");
-            ctx.polDeg = Number(se.value);
-            continue;
-        }
-
-        let skip = false;
-        let poldef = false;
-        let insideIncludedDomain = false;
-        const ctxExprLen = ctx.expressions.length;
-
-        try {
-            checkNamespace(ctx.namespace, ctx);
-            insideIncludedDomain = true;
-            if (s.type == "POLCOMMTDECLARATION") {
-                for (let j=0; j<s.names.length; j++) {
-                    if (ctx.references[ctx.namespace + "." + s.names[j].name]) error(s, `name already defined ${ctx.namespace + "." +s.names[j]}`);
-                    if  (s.names[j].type == "array") {
-                        const se = simplifyExpression(Fr, ctx, s.names[j].expLen);
-                        if (se.op != "number") error(s, "Array Size is not constant expression");
-                        ctx.references[ctx.namespace + "." + s.names[j].name] = {
-                            type: "cmP",
-                            id: ctx.nCommitments,
-                            polDeg: ctx.polDeg,
-                            isArray: true,
-                            len: Number(se.value)
-                        }
-                        ctx.nCommitments += Number(se.value);
-                    } else {
-                        ctx.references[ctx.namespace + "." + s.names[j].name] = {
-                            type: "cmP",
-                            id: ctx.nCommitments,
-                            polDeg: ctx.polDeg,
-                            isArray: false,
-                        }
-                        ctx.nCommitments += 1;
-                    }
-                }
-            } else if (s.type == "POLCONSTANTDECLARATION") {
-                for (let j=0; j<s.names.length; j++) {
-                    if (ctx.references[ctx.namespace + "." + s.names[j].name]) error(s, `name already defined ${ctx.namespace + "." + s.names[j]}`);
-                    if  (s.names[j].type == "array") {
-                        const se = simplifyExpression(Fr, ctx, s.names[j].expLen);
-                        if (se.op != "number") error(s, "Array Size is not constant expression");
-                        ctx.references[ctx.namespace + "." + s.names[j].name] = {
-                            type: "constP",
-                            id: ctx.nConstants,
-                            polDeg: ctx.polDeg,
-                            isArray: true,
-                            len: Number(se.value)
-                        }
-                        ctx.nConstants += Number(se.value);
-                    } else {
-                        ctx.references[ctx.namespace + "." + s.names[j].name] = {
-                            type: "constP",
-                            id: ctx.nConstants,
-                            polDeg: ctx.polDeg,
-                            isArray: false,
-                        }
-                        ctx.nConstants += 1;
-                    }
-                }
-            } else if (s.type == "POLDEFINITION") {
-                poldef = ctx.namespace + "." + s.name;
-                const eidx = ctx.expressions.length;
-                s.expression.poldef = poldef;
-                addFilename(s.expression, relativeFileName, ctx);
-                ctx.expressions.push(s.expression);
-                if (ctx.references[ctx.namespace + "." + s.name]) error(s, `name already defined ${ctx.namespace + "." + s.name}`);
-                ctx.references[ctx.namespace + "." + s.name] = {
-                    type: "imP",
-                    id: eidx,
-                    polDeg: ctx.polDeg
-                }
-                ctx.nIm++;
-            } else if (s.type == "POLIDENTITY") {
-                const eidx = ctx.expressions.length;
-                addFilename(s.expression, relativeFileName, ctx);
-                ctx.expressions.push(s.expression);
-                ctx.polIdentities.push({fileName: relativeFileName, namespace: ctx.namespace, line: s.first_line, e: eidx});
-            } else if (s.type == "PLOOKUPIDENTITY" || s.type == "PERMUTATIONIDENTITY") {
-                const pu = {
-                    fileName: relativeFileName,
-                    namespace: ctx.namespace,
-                    line: s.first_line,
-                    f: [],
-                    t: [],
-                    selF: null,
-                    selT: null
-                }
-                for (let j=0; j<s.f.length; j++) {
-                    const efidx = ctx.expressions.length;
-                    addFilename(s.f[j], relativeFileName, ctx);
-                    ctx.expressions.push(s.f[j]);
-                    pu.f.push(efidx);
-                }
-                if (s.selF) {
-                    const selFidx = ctx.expressions.length;
-                    addFilename(s.selF, relativeFileName, ctx);
-                    ctx.expressions.push(s.selF);
-                    pu.selF = selFidx;
-                }
-                for (let j=0; j<s.t.length; j++) {
-                    const etidx = ctx.expressions.length;
-                    addFilename(s.t[j], relativeFileName, ctx);
-                    ctx.expressions.push(s.t[j]);
-                    pu.t.push(etidx);
-                }
-                if (s.selT) {
-                    const selTidx = ctx.expressions.length;
-                    addFilename(s.selT, relativeFileName, ctx);
-                    ctx.expressions.push(s.selT);
-                    pu.selT = selTidx;
-                }
-                if (pu.f.length != pu.t.length ) error(s, `${s.type} with diferent number of elements`);
-                if (s.type == "PLOOKUPIDENTITY") {
-                    ctx.plookupIdentities.push(pu);
-                } else {
-                    ctx.permutationIdentities.push(pu);
-                }
-            } else if (s.type == "CONNECTIONIDENTITY") {
-                const ci = {
-                    fileName: relativeFileName,
-                    namespace: ctx.namespace,
-                    line: s.first_line,
-                    pols: [],
-                    connections: [],
-                }
-                for (let j=0; j<s.pols.length; j++) {
-                    const efidx = ctx.expressions.length;
-                    addFilename(s.pols[j], relativeFileName, ctx);
-                    ctx.expressions.push(s.pols[j]);
-                    ci.pols.push(efidx);
-                }
-                for (let j=0; j<s.connections.length; j++) {
-                    const etidx = ctx.expressions.length;
-                    addFilename(s.connections[j], relativeFileName, ctx);
-                    ctx.expressions.push(s.connections[j]);
-                    ci.connections.push(etidx);
-                }
-                if (ci.pols.length != ci.connections.length ) error(s, `connection with diferent number of elements`);
-                ctx.connectionIdentities.push(ci);
-            } else if (s.type == "PUBLICDECLARATION") {
-                if (ctx.publics[s.name]) error(s, `name already defined ${s.name}`);
-                let ns = s.pol.namespace;
-                if (ns == "this") ns = ctx.namespace;
-                if (typeof ctx.references[ns + "." + s.pol.name] == "undefined" ) error(s, `polyomial not defined ${ns + "." +s.pol.name}`);
-                if ((s.pol.idxExp) && (!ctx.references[ns + "." + s.pol.name].isArray)) error(s, `${ns + "." + s.pol.name} is not an Array`);
-                if ((!s.pol.idxExp) && (ctx.references[ns + "." + s.pol.name].isArray)) error(s, `${ns + "." + s.pol.name}: index of an array not specified`);
-                let offset;
-                if ((s.pol.idxExp) && (ctx.references[ns + "." + s.pol.name].isArray)) {
-                    const se = simplifyExpression(Fr, ctx, s.pol.idxExp);
-                    if (se.op != "number") error(s, "Index is not constant expression");
-                    offset = Number(se.value);
-                } else {
-                    offset = 0;
-                }
-                const se = simplifyExpression(Fr, ctx, s.idx);
-                if (se.op != "number") error(s, "Index of a public is not constant expression");
-                ctx.publics[s.name] = {
-                    polType: ctx.references[ns + "." + s.pol.name].type,
-                    polId: Number(ctx.references[ns + "." + s.pol.name].id) + offset,
-                    idx: Number(se.value),
-                    id: ctx.nPublic++
-                };
-            } else if (s.type == "CONSTANTDEF") {
-                if (ctx.config && ctx.config.defines && typeof ctx.config.defines[s.name] !== 'undefined') {
-                    console.log(`NOTICE: Ignore constant definition ${s.name} on ${relativeFileName}:${s.first_line} because it was pre-defined`);
-                    return;
-                }
-                if (ctx.constants[s.name]) error(s, `name already defined ${s.name}`);
-                const se = simplifyExpression(Fr, ctx, s.exp);
-                if (se.op != "number") error(s, "Not a constant expression");
-                ctx.constants[s.name] = se.value;
-            } else {
-                error(s, `Invalid line type: ${s.type}`);
-            }
-        } catch (err) {
-            if (err instanceof SkipNamespace) {
-                skip = true;
-            } else {
-                throw err;
-            }
-        }
-        if (!skip) continue;
-
-        if (insideIncludedDomain) {
-            let verboseInfo = '';
-            if (config.verbose) {
-                verboseInfo = ':\n' + ansiColor(36) + srcLines.slice(s.first_line-1, Math.min(s.first_line+3, s.last_line)).join('\n');
-                const lineStrLines = s.last_line - s.first_line + 1;
-                if (lineStrLines > 3) verboseInfo += " ...";
-                verboseInfo += ansiColor(0) +'\n';
-            }
-            console.log(`NOTE: ${relativeFileName}:${s.first_line} was ignored${verboseInfo}`);
-        }
-
-        if (poldef) {
-            console.log(`adding ${poldef} to exclude`);
-            ctx.skippedPols[poldef] = true;
-        }
-        while (ctxExprLen < ctx.expressions.length) {
-            ctx.expressions.pop();
-        }
-    }
-
-    if (isMain) {
-        if (typeof ctx.namespaces === 'object') {
-            let notFoundNamespaces = Object.keys(ctx.namespaces).filter(namespace => ctx.namespaces[namespace] === 0);
+        // isMain
+        if (typeof this.namespaces === 'object') {
+            let notFoundNamespaces = Object.keys(this.namespaces).filter(namespace => this.namespaces[namespace] === 0);
             if (notFoundNamespaces.length) {
                 throw new Error('ERROR: namespaces not found: '+notFoundNamespaces.join(', '));
             }
         }
 
-        for (n in ctx.publics) {
-            if (ctx.publics.hasOwnProperty(n)) {
-                const pub = ctx.publics[n];
-                if (pub.polType == "imP") {
-                    ctx.expressions[pub.polId] = simplifyExpression(Fr, ctx, ctx.expressions[pub.polId] );
-                }
+        for (const n in this.publics) {
+            const pub = this.publics[n];
+            if (pub.polType == "imP") {
+                // this.expressions[pub.polId] = this.simplifyExpression(this.expressions[pub.polId] );
+                this.expressions.simplify(pub.polId);
             }
         }
-        for (let i=0; i<ctx.polIdentities.length; i++) {
-            ctx.namespace = ctx.polIdentities[i].namespace;
-            ctx.expressions[ctx.polIdentities[i].e] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.polIdentities[i].e]);
+        for (const pi of this.polIdentities) {
+            this.namespace = pi.namespace;
+            // this.expressions[pi.e] = this.simplifyExpression(this.expressions[pi.e]);
+            this.expressions.simplify(pi.e);
         }
-        for (let i=0; i<ctx.plookupIdentities.length; i++) {
-            ctx.namespace = ctx.plookupIdentities[i].namespace;
-            for (j=0; j<ctx.plookupIdentities[i].f.length; j++) {
-                ctx.expressions[ctx.plookupIdentities[i].f[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].f[j]]);
+        for (const po of this.plookupIdentities) {
+            this.namespace = po.namespace;
+            for (const f of po.f) {
+                // this.expressions[f] = this.simplifyExpression(this.expressions[f]);
+                this.expressions.simplify(f);
             }
-            if (ctx.plookupIdentities[i].selF !== null) {
-                ctx.expressions[ctx.plookupIdentities[i].selF] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].selF]);
+            if (po.selF !== null) {
+                // this.expressions[po.selF] = this.simplifyExpression(this.expressions[po.selF]);
+                this.expressions.simplify(po.selF);
             }
-            for (j=0; j<ctx.plookupIdentities[i].t.length; j++) {
-                ctx.expressions[ctx.plookupIdentities[i].t[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].t[j]]);
+            for (const t of po.t) {
+                // this.expressions[t] = this.simplifyExpression(this.expressions[t]);
+                this.expressions.simplify(t);
             }
-            if (ctx.plookupIdentities[i].selT !== null) {
-                ctx.expressions[ctx.plookupIdentities[i].selT] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.plookupIdentities[i].selT]);
-            }
-        }
-        for (let i=0; i<ctx.permutationIdentities.length; i++) {
-            ctx.namespace = ctx.permutationIdentities[i].namespace;
-            for (j=0; j<ctx.permutationIdentities[i].f.length; j++) {
-                ctx.expressions[ctx.permutationIdentities[i].f[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.permutationIdentities[i].f[j]]);
-            }
-            if (ctx.permutationIdentities[i].selF !== null) {
-                ctx.expressions[ctx.permutationIdentities[i].selF] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.permutationIdentities[i].selF]);
-            }
-            for (j=0; j<ctx.permutationIdentities[i].t.length; j++) {
-                ctx.expressions[ctx.permutationIdentities[i].t[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.permutationIdentities[i].t[j]]);
-            }
-            if (ctx.permutationIdentities[i].selT !== null) {
-                ctx.expressions[ctx.permutationIdentities[i].selT] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.permutationIdentities[i].selT]);
+            if (po.selT !== null) {
+                // this.expressions[po.selT] = this.simplifyExpression(this.expressions[po.selT]);
+                this.expressions.simplify(po.selT);
             }
         }
-        for (let i=0; i<ctx.connectionIdentities.length; i++) {
-            ctx.namespace = ctx.connectionIdentities[i].namespace;
-            for (j=0; j<ctx.connectionIdentities[i].pols.length; j++) {
-                ctx.expressions[ctx.connectionIdentities[i].pols[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.connectionIdentities[i].pols[j]]);
+        for (const pe of this.permutationIdentities) {
+            this.namespace = pe.namespace;
+            for (const f of pe.f) {
+                // this.expressions[f] = this.simplifyExpression(this.expressions[f]);
+                this.expressions.simplify(f);
             }
-            for (j=0; j<ctx.connectionIdentities[i].connections.length; j++) {
-                ctx.expressions[ctx.connectionIdentities[i].connections[j]] = simplifyExpression(Fr, ctx, ctx.expressions[ctx.connectionIdentities[i].connections[j]]);
+            if (pe.selF !== null) {
+                // this.expressions[pe.selF] = this.simplifyExpression(this.expressions[pe.selF]);
+                this.expressions.simplify(pe.selF);
+            }
+            for (const t of pe.t) {
+                // this.expressions[t] = this.simplifyExpression(this.expressions[t]);
+                this.expressions.simplify(t);
+            }
+            if (pe.selT !== null) {
+                // this.expressions[pe.selT] = this.simplifyExpression(this.expressions[pe.selT]);
+                this.expressions.simplify(pe.selT);
+            }
+        }
+        for (const ci of this.connectionIdentities) {
+            this.namespace = ci.namespace;
+            for (const pol of ci.pols) {
+                // this.expressions[pol] = this.simplifyExpression(this.expressions[pol]);
+                this.expressions.simplify(pol);
+            }
+            for (const co of ci.connections) {
+                // this.expressions[co] = this.simplifyExpression(this.expressions[co]);
+                this.expressions.simplify(co);
             }
         }
 
-        for (let i=0; i<ctx.expressions.length; i++) {
-            if (!ctx.expressions[i].simplified) {
-                if (ctx.config.disableUnusedError) {
-                    console.log(`WARNING: Unused expresion ${ctx.expressions[i].poldef || i} on ${ctx.expressions[i].fileName}:${ctx.expressions[i].first_line}`);
+        for (const expr of this.expressions) {
+            if (!expr.simplified) {
+                if (this.config.disableUnusedError) {
+                    console.log(`WARNING: Unused expresion ${expr.poldef} on ${expr.fileName}:${expr.first_line}`);
                 } else {
-                    error(ctx.expressions[i], `Unused expression ${ctx.expressions[i].poldef || i} `);
+                    this.error(expr, `Unused expression ${expr.poldef} `);
                 }
             }
-            if (!ctx.expressions[i].deg>2) error(ctx.expressions[i], "Degree greater than 2");
-        }
-        for (let i=0; i<ctx.polIdentities.length; i++) {
-            reduceto2(ctx, ctx.expressions[ctx.polIdentities[i].e]);
-        }
-        for (let i=0; i<ctx.plookupIdentities.length; i++) {
-            for (j=0; j<ctx.plookupIdentities[i].f.length; j++) {
-                reduceto1(ctx, ctx.expressions[ctx.plookupIdentities[i].f[j]]);
-            }
-            if (ctx.plookupIdentities[i].selF) {
-                reduceto1(ctx, ctx.expressions[ctx.plookupIdentities[i].selF]);
-            }
-            for (j=0; j<ctx.plookupIdentities[i].t.length; j++) {
-                reduceto1(ctx, ctx.expressions[ctx.plookupIdentities[i].t[j]]);
-            }
-            if (ctx.plookupIdentities[i].selT) {
-                reduceto1(ctx, ctx.expressions[ctx.plookupIdentities[i].selT]);
+            if (expr.deg>2) {
+                this.error(expr, `Degree ${expr.deg} greater than 2`);
             }
         }
-        for (let i=0; i<ctx.permutationIdentities.length; i++) {
-            for (j=0; j<ctx.permutationIdentities[i].f.length; j++) {
-                reduceto1(ctx, ctx.expressions[ctx.permutationIdentities[i].f[j]]);
+        this.reduceExpressions();
+        return this.contextToJson();
+    }
+
+    async parseSource(fileName, isMain) {
+
+        const [src, fileDir, fullFileName, relativeFileName] = await this.loadSource(fileName, isMain);
+        this.relativeFileName = relativeFileName;
+
+        const srcLines = src.split(/(?:\r\n|\n|\r)/);
+
+        const myErr = function (str, hash) {
+            str = fullFileName + " -> " + str;
+            oldParseError(str, hash);
+        };
+        pil_parser.Parser.prototype.parseError = myErr;
+
+        const parser = new pil_parser.Parser();
+        const sts = parser.parse(src);
+
+        let pendingCommands = [];
+        let lastLineAllowsCommand = false;
+
+
+        for (let i=0; i<sts.length; i++) {
+            const s = sts[i];
+            this.fileName = s.fileName = relativeFileName;
+            this.line = s.first_line;
+            const sourceRef = `${s.fileName}:${s.first_line}`;
+
+            if (s.type == "Include") {
+                const fullFileNameI = this.config.includePaths ? s.file : path.resolve(fileDir, s.file);
+                if (!this.includedFiles[fullFileNameI]) {       // If a file included twice just ignore
+                    this.includedFiles[fullFileNameI] = true;
+                    const previous = {
+                        namespace: this.namespace,
+                        cwd: this.cwd,
+                        relativeFileName: this.relativeFileName
+                    };
+
+                    this.namespace = "Global";
+                    this.cwd = fileDir;
+
+                    await this.parseSource(fullFileNameI, false);
+
+                    this.cwd = previous.cwd;
+                    this.namespace = previous.namespace;
+                    this.relativeFileName = previous.relativeFileName;
+
+                    if (pendingCommands.length>0) this.error(s, "command not allowed before include");
+                    lastLineAllowsCommand = false;
+                }
+                continue;
+            } else if (s.type == "Subproof") {
+                console.log('****** SUBPROOF **********');
+                console.log(s);
+                if (s.name in this.subproofs) {
+                    this.error(s, `subproof ${s.name} was previously defined on ${this.subproofs[s.name].sourceRef}`);
+                }
+                let polDegs = [];
+                for (let exp of s.exp) {
+                    console.log(exp);
+                    const se = this.expressions.simplifyExpression(exp);
+                    if (se.op != "number") this.error(s, "Size is not constant expression");
+                    polDegs.push(Number(se.value));
+                }
+                this.subproofs[s.name] = { sourceRef, polDegs };
+                continue;
+            } else if (s.type == "Namespace") {
+                const subproof = s.subproof ?? false;
+                const namespace = s.name;
+                if (subproof !== false && !(subproof in this.subproofs)) {
+                    this.error(s, `subproof ${s.subproof} hasn't been defined`);
+                }
+                // TODO: verify if namespace just was declared in this case subproof must be the same
+                // const polDegs = ctx.subproofs[s.subproof].polDegs;
+                this.namespace = namespace;
+                this.subproof = subproof;
+                // ctx.namespaces[s.name] = { namespace, subproof, polDegs
+                this.polDeg = Number(this.expressions.simplifyExpression(s.exp).value);
+                continue;
             }
-            if (ctx.permutationIdentities[i].selF) {
-                reduceto1(ctx, ctx.expressions[ctx.permutationIdentities[i].selF]);
+
+            let skip = false;
+            let poldef = false;
+            let insideIncludedDomain = false;
+            const ctxExprLen = this.expressions.length;
+
+            try {
+                this.checkNamespace(this.namespace);
+                insideIncludedDomain = true;
+                const method = 'do'+s.type;
+                if (!(method in this)) {
+                    console.log('==== ERROR ====');
+                    console.log(s);
+                    this.error(s, `Invalid line type: ${s.type}`);
+                }
+                this[method](s);
+            } catch (err) {
+                if (err instanceof SkipNamespace) {
+                    skip = true;
+                } else {
+                    throw err;
+                }
             }
-            for (j=0; j<ctx.permutationIdentities[i].t.length; j++) {
-                reduceto1(ctx, ctx.expressions[ctx.permutationIdentities[i].t[j]]);
+            if (!skip) continue;
+
+            if (insideIncludedDomain) {
+                let verboseInfo = '';
+                if (this.config.verbose) {
+                    verboseInfo = ':\n' + ansiColor(36) + srcLines.slice(s.first_line-1, Math.min(s.first_line+3, s.last_line)).join('\n');
+                    const lineStrLines = s.last_line - s.first_line + 1;
+                    if (lineStrLines > 3) verboseInfo += " ...";
+                    verboseInfo += ansiColor(0) +'\n';
+                }
+                console.log(`NOTE: ${this.relativeFileName}:${s.first_line} was ignored${verboseInfo}`);
             }
-            if (ctx.permutationIdentities[i].selT) {
-                reduceto1(ctx, ctx.expressions[ctx.permutationIdentities[i].selT]);
+
+            if (poldef) {
+                console.log(`adding ${poldef} to exclude`);
+                this.skippedPols[poldef] = true;
             }
-        }
-        for (let i=0; i<ctx.connectionIdentities.length; i++) {
-            for (j=0; j<ctx.connectionIdentities[i].pols.length; j++) {
-                reduceto1(ctx, ctx.expressions[ctx.connectionIdentities[i].pols[j]]);
-            }
-            for (j=0; j<ctx.connectionIdentities[i].connections.length; j++) {
-                reduceto1(ctx, ctx.expressions[ctx.connectionIdentities[i].connections[j]]);
-            }
-        }
-    }
-
-    if (isMain) {
-        return ctx2json(ctx);
-    }
-}
-
-function error(l, err) {
-    if (err instanceof Error) {
-        err.message = `ERROR ${l.fileName}:${l.first_line}: ${err.message}`
-        throw(err);
-    } else {
-        const msg = `ERROR ${l.fileName}:${l.first_line}: ${err}`;
-        throw new Error(msg);
-    }
-}
-
-function simplifyExpression(Fr, ctx, e) {
-    if (e.simplified) return e;
-    e.simplified = true;
-    if (e.namespace) checkNamespace(e.namespace, ctx);
-    if (e.op == "pol") {
-        const ref = ctx.references[e.namespace + '.' + e.name];
-        if (!ref) error(e, `polynomial ${e.namespace + '.' + e.name} not defined`);
-        if ((ref.type == "cmP") || (ref.type == "constP")) {
-            e.deg = 1;
-        } else if (ref.type == "imP") {
-            ctx.expressions[ref.id] = simplifyExpression(Fr, ctx, ctx.expressions[ref.id]);
-            reduceto1(ctx, ctx.expressions[ref.id]);
-            e.deg = 1;
-        } else {
-            throw new Error(`Invalid reference type: ${ref.type}`);
-        }
-        return e;
-    }
-    if (e.op == "number") {
-        e.deg = 0;
-        return e;
-    }
-    if (e.op == "public") {
-        const ref = ctx.publics[e.name];
-        if (!ref) error(e, `public ${e.name} not defined`);
-        e.id = ref.id;
-        e.deg = 0;
-        return e;
-    }
-    if (e.op == "neg") {
-        e.values[0] = simplifyExpression(Fr, ctx, e.values[0]);
-        const a = e.values[0];
-        if (a.op == "number") {
-            return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.neg(Fr.e(a.value))), first_line: e.first_line}
-        } else {
-            e.deg = a.deg;
-            return e;
-        }
-    }
-    if (e.op == "add") {
-        e.values[0] = simplifyExpression(Fr, ctx, e.values[0]);
-        const a = e.values[0];
-        e.values[1] = simplifyExpression(Fr, ctx, e.values[1]);
-        const b = e.values[1];
-        if ((a.op == "number") && (b.op == "number")) {
-            return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.add(Fr.e(a.value), Fr.e(b.value))), first_line: e.first_line}
-        }
-        e.deg = Math.max(a.deg, b.deg);
-        return e;
-    }
-    if (e.op == "sub") {
-        e.values[0] = simplifyExpression(Fr, ctx, e.values[0]);
-        const a = e.values[0];
-        e.values[1] = simplifyExpression(Fr, ctx, e.values[1]);
-        const b = e.values[1];
-        if ((a.op == "number") && (b.op == "number")) {
-            return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.sub(Fr.e(a.value), Fr.e(b.value))), first_line: e.first_line}
-        }
-        e.deg = Math.max(a.deg, b.deg);
-        return e;
-    }
-    if (e.op == "mul") {
-        e.values[0] = simplifyExpression(Fr, ctx, e.values[0]);
-        const a = e.values[0];
-        e.values[1] = simplifyExpression(Fr, ctx, e.values[1]);
-        const b = e.values[1];
-        if ((a.op == "number") && (b.op == "number")) {
-            return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.mul(Fr.e(a.value), Fr.e(b.value))), first_line: e.first_line}
-        }
-        e.deg = a.deg +  b.deg;
-        return e;
-    }
-    if (e.op == "pow") {
-        e.values[0] = simplifyExpression(Fr, ctx, e.values[0]);
-        const a = e.values[0];
-        e.values[1] = simplifyExpression(Fr, ctx, e.values[1]);
-        const b = e.values[1];
-        if ((a.op == "number") && (b.op == "number")) {
-            return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.exp(Fr.e(a.value), Scalar.e(b.value))), first_line: e.first_line}
-        } else {
-            error(e, "Exponentiation can only be applied between constants");
-        }
-    }
-    if (e.op == "constant") {
-        return {simplified:true, op: "number", deg:0, value: ctx.constants[e.name]};
-    }
-
-    error(e, `invalid operation: ${e.op}`);
-}
-
-function addFilename(exp, fileName, ctx) {
-    exp.fileName = fileName;
-    if (exp.namespace === "this") exp.namespace = ctx.namespace;
-    else if (exp.namespace) checkNamespace(exp.namespace, ctx);
-
-    if (exp.name) checkSkippedPols(exp.namespace, exp.name, ctx);
-    if (exp.values) {
-        for(let i=0; i<exp.values.length; i++) addFilename(exp.values[i], fileName, ctx);
-    }
-}
-
-function checkNamespace (namespace, ctx, exceptionToSkip = true) {
-    if (!namespace || ctx.namespaces === true) return true;
-    if (typeof ctx.namespaces[namespace] !== 'undefined') {
-        ++ctx.namespaces[namespace];
-        return true;
-    }
-    if (!ctx.skippedNamespaces[namespace]) {
-        ctx.skippedNamespaces[namespace] = 0;
-        console.log(`NOTE: namespace ${namespace} was ignored`);
-    }
-    ++ctx.skippedNamespaces[namespace];
-    if (exceptionToSkip) {
-        throw new SkipNamespace(namespace);
-    }
-    return false;
-}
-
-function checkSkippedPols (namespace, name, ctx, exceptionToSkip = true) {
-    if (ctx.namespaces === true) return true;
-    if (!ctx.skippedPols[namespace + '.' + name]) return true;
-    if (exceptionToSkip) {
-        throw new SkipNamespace(namespace, name);
-    }
-    return false;
-}
-
-function reduceto2(ctx, e) {
-    if (e.deg>2) error(e, "Degre too high");
-}
-
-function reduceto1(ctx, e) {
-    if (e.deg<=1) return;
-    if (e.deg>2) error(e, "Degre too high");
-    e.idQ = ctx.nQ++
-    e.deg = 1;
-}
-
-// Commitmets
-// Qs
-// Const
-// Im
-
-
-function ctx2json(ctx) {
-    const out={
-        nCommitments: ctx.nCommitments,
-        nQ: ctx.nQ,
-        nIm: ctx.nIm,
-        nConstants: ctx.nConstants,
-        publics: [],
-        references: {},
-        expressions: [],
-        polIdentities: [],
-        plookupIdentities: [],
-        permutationIdentities: [],
-        connectionIdentities: []
-    };
-
-    for (n in ctx.references) {
-        if (ctx.references.hasOwnProperty(n)) {
-            const ref = ctx.references[n];
-            if (ref.isArray) {
-                out.references[n] = {
-                    type: ref.type,
-                    id: ref.id,
-                    polDeg: ref.polDeg,
-                    isArray: true,
-                    len: ref.len
-                };
-            } else {
-                out.references[n] = {
-                    type: ref.type,
-                    id: ref.id,
-                    polDeg: ref.polDeg,
-                    isArray: false
-                };
+            while (ctxExprLen < this.expressions.length) {
+                this.expressions.pop();
             }
         }
     }
 
-    for (n in ctx.publics) {
-        if (ctx.publics.hasOwnProperty(n)) {
-            const pub = ctx.publics[n];
-            out.publics[pub.id] = pub;
-            out.publics[pub.id].name = n;
+    doPolCommitDeclaration(s) {
+        this.nCommitments = this.doPolDeclaration(s, 'cmP', this.nCommitments);
+    }
+    doPolConstantDeclaration(s) {
+        this.nConstants = this.doPolDeclaration(s, 'constP', this.nConstants);
+    }
+    doPolDeclaration(s, type, nextId) {
+        for (const pol of s.names) {
+            const polname = this.namespace + '.' + pol.name;
+            let ref = this.references.get(polname);
+            if (ref !== null) {
+                this.error(s, `${polname} already defined on ${ref.sourceRef}`);
+            }
+            // TODO: multidimensional-array
+            let len = (pol.type === 'array') ? this.getExprNumber(pol.expLen, s, `${polname} array size`) : 1;
+            ref = {
+                type,
+                id: nextId,
+                polDeg: this.polDeg,
+                sourceRef: s.sourceRef,
+                isArray: (pol.type === 'array'),
+            };
+            if (pol.type === 'array') {
+                ref.len = len;
+            }
+            nextId += len;
+            this.references.define(polname, ref);
         }
+        return nextId;
     }
-
-    for (let i=0; i<ctx.expressions.length; i++) {
-        out.expressions.push(expression2JSON(ctx, ctx.expressions[i]));
+    addExpression(expr)
+    {
+        this.addFilename(expr, this.relativeFileName);
+        return this.expressions.insert(expr);
     }
+    doPolDefinition(s) {
+        const polname = this.namespace + "." + s.name;
+        s.expression.poldef = polname;
+        const eidx = this.addExpression(s.expression);
+        let ref = this.references.get(polname);
+        if (ref !== null) {
+            this.error(s, `${polname} already defined on ${ref.sourceRef}`);
+        }
+        ref = {
+            type: 'imP',
+            id: eidx,
+            polDeg: this.polDeg,
+            sourceRef: s.sourceRef,
+        };
+        this.references.define(polname, ref);
+        this.nIm++;
+    }
+    doPolIdentity(s) {
+        const eidx = this.addExpression(s.expression);
+        this.polIdentities.push({fileName: this.relativeFileName, namespace: this.namespace, line: s.first_line, e: eidx});
+    }
+    composePlPeIdentity(s) {
+        const pu = {
+            fileName: this.relativeFileName,
+            namespace: this.namespace,
+            line: s.first_line,
+            f: [],
+            t: [],
+            selF: null,
+            selT: null
+        }
+        s.f.forEach(expr => pu.f.push(this.addExpression(expr)));
+        if (s.selF) {
+            pu.selF = this.addExpression(s.selF);
+        }
+        s.t.forEach(expr => pu.t.push(this.addExpression(expr)));
+        if (s.selT) {
+            pu.selT = this.addExpression(s.selT);
+        }
+        if (pu.f.length != pu.t.length ) {
+            this.error(s, `${s.type} with diferent number of elements`);
+        }
+        return pu;
+    }
+    doPlookupIdentity(s) {
+        this.plookupIdentities.push(this.composePlPeIdentity(s));
+    }
+    doPermutationIdentity(s) {
+        this.permutationIdentities.push(this.composePlPeIdentity(s));
+    }
+    doConnectionIdentity(s) {
+        const ci = {
+            fileName: this.relativeFileName,
+            namespace: this.namespace,
+            line: s.first_line,
+            pols: [],
+            connections: [],
+        }
+        s.pols.forEach(expr => ci.pols.push(this.addExpression(expr)));
+        s.connections.forEach(expr => ci.connections.push(this.addExpression(expr)));
+        if (ci.pols.length != ci.connections.length ) {
+            this.error(s, `connection with diferent number of elements`);
+        }
+        this.connectionIdentities.push(ci);
+    }
+    getExprNumber(expr, s, title) {
+        const se = this.expressions.simplifyExpression(expr);
+        if (se.op !== 'number') {
+            this.error(s, title + ' is not constant expression');
+        }
+        return Number(se.value);
+    }
+    getReferenceArrayOffset(s, pol, polname) {
+        if (!this.references.isDefined(polname)) {
+            this.error(s, `polynomial ${polname} not defined`);
+        }
+        const ref = this.references.get(polname);
 
-    for (let i=0; i<ctx.polIdentities.length; i++) {
-        out.polIdentities.push({
-            e: ctx.polIdentities[i].e,
-            fileName: ctx.polIdentities[i].fileName,
-            line: ctx.polIdentities[i].line
+        if (pol.idxExp && !ref.isArray) {
+            this.error(s, `${polname} is not an Array`);
+        }
+        if (!pol.idxExp && ref.isArray) {
+            console.log([pol, ref]);
+            this.error(s, `${polname}: index of an array not specified`);
+        }
+        const offset = ref.isArray ? this.getExprNumber(pol.idxExp, s, 'Index') : 0;
+        return [ref, offset];
+    }
+    doPublicDeclaration(s) {
+        if (this.publics.isDefined(s.name)) {
+            this.error(s, `name already defined ${s.name}`);
+        }
+        const polname = (s.pol.namespace === 'this' ? this.namespace : s.pol.namespace) + '.' + s.pol.name;
+        const [ref, offset] = this.getReferenceArrayOffset(s, s.pol, polname);
+        const idx = this.getExprNumber(s.idx, s, 'Index of a public');
+        this.publics.define(s.name, {
+            polType: ref.type,
+            polId: Number(ref.id) + offset,
+            idx,
+            id: this.nPublic++
         });
     }
+    doConstantDefinition(s) {
+        if (this.config.defines && s.name in this.config.defines) {
+            console.log(`NOTICE: Ignore constant definition ${s.name} on ${this.relativeFileName}:${s.first_line} because it was pre-defined`);
+            return;
+        }
+        if (this.constants.isDefined(s.name)) {
+            this.error(s, `name already defined ${s.name}`);
+        }
+        this.constants.define(s.name, this.getExprNumber(s.exp, s, `constant ${s.name} definition`));
+    }
+    async loadSource(fileName, isMain) {
+        let fullFileName, fileDir, src;
+        let relativeFileName = '';
+        let includePathIndex = 0;
+        if (isMain && this.config.compileFromString) {
+            relativeFileName = fullFileName = "(string)";
+            fileDir = '';
+            src = fileName;
+        }
+        else {
+            let includePaths = [...this.includePaths];
+            let directIncludePathIndex;
+            const cwd = this.cwd ? this.cwd : process.cwd();
 
-    for (let i=0; i<ctx.plookupIdentities.length; i++) {
-        const pu = {};
-        pu.f = ctx.plookupIdentities[i].f;
-        pu.t = ctx.plookupIdentities[i].t;
-        pu.selF = ctx.plookupIdentities[i].selF;
-        pu.selT = ctx.plookupIdentities[i].selT;
-        pu.fileName = ctx.plookupIdentities[i].fileName;
-        pu.line = ctx.plookupIdentities[i].line;
-        out.plookupIdentities.push(pu);
+            if (this.config.includePathFirst) {
+                directIncludePathIndex = includePaths.length;
+                includePaths.push(cwd);
+            }
+            else {
+                directIncludePathIndex = 0;
+                includePaths.unshift(cwd);
+            }
+            do {
+                fullFileName = path.resolve(includePaths[includePathIndex], fileName);
+                if (fs.existsSync(fullFileName)) break;
+                ++includePathIndex;
+            } while (includePathIndex < includePaths.length);
+
+            fileDir = path.dirname(fullFileName);
+
+            if (includePathIndex != directIncludePathIndex) {
+                relativeFileName = fileName;
+            }
+            else {
+                if (isMain) {
+                    relativeFileName = path.basename(fullFileName);
+                    this.basePath = fileDir;
+                } else {
+                    if (fullFileName.startsWith(this.basePath)) {
+                        relativeFileName = fullFileName.substring(this.basePath.length+1);
+                    } else {
+                        relativeFileName = fullFileName;
+                    }
+                }
+            }
+            src = await fs.promises.readFile(fullFileName, "utf8") + "\n";
+        }
+        return [src, fileDir, fullFileName, relativeFileName];
     }
 
-    for (let i=0; i<ctx.permutationIdentities.length; i++) {
-        const pu = {};
-        pu.f = ctx.permutationIdentities[i].f;
-        pu.t = ctx.permutationIdentities[i].t;
-        pu.selF = ctx.permutationIdentities[i].selF;
-        pu.selT = ctx.permutationIdentities[i].selT;
-        pu.fileName = ctx.permutationIdentities[i].fileName;
-        pu.line = ctx.permutationIdentities[i].line;
-        out.permutationIdentities.push(pu);
+    reduceExpressions() {
+        for (const pol of this.polIdentities) {
+            this.expressions.reduceTo2(pol.e);
+        }
+        for (const plpe of [this.plookupIdentities, this.permutationIdentities]) {
+            for (const pol of plpe) {
+                for (const f of pol.f) {
+                    this.expressions.reduceTo1(f);
+                }
+                if (pol.selF) {
+                    this.expressions.reduceTo1(pol.selF);
+                }
+                for (const t of pol.t) {
+                    this.expressions.reduceTo1(t);
+                }
+                if (pol.selT) {
+                    this.expressions.reduceTo1(pol.selT);
+                }
+            }
+        }
+        for (const pol of this.connectionIdentities) {
+            for (const p of pol.pols) {
+                this.expressions.reduceTo1(p);
+            }
+            for (const co of pol.connections) {
+                this.expressions.reduceTo1(co);
+            }
+        }
+    }
+    error (l, err) {
+        if (err instanceof Error) {
+            err.message = `ERROR ${l.fileName}:${l.first_line}: ${err.message}`
+            throw(err);
+        } else {
+            const msg = `ERROR ${l.fileName}:${l.first_line}: ${err}`;
+            throw new Error(msg);
+        }
+    }
+    expressionToJson(e, deps) {
+        let main = false;
+        if (!deps) {
+            deps = [];
+            main = true;
+        }
+        const out = {
+            op: e.op
+        }
+        out.deg = e.deg;
+        if (e.op == 'pol') {
+            const polname = e.namespace + '.' + e.name
+            const [ref, offset] = this.getReferenceArrayOffset(e, e, polname);
+            out.id = Number(ref.id) + offset;
+            if (ref.type === 'cmP') {
+                out.op = 'cm';
+            } else if (ref.type === 'constP') {
+                out.op = 'const';
+            } else if (ref.type === 'imP') {
+                // TODO: array support on temporal
+                if (offset != 0) {
+                    this.error(e, 'Intermediate cannot have an offset');
+                }
+                if (!main) {
+                    deps.push(ref.id);
+                }
+                out.op = 'exp'
+            }
+            out.next = e.next;
+        }
+        if (e.op == "public") {
+            const ref = this.publics.get(e.name);
+            out.id = ref.id;
+            out.op = 'public';
+        }
+        if ('idQ' in e) {
+            out.idQ = e.idQ;
+        }
+        if ('values' in e) {
+            out.values = e.values.map(value => this.expressionToJson(value, deps));
+        }
+        if ('value' in e) {
+            out.value = e.value;
+        }
+        if (typeof e.const !== "undefined") {
+            out.const = e.const;
+        }
+        if (main && deps.length>0) {
+            out.deps = deps;
+        }
+        return out;
+    }
+    contextToJson() {
+        let out = {
+            nCommitments: this.nCommitments,
+            nQ: this.nQ,
+            nIm: this.nIm,
+            nConstants: this.nConstants,
+            publics: [],
+            references: {},
+            expressions: [],
+            polIdentities: [],
+            plookupIdentities: [],
+            permutationIdentities: [],
+            connectionIdentities: []
+        };
+
+        for (const [name,ref] of this.references.keyValues()) {
+            out.references[name] = {
+                type: ref.type,
+                id: ref.id,
+                polDeg: ref.polDeg,
+                isArray: ref.isArray ? true:false };
+            if (ref.isArray) {
+                out.references[name].len = ref.len;
+            }
+        }
+
+        for (const [name, pub] of this.publics.keyValues()) {
+            out.publics[pub.id] = pub;
+            out.publics[pub.id].name = name;
+        }
+
+        for (const expr of this.expressions) {
+            out.expressions.push(this.expressionToJson(expr));
+        }
+
+        for (const pi of this.polIdentities) {
+            out.polIdentities.push({
+                e: pi.e,
+                fileName: pi.fileName,
+                line: pi.line
+            });
+        }
+
+        for (const ptype of ['plookupIdentities', 'permutationIdentities']) {
+            for (const p of this[ptype]) {
+                out[ptype].push({
+                    f: p.f,
+                    t: p.t,
+                    selF: p.selF,
+                    selT: p.selT,
+                    fileName: p.fileName,
+                    line: p.line});
+            }
+        }
+
+        for (const ci of this.connectionIdentities) {
+            out.connectionIdentities.push({
+                pols: ci.pols,
+                connections: ci.connections,
+                fileName: ci.fileName,
+                line: ci.line });
+        }
+
+        return out;
     }
 
-    for (let i=0; i<ctx.connectionIdentities.length; i++) {
-        const pu = {};
-        pu.pols = ctx.connectionIdentities[i].pols;
-        pu.connections = ctx.connectionIdentities[i].connections;
-        pu.fileName = ctx.connectionIdentities[i].fileName;
-        pu.line = ctx.connectionIdentities[i].line;
-        out.connectionIdentities.push(pu);
+    addFilename(exp, fileName) {
+        exp.fileName = fileName;
+        if (exp.namespace === "this") exp.namespace = this.namespace;
+        else if (exp.namespace) this.checkNamespace(exp.namespace);
+
+        if (exp.name) this.checkSkippedPols(exp.namespace, exp.name);
+        if (exp.values) {
+            for(let i=0; i<exp.values.length; i++) this.addFilename(exp.values[i], fileName);
+        }
     }
 
-    return out;
+    checkNamespace (namespace, exceptionToSkip = true) {
+        if (!namespace || this.namespaces === true) {
+            return true;
+        }
+        if (typeof this.namespaces[namespace] !== 'undefined') {
+            ++this.namespaces[namespace];
+            return true;
+        }
+        if (!this.skippedNamespaces[namespace]) {
+            this.skippedNamespaces[namespace] = 0;
+            console.log(`NOTE: namespace ${namespace} was ignored`);
+        }
+        ++this.skippedNamespaces[namespace];
+        if (exceptionToSkip) {
+            throw new SkipNamespace(namespace);
+        }
+        return false;
+    }
+
+    checkSkippedPols (namespace, name, exceptionToSkip = true) {
+        if (this.namespaces === true) return true;
+        if (!this.skippedPols[namespace + '.' + name]) return true;
+        if (exceptionToSkip) {
+            throw new SkipNamespace(namespace, name);
+        }
+        return false;
+    }
+
+    getNewIdQ() {
+        return this.nQ++;
+    }
 }
 
-function expression2JSON(ctx, e, deps) {
-    let main = false;
-    if (!deps) {
-        deps = [];
-        main = true;
-    }
-    const out = {
-        op: e.op
-    }
-    out.deg = e.deg;
-    if (e.op == "pol") {
-        const ref = ctx.references[e.namespace + '.' + e.name];
-        if (!ref) error(e,  `${e.namespace + "." + e.name} reference not defned`);
-        if ((e.idxExp) && (!ctx.references[e.namespace + "." + e.name].isArray)) error(e, `${e.namespace + "." + e.name} is not an Array`);
-        if ((!e.idxExp) && (ctx.references[e.namespace + "." + e.name].isArray)) error(e, `${e.namespace + "." + e.name}: index of an array not specified`);
-        let offset;
-        if ((e.idxExp) && (ctx.references[e.namespace + "." + e.name].isArray)) {
-            const se = simplifyExpression(ctx.Fr, ctx, e.idxExp);
-            if (se.op != "number") error(e, "Index is not constant expression");
-            offset = Number(se.value);
-        } else {
-            offset = 0;
-        }
-        if (ref.type=="cmP") {
-            out.id = Number(ref.id)+offset;
-            out.op = "cm";
-        } else if (ref.type=="constP") {
-            out.id = Number(ref.id)+offset;
-            out.op = "const"
-        } else if (ref.type=="imP") {
-            if (offset != 0) error(e, "Intermediate cannot have an offset")
-            if (!main) {
-                deps.push(ref.id);
-            }
-            out.id = ref.id;
-            out.op = "exp"
-        }
-        out.next = e.next;
-    }
-    if (e.op == "public") {
-        const ref = ctx.publics[e.name];
-        out.id = ref.id;
-        out.op = "public";
-    }
-    if (typeof e.idQ != "undefined") out.idQ = e.idQ;
-    if (typeof e.values != "undefined") {
-        out.values = [];
-        for (let i=0; i<e.values.length; i++) {
-            out.values.push( expression2JSON(ctx, e.values[i], deps));
-        }
-    }
-    if (typeof e.value !== "undefined") {
-        out.value = e.value;
-    }
-    if (typeof e.const !== "undefined") {
-        out.const = e.const;
-    }
-    if ((main)&&(deps.length>0)) out.deps = deps;
-    return out;
+module.exports = async function compile(Fr, fileName, ctx, config = {}) {
+
+    let compiler = new Compiler(Fr);
+    return await compiler.compile(fileName, config);
 }
