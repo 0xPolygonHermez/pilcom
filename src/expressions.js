@@ -44,7 +44,13 @@ module.exports = class Expression {
     insert(e) {
         return this.expressions.push(e) - 1;
     }
-
+    reserve(n) {
+        const fromId = this.expressions.length;
+        for (let times = 0; times < n; ++times) {
+            this.expressions.push(null);
+        }
+        return fromId;
+    }
     simplify(id) {
         return this.evaluate(this.get(id), true);
     }
@@ -100,11 +106,7 @@ module.exports = class Expression {
 
             case 'pol':
                 {
-                    const polname = e.namespace + '.' + e.name;
-                    const ref = this.references.get(polname);
-                    if (ref === null) {
-                        throw new Error(`Reference ${polname} not found on .....`)
-                    }
+                    const [polname, ref, id] = this.resolveReference(e);
                     switch (ref.type) {
                         case 'cmP':
                         case 'constP':
@@ -112,9 +114,12 @@ module.exports = class Expression {
                             return e;
                         case 'imP':
                             {
-                                let refexp = this.evaluate(this.get(ref.id));
+                                console.log('###############################');
+                                console.log(e);
+                                console.log(ref);
+                                let refexp = this.evaluate(this.get(id));
                                 this.reduceExpressionTo1(refexp);
-                                this.update(ref.id, refexp);
+                                this.update(id, refexp);
                                 e.deg = 1
                                 // e.deg = refexp.deg;
                                 return e;
@@ -195,5 +200,28 @@ module.exports = class Expression {
         console.log(a);
         console.log(b);
         // EXIT_HERE;
+    }
+    resolveReference(e) {
+        const polname = e.namespace + '.' + e.name;
+        const ref = this.references.get(polname);
+        if (ref === null) {
+            throw new Error(`Reference ${polname} not found on .....`)
+        }
+        let id = ref.id;
+        if (ref.isArray) {
+            const index = this.e2num(e.idxExp);
+            if (index >= ref.len) {
+                throw new Error(`${polname}[${index}] out of range (len:${ref.len})`);
+            }
+            id += index;
+        }
+        return [polname, ref, id];
+    }
+    e2num(expr, s, title = false) {
+        const se = this.simplifyExpression(expr);
+        if (se.op !== 'number') {
+            this.error(s, title + ' is not constant expression');
+        }
+        return Number(se.value);
     }
 }

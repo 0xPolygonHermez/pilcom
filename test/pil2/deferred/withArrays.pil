@@ -1,0 +1,11 @@
+namespace Basic(2**16);
+    pol commit a;
+    pol commit b;
+    pol commit c;
+    pol single = b + a;
+    pol deferred[2];
+    deferred[0] = 2 * a + 3 * b + 10;
+    deferred[1] = 2 * a + 3 * b + 10;
+
+    c  === deferred[0] + deferred[1];
+    c' === single;

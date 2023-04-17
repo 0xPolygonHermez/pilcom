@@ -177,6 +177,10 @@ statment
         {
             $$ = $1;
         }
+    | polDeclaration
+        {
+            $$ = $1;
+        }
     | namespaceDef
         {
             $$ = $1;
@@ -234,7 +238,18 @@ whenBody
 codeBlock
     : codeVarDeclaration
         {
+           $$ = $1;
            setLines($$, @1, @1);
+        }
+    | codeVarAssignment
+        {
+
+        }
+    | polId '(' expressionList ')'
+        {
+           // function call
+           $$ = { type: 'call', function: $1, arguments: $3 };
+           setLines($$, @1, @4);
         }
     | for '(' codeForInit CS condExpression CS expressionList ')' '{' blockStatmentList '}'
         {
@@ -312,19 +327,49 @@ codeForInit
 
 codeVarDeclaration
     : var codeVarInit
+        {
+            $$ = $2;
+            $$.type = 'var';
+        }
     | expr codeVarInit
+        {
+            $$ = $2;
+            $$.type = 'expr';
+        }
     | refpol codeVarInit
+        {
+            $$ = $2;
+            $$.type = 'refpol';
+        }
     | refexpr codeVarInit
+        {
+            $$ = $2;
+            $$.type = 'refexpr';
+        }
     | refvar codeVarInit
+        {
+            $$ = $2;
+            $$.type = 'refvar';
+        }
     ;
 
 codeVarInit
     : IDENTIFIER
+        {
+            $$ = {name: $1}
+        }
     | IDENTIFIER '=' expression
+        {
+            $$ = {name: $1, init: $3};
+        }
     ;
 
 codeVarAssignment
-    : IDENTIFIER '=' expression
+    : polId '=' expression
+        {
+            $$ = {type: 'assign', name: $1, value: $3}
+            setLines($$, $1, $3);
+        }
     ;
 
 include
@@ -405,6 +450,14 @@ polCommitDeclaration
         {
             $$ = {type: "PolCommitDeclaration", names: $3}
             setLines($$, @1, @3);
+        }
+    ;
+
+polDeclaration
+    : pol polNamesList
+        {
+            $$ = {type: "PolDeclaration", names: $2}
+            setLines($$, @1, @2);
         }
     ;
 

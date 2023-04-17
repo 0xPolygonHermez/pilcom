@@ -7,6 +7,7 @@ const { check } = require("yargs");
 const Scalar = require("ffjavascript").Scalar;
 const Expressions = require("./expressions.js");
 const Definitions = require("./definitions.js");
+const Processor = require("./processor.js");
 
 
 const oldParseError = pil_parser.Parser.prototype.parseError;
@@ -27,6 +28,7 @@ class Compiler {
         this.constants = new Definitions(Fr);
         this.publics = new Definitions(Fr);
         this.expressions = new Expressions(Fr, this, this.references, this.publics, this.constants);
+        this.processor = new Processor(Fr, this);
     }
 
     initContext() {
@@ -72,88 +74,11 @@ class Compiler {
 
         await this.parseSource(fileName, true);
 
-        // isMain
-        if (typeof this.namespaces === 'object') {
-            let notFoundNamespaces = Object.keys(this.namespaces).filter(namespace => this.namespaces[namespace] === 0);
-            if (notFoundNamespaces.length) {
-                throw new Error('ERROR: namespaces not found: '+notFoundNamespaces.join(', '));
-            }
-        }
-
-        for (const n in this.publics) {
-            const pub = this.publics[n];
-            if (pub.polType == "imP") {
-                // this.expressions[pub.polId] = this.simplifyExpression(this.expressions[pub.polId] );
-                this.expressions.simplify(pub.polId);
-            }
-        }
-        for (const pi of this.polIdentities) {
-            this.namespace = pi.namespace;
-            // this.expressions[pi.e] = this.simplifyExpression(this.expressions[pi.e]);
-            this.expressions.simplify(pi.e);
-        }
-        for (const po of this.plookupIdentities) {
-            this.namespace = po.namespace;
-            for (const f of po.f) {
-                // this.expressions[f] = this.simplifyExpression(this.expressions[f]);
-                this.expressions.simplify(f);
-            }
-            if (po.selF !== null) {
-                // this.expressions[po.selF] = this.simplifyExpression(this.expressions[po.selF]);
-                this.expressions.simplify(po.selF);
-            }
-            for (const t of po.t) {
-                // this.expressions[t] = this.simplifyExpression(this.expressions[t]);
-                this.expressions.simplify(t);
-            }
-            if (po.selT !== null) {
-                // this.expressions[po.selT] = this.simplifyExpression(this.expressions[po.selT]);
-                this.expressions.simplify(po.selT);
-            }
-        }
-        for (const pe of this.permutationIdentities) {
-            this.namespace = pe.namespace;
-            for (const f of pe.f) {
-                // this.expressions[f] = this.simplifyExpression(this.expressions[f]);
-                this.expressions.simplify(f);
-            }
-            if (pe.selF !== null) {
-                // this.expressions[pe.selF] = this.simplifyExpression(this.expressions[pe.selF]);
-                this.expressions.simplify(pe.selF);
-            }
-            for (const t of pe.t) {
-                // this.expressions[t] = this.simplifyExpression(this.expressions[t]);
-                this.expressions.simplify(t);
-            }
-            if (pe.selT !== null) {
-                // this.expressions[pe.selT] = this.simplifyExpression(this.expressions[pe.selT]);
-                this.expressions.simplify(pe.selT);
-            }
-        }
-        for (const ci of this.connectionIdentities) {
-            this.namespace = ci.namespace;
-            for (const pol of ci.pols) {
-                // this.expressions[pol] = this.simplifyExpression(this.expressions[pol]);
-                this.expressions.simplify(pol);
-            }
-            for (const co of ci.connections) {
-                // this.expressions[co] = this.simplifyExpression(this.expressions[co]);
-                this.expressions.simplify(co);
-            }
-        }
-
-        for (const expr of this.expressions) {
-            if (!expr.simplified) {
-                if (this.config.disableUnusedError) {
-                    console.log(`WARNING: Unused expresion ${expr.poldef} on ${expr.fileName}:${expr.first_line}`);
-                } else {
-                    this.error(expr, `Unused expression ${expr.poldef} `);
-                }
-            }
-            if (expr.deg>2) {
-                this.error(expr, `Degree ${expr.deg} greater than 2`);
-            }
-        }
+        this.checkNotFoundNamespaces();
+        this.checkUndefinedPols();
+        this.simplifyAll();
+        this.checkUnusedExpressions();
+        this.checkExpressionsDegree();
         this.reduceExpressions();
         return this.contextToJson();
     }
@@ -241,7 +166,7 @@ class Compiler {
             let poldef = false;
             let insideIncludedDomain = false;
             const ctxExprLen = this.expressions.length;
-
+            console.log(s);
             try {
                 this.checkNamespace(this.namespace);
                 insideIncludedDomain = true;
@@ -283,12 +208,15 @@ class Compiler {
     }
 
     doPolCommitDeclaration(s) {
-        this.nCommitments = this.doPolDeclaration(s, 'cmP', this.nCommitments);
+        this.nCommitments = this.polDeclaration(s, 'cmP', this.nCommitments);
     }
     doPolConstantDeclaration(s) {
-        this.nConstants = this.doPolDeclaration(s, 'constP', this.nConstants);
+        this.nConstants = this.polDeclaration(s, 'constP', this.nConstants);
     }
-    doPolDeclaration(s, type, nextId) {
+    doPolDeclaration(s) {
+        this.nIm = this.polDeclaration(s, 'imP', this.nIm, true);
+    }
+    polDeclaration(s, type, nextId, reserveExpressions = false) {
         for (const pol of s.names) {
             const polname = this.namespace + '.' + pol.name;
             let ref = this.references.get(polname);
@@ -297,9 +225,10 @@ class Compiler {
             }
             // TODO: multidimensional-array
             let len = (pol.type === 'array') ? this.getExprNumber(pol.expLen, s, `${polname} array size`) : 1;
+            const refId = reserveExpressions ? this.expressions.reserve(len) : nextId;
             ref = {
                 type,
-                id: nextId,
+                id: refId,
                 polDeg: this.polDeg,
                 sourceRef: s.sourceRef,
                 isArray: (pol.type === 'array'),
@@ -317,9 +246,16 @@ class Compiler {
         this.addFilename(expr, this.relativeFileName);
         return this.expressions.insert(expr);
     }
+    updateExpression(id, expr)
+    {
+        this.addFilename(expr, this.relativeFileName);
+        return this.expressions.update(id, expr);
+    }
     doPolDefinition(s) {
         const polname = this.namespace + "." + s.name;
         s.expression.poldef = polname;
+        console.log('POL DEFINITION');
+        console.log(s);
         const eidx = this.addExpression(s.expression);
         let ref = this.references.get(polname);
         if (ref !== null) {
@@ -333,6 +269,28 @@ class Compiler {
         };
         this.references.define(polname, ref);
         this.nIm++;
+    }
+    setPol(s) {
+        const polname = this.namespace + "." + s.name;
+        let ref = this.references.get(polname);
+        if (ref === null) {
+            this.error(s, `${polname} not defined setting temporal pol on ${ref.sourceRef}`);
+        }
+        let eid = ref.id;
+        let polref = polname;
+        if (ref.isArray) {
+            const idx = this.getExprNumber(s.idxExp);
+            polref += `[${idx}]`;
+            if (idx >= ref.len) {
+                this.error(s, `${polref} out of index (len=${ref.len})`);
+            }
+            eid += idx;
+        }
+        if (this.expressions.get(eid) !== null) {
+            this.error(s, `multiple initializations of ${polref}`);
+        }
+        s.expression.poldef = polname;
+        this.updateExpression(eid, s.expression);
     }
     doPolIdentity(s) {
         const eidx = this.addExpression(s.expression);
@@ -428,6 +386,9 @@ class Compiler {
             this.error(s, `name already defined ${s.name}`);
         }
         this.constants.define(s.name, this.getExprNumber(s.exp, s, `constant ${s.name} definition`));
+    }
+    doCode(s) {
+        this.processor.execute(s.statments);
     }
     async loadSource(fileName, isMain) {
         let fullFileName, fileDir, src;
@@ -537,9 +498,6 @@ class Compiler {
                 out.op = 'const';
             } else if (ref.type === 'imP') {
                 // TODO: array support on temporal
-                if (offset != 0) {
-                    this.error(e, 'Intermediate cannot have an offset');
-                }
                 if (!main) {
                     deps.push(ref.id);
                 }
@@ -676,6 +634,108 @@ class Compiler {
 
     getNewIdQ() {
         return this.nQ++;
+    }
+
+    simplifyAll() {
+        for (const n in this.publics) {
+            const pub = this.publics[n];
+            if (pub.polType == "imP") {
+                this.expressions.simplify(pub.polId);
+            }
+        }
+        for (const pi of this.polIdentities) {
+            this.namespace = pi.namespace;
+            this.expressions.simplify(pi.e);
+        }
+        for (const po of this.plookupIdentities) {
+            this.namespace = po.namespace;
+            for (const f of po.f) {
+                this.expressions.simplify(f);
+            }
+            if (po.selF !== null) {
+                this.expressions.simplify(po.selF);
+            }
+            for (const t of po.t) {
+                this.expressions.simplify(t);
+            }
+            if (po.selT !== null) {
+                this.expressions.simplify(po.selT);
+            }
+        }
+        for (const pe of this.permutationIdentities) {
+            this.namespace = pe.namespace;
+            for (const f of pe.f) {
+                this.expressions.simplify(f);
+            }
+            if (pe.selF !== null) {
+                this.expressions.simplify(pe.selF);
+            }
+            for (const t of pe.t) {
+                this.expressions.simplify(t);
+            }
+            if (pe.selT !== null) {
+                this.expressions.simplify(pe.selT);
+            }
+        }
+        for (const ci of this.connectionIdentities) {
+            this.namespace = ci.namespace;
+            for (const pol of ci.pols) {
+                this.expressions.simplify(pol);
+            }
+            for (const co of ci.connections) {
+                this.expressions.simplify(co);
+            }
+        }
+    }
+    checkNotFoundNamespaces() {
+        if (typeof this.namespaces === 'object') {
+            let notFoundNamespaces = Object.keys(this.namespaces).filter(namespace => this.namespaces[namespace] === 0);
+            if (notFoundNamespaces.length) {
+                throw new Error('ERROR: namespaces not found: '+notFoundNamespaces.join(', '));
+            }
+        }
+    }
+    checkUndefinedPols() {
+        let undefined = 0;
+        let names = [];
+        for (const [name, ref] of this.references.keyValues()) {
+            if (ref.type !== 'imP') continue;
+            const len = ref.isArray ? ref.len : 1;
+            let fromId = ref.id;
+            let reported = false;
+            for (let index = 0; index < len; ++index ) {
+                if (this.expressions.get(fromId + index) !== null) continue;
+                ++undefined;
+                if (ref.isArray) console.log(`ERROR: Undefined temporal pol ${name}[${index}]`)
+                else console.log(`ERROR: Undefined temporal pol ${name}`)
+                if (reported) continue;
+                names.push(name);
+                reported = true;
+            }
+        }
+        if (undefined > 0) {
+            throw new Error(`found ${undefined} undefined pols (${names.join(',')})`);
+        }
+    }
+    checkUnusedExpressions() {
+        for (const expr of this.expressions) {
+            if (!expr.simplified) {
+                if (this.config.disableUnusedError) {
+                    console.log(`WARNING: Unused expresion ${expr.poldef} on ${expr.fileName}:${expr.first_line}`);
+                } else {
+                    this.error(expr, `Unused expression ${expr.poldef} `);
+                }
+            }
+            if (expr.deg>2) {
+                this.error(expr, `Degree ${expr.deg} greater than 2`);
+            }
+        }
+    }
+    checkExpressionsDegree(limit=2) {
+        for (const expr of this.expressions) {
+            if (expr.deg <= limit) continue;
+            this.error(expr, `Degree ${expr.deg} greater than ${limit}`);
+        }
     }
 }
 
