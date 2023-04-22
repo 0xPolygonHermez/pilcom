@@ -1,0 +1,68 @@
+namespace Basic(2**16);
+    pol commit a;
+    pol commit b;
+/*    var c = 8;
+    var d = 51;
+    println("c:", c);
+    println("d:", d);
+    if (c > 9) {
+        var c = 18;
+        c = c + 1;
+        d = d * 2;
+        println("c:",c);
+        println("d:",d)
+    } else {
+        c = c * 10;
+        println("hello")
+    };
+
+    while (c > 0) {
+        println("while.c:",c);
+        c = c - 1
+    };
+    println("c:",c);
+    println("d:",d);
+
+    c = 10;
+    while (c > 0) {
+        if (c == 1) {
+            println("LAST LAP")
+        };
+        println(c);
+        c = c - 1
+    };*/
+    for (var i = 0; i < 10; i = i+1) {
+        var k = i + 3;
+        println("I:", i, "K:", k);
+        for (var j = i; j < k; j = j+1) {
+            println("[BEGIN] I:", i, "K:", k, "J:", j);
+            if (i == 4 && j == 5) {
+                println("BREAK");
+                break
+            };
+            if (i == 5 && j == 5) {
+                println("CONTINUE");
+                continue
+            };
+            a * i === b * j;
+            println("[END]   I:", i, "K:", k, "J:", j)
+        }
+    };
+
+/*    a === b;
+
+    when eval F {
+        a === b;
+        a' === a;
+    }
+
+    when L1 {
+        a === b;   ==> esquema constraints
+        a' === a;  ==>
+    }
+
+    myWhen (L1, [
+        a === b,
+        a' === a
+    ]);*/
+

@@ -1,4 +1,5 @@
-module.exports = class Expression {
+const util = require('util');
+module.exports = class Expressions {
 
     constructor (Fr, parent, references, publics, constants) {
         this.Fr = Fr;
@@ -7,12 +8,26 @@ module.exports = class Expression {
         this.publics = publics;
         this.constants = constants;
         this.parent = parent;
-        this.operationHandles = {
-            add: (a, b) => this.Fr.add(a, b),
-            mul: (a, b) => this.Fr.mul(a, b),
-            sub: (a, b) => this.Fr.sub(a, b),
-            pow: (a, b) => this.Fr.exp(a, b),
-            neg: (a, b) => this.Fr.neg(a),
+        this.operations = {
+            add:  { type: 'arith',   result: 'number', args: 2, handle: (a, b) => a + b,  handleFr: (Fr, a, b) => Fr.add(a, b)},
+            mul:  { type: 'arith',   result: 'number', args: 2, handle: (a, b) => a * b,  handleFr: (Fr, a, b) => Fr.mul(a, b)},
+            sub:  { type: 'arith',   result: 'number', args: 2, handle: (a, b) => a - b,  handleFr: (Fr, a, b) => Fr.sub(a, b)},
+            pow:  { type: 'arith',   result: 'number', args: 2, handle: (a, b) => a ** b, handleFr: (Fr, a, b) => Fr.pow(a, b)},
+            neg:  { type: 'arith',   result: 'number', args: 1, handle: (a) => -a,        handleFr: (Fr, a) => Fr.neg(a, b)},
+            gt:   { type: 'cmp',     result: 'bool',   args: 2, handle: (a, b) => a > b },
+            ge:   { type: 'cmp',     result: 'bool',   args: 2, handle: (a, b) => a >= b},
+            lt:   { type: 'cmp',     result: 'bool',   args: 2, handle: (a, b) => a < b },
+            le:   { type: 'cmp',     result: 'bool',   args: 2, handle: (a, b) => a <= b},
+            eq:   { type: 'cmp',     result: 'bool',   args: 2, handle: (a, b) => a == b},
+            ne:   { type: 'cmp',     result: 'bool',   args: 2, handle: (a, b) => a != b},
+            and:  { type: 'logical', result: 'bool',   args: 2, handle: (a, b) => a && b},
+            or:   { type: 'logical', result: 'bool',   args: 2, handle: (a, b) => a || b},
+            not:  { type: 'logical', result: 'bool',   args: 1, handle: (a) => !a},
+            shl:  { type: 'bit',     result: 'number', args: 2, handle: (a, b) => a << b},
+            shr:  { type: 'bit',     result: 'number', args: 2, handle: (a, b) => a >> b},
+            band: { type: 'bit',     result: 'number', args: 2, handle: (a, b) => a & b },
+            bor:  { type: 'bit',     result: 'number', args: 2, handle: (a, b) => a | b },
+            bxor: { type: 'bit',     result: 'number', args: 2, handle: (a, b) => a ^ b },
         }
     }
     get(id) {
@@ -52,48 +67,58 @@ module.exports = class Expression {
         return fromId;
     }
     simplify(id) {
-        return this.evaluate(this.get(id), true);
+        return this.evaluate(this.get(id), {update: true, Fr: this.Fr});
     }
 
     simplifyExpression(e) {
-        return this.evaluate(e);
+        return this.evaluate(e , {update: true, Fr: this.Fr});
     }
 
-    evaluate(e, onlySimplify = false) {
-        if (e.simplified) return e;
+    toString(e) {
+        console.log(util.inspect(e, false, null, true /* enable colors */))
+    }
+    // update mode
+    evaluate(e, mode = {}) {
 
-        if (e.op !== 'var') e.simplified = true;
+        // if (e.simplified) return e;
+
+        // if (e.op !== 'var') e.simplified = true;
 
         // if (e.namespace) checkNamespace(e.namespace, ctx);
-
+        if (e.op in this.operations) {
+            const operation = this.operations[e.op];
+            const [a,b,reduced] = this.evaluateValues(e, operation.args, mode);
+            if (reduced) {
+                const result = {
+                    simplified: true,
+                    op: (operation.type === 'cmp' || operation.type === 'logical') ? 'bool':'number',
+                    deg:0,
+                    value: mode.fr ? operation.handleFr(mode.fr, a.value, b.value) : operation.handle(a.value, b.value),
+                    first_line: e.first_line
+                };
+                return result;
+            }
+            if (e.op === 'pow') {
+                // TODO: check last Scalar.
+                // return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.exp(Fr.e(a.value), Scalar.e(b.value))), first_line: e.first_line}
+                error(e, "Exponentiation can only be applied between constants");
+            }
+            if (operation.type !== 'arith') {
+                error(e, "Only arithmetic operations could be stored as expression");
+            }
+            /* console.log(e);
+            console.log([valuesCount, reduced]);
+            console.log(a);
+            console.log(b);*/
+            e.deg = (e.op === 'mul') ? a.deg + b.deg : Math.max(a.deg, b.deg);
+            return e;
+        }
         switch (e.op) {
-            case 'add':
-            case 'sub':
-            case 'mul':
-            case 'pow':
-            case 'neg':
-                {
-                    const valuesCount = e.op === 'neg' ? 1:2;
-                    const [a,b,reduced] = this.evaluateValues(e, valuesCount, onlySimplify);
-                    if (reduced) {
-                        const aValue = this.Fr.e(a.value);
-                        const bValue = this.Fr.e(b.value);
-                        return this.simplified(this.operationHandles[e.op](aValue, bValue), e);
-                    }
-                    if (e.op === 'pow') {
-                        // TODO: check last Scalar.
-                        // return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.exp(Fr.e(a.value), Scalar.e(b.value))), first_line: e.first_line}
-                        error(e, "Exponentiation can only be applied between constants");
-                    }
-                    /* console.log(e);
-                    console.log([valuesCount, reduced]);
-                    console.log(a);
-                    console.log(b);*/
-                    e.deg = (e.op === 'mul') ? a.deg + b.deg : Math.max(a.deg, b.deg);
-                }
+            case 'number':
+                e.deg = 0;
                 return e;
 
-            case 'number':
+            case 'bool':
                 e.deg = 0;
                 return e;
 
@@ -114,16 +139,25 @@ module.exports = class Expression {
                             return e;
                         case 'imP':
                             {
-                                console.log('###############################');
-                                console.log(e);
-                                console.log(ref);
-                                let refexp = this.evaluate(this.get(id));
+                                let refexp = this.evaluate(this.get(id), mode);
                                 this.reduceExpressionTo1(refexp);
                                 this.update(id, refexp);
                                 e.deg = 1
                                 // e.deg = refexp.deg;
                                 return e;
                             }
+                        case 'var':
+                            console.log('REF:');
+                            console.log(ref);
+                            return {
+                                simplified: false,
+                                op: "number",
+                                deg:0,
+                                value: ref.value,
+                                first_line: e.first_line
+                            }
+                            // return this.simplified(ref.value, e);
+
                         default:
                             throw new Error(`Invalid reference type: ${ref.type}`);
                     }
@@ -139,38 +173,38 @@ module.exports = class Expression {
                     return e;
                 }
             case 'var':
-                // TODO
-                // if var not simplified
-                return e;
+                console.log(e);
+                EXIT_HERE;
             default:
                 console.log(e);
                 error(e, `invalid operation: ${e.op}`);
         }
     }
 
-    evaluateValues(e, valuesCount, onlySimplify) {
+    evaluateValues(e, valuesCount, mode) {
         // TODO: check valuesCount
-        e.values[0] = this.evaluate(e.values[0], onlySimplify);
-        const a = e.values[0];
-        let simple = a.op === 'number';
+        const a = this.evaluate(e.values[0], mode);
+        if (mode.update) e.values[0] = a;
+        let simple = (a.op === 'number' || a.op === 'bool');
         if (valuesCount == 1) {
             return [a, a, simple];
         }
         // console.log('valuesCount');
         // console.log(valuesCount);
         // console.log(e.values);
-        e.values[1] = this.evaluate(e.values[1], onlySimplify);
-        const b = e.values[1];
-        simple = simple && b.op === 'number';
+        const b = this.evaluate(e.values[1], mode);
+        if (mode.update) e.values[1] = b;
+        simple = simple && (b.op === 'number' || b.op === 'bool');
+
         return [a, b, simple];
     }
 
-    simplified(value, e) {
+    simplified(value, e, mode) {
         return {
                  simplified:true,
                  op: "number",
                  deg:0,
-                 value: this.Fr.toString(value),
+                 value: mode.Fr ? mode.Fr.e(value) : BigInt(value),
                  first_line: e.first_line
                }
     }
@@ -201,13 +235,18 @@ module.exports = class Expression {
         console.log(b);
         // EXIT_HERE;
     }
+    getPolReference(e) {
+        const polname = this.parent.getFullName(e)
+        const ref = this.references.get(polname);
+        return polname + (typeof e.idxExp === 'undefined' ? '':`[${this.e2num(e.idxExp)}]`);
+    }
     resolveReference(e) {
-        const polname = e.namespace + '.' + e.name;
+        const polname = this.parent.getFullName(e)
         const ref = this.references.get(polname);
         if (ref === null) {
-            throw new Error(`Reference ${polname} not found on .....`)
+            throw new Error(`Reference ${polname} not found on .....`);
         }
-        let id = ref.id;
+        let id = ref.id ?? 0;
         if (ref.isArray) {
             const index = this.e2num(e.idxExp);
             if (index >= ref.len) {
@@ -218,10 +257,19 @@ module.exports = class Expression {
         return [polname, ref, id];
     }
     e2num(expr, s, title = false) {
-        const se = this.simplifyExpression(expr);
+        const se = this.evaluate(expr);
         if (se.op !== 'number') {
+            this.error(s, title + ' is not constant number expression');
+        }
+        return BigInt(se.value);
+    }
+    e2value(expr, s, title = false) {
+        const se = this.evaluate(expr);
+        if (se.op !== 'number' && se.op !== 'bool') {
+            console.log(se);
+            EXIT_HERE;
             this.error(s, title + ' is not constant expression');
         }
-        return Number(se.value);
+        return se.value;
     }
 }

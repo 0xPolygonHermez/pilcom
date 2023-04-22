@@ -28,7 +28,7 @@ class Compiler {
         this.constants = new Definitions(Fr);
         this.publics = new Definitions(Fr);
         this.expressions = new Expressions(Fr, this, this.references, this.publics, this.constants);
-        this.processor = new Processor(Fr, this);
+        this.processor = new Processor(Fr, this, this.references, this.expressions);
     }
 
     initContext() {
@@ -77,7 +77,7 @@ class Compiler {
         this.checkNotFoundNamespaces();
         this.checkUndefinedPols();
         this.simplifyAll();
-        this.checkUnusedExpressions();
+        // this.checkUnusedExpressions();
         this.checkExpressionsDegree();
         this.reduceExpressions();
         return this.contextToJson();
@@ -133,14 +133,11 @@ class Compiler {
                 }
                 continue;
             } else if (s.type == "Subproof") {
-                console.log('****** SUBPROOF **********');
-                console.log(s);
                 if (s.name in this.subproofs) {
                     this.error(s, `subproof ${s.name} was previously defined on ${this.subproofs[s.name].sourceRef}`);
                 }
                 let polDegs = [];
                 for (let exp of s.exp) {
-                    console.log(exp);
                     const se = this.expressions.simplifyExpression(exp);
                     if (se.op != "number") this.error(s, "Size is not constant expression");
                     polDegs.push(Number(se.value));
@@ -166,17 +163,10 @@ class Compiler {
             let poldef = false;
             let insideIncludedDomain = false;
             const ctxExprLen = this.expressions.length;
-            console.log(s);
             try {
                 this.checkNamespace(this.namespace);
                 insideIncludedDomain = true;
-                const method = 'do'+s.type;
-                if (!(method in this)) {
-                    console.log('==== ERROR ====');
-                    console.log(s);
-                    this.error(s, `Invalid line type: ${s.type}`);
-                }
-                this[method](s);
+                this.parseStatment(s);
             } catch (err) {
                 if (err instanceof SkipNamespace) {
                     skip = true;
@@ -206,7 +196,23 @@ class Compiler {
             }
         }
     }
-
+    parseStatments(statments) {
+        for (const s of statments) {
+            const res = this.parseStatment(s);
+            if (typeof res === 'boolean') {
+                return res;
+            }
+        }
+    }
+    parseStatment(s) {
+        const method = 'do'+s.type;
+        if (!(method in this)) {
+            console.log('==== ERROR ====');
+            console.log(s);
+            this.error(s, `Invalid line type: ${s.type}`);
+        }
+        return this[method](s);
+    }
     doPolCommitDeclaration(s) {
         this.nCommitments = this.polDeclaration(s, 'cmP', this.nCommitments);
     }
@@ -254,8 +260,6 @@ class Compiler {
     doPolDefinition(s) {
         const polname = this.namespace + "." + s.name;
         s.expression.poldef = polname;
-        console.log('POL DEFINITION');
-        console.log(s);
         const eidx = this.addExpression(s.expression);
         let ref = this.references.get(polname);
         if (ref !== null) {
@@ -271,29 +275,28 @@ class Compiler {
         this.nIm++;
     }
     setPol(s) {
-        const polname = this.namespace + "." + s.name;
-        let ref = this.references.get(polname);
-        if (ref === null) {
-            this.error(s, `${polname} not defined setting temporal pol on ${ref.sourceRef}`);
-        }
-        let eid = ref.id;
-        let polref = polname;
-        if (ref.isArray) {
-            const idx = this.getExprNumber(s.idxExp);
-            polref += `[${idx}]`;
-            if (idx >= ref.len) {
-                this.error(s, `${polref} out of index (len=${ref.len})`);
+//        const polname = this.namespace + "." + s.name;
+//        let ref = this.references.get(polname);
+        const [polname, ref, id] = this.expressions.resolveReference(s);
+
+        if (ref.type === 'var') {
+            ref.value = this.expressions.e2num(s.expression);
+            this.references.set(polname, ref);
+        } else {
+            if (this.expressions.get(id) !== null) {
+                this.error(s, `multiple initializations of ${polref}`);
             }
-            eid += idx;
+            s.expression.poldef = polname;
+            this.updateExpression(id, s.expression);
         }
-        if (this.expressions.get(eid) !== null) {
-            this.error(s, `multiple initializations of ${polref}`);
-        }
-        s.expression.poldef = polname;
-        this.updateExpression(eid, s.expression);
     }
     doPolIdentity(s) {
-        const eidx = this.addExpression(s.expression);
+        console.log('********** doPolIdentity ********** (s.expression:)');
+        this.expressions.toString(s.expression);
+        let expr = this.expressions.evaluate(s.expression, {update: true, Fr: this.Fr});
+        console.log('********** doPolIdentity ********** (expr)');
+        this.expressions.toString(expr);
+        const eidx = this.addExpression(expr);
         this.polIdentities.push({fileName: this.relativeFileName, namespace: this.namespace, line: s.first_line, e: eidx});
     }
     composePlPeIdentity(s) {
@@ -388,7 +391,7 @@ class Compiler {
         this.constants.define(s.name, this.getExprNumber(s.exp, s, `constant ${s.name} definition`));
     }
     doCode(s) {
-        this.processor.execute(s.statments);
+        return this.processor.execute(s.statments);
     }
     async loadSource(fileName, isMain) {
         let fullFileName, fileDir, src;
@@ -510,16 +513,16 @@ class Compiler {
             out.id = ref.id;
             out.op = 'public';
         }
-        if ('idQ' in e) {
+        if (typeof e.idQ !== 'undefined') {
             out.idQ = e.idQ;
         }
-        if ('values' in e) {
+        if (typeof e.values !== 'undefined') {
             out.values = e.values.map(value => this.expressionToJson(value, deps));
         }
-        if ('value' in e) {
+        if (typeof e.value !== 'undefined') {
             out.value = e.value;
         }
-        if (typeof e.const !== "undefined") {
+        if (typeof e.const !== 'undefined') {
             out.const = e.const;
         }
         if (main && deps.length>0) {
@@ -719,7 +722,8 @@ class Compiler {
     }
     checkUnusedExpressions() {
         for (const expr of this.expressions) {
-            if (!expr.simplified) {
+            if (!expr.used) {
+                console.log(expr);
                 if (this.config.disableUnusedError) {
                     console.log(`WARNING: Unused expresion ${expr.poldef} on ${expr.fileName}:${expr.first_line}`);
                 } else {
@@ -736,6 +740,9 @@ class Compiler {
             if (expr.deg <= limit) continue;
             this.error(expr, `Degree ${expr.deg} greater than ${limit}`);
         }
+    }
+    getFullName(e) {
+        return (((e.namespace ?? 'this') === 'this') ? this.namespace : e.namespace) + '.' + e.name;
     }
 }
 

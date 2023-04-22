@@ -18,9 +18,17 @@ module.exports = class Definitions {
 
     define(name, value) {
         if (this.isDefined(name)) {
-            throw new Error(`%{name} already defined on ....`);
+            throw new Error(`${name} already defined on ....`);
         }
         this.definitions[name] = value;
+    }
+
+    set(name, value) {
+        this.definitions[name] = value;
+    }
+
+    unset(name) {
+        delete this.definitions[name];
     }
 
     *[Symbol.iterator]() {

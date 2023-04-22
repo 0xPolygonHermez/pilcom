@@ -1,0 +1,90 @@
+namespace Basic(2**16);
+    col fixed a1 = [1...0];
+    col fixed a2 = [1:256...0:10];
+    col fixed a3 = [[1:256...0:10]...0]...;
+    col fixed a4 = [[1:256...0:10]:25...0]...;
+    col fixed a5 = [1,2,3,5...8,10,12];
+    col fixed a6 = [1,...0];
+    col fixed a7 = [...0,1];
+    col fixed _BYTE_C4096 = [0:4096...255:4096,10,12];
+    col fixed _WR256 = [0:2048,1:1024:0:1024];
+    col fixed _WR8 = [0:3072,1:1024];
+    col fixed _OFFSET = [0:32...31:32];
+    col fixed BYTE_C4096 = [0:4096...255:4096]...;
+    col fixed WR256 = [0:2048,1:1024:0:1024]...;
+    col fixed WR8 = [0:3072,1:1024]...;
+    col fixed OFFSET = [0:32...31:32]...;
+    col fixed FACTOR = [1,2,4,8,2**43]...;
+    col fixed FACTOR = [2,4,..+..,1024]...;
+    col fixed FACTOR = [1,2,4,8,..*..,2**43]...;
+    col witness b;
+    integer c = 8;
+    integer d = 51;
+    println("c:", c);
+    println("d:", d);
+    if (c > 9) {
+        integer c = 18;
+        c = c + 1;
+        d = d * 2;
+        println("c:",c);
+        println("d:",d);
+    }
+
+    println("d:",d);
+    if (c > 3) {
+        c = c * 2;
+    } else {
+        c = c * 10;
+        println("hello")
+    }
+
+
+    while (c > 0) {
+        println("while.c:",c);
+        c = c - 1;
+    }
+    println("c:",c);
+    println("d:",d);
+
+    c = 10;
+    while (c > 0) {
+        if (c == 1)
+            println("LAST LAP");
+        println(c);
+        c = c - 1
+    }
+    for (integer i = 0; i < 10; i = i+1) {
+        integer k = i + 3;
+        println("I:", i, "K:", k);
+        for (integer j = i; j < k; j = j+1) {
+            println("[BEGIN] I:", i, "K:", k, "J:", j);
+            if (i == 4 && j == 5) {
+                println("BREAK");
+                break
+            }
+            if (i == 5 && j == 5) {
+                println("CONTINUE");
+                continue
+            }
+            a * i === b * j;
+            println("[END]   I:", i, "K:", k, "J:", j)
+        }
+    }
+
+/*    a === b;
+
+    when eval F {
+        a === b;
+        a' === a;
+    }
+
+    when L1 {
+        a === b;   ==> esquema constraints
+        a' === a;  ==>
+    }
+
+    myWhen (L1, [
+        a === b,
+        a' === a
+    ]);*/
+

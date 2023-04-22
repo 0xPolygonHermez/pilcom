@@ -52,6 +52,7 @@
 | built-in-functions (setIdentity) |  |  |  |  |
 | **miscelaneous** |  |  |  |  |
 | no degree limitation |  |  |  |  |
+| remove ; of syntax |  |  |  |  |
 
 ## Randomness access
 

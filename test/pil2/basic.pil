@@ -1,0 +1,31 @@
+subproof Basic2 (2**16);
+subproof Basic (2**16, 2**20, 2**21);
+
+namespace Arrays2 subproof Basic;
+    pol constant d[2];
+    pol commit c;
+
+    d[0] + d[1] === c*d[0];
+
+namespace Arrays1  subproof Basic;
+    pol commit a, b[3], c;
+
+    a*b[0] === 1;
+    b[1]*b[1] === b[2]*Arrays2.d[1];
+
+    b[1]'(4+10) {b[0], a} in Arrays2.d[0] { Arrays2.c, Arrays2.d[1]};
+
+/*
+    if (index < 10) {
+        index === index + 1;
+    };
+
+    while (index < 10) {
+        index === index + 1;
+    };
+
+    when b[1] {
+        a * b === 0;
+    };
+
+    var pepe;*/
