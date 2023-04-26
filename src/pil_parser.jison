@@ -47,7 +47,8 @@ return                                      { return 'RETURN' }
 
 \.\.\+\.\.                                  { return 'DOTS_ARITH_SEQ' }
 \.\.\*\.\.                                  { return 'DOTS_GEOM_SEQ' }
-\.\.\.                                      { return 'DOTS' }
+\.\.\.                                      { return 'DOTS_FILL' }
+\.\.                                        { return 'DOTS_RANGE' }
 
 (0x[0-9A-Fa-f][0-9A-Fa-f_]*)|([0-9][0-9_]*) { yytext = yytext.replace(/\_/g, ""); return 'NUMBER'; }
 
@@ -58,6 +59,8 @@ return                                      { return 'RETURN' }
 \%[a-zA-Z_][a-zA-Z$_0-9]*                   { yytext = yytext.slice(1); return 'CONSTANTID'; }
 \@[a-zA-Z_][a-zA-Z$_0-9]*                   { yytext = yytext.slice(1); return 'METADATA'; }
 \*\*                                        { return 'POW'; }
+\+\+                                        { return 'INC'; }
+\-\-                                        { return 'DEC'; }
 \+                                          { return '+'; }
 \-                                          { return '-'; }
 \*                                          { return '*'; }
@@ -97,7 +100,7 @@ return                                      { return 'RETURN' }
 %right IF_NO_ELSE ELSE
 
 %left ','
-%left DOTS
+%left DOTS_FILL DOTS_RANGE
 %left DOTS_GEOM_SEQ DOTS_ARITH_SEQ
 %left LT GT EQ NE LE GE
 %left '+' '-'
@@ -108,7 +111,7 @@ return                                      { return 'RETURN' }
 %left '[' ']'
 %left "'"
 %left '.'
-%right UMINUS UPLUS ':' '!'
+%right INC DEC UMINUS UPLUS ':' '!'
 
 %nonassoc '('
 
@@ -556,26 +559,22 @@ flexible_string
 
 range_definition
     : '[' range_list ']'
-    | '[' range_list ']' DOTS
+    | '[' range_list ']' DOTS_FILL
     ;
 
 range_list
-    : range_list range_sequence range
+    : range_list ',' range
+    | range_list ',' DOTS_ARITH_SEQ ',' range
+    | range_list ',' DOTS_GEOM_SEQ ',' range
+    | range_list ',' DOTS_ARITH_SEQ
+    | range_list ',' DOTS_GEOM_SEQ
     | range
-    ;
-
-range_sequence
-    : ','
-    | ',' DOTS_ARITH_SEQ ','
-    | ',' DOTS_GEOM_SEQ ','
     ;
 
 range
     : range ':' e5
-    | range DOTS range
-//    | range ',' DOTS_ARITH_SEQ ',' range %prec DOTS_ARITH_SEQ
-//    | range ',' DOTS_GEOM_SEQ ',' range  %prec DOTS_GEOM_SEQ
-    | DOTS range
+    | range DOTS_RANGE range
+    | range DOTS_FILL
     | '[' range_list ']'
     | e5
     ;
@@ -812,6 +811,26 @@ e2
         {
             $$ = $1
             setLines($$, @1);
+        }
+    | INC pol_id
+        {
+            $$ = $1
+            setLines($$, @2);
+        }
+    | DEC pol_id
+        {
+            $$ = $1
+            setLines($$, @2);
+        }
+    | pol_id INC
+        {
+            $$ = $1
+            setLines($$, @2);
+        }
+    | pol_id DEC
+        {
+            $$ = $1
+            setLines($$, @2);
         }
     ;
 
