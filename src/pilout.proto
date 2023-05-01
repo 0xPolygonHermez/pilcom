@@ -1,0 +1,93 @@
+package pilout;
+syntax = "proto3";
+
+enum ReferenceType {
+    COL = 0;
+    FIXED = 1;
+    WITNESS = 2;
+    PUBLIC = 3;
+    CHALLENGE = 4;
+}
+enum BoundaryCondition {
+    FIRST = 0;
+    LAST = 1;
+    NOT_FIRST = 2;
+    NOT_LAST = 3;
+    NOT_FIRST_NOT_LAST = 4;
+}
+message PilOut {
+    int32 nReferences = 1;
+    int32 nConstraints = 2;
+    int32 nExpressions = 3;
+    int32 nCols = 4;
+    int32 nColsFixed = 5;
+    int32 nColsWitness = 6;
+    int32 nPublics = 7;
+    repeated Expression expressions = 10;
+    repeated Constraint constraints = 11;
+    repeated Reference references = 12;
+    repeated Col cols = 13;
+}
+message Constraint {
+    int32 id = 1;
+    BoundaryCondition boundary = 2;
+    Operand selector = 3;
+    Operand operand = 4;
+    string debugLine = 5;
+}
+
+message Reference {
+    string name = 12;
+    ReferenceType type = 13;
+    int64 id = 14;
+    int32 dim = 15;
+    repeated int32 lenghts = 16;
+    string debugLine = 17;
+}
+
+message Operand {
+    message Col {
+        int32 id = 1;
+    }
+    message ColWitness {
+        int32 id = 1;
+        sint32 next = 2;
+    }
+
+    message ColFixed {
+        int32 id = 1;
+        sint32 next = 2;
+    }
+
+    message Challenge {
+        int32 id = 1;
+    }
+
+    message Public {
+        int32 id = 1;
+    }
+    oneof operand {
+        Col col = 1;
+        ColFixed fixed = 2;
+        ColWitness witness = 3;
+        Challenge challenge = 4;
+        Public public = 5;
+    }
+}
+
+message Expression {
+    enum Operation {
+        SUM = 0;
+        SUB = 1;
+        MUL = 2;
+        NEG = 3;
+    }
+    Operation operation = 1;
+    repeated Operand operands = 2;
+}
+
+message Col {
+    int32 id = 1;
+    Operand operand = 2;
+    string debugLine = 3; // definition
+}
