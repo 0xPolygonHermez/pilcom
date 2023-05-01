@@ -1,25 +1,32 @@
 # PIL2
 ## Feature Table (Language)
 
-| Feature | State | Development | Test | Notes |
-|---------|-------|-------------|------|-------|
-| **general** |  |  |  |  |
-| refactoring, classes | wip | 50% |  |  |
+| Feature | State | Grammar | Development | Test | Notes |
+|---------|-------|---------|-------------|------|-------|
+| **general** |  |  |  |  | |
+| refactoring, classes | wip |  | 50% |  |  |
 | **randomness access** |  |  |  |  |
-| challenge |  |  |  |  |
-| stage |  |  |  |  |
-| **conditional constraints** |  |  |  |  |
-| when | yacc |  |  |  |
-| when-block | yacc  |  |  |  |
-| condition json output  |  |  |  |  |
+| challenge |  | Y |  |  |
+| stage |  | Y |  |  |  |
+| **conditional constraints** |  |  |  |  |  |
+| when | yacc | Y |  |  | |
+| when-block | yacc  | Y |  |  |
+| condition json output ?? |  |  |  |  |
 | **language** |  |  |  |  |
-| vars | yacc |  |  |  |
-| references |  |  |  |  |
-| for-loop | yacc |  |  |  |
-| while/do loop | yacc |  |  |  |
-| break, continue |  |  |  |  |
+| integer | yacc | Y |  |  |
+| fe | yacc | Y |  |  |
+| bool | yacc | Y |  |  |
+| cols | yacc | Y |  |  |
+| string | yacc | Y |  |  |
+| references | yacc | Y |  |  |
+| for-index-loop | yacc | Y |  |  |
+| for-in-loop | yacc | **Pending** |  |  |
+| while/do loop | yacc | Y |  |  |
+| break | yacc | Y |  |  |
+| continue | yacc | Y |  |  |
 | switch-case |  |  |  |  |
-| if-elseif-else |  |  |  |  |
+| if-else |  |  |  |  |
+| elseif |  |  |  |  |
 | assignation |  |  |  |  |
 | comparation |  |  |  |  |
 | constraint | done | 100% |  |  |

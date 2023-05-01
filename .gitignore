@@ -66,3 +66,4 @@ tmp
 
 .DS_Store
 stats.html
+package-lock.json

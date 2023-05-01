@@ -18,11 +18,12 @@ in                                          { return 'IN'; }
 is                                          { return 'IS'; }
 public                                      { return 'PUBLIC'; }
 global                                      { return 'GLOBAL'; }
+const                                       { return 'CONST'; }
 
 integer                                     { return 'INTEGER' }
 fe                                          { return 'FE' }
 expr                                        { return 'EXPR' }
-
+string                                      { return 'T_STRING' }
 challenge                                   { return 'CHALLENGE' }
 
 for                                         { return 'FOR' }
@@ -42,8 +43,12 @@ aggregable                                  { return 'AGGREGABLE' }
 stage                                       { return 'STAGE' }
 
 function                                    { return 'FUNCTION' }
-returns                                     { return 'RETURNS' }
 return                                      { return 'RETURN' }
+
+first                                       { return 'FIRST' }
+last                                        { return 'LAST' }
+frame                                       { return 'FRAME' }
+transition                                  { return 'TRANSITION' }
 
 \.\.\+\.\.                                  { return 'DOTS_ARITH_SEQ' }
 \.\.\*\.\.                                  { return 'DOTS_GEOM_SEQ' }
@@ -56,24 +61,35 @@ return                                      { return 'RETURN' }
 \`[^`]+\`                                   { yytext = yytext.slice(1,-1); return 'TEMPLATE_STRING'; }
 [a-zA-Z_][a-zA-Z$_0-9]*                     { return 'IDENTIFIER'; }
 \&[a-zA-Z_][a-zA-Z$_0-9]*                   { return 'REFERENCE'; }
-\%[a-zA-Z_][a-zA-Z$_0-9]*                   { yytext = yytext.slice(1); return 'CONSTANTID'; }
 \@[a-zA-Z_][a-zA-Z$_0-9]*                   { yytext = yytext.slice(1); return 'METADATA'; }
 \*\*                                        { return 'POW'; }
 \+\+                                        { return 'INC'; }
 \-\-                                        { return 'DEC'; }
+\+\=                                        { return '+='; }
+\-\=                                        { return '-='; }
+\*\=                                        { return '*='; }
 \+                                          { return '+'; }
 \-                                          { return '-'; }
 \*                                          { return '*'; }
 \'                                          { return "'"; }
+\?                                          { return "?"; }
+\%                                          { return "%"; }
+\/                                          { return "/"; }
+\\                                          { return "\\"; }
 \;                                          { return 'CS'; }
 \,                                          { return ','; }
 \.                                          { return '.'; }
 \&\&                                        { return 'AND'; }
 \|\|                                        { return 'OR'; }
-\<                                          { return 'LT'; }
-\>                                          { return 'GT'; }
+\&                                          { return 'B_AND'; }
+\|                                          { return 'B_OR'; }
+\^                                          { return 'B_XOR'; }
+\<\<                                        { return 'SHL'; }
+\>\>                                        { return 'SHR'; }
 \<\=                                        { return 'LE'; }
 \>\=                                        { return 'GE'; }
+\<                                          { return 'LT'; }
+\>                                          { return 'GT'; }
 \=\=\=                                      { return '==='; }
 \!\=                                        { return 'NE'; }
 \=\=                                        { return 'EQ'; }
@@ -84,6 +100,7 @@ return                                      { return 'RETURN' }
 \]                                          { return ']'; }
 \{                                          { return '{'; }
 \}                                          { return '}'; }
+\:\:                                        { return '::'; }
 \:                                          { return ':'; }
 \!                                          { return '!'; }
 <<EOF>>                                     { return 'EOF'; }
@@ -95,23 +112,33 @@ return                                      { return 'RETURN' }
 %left LESS_CS
 %left CS
 %nonassoc EMPTY
-%nonassoc NUMBER CONSTANTID
+%nonassoc NUMBER
 %nonassoc NON_DELIMITED_STATEMENT
 %right IF_NO_ELSE ELSE
+%left '?' ':'
 
 %left ','
 %left DOTS_FILL DOTS_RANGE
 %left DOTS_GEOM_SEQ DOTS_ARITH_SEQ
-%left LT GT EQ NE LE GE
-%left '+' '-'
+%right '=' '*=' '+=' '-='
+%right '?'
+// %left '?'
 %left OR
 %left AND
-%left '*' '/'
+%left B_OR
+%left B_XOR
+%left B_AND
+%left IN IS
+%left EQ NE
+%left LT GT EQ NE LE GE
+%left SHL SHR
+%left '+' '-'
+%left '*' "\\" '/' '%'
 %left POW
 %left '[' ']'
 %left "'"
 %left '.'
-%right INC DEC UMINUS UPLUS ':' '!'
+%right INC DEC UMINUS UPLUS '!'
 
 %nonassoc '('
 
@@ -151,11 +178,12 @@ delimited_statement
 
 non_delimited_statement
     : statement_closed %prec LESS_CS
-    | statement_closed lcs %prec LESS_CS
+    | statement_closed lcs %prec CS
         {
             $$ = $1;
         }
-    | statement_no_closed lcs %prec LESS_CS
+    | lcs %prec CS
+    | statement_no_closed lcs %prec CS
         {
             $$ = $1;
         }
@@ -185,6 +213,10 @@ statement_list_closed
         {
             $$.push($2);
         }
+    | statement_list_closed statement_closed lcs
+        {
+            $$.push($2);
+        }
     | statement_list_closed statement_no_closed lcs
         {
             $$.push($2);
@@ -193,7 +225,15 @@ statement_list_closed
         {
             $$ = [$1];
         }
+    | statement_closed lcs
+        {
+            $$ = [$1];
+        }
     | statement_no_closed lcs
+        {
+            $$ = [$1];
+        }
+    | lcs
         {
             $$ = [$1];
         }
@@ -213,12 +253,20 @@ lcs
     | CS
     ;
 
+when_boundary
+    : %empty
+    | FIRST
+    | LAST
+    | TRANSITION
+    | TRANSITION FRAME '=' NUMBER
+    ;
+
 statement_closed
     : codeblock_closed
         {
             $$ = { type: "Code", statments: $1 };
         }
-    | WHEN expression "{" when_body "}"
+    | WHEN when_boundary expression "{" when_body "}"
         {
             $$ = { type: "When", statments: $1 };
         }
@@ -226,12 +274,15 @@ statement_closed
         {
             $$ = $1;
         }
-    | FUNCTION IDENTIFIER '(' arguments ')' RETURNS return_type '{' codeblock_closed '}'
-    | FUNCTION IDENTIFIER '(' arguments ')' '{' codeblock_closed '}'
+    | FUNCTION IDENTIFIER '(' arguments ')' ':' '[' return_type_list ']' '{' statement_block '}'
+    | FUNCTION IDENTIFIER '(' arguments ')' ':' return_type '{' statement_block '}'
+    | FUNCTION IDENTIFIER '(' arguments ')' '{' statement_block '}'
     ;
 
 arguments
     : arguments_list
+    | arguments_list ',' DOTS_FILL
+    | DOTS_FILL
     |
     ;
 
@@ -252,12 +303,32 @@ argument_type
     | FE
     | EXPR
     | COL
+    | CHALLENGE
+    | T_STRING
+    ;
+
+return_type_list
+    : return_type_list ',' return_type
+    | return_type
+    ;
+
+return_type_array
+    : return_type_array '[' ']'
+    | '[' ']'
     ;
 
 return_type
+    : return_basic_type
+    | return_basic_type return_type_array
+    ;
+
+return_basic_type
     : INTEGER
     | FE
     | EXPR
+    | COL
+    | CHALLENGE
+    | T_STRING
     ;
 
 
@@ -270,6 +341,18 @@ statement_no_closed
         {
             $$ = $1;
         }
+    | GLOBAL col_declaration
+        {
+            $$ = $1;
+        }
+    | challenge_declaration
+        {
+            $$ = $1;
+        }
+    | GLOBAL challenge_declaration
+        {
+            $$ = $1;
+        }
     | namespace_definition
         {
             $$ = $1;
@@ -278,7 +361,6 @@ statement_no_closed
         {
             $$ = $1;
         }
-    // function call, need to verify if something to assign
     | expression
         {
             $$ = $1;
@@ -300,31 +382,23 @@ statement_no_closed
         {
             $$ = $1
         }
-    | METADATA expression
-        {
-            $$ = $1;
-        }
-    | METADATA '[' data_array ']'
-        {
-            $$ = $1;
-        }
+    ;
+
+
+data_value
+    : expression
+    | '{' data_object '}'
+    | '[' data_array ']'
     ;
 
 data_object
-    : data_object ',' IDENTIFIER ':' expression
-    | data_object ',' IDENTIFIER ':' '{' data_object '}'
-    | IDENTIFIER ':' expression
-    | IDENTIFIER ':' '{' data_object '}'
-    | IDENTIFIER ':' '[' data_array ']'
+    : data_object ',' IDENTIFIER ':' data_value
+    | IDENTIFIER ':' data_value
     ;
 
 data_array
-    : data_array ',' expression
-    | data_array ',' '{' data_object '}'
-    | data_array ',' '[' data_array ']'
-    | '{' data_object '}'
-    | '[' data_array ']'
-    | expression
+    : data_array ',' data_value
+    | data_value
     ;
 
 when_body
@@ -344,7 +418,7 @@ when_body
     ;
 
 function_call
-    : name_reference '(' expression_list ')'
+    : name_reference '(' multiple_expression_list ')'
         {
            // function call
            $$ = { type: 'call', function: $1, arguments: $3 };
@@ -364,7 +438,17 @@ codeblock_no_closed
             $$ = $1;
             console.log($1);
         }
-    | DO delimited_statement WHILE '(' conditional_expression ')'
+    | variable_multiple_assignment
+        {
+            $$ = $1;
+            console.log($1);
+        }
+    | return_statement
+        {
+            $$ = $1;
+            console.log($1);
+        }
+    | DO delimited_statement WHILE '(' expression ')'
         {
 
            setLines($$, @1, @8);
@@ -381,18 +465,23 @@ codeblock_no_closed
         }
     ;
 
+in_expression
+    : expression
+    | '[' expression_list ']'
+    ;
+
 codeblock_closed
-    : FOR '(' for_init CS conditional_expression CS variable_assignment_list ')' non_delimited_statement
+    : FOR '(' for_init CS expression CS variable_assignment_list ')' non_delimited_statement
         {
            $$ = {type: 'for', init: $3, condition: $5, increment: $7, statments: $9 };
            setLines($$, @1, @9);
         }
-    | FOR '(' for_init IN expression ')' non_delimited_statement
+    | FOR '(' for_init IN in_expression ')' non_delimited_statement
         {
            $$ = {type: 'for', init: $3, list: $5, statments: $7 };
            setLines($$, @1, @7);
         }
-    | WHILE '(' conditional_expression ')' non_delimited_statement
+    | WHILE '(' expression ')' non_delimited_statement
         {
            $$ = {type: 'while', condition: $3, statments: $5 };
            setLines($$, @1, @5);
@@ -402,44 +491,18 @@ codeblock_closed
 
            setLines($$, @1, @7);
         }
-    | IF '(' conditional_expression ')' non_delimited_statement %prec IF_NO_ELSE
+    | IF '(' expression ')' non_delimited_statement %prec IF_NO_ELSE
         {
             $$ = {type:'if', conditions: [{type: 'if', expression: $3, statments: $5 }] };
             setLines($$, @1, @5);
         }
-    | IF '(' conditional_expression ')' non_delimited_statement ELSE non_delimited_statement
+    | IF '(' expression ')' non_delimited_statement ELSE non_delimited_statement
         {
            $$ = { type:'if', conditions: [{type: 'if', expression: $3, statments: $5 }, {type: 'else', statments: $7}]};
            setLines($$, @1, @7);
         }
-/*    | if '(' condExpression ')' delimited_statement codeElseIf %prec ifnoelse
-        {
-            $$ = {type:'if', conditions: [{type: 'if', expression: $3, statments: $6 }].concat($8.conditions) };
-            setLines($$, @1, @8);
-        }
-    | if '(' condExpression ')' delimited_statement codeElseIf else non_delimited_statement
-        {
-           $$ = { type:'if', conditions: [{type: 'if', expression: $3, statments: $6 }].concat($8.conditions) };
-           $$.conditions.push({type: 'else', statments: $11 });
-           setLines($$, @1, @9);
-        }*/
     ;
-/*
-codeElseIf
-    : codeElseIf elseif '(' condExpression ')' non_delimited_statement %prec elseif
-        {
-            $1.conditions.push({type:'elseif', expression: $4, statments: $7});
-            $$ = $1;
-            setLines($$, @1, @8);
-        }
-    | elseif '(' condExpression ')' non_delimited_statement %prec elseif
-        {
-            $1.conditions.push({type:'elseif', expression: $3, statments: $6});
-            $$ = $1;
-            setLines($$, @1, @7);
-        }
-    ;
-*/
+
 case_list
     : case_list case_item
     | case_item
@@ -448,6 +511,30 @@ case_list
 case_item
     : CASE expression ':' non_delimited_statement
     | ELSE non_delimited_statement
+    ;
+
+for_assignation
+    : variable_assignment
+    | INC pol_id
+        {
+            $$ = $1
+            setLines($$, @2);
+        }
+    | DEC pol_id
+        {
+            $$ = $1
+            setLines($$, @2);
+        }
+    | pol_id INC
+        {
+            $$ = $1
+            setLines($$, @2);
+        }
+    | pol_id DEC
+        {
+            $$ = $1
+            setLines($$, @2);
+        }
     ;
 
 for_init
@@ -459,6 +546,7 @@ for_init
         {
             $$ = $1;
         }
+    | col_declaration
     ;
 
 variable_declaration
@@ -477,33 +565,80 @@ variable_declaration
             $$ = $2;
             $$.type = 'expr';
         }
+    | T_STRING variable_init
+        {
+            $$ = $2;
+            $$.type = 'string';
+        }
     ;
 
 variable_init
-    : IDENTIFIER
+    : IDENTIFIER variable_array
         {
             $$ = {name: $1}
         }
-    | IDENTIFIER '=' expression
+    | IDENTIFIER variable_array '=' expression
         {
             $$ = {name: $1, init: $3};
         }
-    | IDENTIFIER '=' range_definition
+/*    | IDENTIFIER variable_array '=' range_definition
         {
             $$ = {name: $1, init: $3};
-        }
-    | REFERENCE
+        }*/
+    | REFERENCE variable_array
         {
             $$ = {name: $1, reference: true}
         }
-    | REFERENCE '=' expression
+    | REFERENCE variable_array '=' expression
         {
             $$ = {name: $1, reference: true, init: $3};
         }
     ;
 
+variable_array
+    : %prec EMPTY
+    | '[' expression ']'
+    ;
+
+return_statement
+    : RETURN
+    | RETURN expression
+    | RETURN '[' expression_list ']'
+    ;
+
+assign_operation
+    : '='
+    | '+='
+    | '-='
+    | '*='
+    ;
+
+left_variable_multiple_assignment_list
+    : left_variable_multiple_assignment_list ',' pol_id
+    | left_variable_multiple_assignment_list ','
+    | pol_id
+    ;
+
+left_variable_multiple_assignment
+    : '[' left_variable_multiple_assignment_list ']'
+    | '[' left_variable_multiple_assignment_list ',' DOTS_FILL ']'
+    ;
+
+variable_multiple_assignment
+    : left_variable_multiple_assignment '=' function_call
+        {
+            $$ = {type: 'assign', name: $1, value: $3}
+            setLines($$, $1, $3);
+        }
+    | left_variable_multiple_assignment '=' '[' expression_list ']'
+        {
+            $$ = {type: 'assign', name: $1, value: $3}
+            setLines($$, $1, $3);
+        }
+    ;
+
 variable_assignment
-    : pol_id '=' expression
+    : pol_id assign_operation expression %prec EMPTY
         {
             $$ = {type: 'assign', name: $1, value: $3}
             setLines($$, $1, $3);
@@ -514,9 +649,11 @@ variable_assignment
             setLines($$, $1, $3);
         }
     ;
+
+
 variable_assignment_list
-    : variable_assignment_list ',' variable_assignment
-    | variable_assignment
+    : variable_assignment_list ',' for_assignation
+    | for_assignation
     ;
 
 include_directive
@@ -557,6 +694,7 @@ flexible_string
 //
 //
 
+
 range_definition
     : '[' range_list ']'
     | '[' range_list ']' DOTS_FILL
@@ -572,19 +710,23 @@ range_list
     ;
 
 range
-    : range ':' e5
+    : range ':' expression
     | range DOTS_RANGE range
     | range DOTS_FILL
     | '[' range_list ']'
-    | e5
+    | expression
     ;
 
-expression_list
-    : expression_list ',' expression
+multiple_expression_list
+    : multiple_expression_list ',' expression %prec ','
         {
             $1.push($3);
         }
-    | expression_list ',' flexible_string
+    | multiple_expression_list ',' '[' expression_list ']' %prec ','
+        {
+            $1.push($3);
+        }
+    | '[' expression_list ']'
         {
             $1.push($3);
         }
@@ -592,21 +734,19 @@ expression_list
         {
             $$ = [$1];
         }
-    | '[' expression_list ']'
+    ;
+
+expression_list
+    : expression_list ',' expression %prec ','
         {
-            $$ = [$1];
+            $1.push($3);
         }
-    | flexible_string
+    | expression
         {
             $$ = [$1];
         }
     ;
 
-col_type
-    : WITNESS
-    | FIXED
-    | %prec EMPTY
-    ;
 
 col_declaration_array
     : '[' ']'
@@ -630,9 +770,16 @@ col_declaration_list
     ;
 
 col_declaration
-    : COL col_type col_declaration_list stage_definition
-    | COL col_type col_declaration_list stage_definition '=' expression
-    | COL col_type col_declaration_list stage_definition '=' range_definition
+    : COL col_declaration_list stage_definition
+    | COL col_declaration_list stage_definition '=' expression
+    | COL WITNESS col_declaration_list stage_definition
+    | COL FIXED col_declaration_list stage_definition
+    | COL FIXED col_declaration_list stage_definition '=' expression
+    | COL FIXED col_declaration_list stage_definition '=' range_definition
+    ;
+
+challenge_declaration
+    : CHALLENGE col_declaration_list stage_definition
     ;
 
 public_declaration
@@ -665,26 +812,216 @@ subproof_definition
     ;
 
 constant_definition
-    : CONSTANT CONSTANTID '=' expression
+    : CONST IDENTIFIER '=' expression
         {
             $$ = {type: "ConstantDefinition", name: $2, exp: $4}
             setLines($$, @1, @4);
         }
-    | CONSTANT CONSTANTID '=' range_definition
+/*    | CONST IDENTIFIER '=' range_definition
         {
             $$ = {type: "ConstantDefinition", name: $2, exp: $4}
             setLines($$, @1, @4);
-        }
+        }*/
     ;
 
+
+/* */
 expression
-    : e5 %prec EMPTY
+//    : '{' data_object '}'
+//    | '[' expression_list ']'
+//    | DOTS_ARITH_SEQ
+//    | DOTS_GEOM_SEQ
+//    | expression ':' expression %prec ':'
+//    | expression DOTS_RANGE expression
+//    | expression DOTS_FILL
+    : expression EQ expression
+        {
+            $$ = { op: "eq", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression NE expression
+        {
+            $$ = { op: "ne", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression LT expression
+        {
+            $$ = { op: "lt", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression GT expression
+        {
+            $$ = { op: "gt", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression LE expression
+        {
+            $$ = { op: "le", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression GE expression
+        {
+            $$ = { op: "ge", values: [$1, $3],  };
+            setLines($$, @1, @3);
+        }
+    | expression IN expression %prec IN
+        {
+            $$ = { op: "ge", values: [$1, $3],  };
+            setLines($$, @1, @3);
+        }
+    | expression IS argument_type %prec IS
+        {
+            $$ = { op: "is", values: [$1, $3],  };
+            setLines($$, @1, @3);
+        }
+    | expression AND expression %prec AND
+        {
+            $$ = { op: "and", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression '?' expression ':' expression %prec '?'
+        {
+            setLines($$, @1, @5);
+        }
+    | expression B_AND expression %prec AND
+        {
+            $$ = { op: "band", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression B_OR expression %prec AND
+        {
+            $$ = { op: "bor", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression B_XOR expression %prec AND
+        {
+            $$ = { op: "bxor", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression OR expression %prec OR
+        {
+            $$ = { op: "or", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression SHL expression %prec AND
+        {
+            $$ = { op: "shl", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression SHR expression %prec OR
+        {
+            $$ = { op: "shr", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | '!' expression %prec '!'
+        {
+            $$ = { op: "not", values: [$2] };
+            setLines($$, @1, @2);
+        }
+    | expression '+' expression %prec '+'
+        {
+            // $$ = yy.parser.calculate.add($1,$3);
+            $$ = { op: "add", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression '-' expression %prec '-'
+        {
+            $$ = { op: "sub", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression '*' expression %prec '*'
+        {
+            $$ = { op: "mul", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression '%' expression %prec '%'
+        {
+            $$ = { op: "mod", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression '/' expression %prec '/'
+        {
+            $$ = { op: "div", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression "\\" expression %prec "\\"
+        {
+            $$ = { op: "intdiv", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | expression POW expression %prec POW
+        {
+            $$ = { op: "pow", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | '+' expression %prec UPLUS
+        {
+            $$ = $2;
+            setLines($$, @1, @2);
+        }
+    | '-' expression %prec UMINUS
+        {
+            $$ = { op: "neg", values: [$2] };
+            setLines($$, @1, @2);
+        }
+    | ':' IDENTIFIER
+        {
+            $$ = {op: "public", name: $2 }
+            setLines($$, @1, @2);
+        }
+    | pol_id
+        {
+            $$ = $1
+            setLines($$, @1);
+        }
+    | INC pol_id
+        {
+            $$ = $1
+            setLines($$, @2);
+        }
+    | DEC pol_id
+        {
+            $$ = $1
+            setLines($$, @2);
+        }
+    | pol_id INC
+        {
+            $$ = $1
+            setLines($$, @2);
+        }
+    | pol_id DEC
+        {
+            $$ = $1
+            setLines($$, @2);
+        }
+    | NUMBER %prec EMPTY
+        {
+            $$ = {op: "number", value: BigInt($1) }
+            setLines($$, @1);
+        }
+    | flexible_string %prec EMPTY
+        {
+            $$ = {op: "string", value: $1 }
+            setLines($$, @1);
+        }
+    | '(' expression ')'
+        {
+            $$ = $2;
+            setLines($$, @1, @3);
+        }
+    | function_call
         {
             $$ = $1;
         }
     ;
 
-conditional_expression
+/*    | '(' expression ')'
+        {
+            $$ = $2;
+        }*/
+
+/*
+expression
     : expression EQ expression
         {
             $$ = { op: "eq", values: [$1, $3] };
@@ -720,30 +1057,34 @@ conditional_expression
             $$ = { op: "ge", values: [$1, $3],  };
             setLines($$, @1, @3);
         }
+    | expression IS argument_type
+        {
+            $$ = { op: "is", values: [$1, $3],  };
+            setLines($$, @1, @3);
+        }
     ;
 
-conditional_expression
-    : conditional_expression AND conditional_expression
+expression
+    : expression AND expression
         {
             $$ = { op: "and", values: [$1, $3] };
             setLines($$, @1, @3);
         }
-    | conditional_expression OR conditional_expression
+    | expression OR expression
         {
             $$ = { op: "or", values: [$1, $3] };
             setLines($$, @1, @3);
         }
-    | '!' conditional_expression
+    | '!' expression
         {
             $$ = { op: "not", values: [$2] };
             setLines($$, @1, @2);
         }
-    | '(' conditional_expression ')'
+    | '(' expression ')'
         {
             $$ = $2;
         }
     ;
-
 e5
     : e5 '+' e4
         {
@@ -767,6 +1108,16 @@ e4
     : e4 '*' e3
         {
             $$ = { op: "mul", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | e4 '%' e3
+        {
+            $$ = { op: "mod", values: [$1, $3] };
+            setLines($$, @1, @3);
+        }
+    | e4 '/' e3
+        {
+            $$ = { op: "div", values: [$1, $3] };
             setLines($$, @1, @3);
         }
     | e3 %prec EMPTY
@@ -841,9 +1192,11 @@ e1
             $$ = {op: "number", value: BigInt($1) }
             setLines($$, @1);
         }
-    | CONSTANTID %prec EMPTY
+    | TRUE
+    | FALSE
+    | flexible_string %prec EMPTY
         {
-            $$ = {op: "constant", name: $1 }
+            $$ = {op: "string", value: $1 }
             setLines($$, @1);
         }
     | '(' expression ')'
@@ -856,23 +1209,38 @@ e1
             $$ = $1;
         }
     ;
-
+*/
 
 pol_id
     : name_optional_index "'" %prec LOWER_PREC
         {
-            $1.next= true;
+            $1.next=1;
             $$ = $1;
         }
     | name_optional_index "'" NUMBER
         {
-            $1.next= $3;
+            $1.next=$3;
             $$ = $1;
         }
     | name_optional_index "'" '(' expression ')'
         {
-            $1.next= $3;
+            $1.next=$4;
             $$ = $1;
+        }
+    | "'" name_optional_index %prec LOWER_PREC
+        {
+            $1.prior=1;
+            $$ = $2;
+        }
+    | NUMBER "'" name_optional_index
+        {
+            $1.prior=$1;
+            $$ = $3;
+        }
+    | '(' expression ')' "'" name_optional_index
+        {
+            $1.prior=$2;
+            $$ = $4;
         }
     | name_optional_index
         {
@@ -885,16 +1253,26 @@ name_optional_index
         {
             $$ = $1;
         }
-    | name_reference '[' expression ']'
+    | name_reference array_index
         {
             $$ = $1;
-            $$.idxExp = $3;
-            setLines($$, @1, @3);
+            $$.idxExp = $2;
+            setLines($$, @1, @2);
         }
+    ;
+
+array_index
+    :   array_index '[' expression ']'
+    |   '[' expression ']'
     ;
 
 name_reference
     : IDENTIFIER '.' IDENTIFIER
+        {
+            $$ = {op: "pol", next: false, namespace: $1, name: $3}
+            setLines($$, @1, @3);
+        }
+    | IDENTIFIER '::' IDENTIFIER '.' IDENTIFIER
         {
             $$ = {op: "pol", next: false, namespace: $1, name: $3}
             setLines($$, @1, @3);

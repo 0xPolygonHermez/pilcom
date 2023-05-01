@@ -1,0 +1,258 @@
+
+/*
+    Equations:
+
+    EQ0: A(x1) * B(y1) + C(x2) = D (y2) * 2 ** 256 + op (y3)
+
+    EQ1: s * x2 - s * x1 - y2 + y1 + (q0 * p)   lambda - ADD
+    EQ2: 2 * s * y1 - 3 * x1 * x1 + (q0 * p)    lambda - DBL
+    EQ3: s * s - x1 - x2 - x3 + (q1 * p)        x3
+    EQ4: s * x1 - s * x3 - y1 - y3 + (q2 * p)   y3
+
+*/
+include "global.pil";
+
+namespace Arith(N);
+
+    // pol constant L1
+    col fixed L1;
+
+    // in pil1: pol commit a, b, c
+    col witness a, b, c;
+
+    // in pil1: pol c = a + b
+    col c = a + b;
+
+    // in pil1: a * (1 - a) = 0
+    a * (1 - a) === a
+
+    col fixed BYTE2_BIT19 = [0:2**16,1:2**19,0...];
+    col fixed SEL_BYTE2_BIT19 = [0..2**16-1,0..2**16-2,0...];
+    col fixed GL_SIGNED_22BITS = [-(2**22)..(2**22)-1,0...];
+
+    /* RUST STYLE
+    col fixed BYTE2_BIT19 = [[0;2**16],[1;2**19],[0;]];
+    col fixed SEL_BYTE2_BIT19 = [0..2**16,0..2**16];
+    col fixed GL_SIGNED_22BITS = [-(2**22)...(2**22)]...;
+
+    col fixed BYTE2_BIT19 = [0{2**16},1{2**19},0*];
+    col fixed SEL_BYTE2_BIT19 = [0..2**16-1,0..2**16-2,0*]
+    col fixed GL_SIGNED_22BITS = [-(2**22)..(2**22)-1,0*];
+    */
+
+    col witness x1[16];
+    col witness y1[16];
+    col witness x2[16];
+    col witness y2[16];
+    col witness x3[16];
+    col witness y3[16];
+
+    col witness s[16];
+    col witness q0[16];
+    col witness q1[16];
+    col witness q2[16];
+
+    col witness resultEq[3];
+
+    for (integer i = 0; i < 3; ++i) {
+        resultEq[i] * (1 - resultEq[i]) === 0;
+    }
+
+    // LATCH POLS: x1,y1,x2,y2,x3,y3,s,q0,q1,q2
+
+    for (integer i = 0; i<16; ++i) {
+        for(col &p in [x1,y1,x2,y2,x3,y3,s,q0,q1,q2]) {
+            p[i]' * (1-Global.CLK32[31]) === p[i] * (1-Global.CLK32[31]);
+        }
+    }
+
+
+    // RANGE CHECK x1,y1,x2,y2,s,q0,q1,q2
+
+    expr value  = 0;
+    integer secondLoop = 0;
+    for (col &p in [x1,y1,x2,y2,x3,y3,s]) {
+        for (integer i = 0; i<16; ++i) {
+            value = value + p[i] * Global.CLK32[secondLoop * 16 + i];
+        }
+        if (secondLoop) {
+            plookup(value, Global.BYTE2);
+            value = 0;
+        }
+        secondLoop = !secondLoop;
+    }
+
+    // value has first 16th values, continue with 15th values of q0
+    // plus one of q1. Left qx[15] for last because use more bits.
+    // value = s[0]*CLK32[0] + ... + s[15]*CLK32[15]
+
+    for (integer i = 0; i<14; ++i) {
+        value = value + q0[i] * Global.CLK32[16 + i];
+    }
+    value = value + q1[0] * Global.CLK32[31];
+    range_check(value, Global.BYTE2);
+
+    value = 0;
+    for(integer i = 1; i<15; ++i) {
+        value = value + q1[i] * Global.CLK32[i+1];
+    }
+    // value = q1[1]*CLK32[0] + ... + q1[15]*CLK32[14]
+
+    for(integer i = 0; i<15; ++i) {
+        value = value + q2[i] * Global.CLK32[14 + i];
+    }
+
+    // value = ...+ q1[15]*CLK32[14] + q2[0]*CLK32[14] + ... + q1[15]*CLK32[28]
+
+    value = value + q0[15] * Global.CLK32[29]
+                  + q1[15] * Global.CLK32[30]
+                  + q2[15] * Global.CLK32[31];
+
+    plookup(
+        [Global.CLK32[29] + Global.CLK32[30] + Global.CLK32[31], value],
+        [SEL_BYTE2_BIT19, BYTE2_BIT19]);
+
+    // EQ0: A(x1) * B(y1) + C(x2) = D (y2) * 2 ** 256 + op (y3)
+    // x1 * y1 - x2 - y2 * 2**256 - y3
+
+    col eq0[32];
+
+    for (integer i=0; i<16; ++i) {
+        value = 0;
+        for (integer j=0; j<=i; ++j) {
+            value += (x1[j] * y1[i-j]);
+        }
+        eq0[i] = value + x2[i] - y3[i];
+    }
+
+    for (integer i=16; i<32; ++i) {
+        value = 0;
+        for (integer j=(i-15); j<16; ++j) {
+            value += (x1[j] * y1[i-j]);
+        }
+        eq0[i] = value - y2[i-16];
+    }
+
+    // EQ1: s * x2 - s * x1 - y2 + y1 + (q0 * p) - p * offset
+    // offset = 4 * 2**256
+
+    // prepare prime chunks of 16 bits
+    const prime = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f;
+
+    integer prime_chunks[32];
+    for (integer i=0; i<32; ++i) {
+        prime_chunks[i] = (prime >> (i * 16)) & 0xFFFF;
+    }
+
+    col eq1[32];
+    for (integer i=0; i<16; ++i) {
+        value = 0;
+        for (integer j=0; j<=i; ++j) {
+            value += (s[j] * x2[i-j]) - (s[j] * x1[i-j]) + (prime_chunk[j] * q0[i-j]);
+        }
+        eq1[i] = value - y2[i] + y1[i];
+    }
+    for (integer i=16; i<32; ++i) {
+        value = 0;
+        for (integer j=(i-15); j<16; ++j) {
+            value += (s[j] * x2[i-j]) - (s[j] * x1[i-j]) + (prime_chunk[j] * q0[i-j]);
+        }
+        eq1[i] = value - prime_chunks[i-16] * 4;
+    }
+
+    // EQ2:  2 * s * y1 - 3 * x1 * x1 + (q0 * p) - p * offset
+    // offset = 4 * 2**256
+
+    col eq2[32];
+
+    for (integer i=0; i<16; ++i) {
+        value = 0;
+        for (integer j=0; j<=i; ++j) {
+            value +=  (2 * s[j] * y1[i-j]) - (3 * x1[j] * x1[i-j]) + (prime_chunk[j] * q0[i-j]);
+        }
+        eq2[i] = value;
+    }
+
+    for (integer i=16; i<32; ++i) {
+        value = 0;
+        for (integer j=(i-15); j<16; ++j) {
+            value +=  (2 * s[j] * y1[i-j]) - (3 * x1[j] * x1[i-j]) + (prime_chunk[j] * q0[i-j]);
+        }
+        eq2[i] = value - prime_chunks[i-16] * 4;
+    }
+
+    // EQ3:  s * s - x1 - x2 - x3 + (q1 * p) - p * offset
+    // offset = 4 * 2**256
+
+    col eq3[32];
+
+    for (integer i=0; i<16; ++i) {
+        value = 0;
+        for (integer j=0; j<=i; ++j) {
+            value +=  (s[j] * s[i-j]) + (prime_chunk[j] * q1[i-j]);
+        }
+        eq3[i] = value - x1[i] - x2[i] - x3[i];
+    }
+    for (integer i=16; i<32; ++i) {
+        value = 0;
+        for (integer j=(i-15); j<16; ++j) {
+            value +=  (s[j] * s[i-j]) + (prime_chunk[j] * q1[i-j]);
+        }
+        eq3[i] = value - prime_chunks[i-16] * 4;
+    }
+
+    // EQ4:  s * x1 - s * x3 - y1 - y3 + (q2 * p) - p * offset
+    // offset = 4 * 2**256
+
+    col eq4[32];
+
+    for (integer i=0; i<16; ++i) {
+        value = 0;
+        for (integer j=0; j<=i; ++j) {
+            value += (s[j] * x1[i-j]) - (s[j] * x3[i-j]) + (prime_chunk[j] * q2[i-j]);
+        }
+        eq4[i] = value - y1[i] - y3[i];
+    }
+    for (integer i=16; i<32; ++i) {
+        value = 0;
+        for (integer j=(i-15); j<16; ++j) {
+            value += (s[j] * x1[i-j]) - (s[j] * x3[i-j]) + (prime_chunk[j] * q2[i-j]);
+        }
+        eq4[i] = value - prime_chunks[i-16] * 4;
+    }
+
+    // eqcl definition
+
+    col eqcl[5];
+
+    for (integer j = 0; j<5; ++j) {
+        value = 0;
+        for (integer i=0; i<32; ++i) {
+            value += eq[j][i]*Global.CLK32[i];
+        }
+        eqcl[j] = value;
+    }
+
+    col witness selEq[4];
+
+    for (integer i=0; i<4; ++i) {
+        // latch selEq
+        selEq[i]' * (1-Global.CLK32[31]) === selEq[i] * (1-Global.CLK32[31]);
+        // binary constraint
+        selEq[i] * (1-selEq[i]) === 0;
+    }
+
+    col witness carry[3];
+
+    for (integer i=0; i<3; ++i) {
+        // initial carry constraint
+        carry[i] * Global.CLK32[0] === 0;
+        // carry range check
+        range_check(carry[i], GL_SIGNED_22BITS);
+    }
+
+    for (integer i = 0; i < 3; ++i) {
+        integer ci = i > 3 ? i-3 : 0;
+        integer si = i > 3 ? 3 : i;
+        selEq[si] * (eqcl[i] + carry[ci]) === selEq[si] * carry[ci]' * 2**16;
+    }
