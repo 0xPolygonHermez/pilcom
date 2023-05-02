@@ -1,60 +1,126 @@
 package pilout;
 syntax = "proto3";
 
+
+message PilOut {
+    ProofType proofType = 1;
+    oneof proof {
+        SubProof monolithicProof = 2;
+        VADCOP vadcop = 3;
+    }
+    repeated Reference references = 4;
+}
+
+enum ProofType {
+    MONOLITIC = 0;
+    VADCOP = 1;
+}
+
+message VADCOP {
+    repeated GlobalChallenge globalChallenges = 1;
+    repeated GlobalPublic globalPublics = 2;
+    repeated GlobalConstraint globalConstraints = 3;
+    repeated SubProof subProofs = 4;
+}
+
+
+message GlobalChallenge {
+    int32 id = 1;
+    string name = 2;
+    int32 stage = 3;
+}
+
+message GlobalPublic {
+    int32 id = 1;
+}
+
+
+// c = (a[0] + beta) * (a[1]+beta) + a[1] + beta
+message GlobalConstraint {
+    int32 id = 1;
+    Operand operand = 4;
+    optional string debugLine = 5;
+}
+
+
+message PublicOperand {
+    PublicOperandType publicOperandType = 1;
+    int32 id = 2;
+    optional int32 subProofId = 3;
+}
+
+enum PublicOperandType {
+    EXTERNAL = 0;
+    INTERNAL = 1;
+    ONE = 1;
+}
+
+message SubProof {
+    int32 id = 1;
+    optional string name = 2;
+    optional int32 rowLength = 3;
+    repeated Expression expressions = 4;
+    repeated Constraint constraints = 5;
+    repeated Challenge challenges = 6;
+    repeated Public publics = 7;
+    repeated FixedCol fixedCols = 8;
+    repeated WitnessCol witnessCols = 9;
+}
+
 enum ReferenceType {
     COL = 0;
     FIXED = 1;
     WITNESS = 2;
     PUBLIC = 3;
     CHALLENGE = 4;
+    GLOBAL_CHALLENGE = 5;
+    GLOBAL_PUBLIC = 6;
 }
-enum BoundaryCondition {
+enum ConstraintDomain {
     FIRST = 0;
     LAST = 1;
-    NOT_FIRST = 2;
-    NOT_LAST = 3;
-    NOT_FIRST_NOT_LAST = 4;
-}
-message PilOut {
-    int32 nReferences = 1;
-    int32 nConstraints = 2;
-    int32 nExpressions = 3;
-    int32 nCols = 4;
-    int32 nColsFixed = 5;
-    int32 nColsWitness = 6;
-    int32 nPublics = 7;
-    repeated Expression expressions = 10;
-    repeated Constraint constraints = 11;
-    repeated Reference references = 12;
-    repeated Col cols = 13;
-}
-message Constraint {
-    int32 id = 1;
-    BoundaryCondition boundary = 2;
-    Operand selector = 3;
-    Operand operand = 4;
-    string debugLine = 5;
+    TRANSITION = 2;
+    ALL = 3;
 }
 
+
+message Challenge {
+    int32 id = 1;
+    int32 stage = 2;
+}
+
+message Public {
+    int32 id = 1;
+    Operand readFrom = 2;
+    int32 row = 3;
+}
+
+message Constraint {
+    int32 id = 1;
+    ConstraintDomain constraintDomain = 2;
+    optional int32 frameSize = 3;   // Only if transition domain
+    Operand operand = 4;
+    optional string debugLine = 5;
+}
+
+
 message Reference {
-    string name = 12;
-    ReferenceType type = 13;
-    int64 id = 14;
-    int32 dim = 15;
-    repeated int32 lenghts = 16;
-    string debugLine = 17;
+    string name = 1;
+    optional int32 subProofId = 2;
+    ReferenceType type = 3;
+    int32 id = 4;
+    int32 dim = 5;
+    repeated int32 lenghts = 6;
+    optional string debugLine = 7;
 }
 
 message Operand {
-    message Col {
-        int32 id = 1;
-    }
-    message ColWitness {
+    message WitnessCol {
         int32 id = 1;
         sint32 next = 2;
     }
 
-    message ColFixed {
+    message FixedCol {
         int32 id = 1;
         sint32 next = 2;
     }
@@ -63,15 +129,35 @@ message Operand {
         int32 id = 1;
     }
 
+    message GlobalChallenge {
+        int32 id = 1;
+    }
+
+    message GlobalPublic {
+        int32 id = 1;
+    }
+
     message Public {
         int32 id = 1;
     }
+
+    message Expression {
+        int32 id = 1;
+    }
+
+    message Constant {
+        bytes value = 1;
+    }
+
     oneof operand {
-        Col col = 1;
-        ColFixed fixed = 2;
-        ColWitness witness = 3;
+        FixedCol fixedCol = 2;
+        WitnessCol witnessCol = 3;
         Challenge challenge = 4;
-        Public public = 5;
+        GlobalChallenge globalChallenge = 5;
+        GlobalPublic globalPublic = 6;
+        Public public = 7;
+        Expression expression = 8;
+        Constant constant = 9;
     }
 }
 
@@ -86,8 +172,39 @@ message Expression {
     repeated Operand operands = 2;
 }
 
-message Col {
+message FixedCol {
     int32 id = 1;
-    Operand operand = 2;
     string debugLine = 3; // definition
+}
+
+message WitnessCol {
+    int32 id = 1;
+    string debugLine = 3; // definition
+    int32 stage = 4;
+}
+
+enum FrontEndFieldType {
+    STRING = 0;
+    OPERAND = 1;
+    ARRAY = 2;
+}
+
+message FrontEndField {
+    FrontEndFieldType frontEndFieldType = 1;
+    optional string name = 2;
+    oneof value {
+        string stringValue = 3;
+        Operand operand = 4;
+        FrontEndFieldArray frontEndFields = 5;
+    }
+}
+
+message FrontEndFieldArray {
+    repeated FrontEndField frontEndFields = 1;
+}
+
+message FronEndData {
+    string name = 1;
+    repeated FrontEndField FrontEndFields = 2;
+    optional int32 subProofId = 3;
 }
