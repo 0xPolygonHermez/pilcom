@@ -1,0 +1,639 @@
+// -----------------------------------------------
+// VADCOP support
+subproof spMain (2**25);
+subproof spArith (2**10, 2**16);
+subproof aggregable spBin (2**10, 2**16);
+
+namespace Main subproof spMain;
+:
+:
+namespace RAM subproof spArith;
+:
+:
+namespace ROM subproof spBin;
+:
+:
+namespace Arith subproof Arith;
+:
+:
+namespace Bin subproof spBin;
+:
+:
+
+// subproof
+
+// -----------------------------------------------
+// Constructive language (types)
+
+// col types
+col intermediate_col;
+col fixed fixed_col;
+col witness witness_col;
+
+// constructive types
+integer number_without_limits;
+fe field_element;
+expr to_build_constraints;
+string for_development;
+
+// constants
+constant PIWEI = 3141592653589793238;
+
+// arrays
+col intermediate_col[10];
+col witness witness_col[i*2];
+integer number_without_limits[10][20];
+expr to_build_constraints[16];
+
+// references
+col &currentcol = mycol;
+
+// -----------------------------------------------
+// Constructive language (control)
+
+col fixed CLK32 = [0:31,1]...;
+col witness x1[16], y1[16], x2[16], y2[16], x3[16], y3[16];
+col witness s, q[3][16];
+
+// Latch
+for (integer i = 0; i<16; ++i) {
+   for(col &p in [x1,y1,x2,y2,x3,y3,s,q[0],q[1],q[2]]) {
+       p[i]' * (1 - CLK32) === p[i] * (1 - CLK32);
+   }
+}
+
+col witness flags[4];
+for (col &flag in flags) {
+    flag * (1 - flag) === 0;
+}
+
+integer index = 0;
+while (index < length(flags)) {
+    flags[index] * (1 - flags[index]) === 0;
+    ++index;
+}
+
+// -----------------------------------------------
+// Constructive language (control 2)
+
+integer index = 0;
+do {
+    if (index < 0) break;           // break could be used on for,do,while,switch-case
+    if (index % 2 == 0) continue;   // continue could be used on for,do,while
+} while (++index < 10)
+
+if (value != current_value) {
+    // do something
+} else {
+    // do something else
+}
+
+switch (key) {
+    case 1:
+        value++;
+        break;
+    case 4:
+        value = 13;
+        break;
+    else:
+        value = 0;
+        break;
+}
+
+// -----------------------------------------------
+// Constructive language (example)
+
+integer nbits = log2(N);                            // log2 is a buildin function
+
+col witness lJmpnCondValue;                         // first nbits of conditional value
+col jmpnCondValue = JMPN*(isNeg*2**32 + op0);       // verified using plookup with STEP
+
+isNeg * (1 - isNeg) === 0;                          // binary constraint
+
+col witness hJmpnCondValueBit[32 - nbits];
+fe factor = nbits;
+expr condValue = lJmpnCondValue;
+for (col &currentBit in hJmpnCondValueBit) {
+    currentBit * (1 - currentBit) === 0;        // binary constraint
+    condValue += 2**factor * currentBit;        // building condValue adding bits
+    ++factor;
+}
+jmpCondValue === condValue;
+
+
+// -----------------------------------------------
+// Constructive language (example)
+
+integer nbits = log2(N);                            // log2 is a buildin function
+
+col witness lJmpnCondValue;                         // first nbits of conditional value
+col jmpnCondValue = JMPN*(isNeg*2**32 + op0);       // verified using plookup with STEP
+
+isNeg * (1 - isNeg) === 0;                          // binary constraint
+
+col witness hJmpnCondValueBit[32 - nbits];
+fe factor = nbits;
+expr condValue = lJmpnCondValue;
+for (col &currentBit in hJmpnCondValueBit) {
+    currentBit * (1 - currentBit) === 0;        // binary constraint
+    condValue += 2**factor * currentBit;        // building condValue adding bits
+    ++factor;
+}
+expr c = a / b;
+
+jmpCondValue === condValue;
+
+// -----------------------------------------------
+// Conditional / Boundary constraints
+
+// Conditional constraints
+when L1 {
+    a === a',
+    b === b'
+}
+
+for (integer index = 0; index < 16; ++index) {
+   when (1-L1) { a[index] === b[index] + (1 - c) } // when only contains constraints
+}
+
+// Boundary constraints (last,first)
+when last {
+    d * e === a
+}
+
+when not last { d * e === a }
+when first { d * e === a }
+when not first { d * e === a }
+
+// -----------------------------------------------
+// Constructive language (functions)
+
+function factorial (integer n) : integer {
+    if (n == 1) return 1;
+    return n * factorial(n-1);
+}
+
+function myfunc (expr &selector, expr cols[]) { ... }     // arrays and references
+
+function sum(...) : integer {                  // number variable of parameters
+    integer total = 0;
+    for (integer index = 0; index < length(args); ++index) {
+        if (!(args[index] is integer)) error(`sum: invalid parameter #${index}, it must be an integer`);
+        total += args[index];
+    }
+    return total;
+}
+
+function swap(integer a, integer b) : [integer, integer] { ... } // multiple returns
+function swap(string a, string b) : [string, string] { .... }    // parametric polymorphism (overloading)
+function next3(integer a) : [integer,integer, integer] { return [a+1,a+2,a+3]; }
+
+[c,] = swap(a,b);       // ignore one return value
+[c,...] = next3(10);    // ignore rest of return values
+[n1,,n3] = next3(k);    // ignore one return value
+
+// -----------------------------------------------
+// Constructive language (functions)
+
+col fixed L1 = [1,0...];
+
+// inside when only constraints
+when L1 {
+  a === a';
+  b === b';
+}
+
+when(L1, [
+  a === a',
+  b === b'
+]);
+
+for (integer index = 0; index < 16; ++index) {
+    when (1-L1) { a[index] === b[index] + (1 - c) }
+}
+for (integer index = 0; index < 16; ++index) {
+    when(1-L1, [ a[index] === b[index] + (1 - c) ]);
+}
+
+col optional c;
+
+if (bits > 23) {
+    col c = a + b;
+    col c = a + b;
+    c === 0;
+}
+
+if (bits > 25) {
+    col d = c * 2;
+}
+
+when (row != N - 1) {
+  d * e === a;
+}
+
+when (row != 0) { a === b * c }
+when (row != 0) a === b * c;
+
+JORDI: when només constraints;
+JORDI: estem utilizant rows.
+
+// -----------------------------------------------
+// Challenges access
+
+col witness a1, a2, b1, b2;
+
+col witness stage(2) h1, h2;
+challenge stage(2) u;
+
+col f = a1 + u*a2;
+col t = b1 + u*b2;
+
+col witness stage(3) z;
+challenge stage(3) delta, gamma;
+
+when L1 {z === 1};
+
+z' * ((delta*(1+gamma) + h1 + gamma*h2)) * ((delta*(1+gamma) + h2 + gamma*h1')) ===
+   z * (1+gamma)*(delta + f)*(delta*(1+gamma) + t + gamma*t');
+
+global challenge alfa stage(1) subproof(Main, Keccak);
+global challenge gamma stage(1) subproof(Main, Poseidon);
+global public beta stage(1) subproof(Main, Poseidon);
+
+// -----------------------------------------------
+// Fixed columns generation
+
+// values and repetitions: [value1,value2,value3] [value:times]
+// ranges negatives or positives: [from..to] [from:times..to:times]
+// repeat up to full:  [value...]
+// arithmetic series: [first,second,..+..] [first,second,..+..,last]
+// geometric series:  [first,second,..*..] [first,second,..*..,last]
+
+col fixed L1 = [1,0...];            // [1,0:N-1]
+col fixed L_LAST = [0...,1];        // [0:N-1,1]
+
+col fixed J = [0:3..127:3,128:2..255:2]...; // 0,0,0,1,1,1,2,2,2,3...127,128,128,129...,254,255,255,0,0,0,1,1,...
+col fixed K = [[0,1,2,3]:3, [4,5,6]:2]...;  // 0,1,2,3,0,1,2,3,0,1,2,3,4,5,6,4,5,6,0,1,2,3...
+col fixed ODDS = [1,3,..+..];               // 1,3,5,7,9,11,13,15,17,19,21,23,25,...
+col fixed FACTOR = [1,2,..*..,2**32]...;    // 1,2,4,8,16,32,64,128,256,512,1024,2048,....,2**31,2**32,1,2,4,...
+
+// using constructive language
+col fixed F;
+F[0] = 0;
+F[1] = 1;
+for (integer i=2; i<N; ++i) {
+   F[i] = F[i-1] + F[i-2];
+}
+
+
+// -----------------------------------------------
+// Previous and next rows access
+
+// <n>'<col>        'LATCH, 2'LATCH,
+// <col>'<n>        LATCH', LATCH'2,
+// (<exp>)'<col>    (i+1)'LATCH
+// <col>'(<exp>)    LATCH'(i+1)
+
+4'carry === 0;
+carry'4 === 0;
+
+col fixed FACTOR0 = [1,2**8,2**16,2**24,0:28]....;
+col FACTOR[8];     // FACTOR[0] = [1,2**8,2**16,2**24,0:28]....
+                   // FACTOR[1] = [0:4,1,2**8,2**16,2**24,0:24]....
+                   //    :
+                   // FACTOR[7] = [0:28,1,2**8,2**16,2**24]....
+
+for (integer i=0; i<7; i++) {
+   FACTOR[i] = FACTOR0'(i*4);
+}
+
+// -----------------------------------------------
+// Previous and next rows access (cont)
+
+col witness abc[8];
+
+expr expr_abc[3];
+for (integer i = 0; i < 16; ++i) {
+   integer j = i*4;
+   when LATCH {   // LATCH = CLK15
+         abc[i] ===   (j)'freeInA[0]         + (j-1)'freeInA[1] * 2**8 +       // CLK15
+                    (j-2)'freeInA[0] * 2**16 + (j-3)'freeInA[1] * 2**24;
+
+        'abc[i] ===   (j)'freeInB[0]         + (j-1)'freeInB[1] * 2**8 +       // CLK14 == 'LATCH
+                    (j-2)'freeInB[0] * 2**16 + (j-3)'freeInB[1] * 2**24;
+
+       2'abc[i] ===   (j)'freeInC[0]         + (j-1)'freeInC[1] * 2**8 +       // CLK13 == 2'LATCH
+                    (j-2)'freeInC[0] * 2**16 + (j-3)'freeInC[1] * 2**24;
+   }
+}
+
+// lookup_check(bin,
+//         [A0,A1,..,A7,B0,B1,...,B7,C0,C1,...,C7],
+//         LATCH,
+//         [abc[0],abc[1],...,abc[7],'abc[0],'abc[1],...,'abc[7],2'abc[0],2'abc[1],...,2'abc[7]]
+
+// -----------------------------------------------
+// Range checks
+
+col witness sel;
+col witness a,b;
+
+range_check(sel, a, 0, 2**16-1);
+range_check(b, 0, 255);
+
+col witness c[32];
+expr clkC;
+for (integer index = 0; index < 32; ++index) {
+    clkC = clkC + CLK32[index] * c[i];
+    when (1-RESET) c[i]' === c[i];
+}
+range_check(clkC, 0, 255);
+
+// -----------------------------------------------
+// Custom data
+
+// custom data provides extra information to nexts steps (backend)
+function lookup_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+    @lookup_check [selF, colsF, selT, colsT];
+}
+
+// to extend to new features
+function myfuturefunc (expr value) {
+    @myfuturefunc value
+}
+
+// custom data could be more complex as key: value or combinations
+function plookup (expr selF, expr colsF[], expr selT, expr colsT[]) {
+    @the_name_that_I_want {selF: 1,     // keys aren't resolved
+              colsF: colsF,             // values resolved (value, expression or column reference)
+              selT: 1,
+              colsT: colsT};
+}
+
+// -----------------------------------------------
+// Buildin functions
+
+N                                           // key with number of rows
+bits                                        // key with bits of N
+prime                                       // key with prime of fe
+
+print("hello");                             // print values without LF
+println(" world my name is", name);         // same as print but with LF
+warning("number too big, be careful");      // show warning but continue
+error("division by zero");                  // show error and doesn't continue
+assert(expected == res, "invalid result");  // if conditions was false then show error and doesn't continue
+
+namespace_of(A)                             // return namespace of A (string)
+subproof_of(A)                              // return subproof of A (string)
+stage_of(A)                                 // return stage of A (integer)
+length(A)                                   // return length of array (integer), return -1 if A isn't an array
+lengths(A)                                  // return array of length arrays, empty array if A isn't an array
+log2(N)                                     // return log2 of N
+inverse(N)                                  // return inverse of fe
+is_array(A)                                 // return if A is an array
+is_declared(A)                              // return if A is declared (defined or not)
+is_defined(A)                               // return if A is declared and defined
+
+A is fe                                     // return if A is an fe (could be used with other types)
+A is expr[]                                 // return if A is an array of expressions
+
+`template string ${N}`                      // template string
+
+
+
+
+// custom data  provides extra information to nexts steps (backend)
+function lookup_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+    @lookup_check [selF, colsF, selT, colsT];
+}
+
+// to extend to new features
+function myfuturefunc (expr value) {
+    @myfuturefunc value
+}
+
+// custom data could be more complex as key: value or combinations
+function lookup_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+    @the_name_that_I_want {selF: 1,     // keys aren't resolved
+              colsF: colsF,             // values resolved (value, expression or column reference)
+              selT: 1,
+              colsT: colsT};
+}
+
+// -----------------------------------------------
+// Lookup
+
+lookup_check (
+   hashK + hashK1,
+       [ addr,
+         op0, op1, op2, op3
+       ],
+   PaddingKK.crLatch * PaddingKK.r8valid,
+       [
+         PaddingKK.addr,
+         PaddingKK.crV0C, PaddingKK.crV1C, PaddingKK.crV2C, PaddingKK.crV3C
+       ]
+   );
+
+function lookup_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+   setup_L1();
+   @lookup_check { selF: selF, colsF: colsF, selT: colsT }
+}
+
+function setup_L1() {
+   if (!(L1 is col)) {
+       global col fixed L1 = [1,0...];
+   }
+}
+
+// -----------------------------------------------
+// Lookup
+
+lookup_check (
+   hashK + hashK1,
+       [ addr,
+         op0, op1, op2, op3
+       ],
+   PaddingKK.crLatch * PaddingKK.r8valid,
+       [
+         PaddingKK.addr,
+         PaddingKK.crV0C, PaddingKK.crV1C, PaddingKK.crV2C, PaddingKK.crV3C
+       ]
+   );
+
+optional col fixed L1;
+
+function lookup_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+   setup_L1();
+   @lookup_check { selF: selF, colsF: colsF, selT: colsT }
+}
+
+function setup_L1() {
+   if (!defined(L1)) L1 = [1,0...];
+}
+
+// -----------------------------------------------
+// Example: match
+
+s === match(selEq,
+    1, x1[0],
+    2, x2[0],
+    3, y2[0]
+);
+
+function match (col sel, ...) : expr {
+
+    @match {selector: sel, cases: args}
+
+    integer argc = length(args);
+    if (length(args) % 2 != 0) {
+        error(`match was called with number incorrect ${argc}`);
+    }
+    for (integer icase = 0; icase < argc; icase = icase + 2) {
+        if (!(args[icase] is fe)) error(`selector must be a constant value on ${icase}`);
+        if (!(args[icase+1] is expr)) error(`expression must be a constant value on ${icase}`);
+    }
+
+    expr bc, res;
+    integer cases = argc \ 2;
+    col L[argc \ 2];
+    for (integer icase = 0; icase < argc; icase = icase + 2) {
+        expr lexpr;
+        fe invl = 1;
+        fe csel = args[icase]
+        expr cexpr = args[icase + 1];
+
+        for (integer j = 0; j < cases; ++j) {
+            if (i == j) continue;
+            lexpr = lexpr * (sel * args[2 * j]);
+            invl = invl * (csel - args[2 * j]);
+        }
+
+        bc = bc * (sel - csel);
+        L[icase] = lexpr / invl;
+        res = res + L[icase] * cexpr;
+    }
+    bc === 0;
+    return res;
+}
+
+lookup_check (
+    hashK + hashK1,
+        [ addr,
+          op0, op1, op2, op3,
+        ],
+    PaddingKK.crLatch * PaddingKK.r8valid,
+        [
+          PaddingKK.addr,
+          PaddingKK.crV0C, PaddingKK.crV1C, PaddingKK.crV2C, PaddingKK.crV3C,
+        ]
+    );
+
+optional col fixed L1;
+
+function lookup_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+    col L1 = setup_L1();
+    @lookup { selF: selF, colsF: colsF, selT: colsT }
+}
+
+// declared, defined
+function setup_L1() {
+    col fixed L1 = [1,0...];
+    return L1;
+}
+
+function next() {
+    static integer counter = 0;
+    return counter++;
+}
+
+
+permutation_check (
+    hashK + hashK1,
+        [ addr,
+          op0, op1, op2, op3,
+        ],
+    PaddingKK.crLatch * PaddingKK.r8valid,
+        [
+          PaddingKK.addr,
+          PaddingKK.crV0C, PaddingKK.crV1C, PaddingKK.crV2C, PaddingKK.crV3C,
+        ]
+    );
+
+function permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+    setup_L1();
+    @permutation_check { selF: selF, colsF: colsF, selT: colsT }
+}
+
+function permutation_check (expr colsF[], expr colsT[]) {
+    permutation_check(1, colsF, 1, colsT);
+}
+
+subproof_permutation_check (
+    hashK + hashK1,
+        [ addr,
+          op0, op1, op2, op3,
+        ],
+    spKeccak::PaddingKK.crLatch * spKeccak::PaddingKK.r8valid,
+        [
+          spKeccak::PaddingKK.addr,
+          spKeccak::PaddingKK.crV0C, spKeccak::PaddingKK.crV1C, spKeccak::PaddingKK.crV2C, spKeccak::PaddingKK.crV3C,
+        ]
+    );
+
+function subproof_permutation_check (expr selF, expr colsF[], subproof::expr selT, subproof::expr colsT[]) {
+    setup_L1();
+    @permutation_check { selF: selF, colsF: colsF, selT: colsT }
+    string tSubproof = subproof_of(selT);
+    for (subproof::expr &t in colsT) {
+        if (subproof_of(t) != tSubproof) error("merda");
+    }
+    if (subproof_of(selT) == tSubproof)
+}
+
+function permutation_check (expr colsF[], subproof::expr colsT[]) {
+    permutation_check(1, colsF, 1, colsT);
+}
+
+c = connection_check([a,b,c],[A,B,C]);
+c.connect([a, 32*index + 3, b, 32*index +4]);
+c.repeat_cycle(32);
+
+
+col witness a,b,c;
+col mutable fixed A,B,C;
+
+connection_setup([A,B,C]);
+
+// cyclic example
+integer count = N/32;
+for (integer index = 0; index < count; ++index) {
+    connection_connect([a, 32*index + 3, b, 32*index +4], [A,B,C]);
+    connection_connect([a, 32*index +2, c, 32*index +5, b, 32*index +7], [A,B,C]);
+}
+
+// shift example
+for (integer index = 0; index < N; ++index) {
+    connection_connect([a, index, b, index+1], [A,B,C]);
+}
+
+connection_check([a,b,c],[A,B,C]);
+
+
+/*
+   expressions representation
+
+operation = 5 bits = 32 operations
+operands = number, stack (relative_offset), reference (expression, col, etc.. or all was an expression)
+
+combinations of operands = 3 * 3 = 9 but number op number no sense, 8 valid combinations = 3 bits
+
+5 bits + 3 bits = 1 byte.
+number = 32 bytes.
+stack, reference = 3 bytes => 16.7 million of references
+TOTAL = 36 bytes (32 bits aligned)
+
+results in parallel stack, array of 32 bytes.
+
+expression of 10240 operations = 360K (expressions) + 320K (results)
+*/

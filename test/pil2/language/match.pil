@@ -1,0 +1,48 @@
+// PENDING: tindria namespace
+// s'instancia a cada subproof
+s === match(selEq,
+    1, x1[0],
+    2, x2[0],
+    3, y1[0],
+    4, y2[0]
+);
+
+function match (col sel, ...) : expr {
+
+    @match {sel: sel, args: args};
+
+
+    if (argc % 2 != 0) {
+        error(`match was called with number incorrect argc`)
+    }
+    for (integer icase = 0; icase < argc; icase = icase + 2) {
+        if (!(argv[icase] is integer)) error(`selector must be a constant value on icase`);
+        if (!(argv[icase+1] is expr)) error(`expression must be a constant value on icase`);
+    }
+
+    expr bc;
+    expr res;
+    integer cases = argc / 2;
+    col L[argc / 2];
+    for (integer icase = 0; icase < argc; icase = icase + 2) {
+        expr lexpr;
+        fe invl = 1;
+
+        fe csel = argv[icase];
+        expr cexpr = argv[icase + 1];
+
+        for (integer j = 0; j < cases; ++j) {
+            if (i == j) continue;
+            lexpr = lexpr * (sel * argc[2 * j]);
+            invl = invl * (csel - argc[2 * j]);
+        }
+
+        // (b-1)*(b-2)*(b-3)
+        bc = bc * (sel - csel);
+        // L1 * A + L2 * B + L3 * C
+        L[icase] = lexpr / invl; // how invl is a fe, division really was inverse.
+        res = res + L[icase] * cexpr;
+    }
+    bc === 0;
+    return res;
+}
