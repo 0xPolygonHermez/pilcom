@@ -8,7 +8,8 @@ message PilOut {
         SubProof monolithicProof = 2;
         VADCOP vadcop = 3;
     }
-    repeated Reference references = 4;
+    repeated Challenge challenges = 4;
+    repeated Reference references = 5;
 }
 
 enum ProofType {
@@ -17,65 +18,91 @@ enum ProofType {
 }
 
 message VADCOP {
-    repeated GlobalChallenge globalChallenges = 1;
-    repeated GlobalPublic globalPublics = 2;
-    repeated GlobalConstraint globalConstraints = 3;
-    repeated SubProof subProofs = 4;
+//    repeated GlobalPublic globalPublics = 21;
+    int32 nGlobalPublics = 1;
+    repeated GlobalConstraint globalConstraints = 2;
+    repeated SubProof subProofs = 3;
+    repeated GlobalExpression globalExpressions = 4;
 }
 
+// Main::oldStateRoot === Keccak::stateRoot * Arith::stateRoot + alfa;
 
-message GlobalChallenge {
-    int32 id = 1;
-    string name = 2;
-    int32 stage = 3;
-}
-
-message GlobalPublic {
-    int32 id = 1;
-}
-
-
-// c = (a[0] + beta) * (a[1]+beta) + a[1] + beta
 message GlobalConstraint {
-    int32 id = 1;
-    Operand operand = 4;
-    optional string debugLine = 5;
+    GlobalOperand globalOperand = 2;
+    optional string debugLine = 3;
 }
 
 
-message PublicOperand {
-    PublicOperandType publicOperandType = 1;
-    int32 id = 2;
-    optional int32 subProofId = 3;
+message GlobalOperand {
+    message Challenge {
+        int32 id = 1;
+    }
+
+    message SubproofPublicId {
+        int32 subproofId = 1;
+        int32 id  = 2;
+    }
+
+    message SubproofPublic {
+        repeated SubproofPublicId subProofPublicIds = 1;
+    }
+
+    message GlobalPublic {
+        int32 id = 1;
+    }
+
+    message GlobalExpression {
+        int32 id = 1;
+    }
+
+    message Constant {
+        bytes value = 1;
+    }
+
+    oneof operand {
+        Challenge challenge = 3;
+        GlobalPublic globalPublic = 4;
+        SubproofPublic public = 5;
+        GlobalExpression globalExpression = 6;
+        Constant constant = 7;
+    }
 }
 
-enum PublicOperandType {
-    EXTERNAL = 0;
-    INTERNAL = 1;
-    ONE = 1;
+
+message GlobalExpression {
+    enum Operation {
+        SUM = 0;
+        SUB = 1;
+        MUL = 2;
+        NEG = 3;
+    }
+    Operation operation = 1;
+    repeated GlobalOperand globalOperands = 2;
 }
+
 
 message SubProof {
-    int32 id = 1;
     optional string name = 2;
     optional int32 rowLength = 3;
     repeated Expression expressions = 4;
     repeated Constraint constraints = 5;
-    repeated Challenge challenges = 6;
     repeated Public publics = 7;
-    repeated FixedCol fixedCols = 8;
+    // repeated FixedCol fixedCols = 8;
+    int32 nFixedCols = 8;
+    repeated PeriodicCol periodicCols = 8;
     repeated WitnessCol witnessCols = 9;
 }
 
 enum ReferenceType {
-    COL = 0;
-    FIXED = 1;
-    WITNESS = 2;
-    PUBLIC = 3;
-    CHALLENGE = 4;
-    GLOBAL_CHALLENGE = 5;
+    IM_COL = 0;
+    FIXED_COL = 1;
+    PERIODIC_COL = 2;
+    WITNESS_COL = 3;
+    PUBLIC = 4;
+    CHALLENGE = 5;
     GLOBAL_PUBLIC = 6;
 }
+
 enum ConstraintDomain {
     FIRST = 0;
     LAST = 1;
@@ -85,18 +112,15 @@ enum ConstraintDomain {
 
 
 message Challenge {
-    int32 id = 1;
-    int32 stage = 2;
+    int32 stage = 3;
 }
 
 message Public {
-    int32 id = 1;
     Operand readFrom = 2;
     int32 row = 3;
 }
 
 message Constraint {
-    int32 id = 1;
     ConstraintDomain constraintDomain = 2;
     optional int32 frameSize = 3;   // Only if transition domain
     Operand operand = 4;
@@ -125,11 +149,12 @@ message Operand {
         sint32 next = 2;
     }
 
-    message Challenge {
+    message PeriodicCol {
         int32 id = 1;
+        sint32 next = 2;
     }
 
-    message GlobalChallenge {
+    message Challenge {
         int32 id = 1;
     }
 
@@ -150,14 +175,14 @@ message Operand {
     }
 
     oneof operand {
-        FixedCol fixedCol = 2;
+        FixedCol fixedCol = 1;
+        PeriodicCol periodicCol = 2;
         WitnessCol witnessCol = 3;
         Challenge challenge = 4;
-        GlobalChallenge globalChallenge = 5;
-        GlobalPublic globalPublic = 6;
-        Public public = 7;
-        Expression expression = 8;
-        Constant constant = 9;
+        GlobalPublic globalPublic = 5;
+        Public public = 6;
+        Expression expression = 7;
+        Constant constant = 8;
     }
 }
 
@@ -172,15 +197,13 @@ message Expression {
     repeated Operand operands = 2;
 }
 
-message FixedCol {
-    int32 id = 1;
-    string debugLine = 3; // definition
-}
 
 message WitnessCol {
-    int32 id = 1;
-    string debugLine = 3; // definition
-    int32 stage = 4;
+    int32 stage = 1;
+}
+
+message PeriodicCol {
+    repeated bytes values = 1;
 }
 
 enum FrontEndFieldType {
