@@ -87,8 +87,8 @@ message SubProof {
     repeated Expression expressions = 4;
     repeated Constraint constraints = 5;
     repeated Public publics = 7;
-    // repeated FixedCol fixedCols = 8;
-    int32 nFixedCols = 8;
+    repeated FixedCol fixedCols = 8;
+    // int32 nFixedCols = 8;
     repeated PeriodicCol periodicCols = 8;
     repeated WitnessCol witnessCols = 9;
 }
@@ -202,8 +202,12 @@ message WitnessCol {
     int32 stage = 1;
 }
 
-message PeriodicCol {
+message FixedCol {
     repeated bytes values = 1;
+}
+
+message PeriodicCol {
+    repeated bytes values = 1;    // Only the cycle
 }
 
 enum FrontEndFieldType {
