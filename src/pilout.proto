@@ -82,15 +82,16 @@ message GlobalExpression {
 
 
 message SubProof {
-    optional string name = 2;
-    optional int32 rowLength = 3;
-    repeated Expression expressions = 4;
-    repeated Constraint constraints = 5;
-    repeated Public publics = 7;
-    repeated FixedCol fixedCols = 8;
-    // int32 nFixedCols = 8;
-    repeated PeriodicCol periodicCols = 8;
-    repeated WitnessCol witnessCols = 9;
+    optional string name = 1;
+    optional int32 rowLength = 2;
+    repeated Expression expressions = 3;
+    repeated Constraint constraints = 4;
+    // repeated Public publics = 5;
+    int32 nPublic = 5;
+    repeated FixedCol fixedCols = 6;
+    // int32 nFixedCols = 6;
+    repeated PeriodicCol periodicCols = 7;
+    repeated uint32 stageWidths = 8;
 }
 
 enum ReferenceType {
@@ -115,11 +116,6 @@ message Challenge {
     int32 stage = 3;
 }
 
-message Public {
-    Operand readFrom = 2;
-    int32 row = 3;
-}
-
 message Constraint {
     ConstraintDomain constraintDomain = 2;
     optional int32 frameSize = 3;   // Only if transition domain
@@ -140,13 +136,14 @@ message Reference {
 
 message Operand {
     message WitnessCol {
-        int32 id = 1;
-        sint32 next = 2;
+        int32 stage = 1;
+        int32 colIdx = 1;       // Relative column in this stage
+        sint32 offset = 2;
     }
 
     message FixedCol {
         int32 id = 1;
-        sint32 next = 2;
+        sint32 offset = 2;
     }
 
     message PeriodicCol {
@@ -195,11 +192,6 @@ message Expression {
     }
     Operation operation = 1;
     repeated Operand operands = 2;
-}
-
-
-message WitnessCol {
-    int32 stage = 1;
 }
 
 message FixedCol {
