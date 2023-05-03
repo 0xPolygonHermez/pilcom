@@ -1,14 +1,13 @@
 package pilout;
 syntax = "proto3";
 
-
 message PilOut {
     ProofType proofType = 1;
     oneof proof {
         SubProof monolithicProof = 2;
         VADCOP vadcop = 3;
     }
-    repeated Challenge challenges = 4;
+    repeated Challenge numChallenges = 4;   // number of challenges per stage
     repeated Reference references = 5;
 }
 
@@ -25,13 +24,10 @@ message VADCOP {
     repeated GlobalExpression globalExpressions = 4;
 }
 
-// Main::oldStateRoot === Keccak::stateRoot * Arith::stateRoot + alfa;
-
 message GlobalConstraint {
     GlobalOperand globalOperand = 2;
     optional string debugLine = 3;
 }
-
 
 message GlobalOperand {
     message Challenge {
@@ -68,7 +64,6 @@ message GlobalOperand {
     }
 }
 
-
 message GlobalExpression {
     enum Operation {
         SUM = 0;
@@ -80,19 +75,161 @@ message GlobalExpression {
     repeated GlobalOperand globalOperands = 2;
 }
 
+// BASIC AIR
+// ------------------------------------------------------------------------------------------------
 
 message SubProof {
     optional string name = 1;
-    optional int32 rowLength = 2;
-    repeated Expression expressions = 3;
-    repeated Constraint constraints = 4;
-    // repeated Public publics = 5;
-    int32 nPublic = 5;
+    optional uint32 numRows = 2;            // log2(n), where n is the number of rows
+    uint32 numPublicValues = 3;
+    repeated PublicTable = 4;
+    repeated PeriodicCol periodicCols = 5;
     repeated FixedCol fixedCols = 6;
-    // int32 nFixedCols = 6;
-    repeated PeriodicCol periodicCols = 7;
-    repeated uint32 stageWidths = 8;
+    repeated uint32 stageWidths = 7;        // should this include stage 0 (fixed columns)?
+    repeated Expression expressions = 8;
+    repeated Constraint constraints = 9;
 }
+
+message PublicTable {
+    enum AggregationType {
+        SUM = 0;
+        PROD = 1;
+    }
+
+    uint32 numColumns = 1;
+    AggregationType aggType = 2;
+}
+
+message PeriodicCol {
+    repeated bytes values = 1;              // Only the cycle
+}
+
+message FixedCol {
+    repeated bytes values = 1;
+}
+
+message Constraint {
+    message FirstRow {
+        Operand.Expression expressionIdx = 1;
+        optional string debugLine = 2;
+    }
+
+    message LastRow {
+        Operand.Expression expressionIdx = 1;
+        optional string debugLine = 2;
+    }
+
+    message EveryRow {
+        Operand.Expression expressionIdx = 1;
+        optional string debugLine = 2;
+    }
+
+    message EveryFrame {
+        Operand.Expression expressionIdx = 1;
+        uint32 frameSize = 2;
+        optional string debugLine = 3;
+    }
+
+    oneof constraint {
+        FirstRow firstRow = 1;
+        LastRow lastRow = 2;
+        EveryRow everyRow = 3;
+        EveryFrame everyFrame = 4;
+    }
+}
+
+message Operand {
+    message Constant {
+        bytes value = 1;
+    }
+
+    message Challenge {
+        uint32 stage = 1;
+        uint32 idx = 2;     // index relative to the stage
+    }
+
+    message PublicValue {
+        uint32 idx = 1;
+    }
+
+    message PublicTable {
+        uint32 idx = 1;
+    }
+
+    // is this still needed given that we have GlobalOperand?
+    message GlobalPublic {
+        uint32 idx = 1;
+    }
+
+    message PeriodicCol {
+        uint32 idx = 1;
+        sint32 rowOffset = 2;
+    }
+
+    message FixedCol {
+        uint32 idx = 1;
+        sint32 rowOffset = 2;
+    }
+
+    message WitnessCol {
+        uint32 stage = 1;
+        uint32 colIdx = 2;      // index relative to the stage
+        sint32 rowOffset = 3;
+    }
+
+    message Expression {
+        uint32 idx = 1;
+    }
+
+    oneof operand {
+        Constant constant = 1;
+        Challenge challenge = 2;
+        PublicValue publicValue = 3;
+        PublicTable publicTable = 4;
+        GlobalPublic globalPublic = 5;
+        PeriodicCol periodicCol = 6;
+        FixedCol fixedCol = 7;
+        WitnessCol witnessCol = 8;
+        Expression expression = 9;
+    }
+}
+
+message Expression {
+    message Add {
+        Operand lhs = 1;
+        Operand rhs = 2;
+    }
+
+    message Sub {
+        Operand lhs = 1;
+        Operand rhs = 2;
+    }
+
+    message Mul {
+        Operand lhs = 1;
+        Operand rhs = 2;
+    }
+
+    message Neg {
+        Operand value = 1;
+    }
+
+    message Exp {
+        Operand base = 1;
+        uint32 exponent = 2;
+    }
+
+    oneof operation {
+        Add add = 1;
+        Sub sub = 2;
+        Mul mul = 3;
+        Neg neg = 4;
+        Exp exp = 5;
+    }
+}
+
+// REFERENCES
+// ------------------------------------------------------------------------------------------------
 
 enum ReferenceType {
     IM_COL = 0;
@@ -104,26 +241,6 @@ enum ReferenceType {
     GLOBAL_PUBLIC = 6;
 }
 
-enum ConstraintDomain {
-    FIRST = 0;
-    LAST = 1;
-    TRANSITION = 2;
-    ALL = 3;
-}
-
-
-message Challenge {
-    int32 stage = 3;
-}
-
-message Constraint {
-    ConstraintDomain constraintDomain = 2;
-    optional int32 frameSize = 3;   // Only if transition domain
-    Operand operand = 4;
-    optional string debugLine = 5;
-}
-
-
 message Reference {
     string name = 1;
     optional int32 subProofId = 2;
@@ -134,73 +251,8 @@ message Reference {
     optional string debugLine = 7;
 }
 
-message Operand {
-    message WitnessCol {
-        int32 stage = 1;
-        int32 colIdx = 1;       // Relative column in this stage
-        sint32 offset = 2;
-    }
-
-    message FixedCol {
-        int32 id = 1;
-        sint32 offset = 2;
-    }
-
-    message PeriodicCol {
-        int32 id = 1;
-        sint32 next = 2;
-    }
-
-    message Challenge {
-        int32 id = 1;
-    }
-
-    message GlobalPublic {
-        int32 id = 1;
-    }
-
-    message Public {
-        int32 id = 1;
-    }
-
-    message Expression {
-        int32 id = 1;
-    }
-
-    message Constant {
-        bytes value = 1;
-    }
-
-    oneof operand {
-        FixedCol fixedCol = 1;
-        PeriodicCol periodicCol = 2;
-        WitnessCol witnessCol = 3;
-        Challenge challenge = 4;
-        GlobalPublic globalPublic = 5;
-        Public public = 6;
-        Expression expression = 7;
-        Constant constant = 8;
-    }
-}
-
-message Expression {
-    enum Operation {
-        SUM = 0;
-        SUB = 1;
-        MUL = 2;
-        NEG = 3;
-    }
-    Operation operation = 1;
-    repeated Operand operands = 2;
-}
-
-message FixedCol {
-    repeated bytes values = 1;
-}
-
-message PeriodicCol {
-    repeated bytes values = 1;    // Only the cycle
-}
+// FRONT-END (this this hints?)
+// ------------------------------------------------------------------------------------------------
 
 enum FrontEndFieldType {
     STRING = 0;
