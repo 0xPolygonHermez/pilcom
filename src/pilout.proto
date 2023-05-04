@@ -2,14 +2,14 @@ package pilout;
 syntax = "proto3";
 
 message PilOut {
-    repeated SubProof monolithicProof = 2;
-    repeated Challenge numChallenges = 4;   // number of challenges per stage
-    repeated Reference references = 5;
-    uin32 nProverValues = 6;
-    uin32 nPublic = 7;
-    repeated PublicTable publicTables = 8;
-    repeated Expression globalExpressions = 9;
-    repeated Constraint globalConstraints = 10;    // Constraints that affect only to signals.
+    repeated SubProof monolithicProof = 1;
+    repeated Challenge numChallenges = 2;   // number of challenges per stage
+    repeated Reference references = 3;
+    uin32 nProverValues = 4;
+    uin32 nPublic = 5;
+    repeated PublicTable publicTables = 6;
+    repeated Expression globalExpressions = 7;
+    repeated Constraint globalConstraints = 8;    // Constraints that affect only to signals.
 }
 
 message PublicTable {
@@ -31,11 +31,11 @@ message PublicTable {
 message SubProof {
     optional string name = 1;
     optional uint32 numRows = 2;            // log2(n), where n is the number of rows
-    repeated PeriodicCol periodicCols = 5;
-    repeated FixedCol fixedCols = 6;
-    repeated uint32 stageWidths = 7;        // should this include stage 0 (fixed columns)?
-    repeated Expression expressions = 8;
-    repeated Constraint constraints = 9;
+    repeated PeriodicCol periodicCols = 3;
+    repeated FixedCol fixedCols = 4;
+    repeated uint32 stageWidths = 5;        // should this include stage 0 (fixed columns)?
+    repeated Expression expressions = 6;
+    repeated Constraint constraints = 7;
 }
 
 message PeriodicCol {
