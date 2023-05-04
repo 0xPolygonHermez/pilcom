@@ -2,92 +2,14 @@ package pilout;
 syntax = "proto3";
 
 message PilOut {
-    ProofType proofType = 1;
-    oneof proof {
-        SubProof monolithicProof = 2;
-        VADCOP vadcop = 3;
-    }
+    repeated SubProof monolithicProof = 2;
     repeated Challenge numChallenges = 4;   // number of challenges per stage
     repeated Reference references = 5;
-}
-
-enum ProofType {
-    MONOLITIC = 0;
-    VADCOP = 1;
-}
-
-message VADCOP {
-//    repeated GlobalPublic globalPublics = 21;
-    int32 nGlobalPublics = 1;
-    repeated GlobalConstraint globalConstraints = 2;
-    repeated SubProof subProofs = 3;
-    repeated GlobalExpression globalExpressions = 4;
-}
-
-message GlobalConstraint {
-    GlobalOperand globalOperand = 2;
-    optional string debugLine = 3;
-}
-
-message GlobalOperand {
-    message Challenge {
-        int32 id = 1;
-    }
-
-    message SubproofPublicId {
-        int32 subproofId = 1;
-        int32 id  = 2;
-    }
-
-    message SubproofPublic {
-        repeated SubproofPublicId subProofPublicIds = 1;
-    }
-
-    message GlobalPublic {
-        int32 id = 1;
-    }
-
-    message GlobalExpression {
-        int32 id = 1;
-    }
-
-    message Constant {
-        bytes value = 1;
-    }
-
-    oneof operand {
-        Challenge challenge = 3;
-        GlobalPublic globalPublic = 4;
-        SubproofPublic public = 5;
-        GlobalExpression globalExpression = 6;
-        Constant constant = 7;
-    }
-}
-
-message GlobalExpression {
-    enum Operation {
-        SUM = 0;
-        SUB = 1;
-        MUL = 2;
-        NEG = 3;
-    }
-    Operation operation = 1;
-    repeated GlobalOperand globalOperands = 2;
-}
-
-// BASIC AIR
-// ------------------------------------------------------------------------------------------------
-
-message SubProof {
-    optional string name = 1;
-    optional uint32 numRows = 2;            // log2(n), where n is the number of rows
-    uint32 numPublicValues = 3;
-    repeated PublicTable = 4;
-    repeated PeriodicCol periodicCols = 5;
-    repeated FixedCol fixedCols = 6;
-    repeated uint32 stageWidths = 7;        // should this include stage 0 (fixed columns)?
-    repeated Expression expressions = 8;
-    repeated Constraint constraints = 9;
+    uin32 nProverValues = 6;
+    uin32 nPublic = 7;
+    repeated PublicTable publicTables = 8;
+    repeated Expression globalExpressions = 9;
+    repeated Constraint globalConstraints = 10;    // Constraints that affect only to signals.
 }
 
 message PublicTable {
@@ -97,7 +19,23 @@ message PublicTable {
     }
 
     uint32 numColumns = 1;
+    uint32 maxSize = 2;
+    uint32 challange1Id = 3;
+    uint32 challange2Id = 4;
     AggregationType aggType = 2;
+}
+
+// BASIC AIR
+// ------------------------------------------------------------------------------------------------
+
+message SubProof {
+    optional string name = 1;
+    optional uint32 numRows = 2;            // log2(n), where n is the number of rows
+    repeated PeriodicCol periodicCols = 5;
+    repeated FixedCol fixedCols = 6;
+    repeated uint32 stageWidths = 7;        // should this include stage 0 (fixed columns)?
+    repeated Expression expressions = 8;
+    repeated Constraint constraints = 9;
 }
 
 message PeriodicCol {
@@ -126,8 +64,9 @@ message Constraint {
 
     message EveryFrame {
         Operand.Expression expressionIdx = 1;
-        uint32 frameSize = 2;
-        optional string debugLine = 3;
+        uint32 offsetMin = 2;
+        uint32 offsetMax = 3;           // This is the FrameLength when there is no negative offsets
+        optional string debugLine = 4;
     }
 
     oneof constraint {
@@ -148,16 +87,15 @@ message Operand {
         uint32 idx = 2;     // index relative to the stage
     }
 
-    message PublicValue {
+    message Public {
+        uint32 idx = 1;
+    }
+
+    message ProverValue {
         uint32 idx = 1;
     }
 
     message PublicTable {
-        uint32 idx = 1;
-    }
-
-    // is this still needed given that we have GlobalOperand?
-    message GlobalPublic {
         uint32 idx = 1;
     }
 
@@ -184,7 +122,8 @@ message Operand {
     oneof operand {
         Constant constant = 1;
         Challenge challenge = 2;
-        PublicValue publicValue = 3;
+        Public public = 3;
+        ProverValue proverValue = 4;
         PublicTable publicTable = 4;
         GlobalPublic globalPublic = 5;
         PeriodicCol periodicCol = 6;
@@ -237,8 +176,9 @@ enum ReferenceType {
     PERIODIC_COL = 2;
     WITNESS_COL = 3;
     PUBLIC = 4;
-    CHALLENGE = 5;
-    GLOBAL_PUBLIC = 6;
+    PROVER_VALUE = 5;
+    PUBLIC_TABLE = 6;
+    CHALLENGE = 7;
 }
 
 message Reference {
