@@ -33,8 +33,8 @@ class Compiler {
 
     initContext() {
         this.subproofs = {};
-        this.nCommitments = 0;
-        this.nConstants = 0;
+        this.nWitnessCols = 0;
+        this.nFixedCols = 0;
         this.nIm = 0;
         this.nQ = 0;
         this.nPublic = 0;
@@ -83,12 +83,23 @@ class Compiler {
         return this.contextToJson();
     }
 
-    async parseSource(fileName, isMain) {
+    beforePerformAction(parser, parentArguments) {
+    }
+    afterPerformAction(parser, result, parentArguments) {
+        let $$ = parentArguments[5];
+        let _$ = parentArguments[6];
 
-        const [src, fileDir, fullFileName, relativeFileName] = await this.loadSource(fileName, isMain);
-        this.relativeFileName = relativeFileName;
-
-        const srcLines = src.split(/(?:\r\n|\n|\r)/);
+        const first = _$[0];
+        const last = _$[$$.length - 1] | first;
+//         console.log([parser.$, _$[$0-2], _$[$0]]);
+        $$.first_line = first.first_line;
+        $$.first_column = first.first_column;
+        $$.last_line = last.last_line;
+        $$.last_column = last.last_column;
+        return result;
+    }
+    instanceParser(src, fullFileName) {
+        this.srcLines = src.split(/(?:\r\n|\n|\r)/);
 
         const myErr = function (str, hash) {
             str = fullFileName + " -> " + str;
@@ -96,15 +107,35 @@ class Compiler {
         };
         pil_parser.Parser.prototype.parseError = myErr;
 
-        const parser = new pil_parser.Parser();
+        let parser = new pil_parser.Parser();
+        /*const parserPerformAction = parser.performAction;
+        let compiler = this;
+        parser.performAction = function () {
+            compiler.beforePerformAction.apply(compiler, [this, arguments]);
+            let result = parserPerformAction.apply(this, arguments);
+            return compiler.afterPerformAction.apply(compiler, [this, result, arguments]);
+        };*/
+        return parser;
+    }
+    async parseSource(fileName, isMain) {
+
+        const [src, fileDir, fullFileName, relativeFileName] = await this.loadSource(fileName, isMain);
+        this.relativeFileName = relativeFileName;
+
+
+        const parser = this.instanceParser(src,fullFileName);
         const sts = parser.parse(src);
 
         let pendingCommands = [];
         let lastLineAllowsCommand = false;
 
-
+        console.log(sts);
         for (let i=0; i<sts.length; i++) {
             const s = sts[i];
+            console.log(s);
+            if (!s.fileName) {
+                console.log(s);
+            }
             this.fileName = s.fileName = relativeFileName;
             this.line = s.first_line;
             const sourceRef = `${s.fileName}:${s.first_line}`;
@@ -205,7 +236,8 @@ class Compiler {
         }
     }
     parseStatment(s) {
-        const method = 'do'+s.type;
+        const method = ('do_'+s.type).replace(/[-_][a-z]/g, (group) => group.slice(-1).toUpperCase());
+        console.log(`[${s.type}] ===> ${method}`);
         if (!(method in this)) {
             console.log('==== ERROR ====');
             console.log(s);
@@ -213,37 +245,39 @@ class Compiler {
         }
         return this[method](s);
     }
-    doPolCommitDeclaration(s) {
-        this.nCommitments = this.polDeclaration(s, 'cmP', this.nCommitments);
+    doWitnessColDeclaration(s) {
+        this.nWitnessCols = this.colDeclaration(s, 'witness', this.nWitnessCols);
     }
-    doPolConstantDeclaration(s) {
-        this.nConstants = this.polDeclaration(s, 'constP', this.nConstants);
+    doFixedColDeclaration(s) {
+        this.nFixedCols = this.colDeclaration(s, 'fixed', this.nFixedCols);
     }
     doPolDeclaration(s) {
-        this.nIm = this.polDeclaration(s, 'imP', this.nIm, true);
+        this.nIm = this.colDeclaration(s, 'im', this.nIm, true);
     }
-    polDeclaration(s, type, nextId, reserveExpressions = false) {
-        for (const pol of s.names) {
-            const polname = this.namespace + '.' + pol.name;
-            let ref = this.references.get(polname);
+    colDeclaration(s, type, nextId, reserveExpressions = false) {
+        console.log('*********');
+        console.log(s);
+        for (const col of s.names) {
+            const colname = this.namespace + '.' + col.name;
+            let ref = this.references.get(colname);
             if (ref !== null) {
-                this.error(s, `${polname} already defined on ${ref.sourceRef}`);
+                this.error(s, `${colname} already defined on ${ref.sourceRef}`);
             }
             // TODO: multidimensional-array
-            let len = (pol.type === 'array') ? this.getExprNumber(pol.expLen, s, `${polname} array size`) : 1;
+            let len = (col.type === 'array') ? this.getExprNumber(col.expLen, s, `${colname} array size`) : 1;
             const refId = reserveExpressions ? this.expressions.reserve(len) : nextId;
             ref = {
                 type,
                 id: refId,
-                polDeg: this.polDeg,
+                colDeg: this.colDeg,
                 sourceRef: s.sourceRef,
-                isArray: (pol.type === 'array'),
+                isArray: (col.type === 'array'),
             };
-            if (pol.type === 'array') {
+            if (col.type === 'array') {
                 ref.len = len;
             }
             nextId += len;
-            this.references.define(polname, ref);
+            this.references.define(colname, ref);
         }
         return nextId;
     }

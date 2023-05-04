@@ -1,0 +1,419 @@
+include "config.pil";
+include "global.pil";
+include "rom.pil";
+include "mem_align.pil";
+include "arith.pil";
+include "binary.pil";
+include "poseidong.pil";
+include "padding_pg.pil";
+include "storage.pil";
+include "padding_kk.pil";
+include "mem.pil";
+
+subproof Main(2**23, 2**26, 2**28);
+
+namespace Main:: {
+
+    col fixed L1 = [1,0...];
+    col fixed L_LAST = [0...,1];
+
+    // State columns -----------------------------------------------------------
+
+    col witness A[8], B[8], C[8], D[8], E[8];   // General propose 256-bit registers (8 x 32 bits)
+    col witness SR[8];                          // State Root
+    col witness CTX;                            // Call Cntext
+    col witness SP;                             // Stack Pointer
+    col witness PC;                             // EVM Program counter
+    col witness GAS;                            // PC of ROM
+    col witness zkPC;                           // Program Counter of current micro instruction
+    col witness RR;                             // Micro code return address (subroutines)
+    col witness HASHPOS;                        // Current HASH offset
+    col witness RCX;                            // Repeat counter
+
+    //  Cols related ROM -------------------------------------------------------
+
+    col witness CONSTF[8];
+    col witness FREE[8];
+    col witness inA, inB, inC, inROTL_C, inD, inE, inSR, inFREE, inCTX, inSP, inPC, inGAS, inSTEP, inRR, inHASHPOS, inRCX;
+    col witness setA, setB, setC, setD, setE, setSR, setCTX, setSP, setPC, setGAS, setRR, setHASHPOS, setRCX;
+    col witness JMP, JMPN, JMPC, JMPZ, offset;
+    col witness incStack;
+    col witness isStack;
+    col witness isMem;
+    col witness ind, indRR;
+    col witness useCTX;
+    col witness carry;
+    col witness mOp, mWR;
+    col witness sWR, sRD;
+    col witness arithEq[3];
+    col witness memAlignRD, memAlignWR, memAlignWR8;
+    col witness hashK, hashK1, hashKLen, hashKDigest;
+    col witness hashP, hashP1, hashPLen, hashPDigest;
+    col witness bin;
+    col witness binOp;
+    col witness assert;
+    col witness repeat, call, _return;
+    col witness isNeg;
+    col witness jmpAddr;
+    col witness elseAddr;
+    col witness useJmpAddr;
+    col witness useElseAddr;
+
+    // Counters ----------------------------------------------------------------
+
+    col witness cntArith, cntBinary, cntMemAlign, cntKeccakF, cntPoseidonG, cntPaddingPG;
+    col witness inCntArith, inCntBinary, inCntMemAlign, inCntKeccakF, inCntPoseidonG, inCntPaddingPG;
+    col witness incCounter;
+
+    // OP intermediary calculations and checks
+
+    col op[8];
+    for (i = 0; i < 8; ++i) {
+        expr ope = A[i] * inA +
+                   B[i] * inB +
+                   C[i] * inC +
+                   C[(i+7)%8] * inROTL_C +
+                   D[i] * inD +
+                   E[i] * inE +
+                   FREE[i] * inFREE +
+                   SR[i] * inSR +
+                   CONST[i];
+        if (i == 0) {
+            ope += CTX * inCTX +
+                   SP * inSP +
+                   PC * inPC +
+                   GAS * inGAS +
+                   STEP * inSTEP +
+                   RR * inRR +
+                   HASHPOS * inHASHPOS +
+                   cntArith * inCntArith +
+                   cntBinary * inCntBinary +
+                   cntMemAlign * inCntMemAlign +
+                   cntKeccakF * inCntKeccakF +
+                   cntPoseidonG * inCntPoseidonG +
+                   cntPaddingPG * inCntPaddingPG +
+                   RCX * inRCX;
+        }
+        op[i] = ope;
+    }
+
+    // Memory mapping ----------------------------------------------------------
+
+    //   ctxBase = CTX * 0x040000   ctxSize = 256K addresses * 32 bytes (256 bits) = 8MiB
+    //
+    //   Memory Region                    Size   isMem  isStack   Content
+    //   ctxBase + [0x000000 - 0x00FFFF]   2MiB      0        0   Context specific variables
+    //   ctxBase + [0x010000 - 0x000000]   2MiB      0        1   EVM Stack
+    //   ctxBase + [0x020000 - 0x03FFFF]   4MiB      1        0   EVM Memory
+
+    col addrRel = ind*E0 + indRR*RR + offset;
+    col addr = useCTX*CTX*2**18 + isStack*2**16 + isStack*SP + isMem*2**17+ addrRel;
+
+    // isNeg
+
+    range_check(JMPN*(isNeg*2**32 + op[0]), 0, 2**32-1);
+    isNeg * (1 - isNeg) === 0;
+
+    // RCX check zero
+    col witness RCXInv;
+    col RCXIsZero = 1 - RCX*RCXInv;
+    RCXIsZero * RCX === 0;
+
+    // op0 check zero
+    col witness op0Inv;
+    col op0IsZero = 1 - op0*op0Inv;
+    op0IsZero * op0 === 0;
+
+    // Calculate New State for registers
+
+    for (i = 0; i < 8; ++i) {
+        A[i]'  === setA * (op[i] - A[i]) + A[i];
+        B[i]'  === setB * (op[i] - B[i]) + B[i];
+        C[i]'  === setC * (op[i] - C[i]) + C[i];
+        D[i]'  === setD * (op[i] - D[i]) + D[i];
+        E[i]'  === setE * (op[i] - E[i]) + E[i];
+        SR[i]' === setSR * (op[i] - SR[i]) + SR[i];
+        CTX' === setCTX * (op[0] - CTX) + CTX;
+        SP' === setSP * (op[0] - (SP + incStack)) + (SP + incStack);
+        PC' === setPC * (op[0] - PC) + PC;
+    }
+
+    // ROM constraint: call * setRR = 0
+
+    RR' === setRR * (op[0] - RR) + call * (zkPC + 1 - RR) + RR;
+    GAS' === setGAS * (op[0] - GAS) + GAS;
+
+    col decRCX = repeat * (1 - RCXIsZero);
+    RCX' === setRCX * (op[0] - (RCX-decRCX)) + (RCX-decRCX);
+
+    HASHPOS' === setHASHPOS * (op[0] - HASHPOS) + HASHPOS + (hashK + hashP)*D[0] + hashK1 + hashP1;
+
+    col doJMP = JMPN*isNeg + JMP + JMPC*carry + JMPZ*op0IsZero + _return + call;
+    col elseJMP = JMPN*(1-isNeg) + JMPC*(1-carry) + JMPZ*(1-op0IsZero);
+
+    // ROM/Zkasm constraint: useJmpAddr * return = 0
+
+    col finalJmpAddr = useJmpAddr * (jmpAddr - addr ) + _return * (RR - addr) + addr;
+    col nextNoJmpZkPC = zkPC + 1 - ((1-RCXIsZero)*repeat);
+    col finalElseAddr =  useElseAddr * (elseAddr - nextNoJmpZkPC) + nextNoJmpZkPC;
+
+    // if elseAddr wasn't specified on zkasm, compiler put current address + 1
+
+    zkPC' === doJMP * (finalJmpAddr - nextNoJmpZkPC) + elseJMP * (finalElseAddr - nextNoJmpZkPC) + nextNoJmpZkPC;
+
+    zkPC * L1 === 0;
+
+    public oldStateRoot[8];
+    public oldAccInputHash[8];
+    public newStateRoot[8];
+    public newAccInputHash[8];
+    public localExitRoot[8];
+
+    for (i = 0; i < 8; ++i) {
+        (A[i]-op[i])*assert === 0;
+
+        oldStateRoot[i] = B[i][0];
+        L1 * (B[i] - oldStateRoot[i]) === 0;
+
+        oldAccInputHash[i] = C[i][0];
+        L1 * (C[i] - oldAccInputHash[i]) === 0;
+
+        newStateRoot[i] = SR[i][N-1];
+        L_LAST * (SR[i] - newStateRoot[i]) === 0;
+
+        newAccInputHash[i] = D[i][N -1];
+        L_LAST * (D[i] - newAccInputHash[i]) === 0;
+
+        localExitRoot[i] = E[i][N-1];
+        L_LAST * (E[i] - localExitRoot[i]) === 0;
+    }
+    public oldBatchNum = SP[0];
+    L1 * (SP - oldBatchNum) === 0;
+
+    public chainId = GAS[0];
+    L1 * (GAS - chainId) === 0;
+
+    public forkId = CTX[0];
+    L1 * (CTX - forkId) === 0;
+
+    public newBatchNum = PC[N-1];
+    L_LAST * (PC - newBatchNum) === 0;
+
+    // Check that the calculated hash is well formed
+
+    permutation_check(sWR + hashPDigest, [...op],
+                      Binary::resultValidRange, [...Binary::a]);
+
+    // ROM ---------------------------------------------------------------------
+
+    fe factor = 1;
+    expr operations;
+    for (col &c in [...arithEq, assert, bin, hashK, hashKDigest, hashKLen, hashP, hashPDigest, hashPLen, ind, indRR, isMem, isStack, JMP, JMPC, JMPN,
+                    memAlignRD, memAlignWR, memAlignWR8, mOp, mWR, repeat, setA, setB, setC, setCTX, setD, setE, setGAS, setHASHPOS, setPC, setRCX,
+                    setRR, setSP, setSR, sRD, sWR, useCTX, useJmpAddr, JMPZ, call, _return, hashK1, hashP1, useElseAddr]) {
+        operations += factor * c;
+        (1 - c) * c === 0;
+    }
+
+    lookup_check(
+           [...constf, inA, inB, inC, inROTL_C, inD, inE, inSR, inFREE,
+            inCTX, inSP, inPC, inGAS, inHASHPOS, inSTEP, inRR, inRCX,
+            inCntArith, inCntBinary, inCntKeccakF, inCntMemAlign, inCntPaddingPG, inCntPoseidonG,
+            operations, offset, incStack, binOp, jmpAddr, elseAddr, zkPC
+           ],
+           [...Rom.CONSTF, Rom.IN_A, Rom.IN_B, Rom.IN_C, Rom.IN_ROTL_C, Rom.IN_D, Rom.IN_E, Rom.IN_SR, Rom.IN_FREE,
+            Rom.IN_CTX, Rom.IN_SP, Rom.IN_PC, Rom.IN_GAS, Rom.IN_HASHPOS, Rom.IN_STEP, Rom.IN_RR, Rom.IN_RCX,
+            Rom.IN_CNT_ARITH, Rom.IN_CNT_BINARY, Rom.IN_CNT_KECCAK_F, Rom.IN_CNT_MEM_ALIGN, Rom.IN_CNT_PADDING_PG, Rom.IN_CNT_POSEIDON_G,
+            Rom.OPERATIONS, Rom.OFFSET, Rom.INC_STACK, Rom.BIN_OP, Rom.JMP_ADDR, Rom.ELSE_ADDR, Rom.LINE]);
+
+    col witness sKeyI[4];
+    col witness sKey[4];
+
+    // Arithmetic --------------------------------------------------------------
+
+    subproof::expr aR[6][8];
+    integer iReg = 0;
+    for (subproof::col &c in Arith::[ax1, ay1, ax2, ay2, ax3, ay3]) {}
+        for (i = 0; i < 8; ++i) {
+            aR[iReg][i] = c[i*2] + c[i*2+1] * 2**16;
+        }
+        ++iReg;
+    }
+
+    subproof_permutation_check(
+        arithEq[0],
+        [ 1, 0, 0, 0, 0, ...A, ...B, ...C, ...D, ...op],
+        Arith::resultEq[0],
+        [...Arith::selEq, ...aR[0], ...aR[1], ...aR[2], ...aR[3], ...aR[5]]
+    );
+
+    subproof_permutation_check(
+        arithEq[1],
+        [ 0, 1, 0, 1, 0, ...A, ...B, ...C, ...D, ...E, ...op],
+        Arith::resultEq[1],
+        [...Arith::selEq, ...aR[0], ...aR[1], ...aR[2], ...aR[3], ...aR[4], ...aR[5]]
+    );
+
+    subproof_permutation_check(
+        arithEq[2],
+        [ 0, 0, 1, 1, 0, ...A, ...B, ...A, ...B, ...E, ...op],
+        Arith::resultEq[2],
+        [...Arith::selEq, ...aR[0], ...aR[1], ...aR[2], ...aR[3], ...aR[4], ...aR[5]]
+    );
+
+    subproof_permutation_check(
+        arithEq[3],
+        [ 0, 0, 0, 0, 1, ...A, ...B, ...C, ...D, ...E, ...op],
+        Arith::resultEq[3],
+        [...Arith::selEq, ...aR[0], ...aR[1], ...aR[2], ...aR[3], ...aR[4], ...aR[5]]
+    );
+
+    cntArith' === cntArith*(1-L1) + arithEq[0] + arithEq[1] + arithEq[2];       // IMPROVEMENT: cntArith' === cntArith*(1-L1) + ...arithEq;
+
+    // Binary ------------------------------------------------------------------
+
+    subproof_permutation_check(
+        bin,
+        [binOp, ...A, ...B, ...op, carry],
+        Binary::resultBinOp,
+        Binary::['op, ...a, ...b, ...c, 'cout]
+    );
+
+    cntBinary' === cntBinary * (1 - L1) + bin + sWR + hashPDigest;
+
+    // PaddingKK ---------------------------------------------------------------
+
+    subproof_lookup_check(
+        hashK + hashK1,
+        [ addr, HASHPOS, D[0] * hashK + hashK1, ...op ],
+        PaddingKK::crLatch * PaddingKK::r8valid,
+        PaddingKK::[ addr, len - rem - crLen + 1, crLen, ...crVC]
+    );
+
+    subproof_permutation_check(
+        hashKLen,
+        [ addr, op[0]],
+        PaddingKK::lastHashLen,
+        PaddingKK::[ addr, len ]
+    );
+
+    subproof_permutation_check(
+        hashKDigest,
+        [ addr, ...op, incCounter ],
+        PaddingKK::[ addr, ...hash, incCounter ]
+    );
+
+    cntKeccakF' === cntKeccakF * (1 - L1) + incCounter * hashKDigest;
+
+    // PaddingPG ---------------------------------------------------------------
+
+    subproof_lookup_check(
+        hashP + hashP1,
+        [ addr, HASHPOS, D[0] * hashP + hashP1, ...op ],
+        PaddingPG::crLatch * PaddingPG::crValid
+        PaddingPG::[ addr, len - rem - crLen + 1, crLen, ...crVC ]
+    );
+
+    subproof_permutation_check(
+        hashPLen,
+        [ addr, op[0] ],
+        PaddingPG::lastHashLen,
+        PaddingPG::[ addr, len ]
+    );
+
+    subproof_permutation_check(
+        hashPDigest,
+        [addr, op[0] + 2**32 * op[1], op[2] + 2**32 * op[3], op[4] + 2**32 * op[5], op[6] + 2**32 * op[7], incCounter],
+        PaddingPG::lastHashDigest,
+        PaddingPG::[ addr, ...curHash, incCounter]
+    );
+
+    cntPaddingPG' === cntPaddingPG * (1 - L1) + hashPDigest * incCounter;
+    cntPoseidonG' === cntPoseidonG * (1 - L1) + (hashPDigest + sRD + sWR) * incCounter;
+
+    // Mem ---------------------------------------------------------------------
+
+    subproof_permutation_check(
+        mOp,
+        [ addr, STEP, mWR, ...op],
+        Mem::mOp,
+        Mem::[ addr, step, mWr, ...val]
+    );
+
+    // Storage -----------------------------------------------------------------
+
+    subproof_permutation_check(
+        sRD + sWR,
+            [ 1, 0, 0,
+            ...C,
+            0, 0, 0, 0,
+            ...sKeyI],
+        PoseidonG::result[0],
+            PoseidonG::[ ...result,
+            ...value,
+            hashType, ...cap,
+            ...hash]
+    );
+
+    subproof_permutation_check(
+        sRD + sWR,
+            [ 0, 1, 0,
+            A[0], A[1], A[2], A[3], A[4], 0, B[0], B[1],
+            ...sKeyI, ...sKey,
+            A[5], A[6], A[7], B[2], B[3], B[4], B[5], B[6], B[7] ],
+        PoseidonG::result[1],
+            PoseidonG::[ ...result,
+            ...value,
+            hashType, ...cap, ...hash,
+            0, 0, 0, 0, 0, 0, 0, 0, 0]
+    );
+
+    subproof_permutation_check(
+        sRD,
+            [ SR[0] + 2**32 * SR[1], SR[2] + 2**32 * SR[3], SR[4] + 2**32 * SR[5], SR[6] + 2**32 * SR[7],
+            ...sKey,
+            ...op,  incCounter ],
+        Storage::latchGet,
+            Storage::[ ...oldRoot,
+            ...rkey,
+            ...valueLow, ...valueHigh, incCounter + 2 ]
+    );
+
+    subproof_permutation_check(
+        sWR,
+            [ SR[0] + 2**32*SR[1], SR[2] + 2**32*SR[3], SR[4] + 2**32*SR[5], SR[6] + 2**32*SR[7],
+            ...sKey,
+            ...D,
+            op[0] + 2**32*op[1], op[2] + 2**32*op[3], op[4] + 2**32*op[5], op[6] + 2**32*op[7], incCounter]
+        Storage::latchSet,
+            Storage::[...oldRoot,
+            ...rkey,
+            ...valueLow, ...valueHigh,
+            ...newRoot, incCounter + 2]
+    );
+
+    // MemAlign Plookpups ------------------------------------------------------
+
+    subproof_permutation_check(
+        memAlignRD,
+        [ 0, 0, ...A, ...B, ...op, C[0]],
+        MemAlign::resultRd,
+        MemAlign::[ wr256, wr8, ...m[0], ...m[1], ...v, offset]                    // IMPROVEMENT: [......m] = [...m[0],...m[1]] alternatives [...m[0..1]]
+    );
+
+    subproof_permutation_check(
+        memAlignWR,
+        [ 1, 0, ...A, ...B, ...op, C[0], ...D, ...E],
+        MemAlign::resultWr256,
+        MemAlign::[ wr256, wr8, ...m[0], ...m[1], ...v, offset, ...w[0], ...w[1]]
+    );
+
+    subproof_permutation_check(
+        memAlignWR8,
+        [ 0, 1, ...A, ...op, C[0]], ...D],
+        MemAlign::resultWr8,
+        MemAlign::[ wr256, wr8, ...m[0], ...v, offset, ...w[0]]
+    );
+
+    cntMemAlign' === cntMemAlign * (1 - L1) + memAlignRD + memAlignWR + memAlignWR8;
+}

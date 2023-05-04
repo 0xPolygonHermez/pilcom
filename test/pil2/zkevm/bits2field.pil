@@ -1,0 +1,15 @@
+include "keccakf.pil";
+
+namespace PaddingKK::Bits2Field {
+
+    col fixed FIELD_LATCH = [0:44,1]...;
+    col fixed FACTOR = [1,2,..*..,2**43]...;
+
+    col witness bit;
+    col witness field44;
+
+    field44' === (1 - FIELD_LATCH) * field44 + bit * FACTOR;
+    bit *(1-bit) === 0;
+
+    FIELD_LATCH * (field44 - KeccakF.a44) === 0;
+}

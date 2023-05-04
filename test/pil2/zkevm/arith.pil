@@ -1,0 +1,200 @@
+// EQ0: A(x1) * B(y1) + C(x2) = D (y2) * 2 ** 256 + op (y3)     arithmetica 256 bits
+// EQ1: s * x2 - s * x1 - y2 + y1 + (q0 * p)                    lambda - ADD  ┐
+// EQ2: 2 * s * y1 - 3 * x1 * x1 + (q0 * p)                     lambda - DBL  │ elliptic curve addition
+// EQ3: s * s - x1 - x2 - x3 + (q1 * p)                         x3            │ secp256k1
+// EQ4: s * x1 - s * x3 - y1 - y3 + (q2 * p)                    y3            ┘
+// EQ5: x1 * x2 - y1 * y2 - x3  + (q0 * p2)                     x3 ┐
+// EQ6: y1 * x2 + x1 * y2 - y3 + (q1 * p2)                      y3 ┘ fp2 multiplication (as imaginary numbers => a + bi)
+
+include "std.pil";
+
+subproof Arith (2**23, 2**26, 2**28);
+
+namespace Arith:: {
+
+    constant CHUNKS = 16;
+    constant N_CARRIES = 3;
+    constant N_Q = 3
+    constant N_SEL = 4;
+    constant CYCLE = CHUNKS * 2;
+    constant N_EQUATIONS = 7;
+    constant EQ_CARRY = [0, 0, 0, 1, 2, 0, 1];
+    constant EQ_SEL = [0, 1, 2, 3, 3, 4, 4];
+
+    col fixed BYTE2_BIT19 = [0..(2**16-1), 0..(2**19-1), 0...];
+    col fixed SEL_BYTE2_BIT19 = [0:2**16, 1:2**19, 0...]
+    col fixed GL_SIGNED_22BITS = [-(2**22)..(2**22-1)]...;
+    col fixed CLK = [1,0:31]...;
+
+    col witness x1[CHUNKS], x2[CHUNKS], x3[CHUNKS];
+    col witness x1[CHUNKS], x2[CHUNKS], x3[CHUNKS];
+    col witness s[CHUNKS];
+    col witness q[N_Q][CHUNKS];
+    col witness carry[N_CARRIES];
+    col witness resultEq[N_SEL];
+
+    for (col &resultEq in resultEq) resultEq * (1 - resultEq) === 0;
+
+    for (col &p in [x1,x2,x3,y1,y2,y3,s,...q]) {
+        for (col &p in p) p' * (1 - 'CLK) === p * (1 - 'CLK);
+    }
+
+    expr value  = 0;
+    integer doRangeCheck = 0;
+    for (col &p in [x1,x2,x3,y1,y2,y3,s,...q]) {
+        for (col &p in p) value = value + p * CLK'(secondLoop * 16 + index(p));
+
+        if (doRangeCheck) {
+            range_check(value, 0, 2**16-1);
+            value = 0;
+        }
+        doRangeCheck = !doRangeCheck;
+    }
+
+    // value has first CHUNK values, continue with (CHUNKS-1)th values of q0 plus one of q1.
+    // Left q[CHUNKS-1] for last because use more bits. value = s[0]*CLK + ... + s[CHUNKS-1]*CLK'(CHUNKS-1)
+
+    integer i,j,k;
+    for (i=0; i<CHUNKS-1; ++i) value = value + q[0][i] * CLK'(CHUNKS + i);
+
+    value = value + q[1][0] * CLK'31;
+    range_check(value, 0, 2**16-1);
+
+    value = 0;
+
+    // value = q[1][1]*CLK + ... + q[1][CHUNKS-1]*CLK'CHUNKS-2
+    // value = ...+ q[1][CHUNKS-1]*CLK'14 + q2[0]*CLK'14 + ... + q1[15]*CLK'28
+    for (i = 0; i < CHUNKS-1; ++i) {
+        value = value + q[2][i] * CLK'(CHUNKS + i - 2);
+
+        if (i >= (CHUNKS - 2)) continue;
+        value = value + q[1][i+1] * CLK'(i);
+
+        if (i > 3) continue;
+        value = value + q[i][15] * CLK'(29 + i);
+    }
+
+    lookup([CLK'(29) + CLK'(30) + CLK'(31), value],
+           [SEL_BYTE2_BIT19, BYTE2_BIT19]);
+
+    // EQ0: A(x1) * B(y1) + C(x2) = D (y2) * 2 ** 256 + op (y3) =>  x1 * y1 - x2 - y2 * 2**256 - y3
+
+    col eq[5][CLKS];
+
+    for (i = 0; i < CHUNKS; ++i) {
+        expr etmp[2];
+        for (j = 0; j < CHUNKS; ++i) {
+            k = (j > i ? CHUNKS - 1 : i) - j;
+            etmp[j > i] += (x1[j] * y1[k]);
+        }
+        eq[0][i] = etmp[0] - x2[i] - y3[i];
+        eq[0][i+16] = etmp[1] - y2[i];
+    }
+
+    // EQ1: s * x2 - s * x1 - y2 + y1 + (q0 * p) - p * offset (offset = 4 * 2**256)
+
+    constant eq1to4_prime_value = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f;
+    fe eq1to4_prime[CYCLE];
+    for (i = 0; i < CYCLE; ++i) {
+        eq1to4_prime[i] = (eq1to4_prime_value >> (i * CHUNK_SIZE)) & (2 ** CHUNK_SIZE - 1);
+    }
+
+    for (i = 0; i < CHUNKS; ++i) {
+        expr etmp[2];
+        for (j = 0; j < CHUNKS; ++i) {
+            k = (j > i ? CHUNKS - 1 : i) - j;
+            etmp[j > i] += (s[j] * x2[k]) - (s[j] * x1[k]) + (eq1to4_prime[j] * q[0][k]);
+        }
+        eq[1][i] = etmp[0] - y2[i] + y1[i];
+        eq[1][i+16] = etmp[1] - eq1to4_prime[i] * 4;
+    }
+
+    // EQ2:  2 * s * y1 - 3 * x1 * x1 + (q0 * p) - p * offset (offset = 4 * 2**256)
+
+    for (i = 0; i < CHUNKS; ++i) {
+        expr etmp[2];
+        for (j = 0; j < CHUNKS; ++i) {
+            k = (j > i ? CHUNKS - 1 : i) - j;
+            etmp[j > i] += (2 * s[j] * y1[k]) - (3 * x1[j] * x1[k]) + (eq1to4_prime[j] * q[0][k])
+        }
+        eq[2][i] = etmp[0];
+        eq[2][i+16] = etmp[1] - eq1to4_prime[i] * 4;
+    }
+
+    // EQ3:  s * s - x1 - x2 - x3 + (q1 * p) - p * offset (offset = 4 * 2**256)
+
+    for (i = 0; i < CHUNKS; ++i) {
+        expr etmp[2];
+        for (j = 0; j < CHUNKS; ++i) {
+            k = (j > i ? CHUNKS - 1 : i) - j;
+            etmp[j > i] += (s[j] * s[k]) + (eq1to4_prime[j] * q[1][k])
+        }
+        eq[3][i] = etmp[0] - x1[i] - x2[i] - x3[i];
+        eq[3][i+16] = etmp[1] - eq1to4_prime[i] * 4;
+    }
+
+    // EQ4:  s * x1 - s * x3 - y1 - y3 + (q2 * p) - p * offset (offset = 4 * 2**256)
+
+    for (i = 0; i < CHUNKS; ++i) {
+        expr etmp[2];
+        for (j = 0; j < CHUNKS; ++i) {
+            k = (j > i ? CHUNKS - 1 : i) - j;
+            etmp[j > i] += (s[j] * x1[k]) - (s[j] * x3[k]) + (eq1to4_prime[j] * q[2][k])
+        }
+        eq[4][i] = etmp[0] - y1[i] - y3[i];
+        eq[4][i+16] = etmp[1] - eq1to4_prime[i] * 4;
+    }
+
+    // EQ5: x1 * x2 - y1 * y2 - x3  + (q0 * p2)
+
+    constant eq5to6_prime_value = 21888242871839275222246405745257275088696311157297823662689037894645226208583;
+    fe eq5to6_prime[CYCLE];
+    for (i = 0; i < CYCLE; ++i) {
+        eq5to6_prime[i] = (eq5to6_prime_value >> (i * CHUNK_SIZE)) & (2 ** CHUNK_SIZE - 1);
+    }
+
+    for (i = 0; i < CHUNKS; ++i) {
+        expr etmp[2];
+        for (j = 0; j < CHUNKS; ++i) {
+            k = (j > i ? CHUNKS - 1 : i) - j;
+            etmp[j > i] += (x1[j] * x2[k]) - (y1[j] * y2[k]) + (eq5to6_prime[j] * q[0][k]);
+        }
+        eq[5][i] = etmp[0] - x3[i];
+        eq[5][i+16] = etmp[1];
+    }
+
+    // EQ6:  y1 * x2 + x1 * y2 - y3 + (q1 * p2)
+
+    for (i = 0; i < CHUNKS; ++i) {
+        expr etmp[2];
+        for (j = 0; j < CHUNKS; ++i) {
+            k = (j > i ? CHUNKS - 1 : i) - j;
+            etmp[j > i] += (y1[j] * x2[k]) + (x1[j] * y2[k]) + (eq5to6_prime[j] * q[1][k])
+        }
+        eq[6][i] = etmp[0] - y3[i];
+        eq[6][i+16] = etmp[1];
+    }
+
+    col eqcl[N_EQUATIONS];
+    for (i = 0; i < N_EQUATIONS; ++i)
+        expr tmp;
+        for (j = 0; j < CYCLE; ++j) tmp += eq[i][j] * CLK'(j);
+        eqcl[i] = tmp;
+    }
+
+    col witness selEq[4];
+    for (col &selEq in selEq) {
+        selEq' * (1 - 'CLK) === selEq * (1 - 'CLK);
+        selEq * (1 - selEq) === 0;
+    }
+
+    col witness carry[N_CARRIES];
+    for (col &carry in carry)  {
+        carry * CLK === 0;
+        range_check(carry, 0, 2**22-1);
+    }
+
+    for (i = 0; i < N_EQUATIONS; ++i) {
+        selEq[EQ_SEL[i]] * (eqcl[i] + carry[EQ_CARRY[i]]) === selEq[EQ_SEL[i]] * carry[EQ_CARRY[i]]' * 2**CHUNK_SIZE;
+    }
+}

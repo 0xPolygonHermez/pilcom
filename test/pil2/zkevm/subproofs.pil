@@ -1,0 +1,8 @@
+subproof Main (2**22);          // Rom, Mem
+subproof Arith (2**22);
+subproof Binary (2**22);
+subproof MemAlign (2**22);
+subproof PaddingKK (2**22);     // PaddingKKBit, KeccakF, Bits2Field
+subproof PaddingPG (2**22);
+subproof PoseidonG (2**22);
+subproof Storage (2**22);

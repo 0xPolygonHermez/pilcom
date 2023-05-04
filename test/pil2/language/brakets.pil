@@ -1,7 +1,8 @@
-namespace Basic(2**16);
+namespace Basic(2**16) {
     // col fixed a1 = [1..0];
     // col fixed a6 = [1,...0];
 
+    col fixed multi[10][12];
     col fixed a2 = [1:256..0:10];
     col fixed a3 = [[1:256..0:10],0...];
     col fixed a4 = [[1:256..0:10]:25]...;
@@ -91,3 +92,4 @@ namespace Basic(2**16);
         a' === a
     ]);*/
 
+}

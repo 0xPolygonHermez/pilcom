@@ -1,0 +1,117 @@
+
+// PIL State Machine that compute 256 bits operations:
+//
+// ADD   (OP:0)
+// SUB   (OP:1)
+// LT    (OP:2)
+// SLT   (OP:3)
+// EQ    (OP:4)
+// AND   (OP:5)
+// OR    (OP:6)
+// XOR   (OP:7)
+
+include "std.pil";
+
+subproof Binary (2**23, 2**26, 2**28);
+namespace Binary:: {
+
+    constant OP_C = 256*256*4;                        // 2 CarryIn + 2 LastByte = 4 (OC = OPERATION CYCLE)
+    constant LAST_C = 256*256*2;                      // 2 CarryIn
+
+    col fixed P_A = [0..255]...;                      // Input A    (8 bits)
+    col fixed P_B = [0:256..255:256]...;              // Input B    (8 bits)
+    col fixed P_OP = [0:OP_C..7:OP_C]...;             // Operation  (3 bits)
+    col fixed P_CIN = [0:256*256,1:256*256]...;       // CarryIn    (1 bits)
+    col fixed P_LAST = [0:LAST_C, 1:LAST_C]...;       // Last byte  (1 bits)
+    col fixed P_USE_CARRY = [ 0:OP_C*2,               // Carry => C (1 bits) - ADD,SUB
+                             [0:LAST_C, 1:LAST_C]:3,  //                     - LT,SLT,AND
+                              0:OP_C*2 ]...;          //                     - OR,NOP
+    col fixed P_C;                                    // Output C   (8 bits)
+    col fixed P_COUT;                                 // CarryOut   (1 bits)
+
+    col fixed RESET = [1,0:15]...;
+    col fixed FACTOR = [1, 2**16, 0:14];
+
+    col witness freeInA[2], freeInB[2], freeInC[2];   // 1 Byte (2 inputs, 1 output)
+    col witness a[8], b[8], c[8];                     // rebuild registers for lookup. 8 registers x 32 bits = 256 bits
+    col witness op;                                   // operation code
+    col witness cIn;                                  // carry in (odd byte)    ⤑ previous state
+    col witness cMiddle;                              // carry out (odd byte) == carry in (even byte)
+    col witness cOut;                                 // carry out (even byte)  ⤑ next state
+    col witness useCarry;                             // use change
+    col witness resultBinOp;                          // selector of normal binary operation
+    col witness resultValidRange;                     // selector to be used to check a valid 256 bit registers.
+
+    (1 - RESET) * resultBinOp === 0;
+    (1 - RESET) * resultValidRange ===  0;
+
+    resultBinOp * (1-resultBinOp) === 0;
+    resultValidRange * (1-resultValidRange) === 0;
+    resultValidRange * resultBinOp === 0;
+
+    (opcode' - opcode) * ( 1 - RESET' ) === 0;
+
+    cIn' === cOut * ( 1 - RESET' );
+
+    lookup([ 0, opcode, freeInA[0], freeInB[0], cIn, 0, freeInC[0], cMiddle]
+           [P_LAST, P_OPCODE, BYTE_2A, BYTE, P_CIN, P_USE_CARRY, P_C, P_COUT]);
+
+    lookup([resultValidRange' + resultBinOp', opcode, freeInA[1], freeInB[1], cMiddle, useCarry ,freeInC[1], cOut]
+           [P_LAST, P_OPCODE, BYTE_2A, BYTE, P_CIN, P_USE_CARRY, P_C, P_COUT]);
+
+
+    for (i = 0; i < 8; ++i) {
+        a[i]' === a[i] * (1 - RESET) + freeInA[0] * FACTOR'(i*2) + 256 * freeInA[1] * FACTOR'(i*2);
+        b[i]' === b[i] * (1 - RESET) + freeInB[0] * FACTOR'(i*2) + 256 * freeInB[1] * FACTOR'(i*2);
+        if (i == 0 || i == 7) continue;
+        c[i]' === c[i] * (1 - RESET) + freeInC[0] * FACTOR'(i*2) + 256 * freeInC[1] * FACTOR'(i*2);
+    }
+
+    for (i in [0,7]) {
+        expr tmp = c[i] * (1 - RESET) + freeInC[0] * FACTOR'(i) + 256 * freeInC[1] * FACTOR'(i);
+        c[i]' === i ? (1 - useCarry) * tmp : useCarry * (cOut - tmp ) + tmp;
+    }
+
+    for (i = 0; i < OP_C; ++i) {
+        fe [a, b, cin, plast, c, cout, op] = [P_A[i], P_B[i], P_CIN[i], P_LAST[i], 0, 0, P_OPCODE[i]];
+
+        case (op) {
+            0: // ADD
+                c = (cin + a + b) & 0xFF;
+                cout = (cin + a + b) >> 8;
+
+            1: // SUB
+                cout = ((a - cin) >= b ? 0 : 1);
+                c = 256 * cout + a - cin - b;
+
+            2,3: // LT,SLT
+                if (a < b) {
+                    cout = 1;
+                    c = plast;
+                } else if (a == b) {
+                    cout = cin;
+                    c = plast * cin;
+                }
+                if (op == 3 && plast && (a & 0x80) != (b & 0x80)) cout = c = (a & 0x80);
+
+            4: // EQ
+                if (a == b && !cin)  c = plast;
+                else cout = 1;
+                cout = plast ? !cout : cout;
+
+            5: // AND
+                c = a & b;
+                cout = cin || c;
+
+            6: // OR
+                c = a | b;
+
+            7: // XOR
+                c = a ^ b;
+
+        }
+        P_C[i] = c;
+        P_COUT[i] = c;
+    }
+    extends_fixed_clock_cycles(C_OP,[P_C, P_COUT]);
+}

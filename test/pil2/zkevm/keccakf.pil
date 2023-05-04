@@ -1,0 +1,43 @@
+include "global.pil";
+
+namespace PaddingKK::KeccakF {
+
+    constant CHUNK_BITS = 11;
+    constant CHUNKS = 4;
+    constant CHUNK_VALUES = 2**CHUNK_BITS;
+    constant CHUNK_MAX = CHUNK_VALUES - 1;
+    constant BITS = CHUNK_BITS * CHUNKS;
+
+    col fixed C_A, C_B, C_C;
+
+    col fixed K_GATE_TYPE = [0:CHUNK_VALUES, 1:CHUNK_VALUES]...;
+    col fixed K_A = [0..CHUNK_MAX]...;
+    col fixed K_B = [0:CHUNK_VALUES..CHUNK_MAX:CHUNK_VALUES]...;
+    col fixed K_C = K_GATE_TYPE ? (K_A ^ CHUNK_MAX) & K_B : K_A ^ K_B;
+
+    col fixed L1 = [1,0...];
+
+    col witness a[4], b[4], c[4];
+
+    col built_a = a[3] * 2**(CHUNK_BITS * 3) + a[2] * 2**(CHUNK_BITS * 22) + a[1] * 2**CHUNK_BITS + a[0];
+    col built_b = b[3] * 2**(CHUNK_BITS * 3) + b[2] * 2**(CHUNK_BITS * 22) + b[1] * 2**CHUNK_BITS + b[0];
+    col built_c = c[3] * 2**(CHUNK_BITS * 3) + c[2] * 2**(CHUNK_BITS * 22) + c[1] * 2**CHUNK_BITS + c[0];
+
+    connect_init([C_A, C_B, C_C]);
+    // connects
+    connect_check([C_A, C_B, C_C], [built_a, built_b, built_c]);
+
+    for (integer i = 0; i < CHUNKS; ++i)
+        lookup ([SCRIPT_GATE_TYPE, a[i], b[i], c[i]],
+                [K_GATE_TYPE, K_A, K_B, K_C]);
+
+    L1 * built_a === 0;
+    L1 * (2**44-1-built_b) === 0;
+
+    col fixed SCRIPT_GATE_TYPE = [
+        [0:3200,[1,0]:1601,0:3201,[[[1,0]:1601,0:3203]:2,0:3]:2,[[1,0]:1601,0:3202]:2,0:3,[1,0]:1601,0:3204,[1,0]:1601,
+        0:3203,[[1,0]:1601,0:3202]:2,0:2,[[1,0]:1601,0:3203]:2,0:3,[[1,0]:1601,0:3205]:2,[1,0]:1601,0:3204,[1,0]:1601,
+        0:3203,[[1,0]:1601,0:3202]:2,0,[[1,0]:1601,0:3204]:2,0,[1,0]:1601,[0:3203,[1,0]:1601]:2,0:1604]:54, 0...];
+
+    include "keccakf_connections.pil"
+}

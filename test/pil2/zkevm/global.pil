@@ -1,0 +1,20 @@
+namespace Global(%N);
+    col fixed L1;    // 1, 0, 0, 0, 0,
+    col fixed LLAST; // 0,0,0,0,0, ...., 0, 1
+    col fixed BYTE;
+    col fixed BYTE_2A;
+    col fixed BYTE2;
+    col fixed CLK32[32];       // [0] = 1, 0:31  (cyclic)
+                                  // [1] = 0, 1, 0:30 (cyclic)
+                                  // [7] = 0:31, 1 (cyclic)
+
+    col fixed BYTE_FACTOR[8];  // [0] = 1,256,256**2,256**3, 0:28 (cyclic)
+                                  // [1] = 0:4, 1,256,256**2,256**3, 0:24 (cyclic)
+                                  // [7] = 0:28, 1,256,256**2,256**3 (cyclic)
+
+    /////// Constant Polynomials
+    col fixed STEP;  // 0, 1, 2, 3, ...... N-1
+
+    // STEP32 = 0,1,2,...,30,31,0,1,2,...
+    col fixed STEP32; // [0..32]
+

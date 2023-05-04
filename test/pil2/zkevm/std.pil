@@ -1,0 +1,71 @@
+
+function extends_fixed_clock_cycles(integer cycle, col &cols) {
+    // or copy, metadata
+}
+
+
+function range (col p, fe from_value, fe to_value) {
+
+}
+
+function match (col sel, ...) returns expr {
+
+        metadata(`match ${icase}`, sel, argc, argv);
+
+        if (argc % 2 != 0) {
+            error `match was called with number incorrect ${argc}`
+        }
+        for (integer icase = 0; icase < argc; icase = icase + 2) {
+            if (!(argv[icase] is field)) error `selector must be a constant value on ${icase}`;
+            if (!(argv[icase+1] is expr)) error `expression must be a constant value on ${icase}`;
+        }
+
+        expr bc;
+        expr res;
+        integer cases = argc / 2;
+        col L[argc / 2];
+        for (integer icase = 0; icase < argc; icase = icase + 2) {
+            expr lexpr;
+            field invl = 1;
+
+            field csel = argv[icase]
+            expr cexpr = argv[icase + 1];
+
+            for (integer j = 0; j < cases; ++j) {
+                if (i == j) continue;
+                lexpr = lexpr * (sel * argc[2 * j]);
+                invl = invl * (csel - argc[2 * j]);
+            }
+
+            // (b-1)*(b-2)*(b-3)
+            bc = bc * (sel - csel);
+            // L1 * A + L2 * B + L3 * C
+            L[icase] = expr * inverse(invl);
+            res = res + L[icase] * cexpr;
+        }
+        bc === 0;
+        return res;
+    }
+
+
+function subproof_permutation_check (expr selF[], expr colsF[][], expr selT[], expr colsT[][]) {
+
+}
+
+plookup (expr selF, expr colsF[], expr selT, expr colsT[]) {
+    if (!(L1 is col)) {
+        global col fixed L1 = [1,..0];
+    }
+}
+
+permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+    if (!(L1 is col)) {
+        global col fixed L1 = [1,..0];
+    }
+}
+
+external_permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+    if (!(L1 is col)) {
+        global col fixed L1 = [1,..0];
+    }
+}

@@ -1,0 +1,137 @@
+include "poseidong.pil";
+
+namespace Storage:: {
+
+    col fixed L1 = [1,0...];
+    col witness freeIn[4];
+
+    // Registers
+    col witness hashLeft[4];
+    col witness hashRight[4];
+    col witness oldRoot[4];
+    col witness newRoot[4];
+    col witness valueLow[4];
+    col witness valueHigh[4];
+    col witness siblingValueHash[4];
+    col witness rkey[4];
+    col witness siblingRkey[4];
+    col witness rkeyBit;
+    col witness level[4];
+    col witness pc;
+
+    col witness inOldRoot;
+    col witness inNewRoot;
+    col witness inValueLow;
+    col witness inValueHigh;
+    col witness inSiblingValueHash;
+    col witness inRkey;
+    col witness inRkeyBit;
+    col witness inSiblingRkey;
+    col witness inFree;
+    col witness inRotlVh;
+
+    col witness setHashLeft;
+    col witness setHashRight;
+    col witness setOldRoot;
+    col witness setNewRoot;
+    col witness setValueLow;
+    col witness setValueHigh;
+    col witness setSiblingValueHash;
+    col witness setRkey;
+    col witness setSiblingRkey;
+    col witness setRkeyBit;
+    col witness setLevel;
+
+    col witness hash;
+    col witness hashType;
+    col witness latchSet;
+    col witness latchGet;
+    col witness climbRkey;
+    col witness climbSiblingRkey;
+    col witness climbSiblingRkeyN;
+    col witness rotateLevel;
+    col witness jmpz;
+    col witness jmp;
+    col witness constf;
+    col witness address;
+
+    col witness incCounter;
+    incCounter' === incCounter*(1 - latchSet - latchGet - L1) + iHash;
+
+    // We assume hash and latch never goes together
+    // We assume first instruction is not a latch nor a hash.
+
+    col op[4];
+    for (integer i = 0; i < 4; ++i) {
+        op[i] = inOldRoot * oldRoot[i] +
+                inNewRoot * newRoot[i] +
+                inValueLow * valueLow[i] +
+                inValueHigh * valueHigh[i] +
+                inSiblingValueHash * siblingValueHash[i] +
+                inSiblingRkey * siblingRkey[i] +
+                inRkey * rkey[i] +
+                inFree * free[i] +
+                inRotlVh * valueHigh[(i + 3) % 4] +
+                (i == 0 ? inRkeyBit * rkeyBit + constf : 0);
+    }
+
+    // Setters
+
+    col climbedKey[4], climbedSiblingKeyN[4], climbedSiblingKey[4], rotatedLevel[4];
+
+    for (integer i = 0; i < 4; ++i) {
+        climbedKey[i]         = (level[i] * (rkey[i]*2 + rkeyBit - rkey[i]) + rkey[i]);
+        climbedSiblingKeyN[i] = (level[i] * (siblingRkey[i]*2 + (1-rkeyBit) - siblingRkey[i]) + siblingRkey[i]);
+        climbedSiblingKey[i]  = (level[i] * (siblingRkey[i]*2 + rkeyBit - siblingRkey[i]) + siblingRkey[i]);
+        rotatedLevel[i]       = iRotateLevel * (level[(i+1) % 4]-level[i]) + level[i];
+
+        hashLeft[i]'         === setHashLeft * (op[i]-hashLeft[i]) + hashLeft[i];
+        hashRight[i]'        === setHashRight * (op[i]-hashRight[i]) + hashRight[i];
+        oldRoot[i]'          === setOldRoot * (op[i]-oldRoot[i]) + oldRoot[i];
+        newRoot[i]'          === setNewRoot * (op[i]-newRoot[i]) + newRoot[i];
+        valueLow[i]'         === setValueLow * (op[i]-valueLow[i]) + valueLow[i];
+        valueHigh[i]'        === setValueHigh * (op0-valueHigh[i]) + valueHigh[i];
+        siblingValueHash[i]' === setSiblingValueHash * (op[i]-siblingValueHash[i]) + siblingValueHash[i];
+        rkey[i]'             === setRkey*(op[i]-rkey[i]) + iClimbRkey * (climbedKey[i]-rkey[i]) + rkey[i];
+        siblingRkey[i]'      === setSiblingRkey * (op[i]-siblingRkey[i]) +
+                                 iClimbSiblingRkey * (climbedSiblingKey[i]-siblingRkey[i]) +
+                                 iClimbSiblingRkeyN * (climbedSiblingKeyN[i]-siblingRkey[i]) + siblingRkey[i];
+        level[i]'            === setLevel*(op[i]-level[i]) + iRotateLevel*(rotatedLevel[i]-level[i]) + level[i];
+    }
+
+    rkeyBit' === setRkeyBit*(op0-rkeyBit) + rkeyBit;
+    rkeyBit * (1 - rkeyBit) === 0;
+
+    // Instruction that guarantees that op = hash(hl, hr); the poseidon SM will do the work; the result will be feeded by free
+    subproof_permutation_check(
+        iHash,
+            [ 0, 0, 1, ...hashLeft, ...hashRight, iHashType, 0, 0, 0, ...op ],
+        PoseidonG::result3,
+            PoseidonG::[ ...result, ..value, hashType, ...cap, ...hash]);
+
+    col witness op0inv;
+    col opIsZero = 1 - op[0] * op0inv;
+    opIsZero * op[0] === 0;
+    pc' === (iJmp + iJmpz * opIsZero) * (iAddress - pc - 1) + pc + 1;
+    pc * L1 === 0;
+
+    // Last pc' must return to be pc=0 in order to close the program loop
+    // Once the work is done, the rest of instructions must be:
+    // if op0 = $n-1 (last instruction of the program) then pc=0 (jump to the beginning of the program)
+
+    lookup_check([
+        hash, hashType, latchGet, latchSet, climbRkey, climbSiblingRkey, climbSiblingRkeyN,
+        rotateLevel, jmpz, jmp, constf, address, pc,
+        inFree, inNewRoot, inOldRoot, inRkey, inRkeyBit, inSiblingRkey, inSiblingValueHash,
+        inValueLow, inValueHigh, inRotlVh,
+        setHashLeft, setHashRight, setLevel, setNewRoot, setOldRoot, setRkey,
+        setRkeyBit, setSiblingRkey, setSiblingValueHash, setValueHigh, setValueLow
+    ],[
+        HASH, HASH_TYPE, LATCH_GET, CLIB_RKEY, CLIMB_SIBLING_RKEY, R_CLIMB_SIBLING_RKEY_N,
+        ROTATE_LEVEL, JMPZ, JMP, CONSTF, ADDRESS, LINE,
+        IN_FREE, IN_NEW_ROOT, IN_OLD_ROOT, IN_RKEY, IN_RKEY_BIT, IN_SIBLING_RKEY, IN_SIBLING_VALUE_HASH
+        IN_VALUE_LOW, IN_VALUE_HIGH, IN_ROTL_VH,
+        SET_HASH_LEFT, SET_HASH_RIGHT, SET_LEVEL, SET_NEW_ROOT, SET_OLD_ROOT, SET_RKEY,
+        SET_RKEY_BIT, SET_SIBLING_RKEY, SET_SIBLING_VALUE_HASH, SET_VALUE_HIGH, SET_VALUE_LOOW
+    ]
+}

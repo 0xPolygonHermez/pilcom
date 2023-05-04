@@ -1,0 +1,41 @@
+namespace Storage::Rom {
+
+    // Last pc' must return to be pc=0 in order to close the program loop
+    // Once the work is done, the rest of instructions must be:
+    // if op0 = $n-1 (last instruction of the program) then pc=0 (jump to the beginning of the program)
+
+    col fixed HASH;
+    col fixed HASH_TYPE;
+    col fixed LATCH_GET;
+    col fixed LATCH_SET;
+    col fixed CLIMB_RKEY;
+    col fixed CLIMB_SIBLING_RKEY;
+    col fixed CLIMB_SIBLING_RKEY;
+    col fixed ROTATE_LEVEL;
+    col fixed JMPZ;
+    col fixed JMP;
+    col fixed CONST[4];
+    col fixed ADDRESS;
+    col fixed LINE; // 0, 1, 2, ...
+    col fixed IN_FREE;
+    col fixed IN_NEW_ROOT;
+    col fixed IN_OLD_ROOT;
+    col fixed IN_RKEY;
+    col fixed IN_RKEY_BIT;
+    col fixed IN_SIBLING_RKEY;
+    col fixed IN_SIBLING_VALUE_HASH;
+    col fixed IN_VALUE_LOW;
+    col fixed IN_VALUE_HIGH;
+    col fixed IN_ROTL_VH;
+    col fixed SET_HASH_LEFT;
+    col fixed SET_HASH_RIGTH;
+    col fixed SET_LEVEL;
+    col fixed SET_NEW_ROOT;
+    col fixed SET_OLD_ROOT;
+    col fixed SET_RKEY;
+    col fixed SET_RKEY_BIT;
+    col fixed SET_SIBLING_RKEY;
+    col fixed SET_SIBLING_VALUE_HASH;
+    col fixed SET_VALUE_HIGH;
+    col fixed SET_VALUE_LOW;
+}
