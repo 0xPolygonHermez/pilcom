@@ -22,7 +22,7 @@ message PublicTable {
     uint32 maxSize = 2;
     uint32 challange1Id = 3;
     uint32 challange2Id = 4;
-    AggregationType aggType = 2;
+    AggregationType aggType = 5;
 }
 
 // BASIC AIR
@@ -124,12 +124,12 @@ message Operand {
         Challenge challenge = 2;
         Public public = 3;
         ProverValue proverValue = 4;
-        PublicTable publicTable = 4;
-        GlobalPublic globalPublic = 5;
-        PeriodicCol periodicCol = 6;
-        FixedCol fixedCol = 7;
-        WitnessCol witnessCol = 8;
-        Expression expression = 9;
+        PublicTable publicTable = 5;
+        GlobalPublic globalPublic = 6;
+        PeriodicCol periodicCol = 7;
+        FixedCol fixedCol = 8;
+        WitnessCol witnessCol = 9;
+        Expression expression = 10;
     }
 }
 
@@ -183,11 +183,11 @@ enum ReferenceType {
 
 message Reference {
     string name = 1;
-    optional int32 subProofId = 2;
+    optional uint32 subProofId = 2;
     ReferenceType type = 3;
-    int32 id = 4;
-    int32 dim = 5;
-    repeated int32 lenghts = 6;
+    uint32 id = 4;
+    uint32 dim = 5;
+    repeated uint32 lenghts = 6;
     optional string debugLine = 7;
 }
 
@@ -217,5 +217,5 @@ message FrontEndFieldArray {
 message FronEndData {
     string name = 1;
     repeated FrontEndField FrontEndFields = 2;
-    optional int32 subProofId = 3;
+    optional uint32 subProofId = 3;
 }
