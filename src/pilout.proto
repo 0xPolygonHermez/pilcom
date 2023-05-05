@@ -2,14 +2,20 @@ package pilout;
 syntax = "proto3";
 
 message PilOut {
-    repeated SubProof monolithicProof = 1;
-    repeated Challenge numChallenges = 2;   // number of challenges per stage
-    repeated Reference references = 3;
-    uin32 nProverValues = 4;
-    uin32 nPublic = 5;
-    repeated PublicTable publicTables = 6;
-    repeated Expression globalExpressions = 7;
-    repeated Constraint globalConstraints = 8;    // Constraints that affect only to signals.
+    string name = 1;
+    bytes baseField = 2;                        // modulus of the base filed
+    repeated SubProof proofs = 3;
+    repeated uint32 numChallenges = 4;          // number of challenges per stage
+    uin32 numProverValues = 5;
+    uin32 numPublicValues = 6;
+    repeated PublicTable publicTables = 7;
+    repeated GlobalExpression expressions = 8;
+    repeated GlobalConstraint constraints = 9;  // Constraints that apply only to signals
+    repeated Reference references = 10;
+}
+
+message BaseFieldElement {
+    bytes value = 1;
 }
 
 message PublicTable {
@@ -18,11 +24,80 @@ message PublicTable {
         PROD = 1;
     }
 
-    uint32 numColumns = 1;
-    uint32 maxSize = 2;
-    uint32 challange1Id = 3;
-    uint32 challange2Id = 4;
-    AggregationType aggType = 5;
+    uint32 numCols = 1;
+    uint32 maxRows = 2;
+    AggregationType aggType = 3;
+    GlobalOperand.Expression rowExpressionIdx = 4;
+}
+
+message GlobalConstraint {
+    GlobalOperand.Expression expressionIdx = 1;
+    optional string debugLine = 2;
+}
+
+message GlobalExpression {
+    message Add {
+        GlobalOperand lhs = 1;
+        GlobalOperand rhs = 2;
+    }
+
+    message Sub {
+        GlobalOperand lhs = 1;
+        GlobalOperand rhs = 2;
+    }
+
+    message Mul {
+        GlobalOperand lhs = 1;
+        GlobalOperand rhs = 2;
+    }
+
+    message Neg {
+        GlobalOperand value = 1;
+    }
+
+    oneof operation {
+        Add add = 1;
+        Sub sub = 2;
+        Mul mul = 3;
+        Neg neg = 4;
+    }
+}
+
+message GlobalOperand {
+    message Constant {
+        BaseFieldElement value = 1;
+    }
+
+    message Challenge {
+        uint32 stage = 1;
+        uint32 idx = 2;         // index relative to the stage
+    }
+
+    message ProverValue {
+        uint32 idx = 1;
+    }
+
+    message PublicValue {
+        uint32 idx = 1;
+    }
+
+    message PublicTableValue {
+        uint32 idx = 1;         // public table index
+        uint32 colIdx = 2;      // column index within the table
+    }
+
+    message Expression {
+        uint32 idx = 1;
+    }
+
+    oneof operand {
+        Constant constant = 1;
+        Challenge challenge = 2;
+        ProverValue proverValue = 3;
+        PublicValue publicValue = 4;
+        PublicTableValue publicTableValue = 5;
+        Expression expression = 6;
+    }
 }
 
 // BASIC AIR
@@ -39,11 +114,11 @@ message SubProof {
 }
 
 message PeriodicCol {
-    repeated bytes values = 1;              // Only the cycle
+    repeated BaseFieldElement values = 1;   // Only the cycle
 }
 
 message FixedCol {
-    repeated bytes values = 1;
+    repeated bytes values = 1;              // should this also be BaseFieldElement?
 }
 
 message Constraint {
@@ -79,7 +154,7 @@ message Constraint {
 
 message Operand {
     message Constant {
-        bytes value = 1;
+        BaseFieldElement value = 1;
     }
 
     message Challenge {
@@ -87,15 +162,11 @@ message Operand {
         uint32 idx = 2;     // index relative to the stage
     }
 
-    message Public {
-        uint32 idx = 1;
-    }
-
     message ProverValue {
         uint32 idx = 1;
     }
 
-    message PublicTable {
+    message PublicValue {
         uint32 idx = 1;
     }
 
@@ -122,14 +193,12 @@ message Operand {
     oneof operand {
         Constant constant = 1;
         Challenge challenge = 2;
-        Public public = 3;
-        ProverValue proverValue = 4;
-        PublicTable publicTable = 5;
-        GlobalPublic globalPublic = 6;
-        PeriodicCol periodicCol = 7;
-        FixedCol fixedCol = 8;
-        WitnessCol witnessCol = 9;
-        Expression expression = 10;
+        ProverValue proverValue = 3;
+        PublicValue publicValue = 4;
+        PeriodicCol periodicCol = 5;
+        FixedCol fixedCol = 6;
+        WitnessCol witnessCol = 7;
+        Expression expression = 8;
     }
 }
 
@@ -153,17 +222,11 @@ message Expression {
         Operand value = 1;
     }
 
-    message Exp {
-        Operand base = 1;
-        uint32 exponent = 2;
-    }
-
     oneof operation {
         Add add = 1;
         Sub sub = 2;
         Mul mul = 3;
         Neg neg = 4;
-        Exp exp = 5;
     }
 }
 
@@ -191,7 +254,7 @@ message Reference {
     optional string debugLine = 7;
 }
 
-// FRONT-END (this this hints?)
+// FRONT-END (is this hints?)
 // ------------------------------------------------------------------------------------------------
 
 enum FrontEndFieldType {
