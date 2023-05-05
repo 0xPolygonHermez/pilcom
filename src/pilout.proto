@@ -103,7 +103,7 @@ message GlobalOperand {
 // BASIC AIR
 // ------------------------------------------------------------------------------------------------
 
-message SubProof {
+message BasicAir {
     optional string name = 1;
     optional uint32 numRows = 2;            // log2(n), where n is the number of rows
     repeated PeriodicCol periodicCols = 3;
@@ -118,7 +118,7 @@ message PeriodicCol {
 }
 
 message FixedCol {
-    repeated bytes values = 1;              // should this also be BaseFieldElement?
+    repeated BaseFieldElement values = 1;              // should this also be BaseFieldElement?
 }
 
 message Constraint {
