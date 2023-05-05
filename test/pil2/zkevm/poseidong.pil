@@ -18,7 +18,7 @@ namespace PoseidonG:: {
     col a[12];
     integer index = 0;
     for (col &c in [...value, hashType, cap]) {
-        a[index] = &c + C[index];
+        a[index] = c + C[index];
         (value[index]' - c[index]) * (1-LAST) === 0;
         ++index;
     }

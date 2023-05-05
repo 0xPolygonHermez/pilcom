@@ -53,10 +53,10 @@ namespace Binary:: {
 
     cIn' === cOut * ( 1 - RESET' );
 
-    lookup([ 0, opcode, freeInA[0], freeInB[0], cIn, 0, freeInC[0], cMiddle]
+    lookup([ 0, opcode, freeInA[0], freeInB[0], cIn, 0, freeInC[0], cMiddle],
            [P_LAST, P_OPCODE, BYTE_2A, BYTE, P_CIN, P_USE_CARRY, P_C, P_COUT]);
 
-    lookup([resultValidRange' + resultBinOp', opcode, freeInA[1], freeInB[1], cMiddle, useCarry ,freeInC[1], cOut]
+    lookup([resultValidRange' + resultBinOp', opcode, freeInA[1], freeInB[1], cMiddle, useCarry ,freeInC[1], cOut],
            [P_LAST, P_OPCODE, BYTE_2A, BYTE, P_CIN, P_USE_CARRY, P_C, P_COUT]);
 
 
@@ -75,16 +75,16 @@ namespace Binary:: {
     for (i = 0; i < OP_C; ++i) {
         fe [a, b, cin, plast, c, cout, op] = [P_A[i], P_B[i], P_CIN[i], P_LAST[i], 0, 0, P_OPCODE[i]];
 
-        case (op) {
-            0: // ADD
+        switch (op) {
+            case 0: // ADD
                 c = (cin + a + b) & 0xFF;
                 cout = (cin + a + b) >> 8;
 
-            1: // SUB
+            case 1: // SUB
                 cout = ((a - cin) >= b ? 0 : 1);
                 c = 256 * cout + a - cin - b;
 
-            2,3: // LT,SLT
+            case 2,3: // LT,SLT
                 if (a < b) {
                     cout = 1;
                     c = plast;
@@ -92,21 +92,24 @@ namespace Binary:: {
                     cout = cin;
                     c = plast * cin;
                 }
-                if (op == 3 && plast && (a & 0x80) != (b & 0x80)) cout = c = (a & 0x80);
+                if (op == 3 && plast && (a & 0x80) != (b & 0x80)) {
+                    c = (a & 0x80);
+                    cout = c;
+                }
 
-            4: // EQ
+            case 4: // EQ
                 if (a == b && !cin)  c = plast;
                 else cout = 1;
                 cout = plast ? !cout : cout;
 
-            5: // AND
+            case 5: // AND
                 c = a & b;
                 cout = cin || c;
 
-            6: // OR
+            case 6: // OR
                 c = a | b;
 
-            7: // XOR
+            case 7: // XOR
                 c = a ^ b;
 
         }

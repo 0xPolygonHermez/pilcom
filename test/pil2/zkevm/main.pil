@@ -1,5 +1,5 @@
-include "config.pil";
-include "global.pil";
+// include "config.pil";
+// include "global.pil";
 include "rom.pil";
 include "mem_align.pil";
 include "arith.pil";
@@ -233,7 +233,7 @@ namespace Main:: {
 
     subproof::expr aR[6][8];
     integer iReg = 0;
-    for (subproof::col &c in Arith::[ax1, ay1, ax2, ay2, ax3, ay3]) {}
+    for (subproof::col &c in Arith::[ax1, ay1, ax2, ay2, ax3, ay3]) {
         for (i = 0; i < 8; ++i) {
             aR[iReg][i] = c[i*2] + c[i*2+1] * 2**16;
         }
@@ -310,7 +310,7 @@ namespace Main:: {
     subproof_lookup_check(
         hashP + hashP1,
         [ addr, HASHPOS, D[0] * hashP + hashP1, ...op ],
-        PaddingPG::crLatch * PaddingPG::crValid
+        PaddingPG::crLatch * PaddingPG::crValid,
         PaddingPG::[ addr, len - rem - crLen + 1, crLen, ...crVC ]
     );
 
@@ -384,7 +384,7 @@ namespace Main:: {
             [ SR[0] + 2**32*SR[1], SR[2] + 2**32*SR[3], SR[4] + 2**32*SR[5], SR[6] + 2**32*SR[7],
             ...sKey,
             ...D,
-            op[0] + 2**32*op[1], op[2] + 2**32*op[3], op[4] + 2**32*op[5], op[6] + 2**32*op[7], incCounter]
+            op[0] + 2**32*op[1], op[2] + 2**32*op[3], op[4] + 2**32*op[5], op[6] + 2**32*op[7], incCounter],
         Storage::latchSet,
             Storage::[...oldRoot,
             ...rkey,
@@ -410,7 +410,7 @@ namespace Main:: {
 
     subproof_permutation_check(
         memAlignWR8,
-        [ 0, 1, ...A, ...op, C[0]], ...D],
+        [ 0, 1, ...A, ...op, C[0], ...D],
         MemAlign::resultWr8,
         MemAlign::[ wr256, wr8, ...m[0], ...v, offset, ...w[0]]
     );

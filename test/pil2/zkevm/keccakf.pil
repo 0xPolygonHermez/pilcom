@@ -1,4 +1,4 @@
-include "global.pil";
+// include "global.pil";
 
 namespace PaddingKK::KeccakF {
 

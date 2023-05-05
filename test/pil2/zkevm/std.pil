@@ -8,16 +8,16 @@ function range (col p, fe from_value, fe to_value) {
 
 }
 
-function match (col sel, ...) returns expr {
+function match (col sel, ...) : expr {
 
         metadata(`match ${icase}`, sel, argc, argv);
 
         if (argc % 2 != 0) {
-            error `match was called with number incorrect ${argc}`
+            error(`match was called with number incorrect ${argc}`);
         }
         for (integer icase = 0; icase < argc; icase = icase + 2) {
-            if (!(argv[icase] is field)) error `selector must be a constant value on ${icase}`;
-            if (!(argv[icase+1] is expr)) error `expression must be a constant value on ${icase}`;
+            if (!(argv[icase] is fe)) error(`selector must be a constant value on ${icase}`);
+            if (!(argv[icase+1] is expr)) error(`expression must be a constant value on ${icase}`);
         }
 
         expr bc;
@@ -26,9 +26,9 @@ function match (col sel, ...) returns expr {
         col L[argc / 2];
         for (integer icase = 0; icase < argc; icase = icase + 2) {
             expr lexpr;
-            field invl = 1;
+            fe invl = 1;
 
-            field csel = argv[icase]
+            fe csel = argv[icase];
             expr cexpr = argv[icase + 1];
 
             for (integer j = 0; j < cases; ++j) {
@@ -40,7 +40,7 @@ function match (col sel, ...) returns expr {
             // (b-1)*(b-2)*(b-3)
             bc = bc * (sel - csel);
             // L1 * A + L2 * B + L3 * C
-            L[icase] = expr * inverse(invl);
+            L[icase] = cexpr * inverse(invl);
             res = res + L[icase] * cexpr;
         }
         bc === 0;
@@ -52,20 +52,20 @@ function subproof_permutation_check (expr selF[], expr colsF[][], expr selT[], e
 
 }
 
-plookup (expr selF, expr colsF[], expr selT, expr colsT[]) {
+function plookup (expr selF, expr colsF[], expr selT, expr colsT[]) {
     if (!(L1 is col)) {
-        global col fixed L1 = [1,..0];
+        global col fixed L1 = [1,0...];
     }
 }
 
-permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+function permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
     if (!(L1 is col)) {
-        global col fixed L1 = [1,..0];
+        global col fixed L1 = [1,0...];
     }
 }
 
-external_permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+function external_permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
     if (!(L1 is col)) {
-        global col fixed L1 = [1,..0];
+        global col fixed L1 = [1,0...];
     }
 }

@@ -107,7 +107,7 @@ namespace Storage:: {
         iHash,
             [ 0, 0, 1, ...hashLeft, ...hashRight, iHashType, 0, 0, 0, ...op ],
         PoseidonG::result3,
-            PoseidonG::[ ...result, ..value, hashType, ...cap, ...hash]);
+            PoseidonG::[ ...result, ...value, hashType, ...cap, ...hash]);
 
     col witness op0inv;
     col opIsZero = 1 - op[0] * op0inv;
@@ -129,9 +129,9 @@ namespace Storage:: {
     ],[
         HASH, HASH_TYPE, LATCH_GET, CLIB_RKEY, CLIMB_SIBLING_RKEY, R_CLIMB_SIBLING_RKEY_N,
         ROTATE_LEVEL, JMPZ, JMP, CONSTF, ADDRESS, LINE,
-        IN_FREE, IN_NEW_ROOT, IN_OLD_ROOT, IN_RKEY, IN_RKEY_BIT, IN_SIBLING_RKEY, IN_SIBLING_VALUE_HASH
+        IN_FREE, IN_NEW_ROOT, IN_OLD_ROOT, IN_RKEY, IN_RKEY_BIT, IN_SIBLING_RKEY, IN_SIBLING_VALUE_HASH,
         IN_VALUE_LOW, IN_VALUE_HIGH, IN_ROTL_VH,
         SET_HASH_LEFT, SET_HASH_RIGHT, SET_LEVEL, SET_NEW_ROOT, SET_OLD_ROOT, SET_RKEY,
-        SET_RKEY_BIT, SET_SIBLING_RKEY, SET_SIBLING_VALUE_HASH, SET_VALUE_HIGH, SET_VALUE_LOOW
-    ]
+        SET_RKEY_BIT, SET_SIBLING_RKEY, SET_SIBLING_VALUE_HASH, SET_VALUE_HIGH, SET_VALUE_LOW
+    ]);
 }

@@ -1,4 +1,4 @@
-include "global.pil";
+// include "global.pil";
 include "poseidong.pil";
 
 namespace PaddingPG:: {
@@ -58,7 +58,7 @@ namespace PaddingPG:: {
     col witness prevHash[4];
 
     for (i = 0; i < 4; ++i) {
-        when (1 - LAST_BLOCK) curHash[i]' === curHash[i];
+        when (1 - LAST_BLOCK) { curHash[i]' === curHash[i] }
         prevHash[i]' === LAST_BLOCK * (curHash[i] - prevHash[i]) + prevHash[i] - lastHash * curHash[i];
     }
 
@@ -91,7 +91,7 @@ namespace PaddingPG:: {
     crLatch * crOffset' === crLatch * (crLen' -1);
 
     col witness crF[8];
-    lookup_check([crOffset, ...crF]
+    lookup_check([crOffset, ...crF],
                  [OFFSET, ...BYTE_FACTOR]);     // ?¿?¿? BYTE_FACTOR[8]
 
     col crVC[8];

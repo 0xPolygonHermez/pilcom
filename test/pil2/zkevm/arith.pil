@@ -6,7 +6,7 @@
 // EQ5: x1 * x2 - y1 * y2 - x3  + (q0 * p2)                     x3 ┐
 // EQ6: y1 * x2 + x1 * y2 - y3 + (q1 * p2)                      y3 ┘ fp2 multiplication (as imaginary numbers => a + bi)
 
-include "std.pil";
+// include "std.pil";
 
 subproof Arith (2**23, 2**26, 2**28);
 
@@ -14,7 +14,7 @@ namespace Arith:: {
 
     constant CHUNKS = 16;
     constant N_CARRIES = 3;
-    constant N_Q = 3
+    constant N_Q = 3;
     constant N_SEL = 4;
     constant CYCLE = CHUNKS * 2;
     constant N_EQUATIONS = 7;
@@ -22,7 +22,7 @@ namespace Arith:: {
     constant EQ_SEL = [0, 1, 2, 3, 3, 4, 4];
 
     col fixed BYTE2_BIT19 = [0..(2**16-1), 0..(2**19-1), 0...];
-    col fixed SEL_BYTE2_BIT19 = [0:2**16, 1:2**19, 0...]
+    col fixed SEL_BYTE2_BIT19 = [0:2**16, 1:2**19, 0...];
     col fixed GL_SIGNED_22BITS = [-(2**22)..(2**22-1)]...;
     col fixed CLK = [1,0:31]...;
 
@@ -176,7 +176,7 @@ namespace Arith:: {
     }
 
     col eqcl[N_EQUATIONS];
-    for (i = 0; i < N_EQUATIONS; ++i)
+    for (i = 0; i < N_EQUATIONS; ++i) {
         expr tmp;
         for (j = 0; j < CYCLE; ++j) tmp += eq[i][j] * CLK'(j);
         eqcl[i] = tmp;

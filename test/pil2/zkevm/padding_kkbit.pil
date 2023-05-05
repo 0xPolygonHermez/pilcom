@@ -119,5 +119,5 @@ namespace PaddingKK::PaddingKKBit {
     col aux_sInBit = (sOutBit - 2*sOutBit*rBit);
     col sInBit = connected * aux_sInBit + rBit;
 
-    {sOutBit, sInBit, Bits2Field.bit} connect {CONN_SOUT_BIT, CONN_SIN_BIT, CONN_BIT2FIELD_BIT};
+    // {sOutBit, sInBit, Bits2Field.bit} connect {CONN_SOUT_BIT, CONN_SIN_BIT, CONN_BIT2FIELD_BIT};
 }

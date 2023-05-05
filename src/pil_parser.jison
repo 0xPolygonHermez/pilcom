@@ -18,7 +18,7 @@ in                                          { return 'IN'; }
 is                                          { return 'IS'; }
 public                                      { return 'PUBLIC'; }
 global                                      { return 'GLOBAL'; }
-const                                       { return 'CONST'; }
+constant                                    { return 'CONSTANT' }
 
 integer                                     { return 'INTEGER' }
 fe                                          { return 'FE' }
@@ -36,6 +36,7 @@ elseif                                      { return 'ELSEIF' }
 else                                        { return 'ELSE' }
 switch                                      { return 'SWITCH' }
 case                                        { return 'CASE' }
+default                                     { return 'DEFAULT' }
 
 when                                        { return 'WHEN' }
 subproof                                    { return 'SUBPROOF' }
@@ -74,8 +75,8 @@ transition                                  { return 'TRANSITION' }
 \'                                          { return "'"; }
 \?                                          { return "?"; }
 \%                                          { return "%"; }
+\\\\                                        { return "\\\\"; }
 \/                                          { return "/"; }
-\\                                          { return "\\"; }
 \;                                          { return 'CS'; }
 \,                                          { return ','; }
 \.                                          { return '.'; }
@@ -230,33 +231,33 @@ non_delimited_statement
 
 statement_list
     : statement_list_closed
-        { $$ = $1; }
+        { $$ = $1 }
 
     | statement_list_closed statement_no_closed
-        { $$.push($2); }
+        { $$ = $1; $$.statements.push($2); }
 
     | statement_no_closed
-        { $$ = [$1]; }
+        { $$ = $1 }
     ;
 
 statement_list_closed
     : statement_list_closed statement_closed
-        { $$.push($2); }
+        { $$ = $1; $$.statements.push($2); }
 
     | statement_list_closed statement_closed lcs
-        { $$.push($2); }
+        { $$ = $1; $$.statements.push($2); }
 
     | statement_list_closed statement_no_closed lcs
-        { $$.push($2); }
+        { $$ = $1; $$.statements.push($2); }
 
     | statement_closed
-        { $$ = [$1]; }
+        { $$ = { statements: [$1] } }
 
     | statement_closed lcs
-        { $$ = [$1]; }
+        { $$ = { statements: [$1] } }
 
     | statement_no_closed lcs
-        { $$ = [$1]; }
+        { $$ = { statements: [$1] } }
 
     | lcs
     ;
@@ -296,6 +297,9 @@ statement_closed
 
     | WHEN when_boundary expression "{" when_body "}"
         { $$ = { type: "when", statements: $1, expression: $3, ...$2 }; }
+
+/*    | WHEN when_boundary '(' expression ')' constraint CS
+        { $$ = { type: "when", statements: $1, expression: $3, ...$2 }; }*/
 
     | METADATA '{' data_object '}'
         { $$ = $1; }
@@ -372,10 +376,10 @@ basic_type
 
 return_type_list
     : return_type_list ',' return_type
-        { $$ = [...$1, $3] }
+        { $$ = {returns: [...$1, $3]}  }
 
     | return_type
-        { $$ = [$1] }
+        { $$.returns = [$1] }
     ;
 
 type_array
@@ -446,7 +450,7 @@ when_body
     : when_body CS constraint
         {
             $$ = $1;
-            $$.push($3);
+            $$.constraints.push($3);
         }
     | when_body CS
         {
@@ -454,7 +458,7 @@ when_body
         }
     | constraint
         {
-            $$ = [$1];
+            $$ = { constraints:  [$1] };
         }
     ;
 
@@ -512,8 +516,7 @@ codeblock_closed
 
     | WHILE '(' expression ')' non_delimited_statement
         { $$ = {type: 'while', condition: $3, statements: $5 } }
-
-    | CASE '(' expression ')''{' case_list '}'
+    | SWITCH '(' expression ')' case_body
         { $$ = $1 }
 
     | IF '(' expression ')' non_delimited_statement %prec IF_NO_ELSE
@@ -523,14 +526,33 @@ codeblock_closed
         { $$ = { type:'if', conditions: [{type: 'if', expression: $3, statements: $5 }, {type: 'else', statements: $7}]} }
     ;
 
+case_body
+    : '{' case_list '}'
+    | '{' case_list DEFAULT statement_list '}'
+    ;
+
+case_single_value
+    : NUMBER
+    | IDENTIFIER
+    ;
+
+case_value
+    : case_value ',' expression
+    | case_value ',' expression '..' expression
+    | expression
+    | expression '..' expression
+    ;
+
 case_list
-    : case_list case_item
-    | case_item
+    : case_list CASE case_value ':' statement_list_closed
+    | CASE case_value ':' statement_list_closed
     ;
 
 case_item
-    : expression_list ':' non_delimited_statement
-    | ELSE non_delimited_statement
+//    : expression_list ':' non_delimited_statement
+//    | ELSE non_delimited_statement
+    : expression_list ':' statement_list_closed
+    | DEFAULT ':' statement_list_closed
     ;
 
 for_assignation
@@ -550,39 +572,109 @@ for_init
         {   $$ = $1; }
     | variable_assignment
         {   $$ = $1; }
+    | pol_id
+
     | col_declaration
         {   $$ = $1; }
     ;
 
+subproof_type
+    : %prec EMPTY
+    | SUBPROOF '::'
+    ;
+
 variable_declaration
-    : INTEGER variable_init
+    : INTEGER variable_declaration_list
         {   $$ = {type: 'integer', ...$2 } }
-    | FE variable_init
+    | FE variable_declaration_list
         {   $$ = {type: 'fe', ...$2 } }
-    | EXPR variable_init
+    | EXPR variable_declaration_list
         {   $$ = {type: 'expr', ...$2 } }
-    | T_STRING variable_init
+    | SUBPROOF '::' EXPR variable_declaration_list
+        {   $$ = {type: 'expr', ...$2 } }
+    | T_STRING variable_declaration_list
+        {   $$ = {type: 'string', ...$2 } }
+
+    | INTEGER variable_declaration_item '=' expression
+        {   $$ = {type: 'integer', ...$2 } }
+    | FE variable_declaration_item '=' expression
+        {   $$ = {type: 'fe', ...$2 } }
+    | EXPR variable_declaration_item '=' expression
+        {   $$ = {type: 'expr', ...$2 } }
+    | SUBPROOF '::' EXPR variable_declaration_item '=' expression
+        {   $$ = {type: 'expr', ...$2 } }
+    | T_STRING variable_declaration_item '=' expression
+        {   $$ = {type: 'string', ...$2 } }
+
+    | INTEGER '[' variable_declaration_list ']' '=' '[' expression_list ']'
+        {   $$ = {type: 'integer', ...$2 } }
+    | FE '[' variable_declaration_list ']' '=' '[' expression_list ']'
+        {   $$ = {type: 'fe', ...$2 } }
+    | EXPR '[' variable_declaration_list ']' '=' '[' expression_list ']'
+        {   $$ = {type: 'expr', ...$2 } }
+    | SUBPROOF '::' EXPR '[' variable_declaration_list ']' '=' '[' expression_list ']'
+        {   $$ = {type: 'expr', ...$2 } }
+    | T_STRING '[' variable_declaration_list ']' '=' '[' expression_list ']'
         {   $$ = {type: 'string', ...$2 } }
     ;
 
+variable_declaration_array
+    : '[' ']'
+        { $$ = {dim: 1, lenghts: [null]} }
 
+    | '[' expression_list ']'
+        { $$ = {dim: 1, lengths: [$2]} }
+
+    | variable_declaration_array '[' ']'
+        { $$ = {...$1, dim: $1.dim + 1, lengths: [...$1.lengths, null] } }
+
+    | variable_declaration_array '[' expression_list ']'
+        { $$ = {...$1, dim: $1.dim + 1, lengths: [...$1.lengths, $3] } }
+    ;
+
+variable_declaration_item
+    : variable_declaration_ident %prec NO_STAGE
+
+    | variable_declaration_ident variable_declaration_array
+
+    ;
+
+variable_declaration_ident
+    : IDENTIFIER
+        { $$ = {name: $1}}
+
+    | REFERENCE
+        { $$ = {name: $1.substr(1), reference: true}}
+    ;
+
+variable_declaration_list
+    : variable_declaration_list ',' variable_declaration_item
+        { $$ = $1; $$.cols.push($3); }
+
+    | variable_declaration_item
+        { $$.cols = [$1]; }
+    ;
+
+
+/*
 variable_init
     : IDENTIFIER variable_array
         {   $$ = {name: $1, ...$2} }
     | IDENTIFIER variable_array '=' expression
         {   $$ = {name: $1, init: $4, ...$2} }
-/*    | IDENTIFIER variable_array '=' range_definition
-        {
-            $$ = {name: $1, init: $3};
-        }*/
     | REFERENCE variable_array
         {   $$ = {name: $1, reference: true, ...$2} }
     | REFERENCE variable_array '=' expression
         {   $$ = {name: $1, reference: true, init: $4, ...$2} }
     ;
-
+*/
 variable_array
     : %prec EMPTY
+    | variable_multi_array
+    ;
+
+variable_multi_array
+    : variable_multi_array '[' expression ']'
     | '[' expression ']'
     ;
 
@@ -646,7 +738,7 @@ include_directive
     ;
 
 stage_definition
-    : STAGE NUMBER %prec STAGE
+    : STAGE '(' NUMBER ')' %prec STAGE
         {
             $$ = { stage: $2 }
         }
@@ -682,22 +774,22 @@ sequence_definition
 
 sequence_list
     : sequence_list ',' sequence
-        { $$ = [...$1, $2] }
+        { $$ = $1; $$.values.push($2) }
 
     | sequence_list ',' DOTS_ARITH_SEQ ',' sequence
-        { $$ = [...$1, { type: 'arith_seq', final: true }, $5] }
+        { $$ = $1; $$.values.append([{ type: 'arith_seq', final: true }, $5]) }
 
     | sequence_list ',' DOTS_GEOM_SEQ ',' sequence
-        { $$ = [...$1, { type: 'geom_seq', final: true }, $5] }
+        { $$ = $1; $$.values.append([{ type: 'geom_seq', final: true }, $5]) }
 
     | sequence_list ',' DOTS_ARITH_SEQ
-        { $$ = [...$1, { type: 'arith_seq', final: false }] }
+        { $$ = $1; $$.values.push({ type: 'arith_seq', final: false }) }
 
     | sequence_list ',' DOTS_GEOM_SEQ
-        { $$ = [...$1, { type: 'geom_seq', final: false }] }
+        { $$ = $1; $$.values.push({ type: 'geom_seq', final: false }) }
 
     | sequence
-        { $$ = [$1] }
+        { $$ = { type: 'seq_list', values: [$1] } }
     ;
 
 sequence
@@ -719,30 +811,30 @@ sequence
 
 multiple_expression_list
     : multiple_expression_list ',' expression %prec ','
-        { $$ = [...$1, $3] }
+        { $$ = $1; $$.values.push($3) }
 
     | multiple_expression_list ',' list_subproof '[' expression_list ']' %prec ','
-        { $$ = [...$1, $4] }
+        { $$ = $1; $$.values.push({ type: 'expression_list', subproof: $4, values: $5.values }) }
 
     | list_subproof '[' expression_list ']'
-        { $$ = [$2] }
+        { $$ = { type: 'expression_list', subproof: $1, values: $3.values } }
 
     | expression
-        { $$ = [$1] }
+        { $$ = { type: 'expression_list',  values: [$1] } }
     ;
 
 expression_list
     : expression_list ',' DOTS_FILL expression %prec ','
-        { $$ = [...$1, { append: $3 }] }
+        { $$ = $1; $$.values.push({ type: 'append', value: $4}) }
 
     | expression_list ',' expression %prec ','
-        { $$ = [...$1, $3] }
+        { $$ = $1; $$.values.push($3) }
 
     | DOTS_FILL expression
-        { $$ = { append: $2 } }
+        { $$ = { type: 'expression_list',  values: [{ type: 'append', value: $2}] } }
 
     | expression
-        { $$ = [$1] }
+        { $$ = { type: 'expression_list',  values: [$1] } }
     ;
 
 col_declaration_array
@@ -799,7 +891,7 @@ col_declaration
         {
             $$ = { ...$1, type: 'col_declaration', k: 1, cols: [$2.col], stage: $3.stage, init: $5 };
         }
-    | COL WITNESS col_declaration_list stage_definition function_call
+    | COL WITNESS col_declaration_list stage_definition
         {
             $$ = { ...$1, type: 'witness_col_declaration', cols: [$2.col], stage: $4.stage };
         }
@@ -815,6 +907,30 @@ col_declaration
         {
             $$ = { ...$1, type: 'fixed_col_declaration', k:4,cols: [$2.col], stage: $4.stage, sequence: $6 };
         }
+    | SUBPROOF '::' COL col_declaration_list stage_definition
+        {
+            $$ = { ...$1, type: 'col_declaration', cols: $2.cols, stage: $3.stage };
+        }
+    | SUBPROOF '::' COL col_declaration_ident stage_definition '=' expression  // (1)
+        {
+            $$ = { ...$1, type: 'col_declaration', k: 1, cols: [$2.col], stage: $3.stage, init: $5 };
+        }
+    | SUBPROOF '::' COL WITNESS col_declaration_list stage_definition
+        {
+            $$ = { ...$1, type: 'witness_col_declaration', cols: [$2.col], stage: $4.stage };
+        }
+    | SUBPROOF '::' COL FIXED col_declaration_list stage_definition
+        {
+            $$ = { ...$1, type: 'fixed_col_declaration', k: 2, cols: [$2.col], stage: $4.stage };
+        }
+    | SUBPROOF '::' COL FIXED col_declaration_ident stage_definition '=' expression  // (1)
+        {
+            $$ = { ...$1, type: 'fixed_col_declaration', k:3, cols: [$2.col], stage: $4.stage, init: $6 };
+        }
+    | SUBPROOF '::' COL FIXED col_declaration_ident stage_definition '=' sequence_definition  // (1)
+        {
+            $$ = { ...$1, type: 'fixed_col_declaration', k:4,cols: [$2.col], stage: $4.stage, sequence: $6 };
+        }
     ;
 
 challenge_declaration
@@ -822,8 +938,11 @@ challenge_declaration
     ;
 
 public_declaration
-    : PUBLIC IDENTIFIER '=' pol_id '(' expression ')'
-        { $$ = {type: "public_declaration", name: $2, pol: $4, idx: $6} }
+    : PUBLIC col_declaration_ident '=' expression
+        { $$ = {type: "public_declaration", /* name: $2, pol: $4, idx: $6*/ } }
+
+    | PUBLIC col_declaration_list
+        { $$ = {type: "public_declaration", /*name: $2, pol: $4, idx: $6*/} }
     ;
 
 
@@ -833,10 +952,10 @@ subproof_definition
     ;
 
 constant_definition
-    : CONST IDENTIFIER '=' expression
+    : CONSTANT IDENTIFIER '=' expression
         { $$ = {type: 'constant_definition', name: $2, value: $4} }
 
-    | CONST IDENTIFIER '=' sequence_definition
+    | CONSTANT IDENTIFIER '=' sequence_definition
         { $$ = {type: "constant_definition", name: $2, value: $4} }
     ;
 
