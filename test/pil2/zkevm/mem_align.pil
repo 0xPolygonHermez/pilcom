@@ -1,4 +1,4 @@
-subproof MemAlign(2**20, 2**23, 2**26)
+// subproof MemAlign(2**20, 2**23, 2**26)
 namespace MemAlign:: {
 
     /*
@@ -131,7 +131,7 @@ namespace MemAlign:: {
     col dataW0 = (wr8' + wr256') * inM[0] + selW0 * (inV - inM[0]);
     col dataW1 = (wr8' + wr256') * inM[1] + selW1 * (inV - inM[1]);
 
-    for (integer i=0;i<8; ++i) {
+    for (int i=0;i<8; ++i) {
         m0[i]' === (1-RESET) * m0[i] + FACTOR'(i) * inM[0];
         m1[i]' === (1-RESET) * m1[i] + FACTOR'(i) * inM[1];
         w0[i]' === (1-RESET) * w0[i] + FACTOR'(i) * dataW0;

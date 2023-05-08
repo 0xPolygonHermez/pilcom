@@ -93,7 +93,7 @@ namespace PaddingKK:: {
 
     col witness crV[8];
     col crVC[8];
-    for (integer i = 0; i < 8; ++i) {           // IMPROVEMENT?: for (col [&crVC, &crV] in [crVC, crV])
+    for (int i = 0; i < 8; ++i) {           // IMPROVEMENT?: for (col [&crVC, &crV] in [crVC, crV])
         crVC[i] = crV[i] + crF[i] * aFreeIn;
         crV[i]' === crVC[i] * (1 - crLatch);
     }

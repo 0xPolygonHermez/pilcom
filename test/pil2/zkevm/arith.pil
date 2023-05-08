@@ -8,7 +8,7 @@
 
 // include "std.pil";
 
-subproof Arith (2**23, 2**26, 2**28);
+// Ssubproof Arith (2**23, 2**26, 2**28);
 
 namespace Arith:: {
 
@@ -40,7 +40,7 @@ namespace Arith:: {
     }
 
     expr value  = 0;
-    integer doRangeCheck = 0;
+    int doRangeCheck = 0;
     for (col &p in [x1,x2,x3,y1,y2,y3,s,...q]) {
         for (col &p in p) value = value + p * CLK'(secondLoop * 16 + index(p));
 
@@ -54,7 +54,7 @@ namespace Arith:: {
     // value has first CHUNK values, continue with (CHUNKS-1)th values of q0 plus one of q1.
     // Left q[CHUNKS-1] for last because use more bits. value = s[0]*CLK + ... + s[CHUNKS-1]*CLK'(CHUNKS-1)
 
-    integer i,j,k;
+    int i,j,k;
     for (i=0; i<CHUNKS-1; ++i) value = value + q[0][i] * CLK'(CHUNKS + i);
 
     value = value + q[1][0] * CLK'31;

@@ -1,5 +1,5 @@
 
-function extends_fixed_clock_cycles(integer cycle, col &cols) {
+function extends_fixed_clock_cycles(int cycle, col &cols) {
     // or copy, metadata
 }
 
@@ -15,23 +15,23 @@ function match (col sel, ...) : expr {
         if (argc % 2 != 0) {
             error(`match was called with number incorrect ${argc}`);
         }
-        for (integer icase = 0; icase < argc; icase = icase + 2) {
+        for (int icase = 0; icase < argc; icase = icase + 2) {
             if (!(argv[icase] is fe)) error(`selector must be a constant value on ${icase}`);
             if (!(argv[icase+1] is expr)) error(`expression must be a constant value on ${icase}`);
         }
 
         expr bc;
         expr res;
-        integer cases = argc / 2;
+        int cases = argc / 2;
         col L[argc / 2];
-        for (integer icase = 0; icase < argc; icase = icase + 2) {
+        for (int icase = 0; icase < argc; icase = icase + 2) {
             expr lexpr;
             fe invl = 1;
 
             fe csel = argv[icase];
             expr cexpr = argv[icase + 1];
 
-            for (integer j = 0; j < cases; ++j) {
+            for (int j = 0; j < cases; ++j) {
                 if (i == j) continue;
                 lexpr = lexpr * (sel * argc[2 * j]);
                 invl = invl * (csel - argc[2 * j]);

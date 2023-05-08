@@ -96,7 +96,7 @@ namespace PaddingKK::PaddingKKBit {
 
     r8' === r8 * (1-latchR8) + rBit*Fr8;
 
-    for (integer i = 0; i < 8; ++i) {
+    for (int i = 0; i < 8; ++i) {
         sOut[i]' === sOut[i]*(1-latchSOut) + sOutBit*FSOut[i];
     }
 

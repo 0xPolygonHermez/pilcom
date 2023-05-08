@@ -62,7 +62,7 @@ namespace Storage:: {
     // We assume first instruction is not a latch nor a hash.
 
     col op[4];
-    for (integer i = 0; i < 4; ++i) {
+    for (int i = 0; i < 4; ++i) {
         op[i] = inOldRoot * oldRoot[i] +
                 inNewRoot * newRoot[i] +
                 inValueLow * valueLow[i] +
@@ -79,7 +79,7 @@ namespace Storage:: {
 
     col climbedKey[4], climbedSiblingKeyN[4], climbedSiblingKey[4], rotatedLevel[4];
 
-    for (integer i = 0; i < 4; ++i) {
+    for (int i = 0; i < 4; ++i) {
         climbedKey[i]         = (level[i] * (rkey[i]*2 + rkeyBit - rkey[i]) + rkey[i]);
         climbedSiblingKeyN[i] = (level[i] * (siblingRkey[i]*2 + (1-rkeyBit) - siblingRkey[i]) + siblingRkey[i]);
         climbedSiblingKey[i]  = (level[i] * (siblingRkey[i]*2 + rkeyBit - siblingRkey[i]) + siblingRkey[i]);

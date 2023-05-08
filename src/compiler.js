@@ -82,22 +82,6 @@ class Compiler {
         this.reduceExpressions();
         return this.contextToJson();
     }
-
-    beforePerformAction(parser, parentArguments) {
-    }
-    afterPerformAction(parser, result, parentArguments) {
-        let $$ = parentArguments[5];
-        let _$ = parentArguments[6];
-
-        const first = _$[0];
-        const last = _$[$$.length - 1] | first;
-//         console.log([parser.$, _$[$0-2], _$[$0]]);
-        $$.first_line = first.first_line;
-        $$.first_column = first.first_column;
-        $$.last_line = last.last_line;
-        $$.last_column = last.last_column;
-        return result;
-    }
     instanceParser(src, fullFileName) {
         this.srcLines = src.split(/(?:\r\n|\n|\r)/);
 
@@ -108,20 +92,35 @@ class Compiler {
         pil_parser.Parser.prototype.parseError = myErr;
 
         let parser = new pil_parser.Parser();
-        /*const parserPerformAction = parser.performAction;
+        const parserPerformAction = parser.performAction;
+        const productions = parser.productions_;
         let compiler = this;
-        parser.performAction = function () {
-            compiler.beforePerformAction.apply(compiler, [this, arguments]);
-            let result = parserPerformAction.apply(this, arguments);
-            return compiler.afterPerformAction.apply(compiler, [this, result, arguments]);
-        };*/
+        parser.performAction = function (yytext, yyleng, yylineno, yy, yystate, $$, _$ ) {
+            const result = parserPerformAction.apply(this, arguments);
+            const first = _$[$$.length - 1 - productions[yystate][1]];
+            const last = _$[$$.length - 1];
+            if (!this.$ || typeof this.$ !== 'object')  {
+                console.log(`STRANGE THINK IN STATE ${yystate} `+(typeof this.$));
+                this.$ = {};
+            }
+            this.$.first_line = first.first_line;
+            this.$.first_column = first.first_column;
+            this.$.last_line = last.last_line || first.first_line;
+            this.$.last_column = last.last_column || first.first_column;
+            // console.log('==== $ >>>>');
+            // console.log(this.$);
+            return result;
+        }
         return parser;
     }
-    async parseSource(fileName, isMain) {
+    async parseSource(fileName, isMain = false) {
 
+        console.log(`#################### PARSE SOURCE ${fileName} ######################################`);
         const [src, fileDir, fullFileName, relativeFileName] = await this.loadSource(fileName, isMain);
-        this.relativeFileName = relativeFileName;
+        console.log(`#################### LOADED ${fileName} ######################################`);
 
+        this.relativeFileName = relativeFileName;
+        this.fileDir = fileDir;
 
         const parser = this.instanceParser(src,fullFileName);
         const sts = parser.parse(src);
@@ -129,75 +128,27 @@ class Compiler {
         let pendingCommands = [];
         let lastLineAllowsCommand = false;
 
-        console.log(sts);
+        if (!isMain) {
+            console.log(sts);
+        }
         for (let i=0; i<sts.length; i++) {
-            const s = sts[i];
-            console.log(s);
-            if (!s.fileName) {
-                console.log(s);
-            }
+            const s = {...sts[i], locator: fileName+'@'+i };
+            console.log('### LOCATOR ### ==== > '+s.locator);
             this.fileName = s.fileName = relativeFileName;
             this.line = s.first_line;
-            const sourceRef = `${s.fileName}:${s.first_line}`;
-
-            if (s.type == "Include") {
-                const fullFileNameI = this.config.includePaths ? s.file : path.resolve(fileDir, s.file);
-                if (!this.includedFiles[fullFileNameI]) {       // If a file included twice just ignore
-                    this.includedFiles[fullFileNameI] = true;
-                    const previous = {
-                        namespace: this.namespace,
-                        cwd: this.cwd,
-                        relativeFileName: this.relativeFileName
-                    };
-
-                    this.namespace = "Global";
-                    this.cwd = fileDir;
-
-                    await this.parseSource(fullFileNameI, false);
-
-                    this.cwd = previous.cwd;
-                    this.namespace = previous.namespace;
-                    this.relativeFileName = previous.relativeFileName;
-
-                    if (pendingCommands.length>0) this.error(s, "command not allowed before include");
-                    lastLineAllowsCommand = false;
-                }
-                continue;
-            } else if (s.type == "Subproof") {
-                if (s.name in this.subproofs) {
-                    this.error(s, `subproof ${s.name} was previously defined on ${this.subproofs[s.name].sourceRef}`);
-                }
-                let polDegs = [];
-                for (let exp of s.exp) {
-                    const se = this.expressions.simplifyExpression(exp);
-                    if (se.op != "number") this.error(s, "Size is not constant expression");
-                    polDegs.push(Number(se.value));
-                }
-                this.subproofs[s.name] = { sourceRef, polDegs };
-                continue;
-            } else if (s.type == "Namespace") {
-                const subproof = s.subproof ?? false;
-                const namespace = s.name;
-                if (subproof !== false && !(subproof in this.subproofs)) {
-                    this.error(s, `subproof ${s.subproof} hasn't been defined`);
-                }
-                // TODO: verify if namespace just was declared in this case subproof must be the same
-                // const polDegs = ctx.subproofs[s.subproof].polDegs;
-                this.namespace = namespace;
-                this.subproof = subproof;
-                // ctx.namespaces[s.name] = { namespace, subproof, polDegs
-                this.polDeg = Number(this.expressions.simplifyExpression(s.exp).value);
-                continue;
-            }
+            console.log('S');
+            console.log(s);
+            this.sourceRef = `${s.fileName}:${s.first_line}`;
 
             let skip = false;
             let poldef = false;
             let insideIncludedDomain = false;
+
             const ctxExprLen = this.expressions.length;
             try {
                 this.checkNamespace(this.namespace);
                 insideIncludedDomain = true;
-                this.parseStatment(s);
+                await this.parseStatement(s);
             } catch (err) {
                 if (err instanceof SkipNamespace) {
                     skip = true;
@@ -227,15 +178,15 @@ class Compiler {
             }
         }
     }
-    parseStatments(statments) {
+    async parseStatements(statments) {
         for (const s of statments) {
-            const res = this.parseStatment(s);
+            const res = await this.parseStatement(s);
             if (typeof res === 'boolean') {
                 return res;
             }
         }
     }
-    parseStatment(s) {
+    async parseStatement(s) {
         const method = ('do_'+s.type).replace(/[-_][a-z]/g, (group) => group.slice(-1).toUpperCase());
         console.log(`[${s.type}] ===> ${method}`);
         if (!(method in this)) {
@@ -243,6 +194,11 @@ class Compiler {
             console.log(s);
             this.error(s, `Invalid line type: ${s.type}`);
         }
+        if (this[method].constructor.name === 'AsyncFunction') {
+            console.log(`CALLING ASYNC FUNCTION ${method}`)
+            return await this[method](s);
+        }
+        console.log(`REGULAR CALLING FUNCTION ${method}`)
         return this[method](s);
     }
     doWitnessColDeclaration(s) {
@@ -257,7 +213,7 @@ class Compiler {
     colDeclaration(s, type, nextId, reserveExpressions = false) {
         console.log('*********');
         console.log(s);
-        for (const col of s.names) {
+        for (const col of s.cols) {
             const colname = this.namespace + '.' + col.name;
             let ref = this.references.get(colname);
             if (ref !== null) {
@@ -290,6 +246,60 @@ class Compiler {
     {
         this.addFilename(expr, this.relativeFileName);
         return this.expressions.update(id, expr);
+    }
+    async doInclude(s) {
+        console.log(`doInclude ======${s.file.value}`);
+        console.log(s);
+        console.log([this.fileDir, s.fileName]);
+        const includeFile = this.asString(s.file);
+        const fullFileNameI = this.config.includePaths ? s.file : path.resolve(this.fileDir, includeFile);
+        if (!this.includedFiles[fullFileNameI]) {       // If a file included twice just ignore
+            console.log(`doInclude ======${s.file.value}============== PROCESS`);
+            this.includedFiles[fullFileNameI] = true;
+            const previous = [this.namespace, this.cwd, this.relativeFileName, this.fileDir ];
+
+            this.namespace = false;
+            this.cwd = this.fileDir;
+            await this.parseSource(fullFileNameI, false);
+
+            [this.namespace, this.cwd, this.relativeFileName, this.fileDir ] = previous;
+
+            // TODO -> review this part
+            // if (pendingCommands.length>0) this.error(s, "command not allowed before include");
+            // lastLineAllowsCommand = false;
+        } else {
+            console.log(`doInclude ======${s.file.value}============== IGNORE`);
+        }
+        console.log('doInclude END');
+        return true;
+    }
+    doNamespace(s) {
+        const subproof = s.subproof ?? false;
+        const namespace = s.namespace;
+        if (subproof !== false && !(subproof in this.subproofs)) {
+            this.error(s, `subproof ${s.subproof} hasn't been defined`);
+        }
+
+        // TODO: verify if namespace just was declared in this case subproof must be the same
+        this.namespace = namespace;
+        this.subproof = subproof;
+    }
+    doSubproofDefinition(s) {
+        const subproof = s.name ?? false;
+        console.log(`doSubproofDefinition ====== ${subproof}`);
+        if (subproof === false) {
+            this.error(s, `subproof not defined correctly`);
+        }
+        const subproofInfo = this.subproofs[subproof];
+        if (subproofInfo !== undefined) {
+            this.error(s, `subproof ${subproof} has been defined previously on ${subproofInfo.sourceRef}`);
+        }
+        let rows = [];
+        // TO-DO: eval expressions;
+        this.subproofs[subproof] = {
+            sourceRef: this.sourceRef,
+            rows
+        };
     }
     doPolDefinition(s) {
         const polname = this.namespace + "." + s.name;
@@ -400,6 +410,9 @@ class Compiler {
         const offset = ref.isArray ? this.getExprNumber(pol.idxExp, s, 'Index') : 0;
         return [ref, offset];
     }
+    doFunctionDefinition(s) {
+        // this.functions.define()
+    }
     doPublicDeclaration(s) {
         if (this.publics.isDefined(s.name)) {
             this.error(s, `name already defined ${s.name}`);
@@ -472,8 +485,13 @@ class Compiler {
                     }
                 }
             }
+            console.log(`LOADING FILE ${fullFileName} .............`)
             src = await fs.promises.readFile(fullFileName, "utf8") + "\n";
+            console.log('END LOADING ...');
         }
+        console.log('################ BEGIN SOURCE #########################');
+        console.log(src);
+        console.log('################ END SOURCE #########################');
         return [src, fileDir, fullFileName, relativeFileName];
     }
 
@@ -777,6 +795,18 @@ class Compiler {
     }
     getFullName(e) {
         return (((e.namespace ?? 'this') === 'this') ? this.namespace : e.namespace) + '.' + e.name;
+    }
+    asString(s) {
+        if (typeof s === 'string') return s;
+        if (typeof s === 'bigint') return ''+s;
+        if (typeof s.type === 'string') {
+            return s.value;
+        }
+        if (typeof s.type === 'template') {
+            // TODO: resolve template ???
+            return s.value;
+        }
+        this.error(s, "invalid string");
     }
 }
 

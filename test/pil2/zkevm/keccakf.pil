@@ -27,7 +27,7 @@ namespace PaddingKK::KeccakF {
     // connects
     connect_check([C_A, C_B, C_C], [built_a, built_b, built_c]);
 
-    for (integer i = 0; i < CHUNKS; ++i)
+    for (int i = 0; i < CHUNKS; ++i)
         lookup ([SCRIPT_GATE_TYPE, a[i], b[i], c[i]],
                 [K_GATE_TYPE, K_A, K_B, K_C]);
 

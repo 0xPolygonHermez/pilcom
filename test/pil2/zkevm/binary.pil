@@ -12,7 +12,6 @@
 
 include "std.pil";
 
-subproof Binary (2**23, 2**26, 2**28);
 namespace Binary:: {
 
     constant OP_C = 256*256*4;                        // 2 CarryIn + 2 LastByte = 4 (OC = OPERATION CYCLE)

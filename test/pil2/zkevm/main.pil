@@ -1,16 +1,17 @@
+// subproof Main(2**23, 2**26, 2**28);
+
 // include "config.pil";
 // include "global.pil";
-include "rom.pil";
-include "mem_align.pil";
-include "arith.pil";
-include "binary.pil";
-include "poseidong.pil";
-include "padding_pg.pil";
-include "storage.pil";
-include "padding_kk.pil";
-include "mem.pil";
-
-subproof Main(2**23, 2**26, 2**28);
+include "subproofs.pil"
+include "rom.pil"
+include "mem_align.pil"
+include "arith.pil"
+include "binary.pil"
+include "poseidong.pil"
+include "padding_pg.pil"
+include "storage.pil"
+include "padding_kk.pil"
+include "mem.pil"
 
 namespace Main:: {
 
@@ -232,7 +233,7 @@ namespace Main:: {
     // Arithmetic --------------------------------------------------------------
 
     subproof::expr aR[6][8];
-    integer iReg = 0;
+    int iReg = 0;
     for (subproof::col &c in Arith::[ax1, ay1, ax2, ay2, ax3, ay3]) {
         for (i = 0; i < 8; ++i) {
             aR[iReg][i] = c[i*2] + c[i*2+1] * 2**16;

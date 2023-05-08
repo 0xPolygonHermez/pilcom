@@ -16,7 +16,7 @@ namespace PoseidonG:: {
     col witness result[3];
 
     col a[12];
-    integer index = 0;
+    int index = 0;
     for (col &c in [...value, hashType, cap]) {
         a[index] = c + C[index];
         (value[index]' - c[index]) * (1-LAST) === 0;
@@ -27,7 +27,7 @@ namespace PoseidonG:: {
     constant M_DIAG = [8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
     col x2[12], x4[12], x6[12], x7[12], b[12], c[12];
-    for (integer i = 0; i < 12; ++i) {
+    for (int i = 0; i < 12; ++i) {
         x2[i] = a[i] * a[i];
         x4[i] = x2[i] * x2[i];
         x6[i] = x2[i] * x4[i];
@@ -36,15 +36,15 @@ namespace PoseidonG:: {
         else b[i] = PARTIAL * (a[i] - x7[i]) + x7[i];
     }
 
-    for (integer i=0; i < 12; ++i)  {
+    for (int i=0; i < 12; ++i)  {
         expr ce;
-        for (integer j=0; j<12; ++j) {
+        for (int j=0; j<12; ++j) {
             ce += (M_CIRC[(12 - i + j) % 12] + (i == j ? M_DIAG[i] : 0)) * b[j];
         }
         c[i] = ce;
     }
 
-    for (integer i = 0; i < 4; ++i) {
+    for (int i = 0; i < 4; ++i) {
         (hash[i] - value[i]) * LASTBLOCK === 0;
         (hash[i] - hash[i]') * (1-LAST) === 0;
         if (i > 2) continue;
