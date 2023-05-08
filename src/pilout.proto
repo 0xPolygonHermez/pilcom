@@ -4,7 +4,7 @@ syntax = "proto3";
 message PilOut {
     string name = 1;
     bytes baseField = 2;                        // modulus of the base filed
-    repeated SubProof proofs = 3;
+    repeated BasicAir airs = 3;
     repeated uint32 numChallenges = 4;          // number of challenges per stage
     uin32 numProverValues = 5;
     uin32 numPublicValues = 6;
@@ -108,7 +108,7 @@ message BasicAir {
     optional uint32 numRows = 2;            // log2(n), where n is the number of rows
     repeated PeriodicCol periodicCols = 3;
     repeated FixedCol fixedCols = 4;
-    repeated uint32 stageWidths = 5;        // should this include stage 0 (fixed columns)?
+    repeated uint32 stageWidths = 5;        // stage widths excluding stage 0 (fixed columns)
     repeated Expression expressions = 6;
     repeated Constraint constraints = 7;
 }
@@ -118,7 +118,7 @@ message PeriodicCol {
 }
 
 message FixedCol {
-    repeated BaseFieldElement values = 1;              // should this also be BaseFieldElement?
+    repeated BaseFieldElement values = 1;
 }
 
 message Constraint {
@@ -139,8 +139,8 @@ message Constraint {
 
     message EveryFrame {
         Operand.Expression expressionIdx = 1;
-        uint32 offsetMin = 2;
-        uint32 offsetMax = 3;           // This is the FrameLength when there is no negative offsets
+        uint32 offsetMin = 2;               // offsetMin = 0 means that current row is at index 0
+        uint32 offsetMax = 3;               // frame size is defined as offsetMin + offsetMax
         optional string debugLine = 4;
     }
 
@@ -238,15 +238,15 @@ enum ReferenceType {
     FIXED_COL = 1;
     PERIODIC_COL = 2;
     WITNESS_COL = 3;
-    PUBLIC = 4;
-    PROVER_VALUE = 5;
+    PROVER_VALUE = 4;
+    PUBLIC_VALUE = 5;
     PUBLIC_TABLE = 6;
     CHALLENGE = 7;
 }
 
 message Reference {
     string name = 1;
-    optional uint32 subProofId = 2;
+    optional uint32 airId = 2;
     ReferenceType type = 3;
     uint32 id = 4;
     uint32 dim = 5;
