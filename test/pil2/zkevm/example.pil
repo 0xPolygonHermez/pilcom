@@ -1,0 +1,5 @@
+public myTableRows;
+public myTable[2][10];
+prover myValue;
+
+myValue === public_agg_table(myTable, myTableRows, [zeta, alpha]);

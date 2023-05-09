@@ -395,6 +395,12 @@ basic_type
     | T_STRING
         { $$ = { type: 'string' } }
 
+    | PROVER
+        { $$ = { type: 'prover' } }
+
+    | PUBLIC
+        { $$ = { type: 'public' } }
+
     | FUNCTION
         { $$ = { type: 'function' } }
     ;
@@ -474,7 +480,7 @@ data_object
         { $$ = $1; $$.data[$3] = $5 }
 
     | IDENTIFIER ':' data_value
-        { $$ = { data = {}; data[$1] = $3 } }
+        { $$ = {data: {}}; data[$1] = $3 }
     ;
 
 data_array
@@ -563,7 +569,7 @@ case_body
         { $$ = $2 }
 
     | '{' case_list DEFAULT statement_list '}'
-        { $$ = $2; $$.cases.push{ else: true, statements: $4 }] }
+        { $$ = $2; $$.cases.push({ else: true, statements: $4 }) }
     ;
 
 case_value
@@ -582,7 +588,7 @@ case_value
 
 case_list
     : case_list CASE case_value ':' statement_list_closed
-        { $$ = $1; $$.cases.push{ condition: $3, statements: $5 }] }
+        { $$ = $1; $$.cases.push({condition: $3, statements: $5 }) }
 
     | CASE case_value ':' statement_list_closed
         { $$.cases = [{ condition: $2, statements: $4 }] }
@@ -1112,6 +1118,44 @@ expression
 
     | POSITIONAL_PARAM
         { $$ = $1 }
+
+    | casting
+        { $$ = $1 }
+    ;
+
+
+// TODO: review real casting cases
+
+casting
+    : INT '(' expression ')'
+        { $$ = { type: 'int' } }
+
+    | FE '(' expression ')'
+        { $$ = { type: 'fe' } }
+
+    | EXPR '(' expression ')'
+        { $$ = { type: 'expr' } }
+
+    | COL '(' expression ')'
+        { $$ = { type: 'col' } }
+
+    | T_STRING '(' expression ')'
+        { $$ = { type: 'string' } }
+
+    | INT type_array '(' expression ')'
+        { $$ = { type: 'int' } }
+
+    | FE type_array '(' expression ')'
+        { $$ = { type: 'fe' } }
+
+    | EXPR type_array '(' expression ')'
+        { $$ = { type: 'expr' } }
+
+    | COL type_array '(' expression ')'
+        { $$ = { type: 'col' } }
+
+    | T_STRING type_array '(' expression ')'
+        { $$ = { type: 'string' } }
     ;
 
 pol_id

@@ -4,7 +4,7 @@ function extends_fixed_clock_cycles(int cycle, col &cols) {
 }
 
 
-function range (col p, fe from_value, fe to_value) {
+function range_check (col p, fe from_value, fe to_value) {
 
 }
 
@@ -52,10 +52,11 @@ function subproof_permutation_check (expr selF[], expr colsF[][], expr selT[], e
 
 }
 
-function plookup (expr selF, expr colsF[], expr selT, expr colsT[]) {
+function plookup_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
     if (!(L1 is col)) {
         global col fixed L1 = [1,0...];
     }
+
 }
 
 function permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
@@ -64,8 +65,78 @@ function permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
     }
 }
 
-function external_permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
-    if (!(L1 is col)) {
-        global col fixed L1 = [1,0...];
+constant PUBLIC_TABLE_AGG = 1;
+constant PUBLIC_TABLE_PROD = 2;
+
+//
+// example use public_agg_table or public_prod_table
+//
+// public myTableRows;
+// public myTable[2][10];
+// prover myValue;
+//
+// myValue === public_agg_table(myTable, myTableRows, [zeta, alpha]);
+
+function public_agg_table (public ptable[][], public rows, challenge challenges[]) : expr {
+    return public_table (table, rows, challenges, PUBLIC_TABLE_AGG);
+}
+
+function public_prod_table (public ptable[][], public rows, challenge challenges[]) : expr {
+    return public_table (table, rows, challenges, PUBLIC_TABLE_PROD);
+}
+
+function public_table (public ptable[][], public rows, challenge challenges[], int operation) : expr {
+
+    int max_rows = length(table[0]);
+
+    if (max_rows > 10) {
+        error("Number of rows is greater than 10")
     }
+
+    if (operation != PUBLIC_TABLE_AGG && operation != PUBLIC_TABLE_PROD) {
+        error("Invalid operation")
+    }
+
+    // first rows or cols?
+    if (length(table) != length (challenges)) {
+        error("Number of challenges and columns of table must be equal")
+    }
+
+    // table: ptable <= only first public, need to access the rest
+    // when compiler add extra columns as table@lengths as array of lengths and table@dim as len of
+
+    @public_table { rows: rows, cols: length(ptable), max_rows: max_rows, table: ptable, type: operation };
+
+
+    expr bc;
+    expr res;
+    for (int irow = 0; irow < max_rows; ++irow) {
+        expr cexpr;
+
+        // prepare aggregate / product expression for current row
+        for (int k = 0; k < length(cols)) {
+            if (operation == PUBLIC_TABLE_AGG) {
+                cexpr = (k == 0 ? 0 : cpexr) + challenges[k] * ptable[k][irow];
+            } else {
+                cexpr = (k == 0 ? 1 : cpexr) * (challenges[k] + ptable[k][irow]);
+            }
+        }
+
+        expr lexpr;
+        fe lexpr_res = 1;
+        for (int j = 0; j < cases; ++j) {
+            if (irow == j) continue;
+            lexpr = lexpr * (rows - j);         // (rows - 0) * (rows - 1) * ....
+            lexpr_res = lexpr_res * (irow - j);         // (irow - 0) * (irow - 1) * .... = result lexpr when irow
+        }
+        fe lexpr_res_inv = 1 / lexpr_res;
+
+        // build expression for binary constraint bc = (rows-0)*(rows-2)*(rows-3)* ..... = 0
+        bc = bc * (rows - irow);
+
+        // L1 * A + L2 * B + L3 * C
+        res = res + lexpr_res_inv * lexpr * cexpr;
+    }
+    bc === 0;
+    value === res;
 }

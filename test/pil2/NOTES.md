@@ -341,6 +341,53 @@ prime
 - constants could be change with N, in subproof could define multiple N needs to compute all for each N.
 - expressions could change if has an variable or reference inside.
 
+## NOTES builtin
+degree(expression)
+
+
+### template expressions
+
+params(expression): return number of params on template.
+```
+// example
+expr e = a * $0 + b * $1;
+assert(params(e) == 2);
+
+e = e(col0,col1);   // e = a * col0 + b * col1
+assert(params(e) == 0);
+
+e = a * $0 + b * $1 + c * $2;
+e = e(col0);        // e = a * col0 + b * $1 + $2
+assert(params(e) == 2);
+
+e = e(col1);        // e = a * col0 + b * col1 + $2
+assert(params(e) == 1);
+
+e = e(col2);        // e = a * col0 + b * col1 + col2
+assert(params(e) == 0);
+
+```
+
+expression(param0, param1, param2) = internally is a clone and param0, ....
+```
+// example with fix number of params
+expr e = a * $0 + b * $1;
+expr e2 = e(col1, col2);
+
+
+// example with variable number of params (k)
+expr eparams[k];
+:
+user_expression(eparams);
+
+// example with variable number of params
+int iparam = 0;
+while (params(e) > 0) {
+    e = e(param[iparam]);
+    ++iparam
+};
+```
+
 ## TEST
 - Deferred temporal polynomials
   - unitialized (index, single) - manually tested
