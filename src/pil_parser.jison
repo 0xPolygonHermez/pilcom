@@ -215,15 +215,15 @@ top_level_block
 namespace_definition
     : NAMESPACE IDENTIFIER '::' IDENTIFIER '{' statement_block '}'
         {
-            $$ = {type: 'namespace', namespace: $4, monolithic: false, subproof: $2, statements: $6 };
+            $$ = {type: 'namespace', namespace: $4, monolithic: false, subproof: $2, statements: $6.statements };
         }
     | NAMESPACE IDENTIFIER '::' '{' statement_block '}'
         {
-            $$ = {type: 'namespace', namespace: '', monolithic: false, subproof: $2, statements: $5}
+            $$ = {type: 'namespace', namespace: '', monolithic: false, subproof: $2, statements: $5.statements }
         }
     | NAMESPACE IDENTIFIER '(' expression ')' '{' statement_block '}'
         {
-            $$ = {type: 'namespace', namespace: $2, monolithic: true, subproof: false, exp: $4, statements: $7 }
+            $$ = {type: 'namespace', namespace: $2, monolithic: true, subproof: false, exp: $4, statements: $7.statements }
         }
     ;
 
@@ -591,7 +591,7 @@ case_list
         { $$ = $1; $$.cases.push({condition: $3, statements: $5 }) }
 
     | CASE case_value ':' statement_list_closed
-        { $$.cases = [{ condition: $2, statements: $4 }] }
+        { $$ = {cases: [{ condition: $2, statements: $4 }]} }
     ;
 
 for_assignation
