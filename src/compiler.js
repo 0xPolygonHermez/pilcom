@@ -8,6 +8,7 @@ const Scalar = require("ffjavascript").Scalar;
 const Expressions = require("./expressions.js");
 const Definitions = require("./definitions.js");
 const Processor = require("./processor.js");
+const { mainModule } = require("process");
 
 
 const oldParseError = pil_parser.Parser.prototype.parseError;
@@ -73,7 +74,9 @@ class Compiler {
         const ansiColor = this.config.color ? (x) => '\x1b['+x+'m' : (x) => '';
 
         await this.parseSource(fileName, true);
-
+        console.log('\x1b[1;35m==== CONSTANTS ====');
+        this.constants.dump();
+        console.log('\x1b[0m');
         this.checkNotFoundNamespaces();
         this.checkUndefinedPols();
         this.simplifyAll();
@@ -109,10 +112,18 @@ class Compiler {
                     return result;
                 }
             }
+            this.$.debug = `${compiler.relativeFileName} ${first.first_line}:${first.first_column}`;
+            if (typeof last.last_line != 'undefined' && last.last_line != first.first_line) {
+                this.$.debug += ` ${last.last_line}`;
+            }
+            if (typeof last.last_column != 'undefined') {
+                this.$.debug += `:${last.last_column}`;
+            }
+            /*
             this.$.first_line = first.first_line;
             this.$.first_column = first.first_column;
             this.$.last_line = last.last_line || first.first_line;
-            this.$.last_column = last.last_column || first.first_column;
+            this.$.last_column = last.last_column || first.first_column;*/
             return result;
         }
         return parser;
@@ -182,8 +193,8 @@ class Compiler {
             }
         }
     }
-    async parseStatements(statments) {
-        for (const s of statments) {
+    async parseStatements(statements) {
+        for (const s of statements) {
             const res = await this.parseStatement(s);
             if (typeof res === 'boolean') {
                 return res;
@@ -211,14 +222,15 @@ class Compiler {
     doFixedColDeclaration(s) {
         this.nFixedCols = this.colDeclaration(s, 'fixed', this.nFixedCols);
     }
-    doPolDeclaration(s) {
+    doColDeclaration(s) {
         this.nIm = this.colDeclaration(s, 'im', this.nIm, true);
     }
     colDeclaration(s, type, nextId, reserveExpressions = false) {
         console.log('*********');
         console.log(s);
-        for (const col of s.cols) {
-            const colname = this.namespace + '.' + col.name;
+        for (const col of s.items) {
+            const colname = this.getFullName(col);;
+            console.log(`COL_DECLARATION(${colname})`);
             let ref = this.references.get(colname);
             if (ref !== null) {
                 this.error(s, `${colname} already defined on ${ref.sourceRef}`);
@@ -277,7 +289,7 @@ class Compiler {
         console.log('doInclude END');
         return true;
     }
-    doNamespace(s) {
+    async doNamespace(s) {
         const subproof = s.subproof ?? false;
         const namespace = s.namespace;
         if (subproof !== false && !(subproof in this.subproofs)) {
@@ -285,8 +297,12 @@ class Compiler {
         }
 
         // TODO: verify if namespace just was declared in this case subproof must be the same
+        const previous = [this.namespace, this.subproof ];
         this.namespace = namespace;
         this.subproof = subproof;
+        console.log(s);
+        await this.parseStatements(s.statements);
+        [this.namespace, this.subproof ] = previous;
     }
     doSubproofDefinition(s) {
         const subproof = s.name ?? false;
@@ -338,14 +354,16 @@ class Compiler {
             this.updateExpression(id, s.expression);
         }
     }
-    doPolIdentity(s) {
-        console.log('********** doPolIdentity ********** (s.expression:)');
-        this.expressions.toString(s.expression);
-        let expr = this.expressions.evaluate(s.expression, {update: true, Fr: this.Fr});
-        console.log('********** doPolIdentity ********** (expr)');
+    doConstraint(s) {
+        console.log('********** doConstraint ********** (s.expression:)');
+        let constraint = {op: 'sub', values: [s.left, s.right]};
+        console.log(s);
+        this.expressions.toString(constraint);
+        let expr = this.expressions.evaluate(constraint, {update: true, Fr: this.Fr});
+        console.log('********** doConstraint ********** (expr)');
         this.expressions.toString(expr);
         const eidx = this.addExpression(expr);
-        this.polIdentities.push({fileName: this.relativeFileName, namespace: this.namespace, line: s.first_line, e: eidx});
+        this.constraints.push({fileName: this.relativeFileName, namespace: this.namespace, line: s.first_line, e: eidx});
     }
     composePlPeIdentity(s) {
         const pu = {
@@ -392,6 +410,7 @@ class Compiler {
         this.connectionIdentities.push(ci);
     }
     getExprNumber(expr, s, title) {
+        console.log(expr);
         const se = this.expressions.simplifyExpression(expr);
         if (se.op !== 'number') {
             this.error(s, title + ' is not constant expression');
@@ -439,7 +458,7 @@ class Compiler {
         if (this.constants.isDefined(s.name)) {
             this.error(s, `name already defined ${s.name}`);
         }
-        this.constants.define(s.name, this.getExprNumber(s.exp, s, `constant ${s.name} definition`));
+        this.constants.define(s.name, this.getExprNumber(s.value, s, `constant ${s.name} definition`));
     }
     doCode(s) {
         return this.processor.execute(s.statments);
@@ -798,7 +817,22 @@ class Compiler {
         }
     }
     getFullName(e) {
-        return (((e.namespace ?? 'this') === 'this') ? this.namespace : e.namespace) + '.' + e.name;
+        if (e.name === 'ELSE_ADDR') {
+            console.log(['E', e, this.namespace, this.subproof]);
+        }
+        const ns = (((e.namespace ?? 'this') === 'this') ? this.namespace : e.namespace);
+        const sp = e.subproof ? e.subproof : this.subproof;
+
+        let name = '';
+        if (sp !== '') {
+            name += sp + '::';
+        }
+        if (ns !== '') {
+            name += ns + '.';
+        }
+        name += e.name;
+        console.log(`${e.name} ==> ${name}`)
+        return name;
     }
     asString(s) {
         if (typeof s === 'string') return s;

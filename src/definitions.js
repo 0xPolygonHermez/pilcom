@@ -48,4 +48,9 @@ module.exports = class Definitions {
             yield [index, this.definitions[index]];
         }
     }
+    dump () {
+        for (let index in this.definitions) {
+            console.log(`${index}: ${this.definitions[index]}`);
+        }
+    }
 }

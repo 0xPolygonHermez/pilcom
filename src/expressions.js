@@ -85,13 +85,18 @@ module.exports = class Expressions {
         // if (e.op !== 'var') e.simplified = true;
 
         // if (e.namespace) checkNamespace(e.namespace, ctx);
+        if (e === null) {
+            console.log('MERDA');
+        }
+        console.log(e);
         if (e.op in this.operations) {
             const operation = this.operations[e.op];
+            console.log(['EVALUATE-ARGS', operation.args, ...e.values]);
             const [a,b,reduced] = this.evaluateValues(e, operation.args, mode);
             if (reduced) {
                 const result = {
                     simplified: true,
-                    op: (operation.type === 'cmp' || operation.type === 'logical') ? 'bool':'number',
+                    op: 'number',
                     deg:0,
                     value: mode.fr ? operation.handleFr(mode.fr, a.value, b.value) : operation.handle(a.value, b.value),
                     first_line: e.first_line
@@ -101,10 +106,10 @@ module.exports = class Expressions {
             if (e.op === 'pow') {
                 // TODO: check last Scalar.
                 // return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.exp(Fr.e(a.value), Scalar.e(b.value))), first_line: e.first_line}
-                error(e, "Exponentiation can only be applied between constants");
+                this.error(e, "Exponentiation can only be applied between constants");
             }
             if (operation.type !== 'arith') {
-                error(e, "Only arithmetic operations could be stored as expression");
+                this.error(e, "Only arithmetic operations could be stored as expression");
             }
             /* console.log(e);
             console.log([valuesCount, reduced]);
@@ -117,10 +122,10 @@ module.exports = class Expressions {
             case 'number':
                 e.deg = 0;
                 return e;
-
+/*
             case 'bool':
                 e.deg = 0;
-                return e;
+                return e;*/
 
             case 'constant':
                 const value = this.constants.get(e.name);
@@ -129,17 +134,22 @@ module.exports = class Expressions {
                 }
                 return this.simplified(value, e);
 
-            case 'pol':
+            case 'col':
                 {
                     const [polname, ref, id] = this.resolveReference(e);
                     switch (ref.type) {
-                        case 'cmP':
-                        case 'constP':
-                            e.deg = 1;
+                        case 'witness':
+                        case 'fixed':
+                            e.deg = 1
                             return e;
-                        case 'imP':
+                        case 'im':
                             {
-                                let refexp = this.evaluate(this.get(id), mode);
+                                // intermediate column was an expression
+                                const im = this.get(id);
+                                console.log(e);
+                                console.log([polname, ref, id]);
+                                console.log(['IM', im, id]);
+                                let refexp = this.evaluate(im, mode);
                                 this.reduceExpressionTo1(refexp);
                                 this.update(id, refexp);
                                 e.deg = 1
@@ -177,7 +187,7 @@ module.exports = class Expressions {
                 EXIT_HERE;
             default:
                 console.log(e);
-                error(e, `invalid operation: ${e.op}`);
+                this.error(e, `invalid operation: '${e.op}'`);
         }
     }
 
