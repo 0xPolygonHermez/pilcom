@@ -96,19 +96,23 @@ class Compiler {
         const productions = parser.productions_;
         let compiler = this;
         parser.performAction = function (yytext, yyleng, yylineno, yy, yystate, $$, _$ ) {
+            console.log(yystate);
             const result = parserPerformAction.apply(this, arguments);
             const first = _$[$$.length - 1 - productions[yystate][1]];
             const last = _$[$$.length - 1];
-            if (!this.$ || typeof this.$ !== 'object')  {
-                console.log(`STRANGE THINK IN STATE ${yystate} `+(typeof this.$));
-                this.$ = {};
+            if (typeof this.$ !== 'object')  {
+                if (!this.$) {
+                    console.log(`STRANGE THINK IN STATE ${yystate} `+(typeof this.$));
+                    this.$ = {};
+                }
+                else {
+                    return result;
+                }
             }
             this.$.first_line = first.first_line;
             this.$.first_column = first.first_column;
             this.$.last_line = last.last_line || first.first_line;
             this.$.last_column = last.last_column || first.first_column;
-            // console.log('==== $ >>>>');
-            // console.log(this.$);
             return result;
         }
         return parser;

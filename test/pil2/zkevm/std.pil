@@ -114,7 +114,7 @@ function public_table (public ptable[][], public rows, challenge challenges[], i
         expr cexpr;
 
         // prepare aggregate / product expression for current row
-        for (int k = 0; k < length(cols)) {
+        for (int k = 0; k < length(cols); ++k) {
             if (operation == PUBLIC_TABLE_AGG) {
                 cexpr = (k == 0 ? 0 : cpexr) + challenges[k] * ptable[k][irow];
             } else {

@@ -162,14 +162,14 @@ function showcode(title, info) {
 
 all_top_level_blocks
     : top_level_blocks lopcs EOF
-        { return $1; }
+        { $$ = $1; return $$; }
     ;
 
 top_level_blocks
     : top_level_blocks lopcs top_level_block
-        { $$ = { ...$1, blocks: [ ...$1.blocks, $3 ] } }
+        { $$ = [...$1, $3] } }
     |
-        { $$ = { type: 'top_level_block', blocks: []}; }
+        { $$ = [] }
     ;
 
 lopcs
@@ -346,7 +346,7 @@ arguments
         { $$ = $1 }
 
     | arguments_list ',' DOTS_FILL
-        { $$ = { args: $1.args, varargs: true } }
+        { $$ =  $1; $$.vargs = true }
 
     | DOTS_FILL
         { $$ = { args: [], varargs: false }}
@@ -357,7 +357,7 @@ arguments
 
 arguments_list
     : arguments_list ',' argument
-        { $$ = { args: [ ...$1, $3 ] } }
+        { $$ = $1; $$.args.push($3) }
     | argument
         { $$ = { args: [ $1 ] } }
     ;
@@ -480,7 +480,7 @@ data_object
         { $$ = $1; $$.data[$3] = $5 }
 
     | IDENTIFIER ':' data_value
-        { $$ = {data: {}}; data[$1] = $3 }
+        { $$ = {data: {}}; $$.data[$1] = $3 }
     ;
 
 data_array
