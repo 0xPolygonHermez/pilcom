@@ -23,8 +23,8 @@ namespace PoseidonG:: {
         ++index;
     }
 
-    constant M_CIRC = [17, 15, 41, 16, 2, 28, 13, 13, 39, 18, 34, 20];
-    constant M_DIAG = [8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    constant M_CIRC[12] = [17, 15, 41, 16, 2, 28, 13, 13, 39, 18, 34, 20];
+    constant M_DIAG[12] = [8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
     col x2[12], x4[12], x6[12], x7[12], b[12], c[12];
     for (int i = 0; i < 12; ++i) {

@@ -18,8 +18,8 @@ namespace Arith:: {
     constant N_SEL = 4;
     constant CYCLE = CHUNKS * 2;
     constant N_EQUATIONS = 7;
-    constant EQ_CARRY = [0, 0, 0, 1, 2, 0, 1];
-    constant EQ_SEL = [0, 1, 2, 3, 3, 4, 4];
+    constant EQ_CARRY[7] = [0, 0, 0, 1, 2, 0, 1];
+    constant EQ_SEL[7] = [0, 1, 2, 3, 3, 4, 4];
 
     col fixed BYTE2_BIT19 = [0..(2**16-1), 0..(2**19-1), 0...];
     col fixed SEL_BYTE2_BIT19 = [0:2**16, 1:2**19, 0...];
@@ -33,9 +33,9 @@ namespace Arith:: {
     col witness carry[N_CARRIES];
     col witness resultEq[N_SEL];
 
-    for (col &resultEq in resultEq) resultEq * (1 - resultEq) === 0;
+//    for (col &resultEq in resultEq) resultEq * (1 - resultEq) === 0;
 
-    for (col &p in [x1,x2,x3,y1,y2,y3,s,...q]) {
+    for (col &p[] in [x1,x2,x3,y1,y2,y3,s,...q]) {
         for (col &p in p) p' * (1 - 'CLK) === p * (1 - 'CLK);
     }
 

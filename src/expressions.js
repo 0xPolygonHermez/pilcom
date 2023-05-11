@@ -5,7 +5,6 @@ module.exports = class Expressions {
         this.Fr = Fr;
         this.expressions = [];
         this.references = references;
-        this.publics = publics;
         this.constants = constants;
         this.parent = parent;
         this.operations = {
@@ -136,7 +135,7 @@ module.exports = class Expressions {
 
             case 'col':
                 {
-                    const [polname, ref, id] = this.resolveReference(e);
+                    const ref = this.resolveReference(e);
                     switch (ref.type) {
                         case 'witness':
                         case 'fixed':
@@ -145,18 +144,18 @@ module.exports = class Expressions {
                         case 'im':
                             {
                                 // intermediate column was an expression
-                                const im = this.get(id);
+/*                                const im = this.get(id);
                                 console.log(e);
                                 console.log([polname, ref, id]);
                                 console.log(['IM', im, id]);
                                 let refexp = this.evaluate(im, mode);
                                 this.reduceExpressionTo1(refexp);
-                                this.update(id, refexp);
+                                this.update(id, refexp); */
                                 e.deg = 1
                                 // e.deg = refexp.deg;
                                 return e;
                             }
-                        case 'var':
+                        case 'int':
                             console.log('REF:');
                             console.log(ref);
                             return {
@@ -167,15 +166,27 @@ module.exports = class Expressions {
                                 first_line: e.first_line
                             }
                             // return this.simplified(ref.value, e);
+                        case 'constant':
+                            return {
+                                simplified: false,
+                                op: "number",
+                                deg: 0,
+                                value: BigInt(ref.value),
+                            }
 
                         default:
+                            console.log(e);
+                            console.log(ref);
                             throw new Error(`Invalid reference type: ${ref.type}`);
                     }
                 }
             case 'public':
                 {
-                    const ref = this.publics.get(e.name);
+                    const ref = this.references.get(e.name);
                     if (ref === null) {
+                        throw new Error(e, `public ${e.name} not defined`);
+                    }
+                    if (ref.type !== 'public') {
                         throw new Error(e, `public ${e.name} not defined`);
                     }
                     e.id = ref.id;
@@ -185,6 +196,7 @@ module.exports = class Expressions {
             case 'var':
                 console.log(e);
                 EXIT_HERE;
+
             default:
                 console.log(e);
                 this.error(e, `invalid operation: '${e.op}'`);
@@ -251,11 +263,9 @@ module.exports = class Expressions {
         return polname + (typeof e.idxExp === 'undefined' ? '':`[${this.e2num(e.idxExp)}]`);
     }
     resolveReference(e) {
-        const polname = this.parent.getFullName(e)
-        const ref = this.references.get(polname);
-        if (ref === null) {
-            throw new Error(`Reference ${polname} not found on .....`);
-        }
+        const names = this.parent.getNames(e)
+        return this.references.getTypedValue(names);
+/*
         let id = ref.id ?? 0;
         if (ref.isArray) {
             const index = this.e2num(e.idxExp);
@@ -264,7 +274,7 @@ module.exports = class Expressions {
             }
             id += index;
         }
-        return [polname, ref, id];
+        return [polname, ref, id];*/
     }
     e2num(expr, s, title = false) {
         const se = this.evaluate(expr);

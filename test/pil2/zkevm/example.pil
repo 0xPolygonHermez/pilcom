@@ -1,7 +1,7 @@
 namespace Main::Example {
 
-challenge stage(2) zeta;
-challenge stage(2) alpha;
+challenge zeta stage(2);
+challenge alpha stage(2);
 
 public myTableNumRows;
 public myTable[2][10]; // 2 columns, 10 rows

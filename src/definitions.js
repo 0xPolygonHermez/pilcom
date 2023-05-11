@@ -16,9 +16,9 @@ module.exports = class Definitions {
         return (name in this.definitions);
     }
 
-    define(name, value) {
+    define(name, value, msg) {
         if (this.isDefined(name)) {
-            throw new Error(`${name} already defined on ....`);
+            throw new Error(msg ?? `${name} already defined on ....`);
         }
         this.definitions[name] = value;
     }
