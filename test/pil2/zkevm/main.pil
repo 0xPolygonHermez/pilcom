@@ -1,8 +1,8 @@
-// subproof Main(2**23, 2**26, 2**28);
+// subair Main(2**23, 2**26, 2**28);
 
 include "std.pil"
 // include "global.pil";
-include "subproofs.pil"
+include "subairs.pil"
 include "rom.pil"
 include "mem_align.pil"
 include "arith.pil"
@@ -233,37 +233,37 @@ namespace Main:: {
 
     // Arithmetic --------------------------------------------------------------
 
-    subproof::expr aR[6][8];
+    subair::expr aR[6][8];
     int iReg = 0;
-    for (subproof::col &c in Arith::[ax1, ay1, ax2, ay2, ax3, ay3]) {
+    for (subair::col &c in Arith::[ax1, ay1, ax2, ay2, ax3, ay3]) {
         for (i = 0; i < 8; ++i) {
             aR[iReg][i] = c[i*2] + c[i*2+1] * 2**16;
         }
         ++iReg;
     }
 
-    subproof_permutation_check(
+    subair_permutation_check(
         arithEq[0],
         [ 1, 0, 0, 0, 0, ...A, ...B, ...C, ...D, ...op],
         Arith::resultEq[0],
         [...Arith::selEq, ...aR[0], ...aR[1], ...aR[2], ...aR[3], ...aR[5]]
     );
 
-    subproof_permutation_check(
+    subair_permutation_check(
         arithEq[1],
         [ 0, 1, 0, 1, 0, ...A, ...B, ...C, ...D, ...E, ...op],
         Arith::resultEq[1],
         [...Arith::selEq, ...aR[0], ...aR[1], ...aR[2], ...aR[3], ...aR[4], ...aR[5]]
     );
 
-    subproof_permutation_check(
+    subair_permutation_check(
         arithEq[2],
         [ 0, 0, 1, 1, 0, ...A, ...B, ...A, ...B, ...E, ...op],
         Arith::resultEq[2],
         [...Arith::selEq, ...aR[0], ...aR[1], ...aR[2], ...aR[3], ...aR[4], ...aR[5]]
     );
 
-    subproof_permutation_check(
+    subair_permutation_check(
         arithEq[3],
         [ 0, 0, 0, 0, 1, ...A, ...B, ...C, ...D, ...E, ...op],
         Arith::resultEq[3],
@@ -274,7 +274,7 @@ namespace Main:: {
 
     // Binary ------------------------------------------------------------------
 
-    subproof_permutation_check(
+    subair_permutation_check(
         bin,
         [binOp, ...A, ...B, ...op, carry],
         Binary::resultBinOp,
@@ -285,21 +285,21 @@ namespace Main:: {
 
     // PaddingKK ---------------------------------------------------------------
 
-    subproof_lookup_check(
+    subair_lookup_check(
         hashK + hashK1,
         [ addr, HASHPOS, D[0] * hashK + hashK1, ...op ],
         PaddingKK::crLatch * PaddingKK::r8valid,
         PaddingKK::[ addr, len - rem - crLen + 1, crLen, ...crVC]
     );
 
-    subproof_permutation_check(
+    subair_permutation_check(
         hashKLen,
         [ addr, op[0]],
         PaddingKK::lastHashLen,
         PaddingKK::[ addr, len ]
     );
 
-    subproof_permutation_check(
+    subair_permutation_check(
         hashKDigest,
         [ addr, ...op, incCounter ],
         PaddingKK::[ addr, ...hash, incCounter ]
@@ -309,21 +309,21 @@ namespace Main:: {
 
     // PaddingPG ---------------------------------------------------------------
 
-    subproof_lookup_check(
+    subair_lookup_check(
         hashP + hashP1,
         [ addr, HASHPOS, D[0] * hashP + hashP1, ...op ],
         PaddingPG::crLatch * PaddingPG::crValid,
         PaddingPG::[ addr, len - rem - crLen + 1, crLen, ...crVC ]
     );
 
-    subproof_permutation_check(
+    subair_permutation_check(
         hashPLen,
         [ addr, op[0] ],
         PaddingPG::lastHashLen,
         PaddingPG::[ addr, len ]
     );
 
-    subproof_permutation_check(
+    subair_permutation_check(
         hashPDigest,
         [addr, op[0] + 2**32 * op[1], op[2] + 2**32 * op[3], op[4] + 2**32 * op[5], op[6] + 2**32 * op[7], incCounter],
         PaddingPG::lastHashDigest,
@@ -335,7 +335,7 @@ namespace Main:: {
 
     // Mem ---------------------------------------------------------------------
 
-    subproof_permutation_check(
+    subair_permutation_check(
         mOp,
         [ addr, STEP, mWR, ...op],
         Mem::mOp,
@@ -344,7 +344,7 @@ namespace Main:: {
 
     // Storage -----------------------------------------------------------------
 
-    subproof_permutation_check(
+    subair_permutation_check(
         sRD + sWR,
             [ 1, 0, 0,
             ...C,
@@ -357,7 +357,7 @@ namespace Main:: {
             ...hash]
     );
 
-    subproof_permutation_check(
+    subair_permutation_check(
         sRD + sWR,
             [ 0, 1, 0,
             A[0], A[1], A[2], A[3], A[4], 0, B[0], B[1],
@@ -370,7 +370,7 @@ namespace Main:: {
             0, 0, 0, 0, 0, 0, 0, 0, 0]
     );
 
-    subproof_permutation_check(
+    subair_permutation_check(
         sRD,
             [ SR[0] + 2**32 * SR[1], SR[2] + 2**32 * SR[3], SR[4] + 2**32 * SR[5], SR[6] + 2**32 * SR[7],
             ...sKey,
@@ -381,7 +381,7 @@ namespace Main:: {
             ...valueLow, ...valueHigh, incCounter + 2 ]
     );
 
-    subproof_permutation_check(
+    subair_permutation_check(
         sWR,
             [ SR[0] + 2**32*SR[1], SR[2] + 2**32*SR[3], SR[4] + 2**32*SR[5], SR[6] + 2**32*SR[7],
             ...sKey,
@@ -396,21 +396,21 @@ namespace Main:: {
 
     // MemAlign Plookpups ------------------------------------------------------
 
-    subproof_permutation_check(
+    subair_permutation_check(
         memAlignRD,
         [ 0, 0, ...A, ...B, ...op, C[0]],
         MemAlign::resultRd,
         MemAlign::[ wr256, wr8, ...m[0], ...m[1], ...v, offset]                    // IMPROVEMENT: [......m] = [...m[0],...m[1]] alternatives [...m[0..1]]
     );
 
-    subproof_permutation_check(
+    subair_permutation_check(
         memAlignWR,
         [ 1, 0, ...A, ...B, ...op, C[0], ...D, ...E],
         MemAlign::resultWr256,
         MemAlign::[ wr256, wr8, ...m[0], ...m[1], ...v, offset, ...w[0], ...w[1]]
     );
 
-    subproof_permutation_check(
+    subair_permutation_check(
         memAlignWR8,
         [ 0, 1, ...A, ...op, C[0], ...D],
         MemAlign::resultWr8,

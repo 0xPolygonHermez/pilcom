@@ -48,7 +48,7 @@ function match (col sel, ...) : expr {
     }
 
 
-function subproof_permutation_check (expr selF[], expr colsF[][], expr selT[], expr colsT[][]) {
+function subair_permutation_check (expr selF[], expr colsF[][], expr selT[], expr colsT[][]) {
 
 }
 

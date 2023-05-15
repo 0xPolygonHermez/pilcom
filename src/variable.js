@@ -45,7 +45,7 @@ module.exports = class Variable {
         return offset;
     }
     calculateOffsets(lengths) {
-        this.dim = (lengths === null || typeof lengths === 'undefined') ? 0:lengths.lenght;
+        this.dim = (lengths === null || typeof lengths === 'undefined') ? 0:lengths.length;
         let offsets = [1];
         let size = 1;
         for (let idim = this.dim - 1; idim > 0; --idim) {

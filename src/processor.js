@@ -5,14 +5,20 @@ const References = require("./references.js");
 const Indexable = require("./indexable.js");
 const Ids = require("./ids.js");
 const Constraints = require("./constraints.js");
-const Subproofs = require("./subproofs.js");
+const Subairs = require("./subairs.js");
 const Variables = require("./variables.js");
 const Sequence = require("./sequence.js");
 const List = require("./list.js");
+const Assign = require("./assign.js");
+
+class BreakCmd {};
+class ContinueCmd {};
+
 module.exports = class Processor {
     constructor (Fr, parent, references, expressions) {
         this.Fr = Fr;
-        this.references = new References(Fr);
+        this.scope = new Scope(this.Fr);
+        this.references = new References(Fr, this.scope);
 
         this.variables = new Variables(Fr, this.references, this.expressions);
         this.references.register('var', this.variables);
@@ -35,28 +41,25 @@ module.exports = class Processor {
         this.imCols = new Indexable(Fr, 'im');
         this.references.register('im', this.prover);
 
-        this.subproofs = new Subproofs(Fr);
-        this.scope = new Scope(this.Fr, this.references);
+        this.subairs = new Subairs(Fr);
 
         this.globalConstraints = new Constraints(Fr);
         this.constraints = new Constraints(Fr);
         this.expressions = new Expressions(Fr, this, this.references, this.publics, this.constants);
         this.globalExpressions = new Expressions(Fr, this, this.references, this.publics, this.constants);
 
+        this.assign = new Assign(Fr, this, this.references, this.expressions);
+
         this.executeCounter = 0;
         this.executeStatementCounter = 0;
     }
     execute(statements) {
         ++this.executeCounter;
-/*        console.log("==== STATEMENTS (BEGIN) =====")
-        console.log(statements);
-        console.log("====")*/
         const lstatements = Array.isArray(statements) ? statements : [statements];
         console.log(`## DEBUG ## ${this.executeCounter}[${lstatements.length}]`)
         for (const st of lstatements) {
             const result = this.executeStatement(st);
-            // if (result === false) return false;
-            // if (result === true) return true;
+            if (result instanceof BreakCmd || result instanceof ContinueCmd) return result;
         }
     }
     executeStatement(st) {
@@ -91,16 +94,16 @@ module.exports = class Processor {
     execVar(st) {
         const fullname = this.getFullName(st);
         this.scope.define(fullname, {value: st.init ? this.expressions.e2value(st.init):null});
-        return;
     }
     execAssign(st) {
-        let expr = {...st.name};
-        expr.expression = st.value;
-        this.parent.setPol(expr);
+
+        // type: number(int), fe, string, col, challenge, public, prover,
+        // dimensions:
+        this.assign.assign(st.name.name, [], st.value);
+        // this.references.set(st.name.name, [], this.expressions.eval(st.value));
     }
     execBuildInPrintln(s) {
-
-        const sourceRef = this.parent.fileName + ':' + s.first_line;
+//        const sourceRef = this.parent.fileName + ':' + s.first_line;
         let texts = [];
         for (const arg of s.arguments) {
             texts.push(typeof arg === 'string' ? arg : this.expressions.e2value(arg));
@@ -140,17 +143,26 @@ module.exports = class Processor {
             if (res === false) break;
         }
     }
+    execScopeDefinition(s) {
+        this.scope.push();
+        console.log(s);
+        console.log(s.statements);
+        const result = this.execute(s.statements);
+        this.scope.pop();
+        return result;
+    }
     execFor(s) {
         // console.log(s.init);
+        let result;
         this.scope.push();
-        this.execute([s.init]);
-        console.log(s);
+        console.log('INIT');
+        console.log(s.init[0]);
+        this.execute(s.init);
         while (this.expressions.e2value(s.condition)) {
-            this.scope.push();
-            this.execute(s.statements);
-            this.scope.pop();
-            if (res === false) break;
-            // console.log(s.increment);
+            // if only one statement, scope will not create.
+            // if more than one statement, means a scope_definition => scope creation
+            result = this.execute(s.statements);
+            if (result instanceof BreakCmd) break;
             this.execute(s.increment);
         }
         this.scope.pop();
@@ -161,6 +173,7 @@ module.exports = class Processor {
             this.parent.parseStatments(s.statments);
             this.scope.pop();
         }*/
+        return result;
     }
     execForIn(s) {
         if (s.list && s.list.type === 'expression_list') {
@@ -172,7 +185,6 @@ module.exports = class Processor {
         console.log(s.list);
         const list = new List(this, s.list);
         console.log(list.values);
-        TODO_STOP;
     }
     execForInExpression(s) {
         console.log(s);
@@ -199,39 +211,45 @@ module.exports = class Processor {
     }
     getExprNumber(expr, s, title) {
         console.log(expr);
-        const se = this.expressions.simplifyExpression(expr);
+        const se = this.expressions.eval(expr);
         if (se.op !== 'number') {
             this.error(s, title + ' is not constant expression');
         }
         return Number(se.value);
     }
+    resolveExpr(expr, s, title) {
+        console.log(expr);
+        return this.expressions.eval(expr);
+    }
     execNamespace(s) {
-        const subproof = s.subproof ?? false;
+        const subair = s.subair ?? false;
         const namespace = s.namespace;
-        if (subproof !== false && !this.subproofs.isDefined(subproof)) {
-            this.error(s, `subproof ${s.subproof} hasn't been defined`);
+        if (subair !== false && !this.subairs.isDefined(subair)) {
+            this.error(s, `subair ${s.subair} hasn't been defined`);
         }
 
-        // TODO: verify if namespace just was declared in this case subproof must be the same
-        const previous = [this.namespace, this.subproof ];
+        // TODO: verify if namespace just was declared in this case subair must be the same
+        const previous = [this.namespace, this.subair ];
         this.namespace = namespace;
-        this.subproof = subproof;
+        this.subair = subair;
+        this.scope.push();
         this.execute(s.statements);
-        [this.namespace, this.subproof ] = previous;
+        this.scope.pop();
+        [this.namespace, this.subair ] = previous;
     }
-    execSubproofDefinition(s) {
-        console.log(`SUBPROOF_DEFINITION ${s.name}`);
-        const subproof = s.name ?? false;
-        if (subproof === false) {
-            this.error(s, `subproof not defined correctly`);
+    execSubairDefinition(s) {
+        console.log(`subair_DEFINITION ${s.name}`);
+        const subair = s.name ?? false;
+        if (subair === false) {
+            this.error(s, `subair not defined correctly`);
         }
         let rows = [];
         // TO-DO: eval expressions;
-        const subproofInfo = {
+        const subairInfo = {
             sourceRef: this.sourceRef,
             rows
         };
-        this.subproofs.define(subproof, subproofInfo, `subproof ${subproof} has been defined previously on ${subproofInfo.sourceRef}`);
+        this.subairs.define(subair, subairInfo, `subair ${subair} has been defined previously on ${subairInfo.sourceRef}`);
     }
     execWitnessColDeclaration(s) {
         this.colDeclaration(s, 'witness');
@@ -283,9 +301,16 @@ module.exports = class Processor {
         this.expressions.toString(expr);
         const eidx = this.addExpression(expr);
         this.constraints.push({fileName: this.relativeFileName, namespace: this.namespace, line: s.first_line, e: eidx});*/
+
+    }
+    execVariableIncrement(s) {
+        const name = s.name;
+        const value = this.references.get(name, []);
+        console.log(`VAR ${name} = ${value}`);
+        this.references.set(name, [], value + s.pre + s.post);
     }
     execVariableDeclaration(s) {
-        const init = typeof s.init !== 'unsigned';
+        const init = typeof s.init !== 'undefined';
         const count = s.items.length;
         console.log(s);
 
@@ -294,14 +319,17 @@ module.exports = class Processor {
         }
         for (let index = 0; index < count; ++index) {
             const [name, lengths] = this.decodeNameAndLengths(s.items[index]);
-            // const initValue = init ? this.evaluateExpression(s.init[index]) : null;
+            const initValue = init ? this.expressions.e2value(s.init[index]) : null;
             this.references.declare(name, 'var', lengths, { type: s.vtype, sourceRef: this.sourceRef });
+            console.log(['########################',index, init, initValue],typeof s.init);
+            console.log(s.init[index]);
+            if (initValue !== null) this.references.set(name, [], initValue);
         }
     }
     execConstantDefinition(s) {
-        this.references.declare(s.name, 'constant', [], { sourceRef: this.sourceRef });
         if (s.sequence) {
             const lengths = this.decodeLengths(s);
+            this.references.declare(s.name, 'constant', lengths, { sourceRef: this.sourceRef });
             const seq = new Sequence(this, s.sequence);
             // TODO, check sizes before extends
             const values = seq.extend();
@@ -309,6 +337,7 @@ module.exports = class Processor {
                 this.references.set(s.name, [index], values[index]);
             }
         } else {
+            this.references.declare(s.name, 'constant', [], { sourceRef: this.sourceRef });
             const value = this.getExprNumber(s.value, s, `constant ${s.name} definition`);
             this.references.set(s.name, [], value);
         }
@@ -318,11 +347,11 @@ module.exports = class Processor {
     }
     getFullName(e) {
         const _namespace = (((e.namespace ?? 'this') === 'this') ? this.namespace : e.namespace);
-        const _subproof = (((e.subproof ?? 'this') === 'this') ? this.subproof : e.subproof);
+        const _subair = (((e.subair ?? 'this') === 'this') ? this.subair : e.subair);
 
         let name = '';
-        if (_subproof !== '') {
-            name += _subproof + '::';
+        if (_subair !== '') {
+            name += _subair + '::';
         }
         if (_namespace !== '') {
             name = _namespace + '.';

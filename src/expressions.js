@@ -1,4 +1,5 @@
 const util = require('util');
+const Router = require('./router.js');
 module.exports = class Expressions {
 
     constructor (Fr, parent, references, publics, constants) {
@@ -8,26 +9,27 @@ module.exports = class Expressions {
         this.constants = constants;
         this.parent = parent;
         this.operations = {
-            add:  { type: 'arith',   result: 'number', args: 2, handle: (a, b) => a + b,  handleFr: (Fr, a, b) => Fr.add(a, b)},
-            mul:  { type: 'arith',   result: 'number', args: 2, handle: (a, b) => a * b,  handleFr: (Fr, a, b) => Fr.mul(a, b)},
-            sub:  { type: 'arith',   result: 'number', args: 2, handle: (a, b) => a - b,  handleFr: (Fr, a, b) => Fr.sub(a, b)},
-            pow:  { type: 'arith',   result: 'number', args: 2, handle: (a, b) => a ** b, handleFr: (Fr, a, b) => Fr.pow(a, b)},
-            neg:  { type: 'arith',   result: 'number', args: 1, handle: (a) => -a,        handleFr: (Fr, a) => Fr.neg(a, b)},
-            gt:   { type: 'cmp',     result: 'bool',   args: 2, handle: (a, b) => a > b },
-            ge:   { type: 'cmp',     result: 'bool',   args: 2, handle: (a, b) => a >= b},
-            lt:   { type: 'cmp',     result: 'bool',   args: 2, handle: (a, b) => a < b },
-            le:   { type: 'cmp',     result: 'bool',   args: 2, handle: (a, b) => a <= b},
-            eq:   { type: 'cmp',     result: 'bool',   args: 2, handle: (a, b) => a == b},
-            ne:   { type: 'cmp',     result: 'bool',   args: 2, handle: (a, b) => a != b},
-            and:  { type: 'logical', result: 'bool',   args: 2, handle: (a, b) => a && b},
-            or:   { type: 'logical', result: 'bool',   args: 2, handle: (a, b) => a || b},
-            not:  { type: 'logical', result: 'bool',   args: 1, handle: (a) => !a},
-            shl:  { type: 'bit',     result: 'number', args: 2, handle: (a, b) => a << b},
-            shr:  { type: 'bit',     result: 'number', args: 2, handle: (a, b) => a >> b},
-            band: { type: 'bit',     result: 'number', args: 2, handle: (a, b) => a & b },
-            bor:  { type: 'bit',     result: 'number', args: 2, handle: (a, b) => a | b },
-            bxor: { type: 'bit',     result: 'number', args: 2, handle: (a, b) => a ^ b },
+            mul:  { type: 'arith',   args: 2, handle: (a, b) => a * b,  handleFr: (Fr, a, b) => Fr.mul(a, b)},
+            add:  { type: 'arith',   args: 2, handle: (a, b) => a + b,  handleFr: (Fr, a, b) => Fr.add(a, b)},
+            sub:  { type: 'arith',   args: 2, handle: (a, b) => a - b,  handleFr: (Fr, a, b) => Fr.sub(a, b)},
+            pow:  { type: 'arith',   args: 2, handle: (a, b) => a ** b, handleFr: (Fr, a, b) => Fr.pow(a, b)},
+            neg:  { type: 'arith',   args: 1, handle: (a) => -a,        handleFr: (Fr, a) => Fr.neg(a, b)},
+            gt:   { type: 'cmp',     args: 2, handle: (a, b) => a > b },
+            ge:   { type: 'cmp',     args: 2, handle: (a, b) => a >= b},
+            lt:   { type: 'cmp',     args: 2, handle: (a, b) => a < b },
+            le:   { type: 'cmp',     args: 2, handle: (a, b) => a <= b},
+            eq:   { type: 'cmp',     args: 2, handle: (a, b) => a == b},
+            ne:   { type: 'cmp',     args: 2, handle: (a, b) => a != b},
+            and:  { type: 'logical', args: 2, handle: (a, b) => a && b},
+            or:   { type: 'logical', args: 2, handle: (a, b) => a || b},
+            not:  { type: 'logical', args: 1, handle: (a) => !a},
+            shl:  { type: 'bit',     args: 2, handle: (a, b) => a << b},
+            shr:  { type: 'bit',     args: 2, handle: (a, b) => a >> b},
+            band: { type: 'bit',     args: 2, handle: (a, b) => a & b },
+            bor:  { type: 'bit',     args: 2, handle: (a, b) => a | b },
+            bxor: { type: 'bit',     args: 2, handle: (a, b) => a ^ b },
         }
+        this.router = new Router(this, 'op', {defaultPrefix: '_eval', multiParams: true});
     }
     get(id) {
         if (this.isDefined(id)) {
@@ -58,6 +60,7 @@ module.exports = class Expressions {
     insert(e) {
         return this.expressions.push(e) - 1;
     }
+
     reserve(n) {
         const fromId = this.expressions.length;
         for (let times = 0; times < n; ++times) {
@@ -65,6 +68,7 @@ module.exports = class Expressions {
         }
         return fromId;
     }
+/*
     simplify(id) {
         return this.evaluate(this.get(id), {update: true, Fr: this.Fr});
     }
@@ -72,59 +76,73 @@ module.exports = class Expressions {
     simplifyExpression(e) {
         return this.evaluate(e , {update: true, Fr: this.Fr});
     }
-
+*/
     toString(e) {
         console.log(util.inspect(e, false, null, true /* enable colors */))
     }
     // update mode
-    evaluate(e, mode = {}) {
-
-        // if (e.simplified) return e;
-
-        // if (e.op !== 'var') e.simplified = true;
-
-        // if (e.namespace) checkNamespace(e.namespace, ctx);
-        if (e === null) {
-            console.log('MERDA');
-        }
-        console.log(e);
+    eval(e, fr = false) {
         if (e.op in this.operations) {
             const operation = this.operations[e.op];
-            console.log(['EVALUATE-ARGS', operation.args, ...e.values]);
-            const [a,b,reduced] = this.evaluateValues(e, operation.args, mode);
+            const [a,b,reduced] = this.evaluateValues(e, operation.args, fr);
             if (reduced) {
-                const result = {
-                    simplified: true,
-                    op: 'number',
-                    deg:0,
-                    value: mode.fr ? operation.handleFr(mode.fr, a.value, b.value) : operation.handle(a.value, b.value),
-                    first_line: e.first_line
-                };
-                return result;
+                return { op: 'number',
+                         value: fr ? operation.handleFr(fr, a.value, b.value) : operation.handle(a.value, b.value) };
             }
             if (e.op === 'pow') {
                 // TODO: check last Scalar.
                 // return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.exp(Fr.e(a.value), Scalar.e(b.value))), first_line: e.first_line}
                 this.error(e, "Exponentiation can only be applied between constants");
             }
-            if (operation.type !== 'arith') {
-                this.error(e, "Only arithmetic operations could be stored as expression");
-            }
-            /* console.log(e);
-            console.log([valuesCount, reduced]);
-            console.log(a);
-            console.log(b);*/
-            e.deg = (e.op === 'mul') ? a.deg + b.deg : Math.max(a.deg, b.deg);
             return e;
         }
+        return this.router.go([e, fr]);
+    }
+    _evalNumber(e, fr) {
+        return e;
+    }
+    _evalCol(e) {
+        const ref = this.resolveReference(e);
+        console.log(ref);
+        switch (ref.type) {
+            case 'witness':
+            case 'fixed':
+            case 'im':
+                // TODO: review next, prior
+
+
+                    // intermediate column was an expression
+/*                                const im = this.get(id);
+                    console.log(e);
+                    console.log([polname, ref, id]);
+                    console.log(['IM', im, id]);
+                    let refexp = this.evaluate(im, mode);
+                    this.reduceExpressionTo1(refexp);
+                    this.update(id, refexp); */
+                    // e.deg = refexp.deg;
+                    return ref;
+            case 'fe':
+                return {
+                    op: 'number',
+                    value: BigInt(ref.value),
+                }
+            case 'constant':
+            case 'int':
+                return {
+                    op: 'number',
+                    value: BigInt(ref.value),
+                }
+            default:
+                console.log(e);
+                console.log(ref);
+                throw new Error(`Invalid reference type: ${ref.type}`);
+        }
+    }
+/*    __() {
         switch (e.op) {
             case 'number':
                 e.deg = 0;
                 return e;
-/*
-            case 'bool':
-                e.deg = 0;
-                return e;*/
 
             case 'constant':
                 const value = this.constants.get(e.name);
@@ -135,49 +153,6 @@ module.exports = class Expressions {
 
             case 'col':
                 {
-                    const ref = this.resolveReference(e);
-                    switch (ref.type) {
-                        case 'witness':
-                        case 'fixed':
-                            e.deg = 1
-                            return e;
-                        case 'im':
-                            {
-                                // intermediate column was an expression
-/*                                const im = this.get(id);
-                                console.log(e);
-                                console.log([polname, ref, id]);
-                                console.log(['IM', im, id]);
-                                let refexp = this.evaluate(im, mode);
-                                this.reduceExpressionTo1(refexp);
-                                this.update(id, refexp); */
-                                e.deg = 1
-                                // e.deg = refexp.deg;
-                                return e;
-                            }
-                        case 'int':
-                            console.log('REF:');
-                            console.log(ref);
-                            return {
-                                simplified: false,
-                                op: "number",
-                                deg:0,
-                                value: ref.value,
-                                first_line: e.first_line
-                            }
-                            // return this.simplified(ref.value, e);
-                        case 'constant':
-                            return {
-                                simplified: false,
-                                op: "number",
-                                deg: 0,
-                                value: BigInt(ref.value),
-                            }
-
-                        default:
-                            console.log(e);
-                            console.log(ref);
-                            throw new Error(`Invalid reference type: ${ref.type}`);
                     }
                 }
             case 'public':
@@ -202,26 +177,21 @@ module.exports = class Expressions {
                 this.error(e, `invalid operation: '${e.op}'`);
         }
     }
-
-    evaluateValues(e, valuesCount, mode) {
+*/
+    evaluateValues(e, valuesCount, fr) {
         // TODO: check valuesCount
-        const a = this.evaluate(e.values[0], mode);
-        if (mode.update) e.values[0] = a;
-        let simple = (a.op === 'number' || a.op === 'bool');
+        const a = this.eval(e.values[0], fr);
+        let simple = (a.op === 'number');
         if (valuesCount == 1) {
             return [a, a, simple];
         }
-        // console.log('valuesCount');
-        // console.log(valuesCount);
-        // console.log(e.values);
-        const b = this.evaluate(e.values[1], mode);
-        if (mode.update) e.values[1] = b;
-        simple = simple && (b.op === 'number' || b.op === 'bool');
+        const b = this.eval(e.values[1], fr);
+        simple = simple && (b.op === 'number');
 
         return [a, b, simple];
     }
 
-    simplified(value, e, mode) {
+/*    simplified(value, e, mode) {
         return {
                  simplified:true,
                  op: "number",
@@ -229,23 +199,7 @@ module.exports = class Expressions {
                  value: mode.Fr ? mode.Fr.e(value) : BigInt(value),
                  first_line: e.first_line
                }
-    }
-    reduceTo1(id) {
-        this.reduceExpressionTo1(this.get(id));
-    }
-    reduceTo2(id) {
-        this.reduceExpressionTo2(this.get(id));
-    }
-    reduceExpressionTo2(e) {
-        if (e.deg>2) this.error(e, `Degre ${e.deg} too high (ReduceTo2)`);
-    }
-
-    reduceExpressionTo1(e) {
-        if (e.deg <= 1) return;
-        if (e.deg > 2) this.error(e, `Degre ${e.deg} too high (ReduceTo1)`);
-        e.idQ = this.parent.getNewIdQ();
-        e.deg = 1;
-    }
+    }*/
 
     *[Symbol.iterator]() {
         for (let expr of this.expressions) {
@@ -263,7 +217,7 @@ module.exports = class Expressions {
         return polname + (typeof e.idxExp === 'undefined' ? '':`[${this.e2num(e.idxExp)}]`);
     }
     resolveReference(e) {
-        const names = this.parent.getNames(e)
+        const names = this.parent.getNames(e);
         return this.references.getTypedValue(names);
 /*
         let id = ref.id ?? 0;
@@ -277,14 +231,14 @@ module.exports = class Expressions {
         return [polname, ref, id];*/
     }
     e2num(expr, s, title = false) {
-        const se = this.evaluate(expr);
+        const se = this.eval(expr);
         if (se.op !== 'number') {
             this.error(s, title + ' is not constant number expression');
         }
         return BigInt(se.value);
     }
     e2value(expr, s, title = false) {
-        const se = this.evaluate(expr);
+        const se = this.eval(expr);
         if (se.op !== 'number' && se.op !== 'bool') {
             console.log(se);
             EXIT_HERE;

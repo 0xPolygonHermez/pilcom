@@ -8,7 +8,7 @@
 
 // include "std.pil";
 
-// Ssubproof Arith (2**23, 2**26, 2**28);
+// subair Arith (2**23, 2**26, 2**28);
 
 namespace Arith:: {
 
@@ -27,7 +27,7 @@ namespace Arith:: {
     col fixed CLK = [1,0:31]...;
 
     col witness x1[CHUNKS], x2[CHUNKS], x3[CHUNKS];
-    col witness x1[CHUNKS], x2[CHUNKS], x3[CHUNKS];
+    col witness y1[CHUNKS], y2[CHUNKS], y3[CHUNKS];
     col witness s[CHUNKS];
     col witness q[N_Q][CHUNKS];
     col witness carry[N_CARRIES];

@@ -1,0 +1,129 @@
+prover witness mainArith_R;
+prover witness mainBinary_R;
+prover witness mainMemAlign_R;
+prover witness mainMemory_R;
+prover witness mainPaddingKK_R[3]; // paddingKK_hash, paddingKK_digest, paddingKK_len
+prover witness mainPaddingPG_R[3]; // paddingPG_hash, paddingPG_digest, paddingPG_len
+prover witness mainPoseidonG_R;
+prover witness mainStorage_R;
+
+prover witness arith_R;
+challenge arith_C[2];
+
+prover witness binary_R;
+challenge binary_C[2];
+
+prover witness memAlign_R;
+challenge memAlign_C[2];
+
+prover witness memory_R;
+challenge memory_C[2];
+
+prover witness paddingKK_R[3];
+challenge paddingKK_C[3][2];
+
+prover witness paddingPG_R;
+challenge paddingPG_C[2];
+
+prover witness poseidon_R;
+challenge poseidon_C[2];
+
+prover witness storage_R;
+challenge storage_C[2];
+prover witness storagePoseidonG_R;
+
+
+
+subair Main(int N, prover mainArith_R, challenge arith_C[],
+                   prover mainBinary_R, challenge binary_C[],
+                   prover mainPaddingKK_R, challenge paddingKK_C[],
+                   prover mainPaddingPG_R, challenge paddingPG_C[],
+                   prover mainMemory_R, challenge memory_C[],
+                   prover mainPoseidonG_R, challenge poseidonG_C[],
+                   prover mainStorage_R, challenge storage_C[],
+                   prover mainMemAlign_R, challenge memAlign_C[]) {
+    include "main.pil"
+    include "rom.pil"
+}
+
+// include !!! once ???
+
+subair Arith(int N, prover arith_R, challenge arith_C[]) {
+    include "airth.pil"
+}
+
+subair Binary(int N, prover binary_R, challenge binary_C[]) {
+    include "binary.pil"
+}
+
+subair MemAlign(int N, prover memAlign_R, challenge memAlign_C[]) {
+    include "mem_align.pil"
+}
+
+subair Memory(int N, prover memory_R, challenge memory_C[]) {
+    include "memory.pil"
+}
+
+subair PaddingKK(int N, prover paddingKK_R[], challenge paddingKK_C[][]) {
+    include "padding_kk.pil"
+    include "padding_kkbit.pil"
+    include "keccak_f.pil"
+}
+
+subair PaddingPG(int N, prover paddingPG_R[], challenge paddingPG_C[][]) {
+    include "padding_pg.pil"
+}
+
+subair PoseidonG(int N, prover poseidon_R, challenge poseidon_C[]) {
+    include "poseidon.pil"
+}
+
+subair Storage(int N, prover storage_R, challenge storage_C[], prover storagePoseidonG_R, challenge poseidonG_C[]) {
+    include "storage.pil"
+}
+
+
+for (integer rows in [2**23, 2**26, 2**28]) {
+    instance Main(rows, mainArith_R, arith_C, mainBinary_R, binary_C, mainPaddingKK_R, paddingKK_C, mainPaddingPG_R, paddingPG_C,
+                        mainMemory_R, memory_C, mainPoseidonG_R, poseidonG_C, mainStorage_R, storage_C, mainMemAlign_R, memAlign_C);
+}
+
+for (integer rows in [2**23, 2**26]) {
+    instance Binary(rows, binary_R, binary_C);
+}
+
+instance MemAlign(2**23, memAlign_R, memAlign_C);
+
+for (integer rows in [2**23, 2**26]) {
+    instance Memory(rows,memory_R, memory_C);
+}
+
+for (integer rows in [2**23, 2**26]) {
+    instance PaddingKK(rows, poseidonG_R, poseidonG_C);
+}
+
+for (integer rows in [2**23, 2**26]) {
+    instance PaddingPG(rows, poseidonG_R, poseidonG_C);
+}
+
+for (integer rows in [2**23, 2**26]) {
+    instance PoseidonG(rows, poseidonG_R, poseidonG_C);
+}
+
+for (integer rows in [2**23, 2**26]) {
+    instance Storage(rows, storagePoseidonG_R, poseidonG_C, storage_R, storage_C);
+}
+
+
+mainArith_R === arith_R;
+mainBinary_R === binary_R;
+memAlign_R === memAlign_R;
+memory_R === memory_R;
+for (int i = 0; i < 3; ++i ) {
+    paddingKK_R[i] === paddingKK_R[i];
+    paddingPG_R[i] === paddingPG_R[i];
+}
+mainPoseidonG_R * storagePoseidonG_R === poseidonG_R;
+mainStorage_R === storage_R;
+
+mainPoseidonG_R * storagePoseidonG_R === poseidonG_R * poseidonG_R2; ???

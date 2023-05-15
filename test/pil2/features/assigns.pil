@@ -1,0 +1,26 @@
+subair Assigns(2**23);
+
+namespace Assigns:: {
+
+    constant N_MAX = 16;
+    constant PSIX[6] = [2, 3, 5, 7, 11, 13];
+
+    col witness x1[N_MAX];
+    col witness q[3][N_MAX];
+
+    int bc = 4;
+    println(bc);
+
+    int aux = 200;
+    aux = aux + 200;
+    aux = aux + 10;
+    println(aux);
+    aux = aux + PSIX[5];
+    println(aux);
+    aux = PSIX[1];
+    println(aux);
+    println(PSIX[1]);
+    expr e = aux * x1[0];
+    println(e);
+
+}

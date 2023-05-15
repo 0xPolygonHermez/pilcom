@@ -1,15 +1,13 @@
 module.exports = class Scope {
-
-    // pol haven't scope
-
-    constructor (Fr, references) {
+    constructor (Fr) {
         this.Fr = Fr;
-        this.references = references;
-        this.scope = 0;
+        this.deep = 0;
         this.shadows = [{}];
     }
-
-    get(name) {
+    setReferences(references) {
+        this.references = references;
+    }
+/*    get(name) {
         if (this.references.isDefined(name)) {
             return this.references.get(name).value;
         }
@@ -22,16 +20,19 @@ module.exports = class Scope {
 
     define(name, value) {
         const previous = this.isDefined(name) ? this.references.get(name) : false;
-        if (previous !== false && previous.scope == this.scope) {
+        if (previous !== false && previous.scope == this.deep) {
             throw new Error(`${name} already defined on this scope ....`);
         }
-        this.shadows[this.scope][name] = previous;
+        this.shadows[this.deep][name] = previous;
         // shadowing
         console.log(`DEFINE VAR ${name} ${value.value}`);
-        this.references.set(name, { type: 'var', value: value.value, scope: this.scope });
+        this.references.set(name, { type: 'var', value: value.value, scope: this.deep });
+    }*/
+    declare (name, ref) {
+        this.shadows[this.deep][name] = ref;
+        return this.deep;
     }
-
-    set(name, value) {
+/*    __set(name, value) {
         if (!this.isDefined(name)) {
             throw new Error(`${name} not defined on this scope ....`);
         }
@@ -39,12 +40,12 @@ module.exports = class Scope {
         ref.value = value;
         console.log(`SET VAR ${name} ${value}`);
         this.references.set(name, ref);
-    }
-    pop() {
-        if (this.scope < 1) {
+    }*/
+    pop () {
+        if (this.deep < 1) {
             throw new Error('Out of scope');
         }
-        const shadows = this.shadows[this.scope];
+        const shadows = this.shadows[this.deep];
         for (const name in shadows) {
             const shadow = shadows[name];
             if (shadow === false) {
@@ -55,12 +56,14 @@ module.exports = class Scope {
                 this.references.set(name, shadows[name]);
             }
         }
-        this.shadows[this.scope] = {};
-        --this.scope;
+        this.shadows[this.deep] = {};
+        --this.deep;
+        console.log(`POP ${this.deep}`)
     }
     push() {
-        ++this.scope;
-        this.shadows[this.scope] = {};
+        ++this.deep;
+        console.log(`PUSH ${this.deep}`)
+        this.shadows[this.deep] = {};
     }
     *[Symbol.iterator]() {
         for (let index in this.references) {

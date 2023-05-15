@@ -33,8 +33,8 @@ module.exports = class Multiarray {
             throw Error(`Internal error on variable index access`);
         }
         const dim = this.offsets.length - dims;
-        return {offset, dim, arrayType: Array(dim).fill('[]').join(''),
-                lengths: dim ? this.lengths.slice(-dim):[]};
+        // arrayType: Array(dim).fill('[]').join(''),
+        return {offset, dim, lengths: dim ? this.lengths.slice(-dim):[]};
     }
     initOffsets(lengths) {
         console.log(['lengths', lengths]);

@@ -77,8 +77,8 @@ var parser = {trace: function trace () {
         Jison.print.apply(null, arguments);
     },
 yy: {},
-symbols_: {"error":2,"all_top_level_blocks":3,"top_level_blocks":4,"lopcs":5,"EOF":6,"top_level_block":7,"CS":8,"namespace_definition":9,"subproof_definition":10,"function_definition":11,"include_directive":12,"col_declaration":13,"GLOBAL":14,"challenge_declaration":15,"public_declaration":16,"prover_declaration":17,"constant_definition":18,"NAMESPACE":19,"IDENTIFIER":20,"::":21,"{":22,"statement_block":23,"}":24,"(":25,"expression":26,")":27,"delimited_statement":28,"non_delimited_statement":29,"statement_no_closed":30,"statement_closed":31,"lcs":32,"statement_list":33,"statement_list_closed":34,"when_boundary":35,"FIRST":36,"LAST":37,"FRAME":38,"codeblock_closed":39,"WHEN":40,"when_body":41,"METADATA":42,"data_object":43,"FUNCTION":44,"arguments":45,":":46,"[":47,"return_type_list":48,"]":49,"return_type":50,"arguments_list":51,",":52,"DOTS_FILL":53,"argument":54,"basic_type":55,"REFERENCE":56,"type_array":57,"INT":58,"FE":59,"EXPR":60,"COL":61,"CHALLENGE":62,"T_STRING":63,"PROVER":64,"PUBLIC":65,"codeblock_no_closed":66,"===":67,"data_value":68,"data_array":69,"constraint":70,"function_call":71,"name_optional_index":72,"multiple_expression_list":73,"variable_declaration":74,"variable_assignment":75,"variable_multiple_assignment":76,"return_statement":77,"DO":78,"WHILE":79,"CONTINUE":80,"BREAK":81,"list_subproof":82,"in_expression":83,"expression_list":84,"FOR":85,"for_init":86,"variable_assignment_list":87,"IN":88,"SWITCH":89,"case_body":90,"IF":91,"ELSE":92,"case_list":93,"DEFAULT":94,"case_value":95,"..":96,"CASE":97,"for_assignation":98,"INC":99,"pol_id":100,"DEC":101,"variable_declaration_list":102,"SUBPROOF":103,"variable_declaration_item":104,"=":105,"variable_declaration_array":106,"variable_declaration_ident":107,"RETURN":108,"assign_operation":109,"+=":110,"-=":111,"*=":112,"left_variable_multiple_assignment_list":113,"left_variable_multiple_assignment":114,"sequence_definition":115,"INCLUDE":116,"flexible_string":117,"stage_definition":118,"STAGE":119,"NUMBER":120,"STRING":121,"TEMPLATE_STRING":122,"sequence_list":123,"sequence":124,"DOTS_ARITH_SEQ":125,"DOTS_GEOM_SEQ":126,"DOTS_RANGE":127,"col_declaration_array":128,"col_declaration_item":129,"col_declaration_ident":130,"col_declaration_list":131,"WITNESS":132,"FIXED":133,"CONSTANT":134,"EQ":135,"NE":136,"LT":137,"GT":138,"LE":139,"GE":140,"IS":141,"AND":142,"?":143,"B_AND":144,"B_OR":145,"B_XOR":146,"OR":147,"SHL":148,"SHR":149,"!":150,"+":151,"-":152,"*":153,"%":154,"/":155,"\\\\":156,"POW":157,"POSITIONAL_PARAM":158,"casting":159,"'":160,"name_reference":161,"array_index":162,".":163,"$accept":0,"$end":1},
-terminals_: {2:"error",6:"EOF",8:"CS",14:"GLOBAL",19:"NAMESPACE",20:"IDENTIFIER",21:"::",22:"{",24:"}",25:"(",27:")",36:"FIRST",37:"LAST",38:"FRAME",40:"WHEN",42:"METADATA",44:"FUNCTION",46:":",47:"[",49:"]",52:",",53:"DOTS_FILL",56:"REFERENCE",58:"INT",59:"FE",60:"EXPR",61:"COL",62:"CHALLENGE",63:"T_STRING",64:"PROVER",65:"PUBLIC",67:"===",78:"DO",79:"WHILE",80:"CONTINUE",81:"BREAK",85:"FOR",88:"IN",89:"SWITCH",91:"IF",92:"ELSE",94:"DEFAULT",96:"..",97:"CASE",99:"INC",101:"DEC",103:"SUBPROOF",105:"=",108:"RETURN",110:"+=",111:"-=",112:"*=",116:"INCLUDE",119:"STAGE",120:"NUMBER",121:"STRING",122:"TEMPLATE_STRING",125:"DOTS_ARITH_SEQ",126:"DOTS_GEOM_SEQ",127:"DOTS_RANGE",132:"WITNESS",133:"FIXED",134:"CONSTANT",135:"EQ",136:"NE",137:"LT",138:"GT",139:"LE",140:"GE",141:"IS",142:"AND",143:"?",144:"B_AND",145:"B_OR",146:"B_XOR",147:"OR",148:"SHL",149:"SHR",150:"!",151:"+",152:"-",153:"*",154:"%",155:"/",156:"\\\\",157:"POW",158:"POSITIONAL_PARAM",160:"'",163:"."},
+symbols_: {"error":2,"all_top_level_blocks":3,"top_level_blocks":4,"lopcs":5,"EOF":6,"top_level_block":7,"CS":8,"namespace_definition":9,"subair_definition":10,"function_definition":11,"include_directive":12,"col_declaration":13,"GLOBAL":14,"challenge_declaration":15,"public_declaration":16,"prover_declaration":17,"constant_definition":18,"NAMESPACE":19,"IDENTIFIER":20,"::":21,"{":22,"statement_block":23,"}":24,"(":25,"expression":26,")":27,"delimited_statement":28,"non_delimited_statement":29,"statement_no_closed":30,"statement_closed":31,"lcs":32,"statement_list":33,"statement_list_closed":34,"when_boundary":35,"FIRST":36,"LAST":37,"FRAME":38,"codeblock_closed":39,"WHEN":40,"when_body":41,"METADATA":42,"data_object":43,"FUNCTION":44,"arguments":45,":":46,"[":47,"return_type_list":48,"]":49,"return_type":50,"arguments_list":51,",":52,"DOTS_FILL":53,"argument":54,"basic_type":55,"REFERENCE":56,"type_array":57,"INT":58,"FE":59,"EXPR":60,"COL":61,"CHALLENGE":62,"T_STRING":63,"PROVER":64,"PUBLIC":65,"codeblock_no_closed":66,"===":67,"data_value":68,"data_array":69,"constraint":70,"function_call":71,"name_optional_index":72,"multiple_expression_list":73,"variable_declaration":74,"variable_assignment":75,"variable_multiple_assignment":76,"return_statement":77,"DO":78,"WHILE":79,"CONTINUE":80,"BREAK":81,"list_subair":82,"in_expression":83,"expression_list":84,"FOR":85,"for_init":86,"variable_assignment_list":87,"IN":88,"SWITCH":89,"case_body":90,"IF":91,"ELSE":92,"case_list":93,"DEFAULT":94,"case_value":95,"..":96,"CASE":97,"for_assignation":98,"INC":99,"pol_id":100,"DEC":101,"variable_declaration_list":102,"SUBAIR":103,"variable_declaration_item":104,"=":105,"variable_declaration_array":106,"variable_declaration_ident":107,"RETURN":108,"assign_operation":109,"+=":110,"-=":111,"*=":112,"left_variable_multiple_assignment_list":113,"left_variable_multiple_assignment":114,"sequence_definition":115,"INCLUDE":116,"flexible_string":117,"stage_definition":118,"STAGE":119,"NUMBER":120,"STRING":121,"TEMPLATE_STRING":122,"sequence_list":123,"sequence":124,"DOTS_ARITH_SEQ":125,"DOTS_GEOM_SEQ":126,"DOTS_RANGE":127,"col_declaration_array":128,"col_declaration_item":129,"col_declaration_ident":130,"col_declaration_list":131,"WITNESS":132,"FIXED":133,"CONSTANT":134,"EQ":135,"NE":136,"LT":137,"GT":138,"LE":139,"GE":140,"IS":141,"AND":142,"?":143,"B_AND":144,"B_OR":145,"B_XOR":146,"OR":147,"SHL":148,"SHR":149,"!":150,"+":151,"-":152,"*":153,"%":154,"/":155,"\\\\":156,"POW":157,"POSITIONAL_PARAM":158,"casting":159,"'":160,"name_reference":161,"array_index":162,".":163,"$accept":0,"$end":1},
+terminals_: {2:"error",6:"EOF",8:"CS",14:"GLOBAL",19:"NAMESPACE",20:"IDENTIFIER",21:"::",22:"{",24:"}",25:"(",27:")",36:"FIRST",37:"LAST",38:"FRAME",40:"WHEN",42:"METADATA",44:"FUNCTION",46:":",47:"[",49:"]",52:",",53:"DOTS_FILL",56:"REFERENCE",58:"INT",59:"FE",60:"EXPR",61:"COL",62:"CHALLENGE",63:"T_STRING",64:"PROVER",65:"PUBLIC",67:"===",78:"DO",79:"WHILE",80:"CONTINUE",81:"BREAK",85:"FOR",88:"IN",89:"SWITCH",91:"IF",92:"ELSE",94:"DEFAULT",96:"..",97:"CASE",99:"INC",101:"DEC",103:"SUBAIR",105:"=",108:"RETURN",110:"+=",111:"-=",112:"*=",116:"INCLUDE",119:"STAGE",120:"NUMBER",121:"STRING",122:"TEMPLATE_STRING",125:"DOTS_ARITH_SEQ",126:"DOTS_GEOM_SEQ",127:"DOTS_RANGE",132:"WITNESS",133:"FIXED",134:"CONSTANT",135:"EQ",136:"NE",137:"LT",138:"GT",139:"LE",140:"GE",141:"IS",142:"AND",143:"?",144:"B_AND",145:"B_OR",146:"B_XOR",147:"OR",148:"SHL",149:"SHR",150:"!",151:"+",152:"-",153:"*",154:"%",155:"/",156:"\\\\",157:"POW",158:"POSITIONAL_PARAM",160:"'",163:"."},
 productions_: [0,[3,3],[4,3],[4,0],[5,2],[5,0],[7,1],[7,1],[7,1],[7,1],[7,1],[7,2],[7,1],[7,2],[7,1],[7,1],[7,1],[9,7],[9,6],[9,8],[28,1],[28,1],[29,1],[29,2],[29,1],[29,2],[29,3],[33,1],[33,2],[33,1],[34,2],[34,3],[34,3],[34,1],[34,2],[34,2],[34,1],[23,1],[23,0],[32,2],[32,1],[35,0],[35,1],[35,1],[35,1],[31,1],[31,6],[31,4],[31,1],[11,12],[11,10],[11,8],[45,1],[45,3],[45,1],[45,0],[51,3],[51,1],[54,2],[54,2],[54,3],[54,3],[55,1],[55,1],[55,1],[55,1],[55,1],[55,1],[55,1],[55,1],[55,1],[48,3],[48,1],[57,3],[57,2],[50,1],[50,2],[30,1],[30,1],[30,2],[30,1],[30,2],[30,1],[30,3],[30,1],[30,1],[30,1],[30,1],[68,1],[68,3],[68,3],[43,5],[43,3],[69,3],[69,1],[41,3],[41,2],[41,1],[71,4],[66,1],[66,1],[66,1],[66,1],[66,6],[66,1],[66,1],[82,0],[82,2],[83,1],[83,4],[39,9],[39,7],[39,5],[39,5],[39,5],[39,7],[90,3],[90,5],[95,3],[95,5],[95,1],[95,3],[93,5],[93,4],[98,1],[98,2],[98,2],[98,2],[98,2],[86,1],[86,1],[86,1],[86,1],[74,2],[74,2],[74,2],[74,4],[74,2],[74,2],[74,4],[74,4],[74,4],[74,6],[74,4],[74,4],[74,8],[74,8],[74,8],[74,10],[74,8],[106,2],[106,3],[106,3],[106,4],[104,1],[104,2],[107,1],[107,1],[102,3],[102,1],[77,1],[77,2],[77,4],[109,1],[109,1],[109,1],[109,1],[113,3],[113,2],[113,1],[114,3],[114,5],[76,3],[76,5],[75,3],[75,3],[87,3],[87,1],[12,2],[118,4],[118,0],[70,3],[117,1],[117,1],[115,3],[115,4],[123,3],[123,5],[123,5],[123,3],[123,3],[123,1],[124,3],[124,3],[124,2],[124,3],[124,1],[73,3],[73,6],[73,4],[73,1],[84,4],[84,3],[84,2],[84,1],[128,2],[128,3],[128,3],[128,4],[129,1],[129,2],[130,1],[130,1],[130,1],[131,3],[131,1],[13,3],[13,5],[13,4],[13,4],[13,6],[13,6],[13,5],[13,7],[13,6],[13,6],[13,8],[13,8],[15,3],[16,4],[16,2],[17,4],[17,2],[10,5],[18,4],[18,7],[26,3],[26,3],[26,3],[26,3],[26,3],[26,3],[26,3],[26,3],[26,3],[26,5],[26,3],[26,3],[26,3],[26,3],[26,3],[26,3],[26,2],[26,3],[26,3],[26,3],[26,3],[26,3],[26,3],[26,3],[26,2],[26,2],[26,2],[26,1],[26,2],[26,2],[26,2],[26,2],[26,1],[26,1],[26,3],[26,1],[26,1],[26,1],[159,4],[159,4],[159,4],[159,4],[159,4],[159,5],[159,5],[159,5],[159,5],[159,5],[100,2],[100,3],[100,5],[100,2],[100,3],[100,5],[100,1],[72,1],[72,2],[162,4],[162,3],[161,3],[161,5],[161,1],[161,3],[161,2]],
 performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* action[1] */, $$ /* vstack */, _$ /* lstack */) {
 /* this == yyval */
@@ -102,17 +102,17 @@ case 11: case 13: case 79: case 81: case 89: case 96: case 116: case 270:
 break;
 case 17:
 
-            this.$ = {type: 'namespace', namespace: $$[$0-3], monolithic: false, subproof: $$[$0-5], statements: $$[$0-1].statements };
+            this.$ = {type: 'namespace', namespace: $$[$0-3], monolithic: false, subair: $$[$0-5], statements: $$[$0-1].statements };
         
 break;
 case 18:
 
-            this.$ = {type: 'namespace', namespace: '', monolithic: false, subproof: $$[$0-4], statements: $$[$0-1].statements }
+            this.$ = {type: 'namespace', namespace: '', monolithic: false, subair: $$[$0-4], statements: $$[$0-1].statements }
         
 break;
 case 19:
 
-            this.$ = {type: 'namespace', namespace: $$[$0-6], monolithic: true, subproof: false, exp: $$[$0-4], statements: $$[$0-1].statements }
+            this.$ = {type: 'namespace', namespace: $$[$0-6], monolithic: true, subair: false, exp: $$[$0-4], statements: $$[$0-1].statements }
         
 break;
 case 20: case 21: case 22: case 37: case 129:
@@ -122,7 +122,7 @@ case 23: case 25:
  this.$ = $$[$0-1]; 
 break;
 case 26:
- this.$ = { type: 'scope_definition', block: $$[$0-1] }; 
+ this.$ = { type: 'scope_definition', ...$$[$0-1] }; 
 break;
 case 28:
  this.$ = $$[$0-1]; this.$.statements.push($$[$0]); 
@@ -133,7 +133,7 @@ break;
 case 31: case 32:
  this.$ = { ...$$[$0-2], statements: [ ...$$[$0-2].statements, $$[$0-1] ] } 
 break;
-case 33:
+case 33: case 177:
  this.$ = { statements: [$$[$0]] } 
 break;
 case 34: case 35:
@@ -278,13 +278,13 @@ case 105:
  this.$ = { type: 'break' } 
 break;
 case 107:
- this.$ = { subproof: $$[$0-1] } 
+ this.$ = { subair: $$[$0-1] } 
 break;
 case 109:
  this.$ = { ...$$[$0-3], ...$$[$0-1] } 
 break;
 case 110:
- this.$ = { type: 'for', init: $$[$0-6], condition: $$[$0-4], increment: $$[$0-2], statements: $$[$0] } 
+ this.$ = { type: 'for', init: $$[$0-6], condition: $$[$0-4], increment: $$[$0-2].statements, statements: $$[$0] } 
 break;
 case 111:
  this.$ = { type: 'for_in', init: $$[$0-4], list: $$[$0-2], statements: $$[$0] } 
@@ -320,16 +320,16 @@ case 123:
  this.$ = {cases: [{ condition: $$[$0-2], statements: $$[$0] }]} 
 break;
 case 125:
- this.$ = { ...$$[$0], delta: 'preinc' } 
+ this.$ = { ...$$[$0], type: 'variable_increment', pre: 1n, post: 0n } 
 break;
 case 126:
- this.$ = { ...$$[$0], delta: 'predec' } 
+ this.$ = { ...$$[$0], type: 'variable_increment', pre: -1n, post: 0n } 
 break;
 case 127:
- this.$ = { ...$$[$0-1], delta: 'postinc' } 
+ this.$ = { ...$$[$0-1], type: 'variable_increment', pre: 0n, post: 1n } 
 break;
 case 128:
- this.$ = { ...$$[$0-1], delta: 'postdec' } 
+ this.$ = { ...$$[$0-1], type: 'variable_increment', pre: 0n, post: -1n } 
 break;
 case 133:
  this.$ = { type: 'variable_declaration', vtype: 'int', items: $$[$0].items } 
@@ -398,10 +398,10 @@ case 157: case 212:
  this.$ = { name: $$[$0], reference: true } 
 break;
 case 158:
- this.$ = $$[$0-2]; this.$.items.push($$[$0]); 
+ this.$ = $$[$0-2]; this.$.items.push({...$$[$0], _d_:1}); 
 break;
 case 159:
- this.$.items = [$$[$0]]; 
+ this.$ = {items: [{...$$[$0], _d_:2}]} 
 break;
 case 160:
  this.$ = { type: 'return', value: null } 
@@ -452,10 +452,7 @@ case 175:
  this.$ = { type: 'assign', name: $$[$0-2], value: $$[$0] } 
 break;
 case 176:
- this.$ = $$[$0-2]; this.$.assigns.push($$[$0]); 
-break;
-case 177:
- this.$ = { assigns: [$$[$0]] } 
+ this.$ = $$[$0-2]; this.$.statements.push($$[$0]); 
 break;
 case 178:
  this.$ = { type: 'include', file: $$[$0] } 
@@ -509,10 +506,10 @@ case 195:
  this.$ = {type: 'seq_list', values: $$[$0-1]} 
 break;
 case 198:
- this.$ = $$[$0-5]; this.$.values.push({ type: 'expression_list', subproof: $$[$0-2], values: $$[$0-1].values }) 
+ this.$ = $$[$0-5]; this.$.values.push({ type: 'expression_list', subair: $$[$0-2], values: $$[$0-1].values }) 
 break;
 case 199:
- this.$ = { type: 'expression_list', subproof: $$[$0-3], values: $$[$0-1].values } 
+ this.$ = { type: 'expression_list', subair: $$[$0-3], values: $$[$0-1].values } 
 break;
 case 200:
  this.$ = { type: 'expression_list', values: [$$[$0]] } 
@@ -602,7 +599,7 @@ case 232:
  this.$ = { type: 'prover_declaration', items: $$[$0].items } 
 break;
 case 233:
- this.$ = { type: 'subproof_definition', name: $$[$0-3], rows: $$[$0-1] } 
+ this.$ = { type: 'subair_definition', name: $$[$0-3], rows: $$[$0-1] } 
 break;
 case 234:
  this.$ = { type: 'constant_definition', name: $$[$0-2], value: $$[$0] } 
@@ -734,19 +731,19 @@ case 294:
  this.$ = { dim: 1, indexes: [$$[$0-1]]} 
 break;
 case 295:
- this.$ = { type: 'expr', op: 'pol', next: false, subproof: 'this', namespace: $$[$0-2], name: $$[$0] } 
+ this.$ = { type: 'expr', op: 'pol', next: false, subair: 'this', namespace: $$[$0-2], name: $$[$0] } 
 break;
 case 296:
- this.$ = { type: 'expr', op: 'pol', next: false, subproof: $$[$0-4], namespace: $$[$0-2], name: $$[$0] } 
+ this.$ = { type: 'expr', op: 'pol', next: false, subair: $$[$0-4], namespace: $$[$0-2], name: $$[$0] } 
 break;
 case 297:
- this.$ = { type: 'expr', op: 'col', next: false, subproof: 'this', namespace: 'this', name: $$[$0] } 
+ this.$ = { type: 'expr', op: 'col', next: false, subair: 'this', namespace: 'this', name: $$[$0] } 
 break;
 case 298:
- this.$ = { type: 'expr', op: 'col', next: false, subproof: $$[$0-2], namespace: '', name: $$[$0] } 
+ this.$ = { type: 'expr', op: 'col', next: false, subair: $$[$0-2], namespace: '', name: $$[$0] } 
 break;
 case 299:
- this.$ = { type: 'expr', op: 'col', next: false, subproof: 'this', namespace: '', name: $$[$0] } 
+ this.$ = { type: 'expr', op: 'col', next: false, subair: 'this', namespace: '', name: $$[$0] } 
 break;
 }
 },
@@ -1526,7 +1523,7 @@ case 93: console.log("INVALID: " + yy_.yytext); return 'INVALID'
 break;
 }
 },
-rules: [/^(?:\s+)/,/^(?:\/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/)/,/^(?:\/\/.*)/,/^(?:col\b)/,/^(?:witness\b)/,/^(?:fixed\b)/,/^(?:namespace\b)/,/^(?:include\b)/,/^(?:in\b)/,/^(?:is\b)/,/^(?:public\b)/,/^(?:global\b)/,/^(?:constant\b)/,/^(?:prover\b)/,/^(?:int\b)/,/^(?:fe\b)/,/^(?:expr\b)/,/^(?:string\b)/,/^(?:challenge\b)/,/^(?:for\b)/,/^(?:while\b)/,/^(?:do\b)/,/^(?:break\b)/,/^(?:continue\b)/,/^(?:if\b)/,/^(?:elseif\b)/,/^(?:else\b)/,/^(?:switch\b)/,/^(?:case\b)/,/^(?:default\b)/,/^(?:when\b)/,/^(?:subproof\b)/,/^(?:aggregable\b)/,/^(?:stage\b)/,/^(?:function\b)/,/^(?:return\b)/,/^(?:first\b)/,/^(?:last\b)/,/^(?:frame\b)/,/^(?:transition\b)/,/^(?:\.\.\+\.\.)/,/^(?:\.\.\*\.\.)/,/^(?:\.\.\.)/,/^(?:\.\.)/,/^(?:(0x[0-9A-Fa-f][0-9A-Fa-f_]*)|([0-9][0-9_]*))/,/^(?:"[^"]+")/,/^(?:`[^`]+`)/,/^(?:[a-zA-Z_][a-zA-Z$_0-9]*)/,/^(?:&[a-zA-Z_][a-zA-Z$_0-9]*)/,/^(?:@[a-zA-Z_][a-zA-Z$_0-9]*)/,/^(?:\$[0-9][0-9]*)/,/^(?:\*\*)/,/^(?:\+\+)/,/^(?:--)/,/^(?:\+=)/,/^(?:-=)/,/^(?:\*=)/,/^(?:\+)/,/^(?:-)/,/^(?:\*)/,/^(?:')/,/^(?:\?)/,/^(?:%)/,/^(?:\\\\)/,/^(?:\/)/,/^(?:;)/,/^(?:,)/,/^(?:\.)/,/^(?:&&)/,/^(?:\|\|)/,/^(?:&)/,/^(?:\|)/,/^(?:\^)/,/^(?:<<)/,/^(?:>>)/,/^(?:<=)/,/^(?:>=)/,/^(?:<)/,/^(?:>)/,/^(?:===)/,/^(?:!=)/,/^(?:==)/,/^(?:=)/,/^(?:\()/,/^(?:\))/,/^(?:\[)/,/^(?:\])/,/^(?:\{)/,/^(?:\})/,/^(?:::)/,/^(?::)/,/^(?:!)/,/^(?:$)/,/^(?:.)/],
+rules: [/^(?:\s+)/,/^(?:\/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/)/,/^(?:\/\/.*)/,/^(?:col\b)/,/^(?:witness\b)/,/^(?:fixed\b)/,/^(?:namespace\b)/,/^(?:include\b)/,/^(?:in\b)/,/^(?:is\b)/,/^(?:public\b)/,/^(?:global\b)/,/^(?:constant\b)/,/^(?:prover\b)/,/^(?:int\b)/,/^(?:fe\b)/,/^(?:expr\b)/,/^(?:string\b)/,/^(?:challenge\b)/,/^(?:for\b)/,/^(?:while\b)/,/^(?:do\b)/,/^(?:break\b)/,/^(?:continue\b)/,/^(?:if\b)/,/^(?:elseif\b)/,/^(?:else\b)/,/^(?:switch\b)/,/^(?:case\b)/,/^(?:default\b)/,/^(?:when\b)/,/^(?:subair\b)/,/^(?:aggregable\b)/,/^(?:stage\b)/,/^(?:function\b)/,/^(?:return\b)/,/^(?:first\b)/,/^(?:last\b)/,/^(?:frame\b)/,/^(?:transition\b)/,/^(?:\.\.\+\.\.)/,/^(?:\.\.\*\.\.)/,/^(?:\.\.\.)/,/^(?:\.\.)/,/^(?:(0x[0-9A-Fa-f][0-9A-Fa-f_]*)|([0-9][0-9_]*))/,/^(?:"[^"]+")/,/^(?:`[^`]+`)/,/^(?:[a-zA-Z_][a-zA-Z$_0-9]*)/,/^(?:&[a-zA-Z_][a-zA-Z$_0-9]*)/,/^(?:@[a-zA-Z_][a-zA-Z$_0-9]*)/,/^(?:\$[0-9][0-9]*)/,/^(?:\*\*)/,/^(?:\+\+)/,/^(?:--)/,/^(?:\+=)/,/^(?:-=)/,/^(?:\*=)/,/^(?:\+)/,/^(?:-)/,/^(?:\*)/,/^(?:')/,/^(?:\?)/,/^(?:%)/,/^(?:\\\\)/,/^(?:\/)/,/^(?:;)/,/^(?:,)/,/^(?:\.)/,/^(?:&&)/,/^(?:\|\|)/,/^(?:&)/,/^(?:\|)/,/^(?:\^)/,/^(?:<<)/,/^(?:>>)/,/^(?:<=)/,/^(?:>=)/,/^(?:<)/,/^(?:>)/,/^(?:===)/,/^(?:!=)/,/^(?:==)/,/^(?:=)/,/^(?:\()/,/^(?:\))/,/^(?:\[)/,/^(?:\])/,/^(?:\{)/,/^(?:\})/,/^(?:::)/,/^(?::)/,/^(?:!)/,/^(?:$)/,/^(?:.)/],
 conditions: {"INITIAL":{"rules":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93],"inclusive":true}}
 });
 return lexer;

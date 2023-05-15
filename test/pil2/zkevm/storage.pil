@@ -103,7 +103,7 @@ namespace Storage:: {
     rkeyBit * (1 - rkeyBit) === 0;
 
     // Instruction that guarantees that op = hash(hl, hr); the poseidon SM will do the work; the result will be feeded by free
-    subproof_permutation_check(
+    subair_permutation_check(
         iHash,
             [ 0, 0, 1, ...hashLeft, ...hashRight, iHashType, 0, 0, 0, ...op ],
         PoseidonG::result3,
