@@ -1,8 +1,8 @@
-const { assert } = require("chai");
-const { options } = require("yargs");
 const { log2, getKs, getRoots } = require("./utils.js");
 
 module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}) {
+
+    if(F.p === 18446744069414584321n) F.w = getRoots(F);
 
     const res = [];
 
@@ -375,8 +375,7 @@ function getConnectionMap(F, N, nk) {
     const m = new Array(1<<16);
     const ks = [1n, ...getKs(F, nk-1)];
     let w = F.one;
-    const roots = getRoots(F);
-    const wi = roots[pow];
+    const wi = F.w[pow];
     for (let i=0; i<N; i++ ) {
         if ((i%10000) == 0) console.log(`Building cm.. ${i}/${N}`);
         for (j=0; j<ks.length; j++) {
