@@ -27,7 +27,7 @@ module.exports = class Multiarray {
         let offset = 0;
         const dims = Math.min(this.offsets.length, indexes.length);
         for (let idim = 0; idim < dims; ++idim) {
-            offset += this.offsets[idim] * indexes[idim];
+            offset += this.offsets[idim] * Number(indexes[idim]);
         }
         if (offset >= this.size) {
             throw Error(`Internal error on variable index access`);
@@ -37,7 +37,6 @@ module.exports = class Multiarray {
         return {offset, dim, lengths: dim ? this.lengths.slice(-dim):[]};
     }
     initOffsets(lengths) {
-        console.log(['lengths', lengths]);
         this.lengths = lengths;
         this.dim = Array.isArray(lengths) ? lengths.length: 0
         let offsets = [1];

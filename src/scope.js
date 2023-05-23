@@ -49,20 +49,20 @@ module.exports = class Scope {
         for (const name in shadows) {
             const shadow = shadows[name];
             if (shadow === false) {
-                console.log(`UNSET VAR ${name}`);
+                // console.log(`UNSET VAR ${name}`);
                 this.references.unset(name);
             } else {
-                console.log(`SET VAR ${name} ${shadows[name].value}`);
+                // console.log(`SET VAR ${name} ${shadows[name].value}`);
                 this.references.set(name, shadows[name]);
             }
         }
         this.shadows[this.deep] = {};
         --this.deep;
-        console.log(`POP ${this.deep}`)
+        // console.log(`POP ${this.deep}`)
     }
     push() {
         ++this.deep;
-        console.log(`PUSH ${this.deep}`)
+        // console.log(`PUSH ${this.deep}`)
         this.shadows[this.deep] = {};
     }
     *[Symbol.iterator]() {

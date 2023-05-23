@@ -48,8 +48,20 @@ function match (col sel, ...) : expr {
     }
 
 
-function subair_permutation_check (expr selF[], expr colsF[][], expr selT[], expr colsT[][]) {
+    subair_permutation_check(
+        Binary::resultBinOp,
+        Binary::['op, ...a, ...b, ...c, 'cout]
+    );
 
+
+function subair_permutation_check (expr selF[], expr colsF[][], subair::expr selT[], subair::expr colsT[][]) {
+    // grand product F
+    //    bin,
+    //    [binOp, ...A, ...B, ...op, carry],
+    //    challenge c[2]
+    prover witness x = grand_product([binOp, ...A, ...B, ...op, carry], bin);
+
+    task Binary lookup_check_T(c, Binary::resultBinOp, Binary::['op, ...a, ...b, ...c, 'cout]);
 }
 
 function plookup_check (expr selF, expr colsF[], expr selT, expr colsT[]) {

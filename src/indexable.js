@@ -20,7 +20,6 @@ module.exports = class Indexable {
 
     getTypedValue(id, offset) {
         const res = { type: this.type, value: this.values[id + offset] };
-        console.log(res);
         return res;
     }
 

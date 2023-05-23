@@ -115,6 +115,8 @@ for (integer rows in [2**23, 2**26]) {
 }
 
 
+b1 * b2 * b3 * b4 = (B1 * B2) * (B3 * B4)
+
 mainArith_R === arith_R;
 mainBinary_R === binary_R;
 memAlign_R === memAlign_R;
@@ -126,4 +128,4 @@ for (int i = 0; i < 3; ++i ) {
 mainPoseidonG_R * storagePoseidonG_R === poseidonG_R;
 mainStorage_R === storage_R;
 
-mainPoseidonG_R * storagePoseidonG_R === poseidonG_R * poseidonG_R2; ???
+mainPoseidonG_R * storagePoseidonG_R === poseidonG_R[0] * poseidonG_R[1] * poseidonG_R[2] * poseidonG_R[3];

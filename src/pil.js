@@ -52,7 +52,8 @@ async function run() {
         config.includePathFirst = true;
     }
     const out = await compile(F, fullFileName, null, config);
-
+    console.log(out);
+/*
     console.log("Input Pol Commitmets: " + out.nCommitments);
     console.log("Q Pol Commitmets: " + out.nQ);
     console.log("Constant Pols: " + out.nConstants);
@@ -61,7 +62,7 @@ async function run() {
     console.log("permutationIdentities: " + out.permutationIdentities.length);
     console.log("connectionIdentities: " + out.connectionIdentities.length);
     console.log("polIdentities: " + out.polIdentities.length);
-
+*/
     await fs.promises.writeFile(outputFile.trim(), JSON.stringify(out, null, 1) + "\n", "utf8");
 }
 

@@ -11,16 +11,39 @@ namespace Assigns:: {
     int bc = 4;
     println(bc);
 
+    function suma(int a, int b): int {
+        println(a,b);
+        return a+b;
+        println("DON'T PRINT THIS LINE");
+    }
+
+    println(length(PSIX));
+    println(length(x1));
+    println(length(q));
+    println(length(q[0]));
+    println(length("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"));
     int aux = 200;
     aux = aux + 200;
     aux = aux + 10;
     println(aux);
     aux = aux + PSIX[5];
     println(aux);
+    println(aux++,aux++);
+    println(aux);
     aux = PSIX[1];
     println(aux);
     println(PSIX[1]);
-    expr e = aux * x1[0];
-    println(e);
+    int i = 12;
+//    expr e = aux * x1[i];
+//    println(e);
+    println(PSIX[bc-1]);
+    println(i+25*bc+PSIX[bc+1]);
+    for (i = 0; i < length(PSIX); ++i) {
+        println(PSIX[i] *10);
+    }
+    println(suma(10, 12));
+    println(i, aux);
+    println(suma(i, aux));
 
+    println("Done!!");
 }

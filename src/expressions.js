@@ -8,27 +8,6 @@ module.exports = class Expressions {
         this.references = references;
         this.constants = constants;
         this.parent = parent;
-        this.operations = {
-            mul:  { type: 'arith',   args: 2, handle: (a, b) => a * b,  handleFr: (Fr, a, b) => Fr.mul(a, b)},
-            add:  { type: 'arith',   args: 2, handle: (a, b) => a + b,  handleFr: (Fr, a, b) => Fr.add(a, b)},
-            sub:  { type: 'arith',   args: 2, handle: (a, b) => a - b,  handleFr: (Fr, a, b) => Fr.sub(a, b)},
-            pow:  { type: 'arith',   args: 2, handle: (a, b) => a ** b, handleFr: (Fr, a, b) => Fr.pow(a, b)},
-            neg:  { type: 'arith',   args: 1, handle: (a) => -a,        handleFr: (Fr, a) => Fr.neg(a, b)},
-            gt:   { type: 'cmp',     args: 2, handle: (a, b) => a > b },
-            ge:   { type: 'cmp',     args: 2, handle: (a, b) => a >= b},
-            lt:   { type: 'cmp',     args: 2, handle: (a, b) => a < b },
-            le:   { type: 'cmp',     args: 2, handle: (a, b) => a <= b},
-            eq:   { type: 'cmp',     args: 2, handle: (a, b) => a == b},
-            ne:   { type: 'cmp',     args: 2, handle: (a, b) => a != b},
-            and:  { type: 'logical', args: 2, handle: (a, b) => a && b},
-            or:   { type: 'logical', args: 2, handle: (a, b) => a || b},
-            not:  { type: 'logical', args: 1, handle: (a) => !a},
-            shl:  { type: 'bit',     args: 2, handle: (a, b) => a << b},
-            shr:  { type: 'bit',     args: 2, handle: (a, b) => a >> b},
-            band: { type: 'bit',     args: 2, handle: (a, b) => a & b },
-            bor:  { type: 'bit',     args: 2, handle: (a, b) => a | b },
-            bxor: { type: 'bit',     args: 2, handle: (a, b) => a ^ b },
-        }
         this.router = new Router(this, 'op', {defaultPrefix: '_eval', multiParams: true});
     }
     get(id) {
@@ -44,7 +23,7 @@ module.exports = class Expressions {
 
     define(id, expr) {
         if (this.isDefined(id)) {
-            throw new Error(`%{id} already defined on ....`);
+            throw new Error(`${id} already defined on ....`);
         }
         this.expressions[id] = expr;
     }
@@ -68,20 +47,13 @@ module.exports = class Expressions {
         }
         return fromId;
     }
-/*
-    simplify(id) {
-        return this.evaluate(this.get(id), {update: true, Fr: this.Fr});
-    }
 
-    simplifyExpression(e) {
-        return this.evaluate(e , {update: true, Fr: this.Fr});
-    }
-*/
     toString(e) {
         console.log(util.inspect(e, false, null, true /* enable colors */))
     }
+
     // update mode
-    eval(e, fr = false) {
+    ____eval(e, fr = false) {
         if (e.op in this.operations) {
             const operation = this.operations[e.op];
             const [a,b,reduced] = this.evaluateValues(e, operation.args, fr);
@@ -98,12 +70,58 @@ module.exports = class Expressions {
         }
         return this.router.go([e, fr]);
     }
+    eval(e) {
+        let expr = e.expr;
+        return expr.eval(this);
+        let values = new Array(expr.stack.length);
+        let top = expr.stack.length-1;
+        this.eval2(expr, top, values);
+        console.log(values[top]);
+        return values[top];
+    }
+    evalOperand(operand, values) {
+        switch (operand.type) {
+            case 0:
+                return BigInt(operand.value);
+            case 3:
+                return this.evalRuntime(operand.value);
+        }
+        console.log(operand);
+        EXIT_HERE;
+    }
+    evalRuntime(e) {
+        return this.router.go([e, this.Fr]);
+    }
+    _evalString(e) {
+        return e.value;
+    }
+    eval2(e, pos, values) {
+        let st = e.stack[pos];
+        let res;
+        switch (st.op) {
+            case false:
+                res = this.evalOperand(st.operands[0], values)
+                break;
+            default:
+                console.log(st);
+                EXIT_HERE;
+        }
+        values[pos] = res;
+    }
     _evalNumber(e, fr) {
         return e;
     }
-    _evalCol(e) {
+    _evalCall(e) {
+        return this.parent.execCall(e);
+    }
+    evalReference(e) {
         const ref = this.resolveReference(e);
         console.log(ref);
+        EXIT_HERE;
+    }
+    _evalReference(e) {
+        const ref = this.resolveReference(e);
+        let res = ref;
         switch (ref.type) {
             case 'witness':
             case 'fixed':
@@ -120,64 +138,21 @@ module.exports = class Expressions {
                     this.reduceExpressionTo1(refexp);
                     this.update(id, refexp); */
                     // e.deg = refexp.deg;
-                    return ref;
+                    res = ref;
             case 'fe':
-                return {
-                    op: 'number',
-                    value: BigInt(ref.value),
-                }
+                res = { op: 'number', value: BigInt(ref.value) };
+                break;
             case 'constant':
             case 'int':
-                return {
-                    op: 'number',
-                    value: BigInt(ref.value),
-                }
+                res = BigInt(ref.value);
+                break;
             default:
                 console.log(e);
                 console.log(ref);
                 throw new Error(`Invalid reference type: ${ref.type}`);
         }
+        return res;
     }
-/*    __() {
-        switch (e.op) {
-            case 'number':
-                e.deg = 0;
-                return e;
-
-            case 'constant':
-                const value = this.constants.get(e.name);
-                if (value === null) {
-                    throw new Error(`Constant ${e.name} not found on ....`);
-                }
-                return this.simplified(value, e);
-
-            case 'col':
-                {
-                    }
-                }
-            case 'public':
-                {
-                    const ref = this.references.get(e.name);
-                    if (ref === null) {
-                        throw new Error(e, `public ${e.name} not defined`);
-                    }
-                    if (ref.type !== 'public') {
-                        throw new Error(e, `public ${e.name} not defined`);
-                    }
-                    e.id = ref.id;
-                    e.deg = 0;
-                    return e;
-                }
-            case 'var':
-                console.log(e);
-                EXIT_HERE;
-
-            default:
-                console.log(e);
-                this.error(e, `invalid operation: '${e.op}'`);
-        }
-    }
-*/
     evaluateValues(e, valuesCount, fr) {
         // TODO: check valuesCount
         const a = this.eval(e.values[0], fr);
@@ -191,16 +166,6 @@ module.exports = class Expressions {
         return [a, b, simple];
     }
 
-/*    simplified(value, e, mode) {
-        return {
-                 simplified:true,
-                 op: "number",
-                 deg:0,
-                 value: mode.Fr ? mode.Fr.e(value) : BigInt(value),
-                 first_line: e.first_line
-               }
-    }*/
-
     *[Symbol.iterator]() {
         for (let expr of this.expressions) {
           yield expr;
@@ -209,41 +174,60 @@ module.exports = class Expressions {
     error(a, b) {
         console.log(a);
         console.log(b);
-        // EXIT_HERE;
-    }
-    getPolReference(e) {
-        const polname = this.parent.getFullName(e)
-        const ref = this.references.get(polname);
-        return polname + (typeof e.idxExp === 'undefined' ? '':`[${this.e2num(e.idxExp)}]`);
+        EXIT_HERE;
     }
     resolveReference(e) {
         const names = this.parent.getNames(e);
-        return this.references.getTypedValue(names);
-/*
-        let id = ref.id ?? 0;
-        if (ref.isArray) {
-            const index = this.e2num(e.idxExp);
-            if (index >= ref.len) {
-                throw new Error(`${polname}[${index}] out of range (len:${ref.len})`);
-            }
-            id += index;
+
+        let options = {};
+        if (e.inc === 'pre') {
+            options.preDelta = 1n;
         }
-        return [polname, ref, id];*/
+        if (e.inc === 'post') {
+            options.postDelta = 1n;
+        }
+        if (e.dec === 'pre') {
+            options.preDelta = -1n;
+
+        }
+        if (e.dec === 'post') {
+            options.postDelta = -1n;
+        }
+        return this.references.getTypedValue(names, e.__indexes, options);
     }
-    e2num(expr, s, title = false) {
-        const se = this.eval(expr);
-        if (se.op !== 'number') {
-            this.error(s, title + ' is not constant number expression');
-        }
-        return BigInt(se.value);
+    getReferenceInfo(e, options) {
+        const names = this.parent.getNames(e.getAloneOperand());
+        console.log(names);
+        return this.references.getTypeInfo(names, e.__indexes, options);
     }
-    e2value(expr, s, title = false) {
-        const se = this.eval(expr);
-        if (se.op !== 'number' && se.op !== 'bool') {
-            console.log(se);
-            EXIT_HERE;
-            this.error(s, title + ' is not constant expression');
+    e2num(expr, s, title = '') {
+        let res = this.e2types(e, s, title, ['number','bigint']);
+        return BigInt(res.value);
+    }
+    e2types(e, s, title, types) {
+        const res = e.expr.eval(this);
+        const restype = typeof res;
+        if (types.includes(restype)) {
+            return res;
         }
-        return se.value;
+
+        console.log(res);
+        e.expr.dump();
+        this.error(s, (title ? ' ':'') + `is not constant expression (${restype}) (2)`);
+    }
+    e2value(e, s, title = '') {
+        return this.e2types(e, s, title, ['number','bigint','string']);
+    }
+    e2bool(e, s, title = '') {
+        let res = this.e2types(e, s, title, ['number','bigint','string']);
+        if (typeof res === 'string') {
+            return res !== '';
+        }
+        if (typeof res === 'string') {
+            return res != 0n;
+        }
+        if (typeof res === 'number') {
+            return res != 0;
+        }
     }
 }

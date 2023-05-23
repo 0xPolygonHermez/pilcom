@@ -60,22 +60,35 @@ module.exports = class References {
 
     get (name, indexes = []) {
         const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        console.log(`GET ${instance.constructor.name}.get(${info.locator}, ${info.offset})`);
+        // console.log(`GET ${instance.constructor.name}.get(${info.locator}, ${info.offset})`);
         return instance.get(info.locator, info.offset);
     }
 
-    getTypedValue (name, indexes = []) {
+    getTypedValue (name, indexes, options) {
+        indexes = indexes ?? [];
+        options = options ?? {};
+
+        if (typeof indexes === 'undefined') indexes = [];
+
         const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        console.log([instance.constructor.name, info])
         let tvalue = instance.getTypedValue(info.locator, info.offset);
-        console.log('TYPEDVALUE');
-        console.log(tvalue)
+        if (options.full) {
+            tvalue.instance = instance;
+            tvalue.locator = info.locator;
+            tvalue.offset = info.offset;
+        }
         if (info.dim) {
             tvalue.dim = info.dim;
 //            tvalue.arrayType = info.arrayType;
             tvalue.lengths = info.lengths;
         }
-        console.log({DEBUG:'getTypedValue', ...tvalue});
+        if (options.preDelta) {
+            tvalue.value += options.preDelta;
+            instance.set(info.locator, info.offset, tvalue.value);
+        }
+        if (options.postDelta) {
+            instance.set(info.locator, info.offset, tvalue.value + options.postDelta);
+        }
         return tvalue;
     }
     getTypeInfo (name, indexes = []) {
@@ -98,13 +111,11 @@ module.exports = class References {
         const tdata = this._getRegisteredType(def.type);
 
         const typedOffset = (def.array === false) ? {offset: 0} : def.array.getIndexesTypedOffset(indexes);
-        console.log(['T-offset', typedOffset, indexes, def.array === false]);
         return [tdata.instance, {locator: def.locator, ...typedOffset}];
     }
 
     set (name, indexes, value) {
         const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        console.log(`#### ${name} ${value} ${instance.constructor.name}`);
         return instance.set(info.locator, info.offset, value);
     }
 
@@ -135,7 +146,7 @@ module.exports = class References {
         for (let name in this.definitions) {
             const def = this.definitions[index];
             const indexes = def.array === false ? '': def.multiarray.getLengths().join(',');
-            console.log(`${name.padEnd(30)}|${def.type.padEnd(10)}|${indexes}`);
+            // console.log(`${name.padEnd(30)}|${def.type.padEnd(10)}|${indexes}`);
         }
     }
 }

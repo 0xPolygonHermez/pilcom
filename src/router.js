@@ -31,6 +31,10 @@ module.exports = class Router {
         const pvalue = this.getPropertyValue(e);
         const method = this.getRouteMethod(pvalue, prefix);
         if (typeof this.parent[method] !== 'function') {
+            console.log('PARAMS-GO');
+            console.log(params);
+            console.log('PVALUE-GO');
+            console.log(pvalue);
             throw new Error(this.message.replace(/\{0\}/gi, pvalue).replace(/\{1\}/gi, method));
         }
         return this.parent[method].apply(this.parent, params);
@@ -38,6 +42,10 @@ module.exports = class Router {
     goBy(pvalue, ...params) {
         const method = this.getRouteMethod(pvalue);
         if (typeof this.parent[method] !== 'function') {
+            console.log('PARAMS-GOBY');
+            console.log(params);
+            console.log('PVALUE-GOBY');
+            console.log(pvalue);
             throw new Error(this.message.replace(/\{0\}/gi, pvalue).replace(/\{1\}/gi, method));
         }
         return this.parent[method].apply(this.parent, params);

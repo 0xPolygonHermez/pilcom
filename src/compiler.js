@@ -94,20 +94,9 @@ class Compiler {
             }
 
             this.$.debug = `${compiler.relativeFileName}:${last.last_line}`;
+            // this.$.__debug = `${compiler.relativeFileName} (${first.first_line}, ${first.first_column}) (${last.last_line}, ${last.last_column})`;
+            // this.$.__contents = compiler.srcLines[first.first_line - 1].substring(first.first_column + 1, last.last_column);
             this.$.__yystate = `${yystate} ${yylineno}`
-            /*
-            this.$.debug = `${compiler.relativeFileName} ${first.first_line}:${first.first_column}`;
-            if (typeof last.last_line != 'undefined' && last.last_line != first.first_line) {
-                this.$.debug += ` ${last.last_line}`;
-            }
-            if (typeof last.last_column != 'undefined') {
-                this.$.debug += `:${last.last_column}`;
-            }*/
-            /*
-            this.$.first_line = first.first_line;
-            this.$.first_column = first.first_column;
-            this.$.last_line = last.last_line || first.first_line;
-            this.$.last_column = last.last_column || first.first_column;*/
             return result;
         }
         return parser;

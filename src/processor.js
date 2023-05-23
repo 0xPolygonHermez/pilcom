@@ -10,9 +10,14 @@ const Variables = require("./variables.js");
 const Sequence = require("./sequence.js");
 const List = require("./list.js");
 const Assign = require("./assign.js");
+const Function = require("./function.js");
 
-class BreakCmd {};
-class ContinueCmd {};
+class FlowAbortCmd {};
+class BreakCmd extends FlowAbortCmd {};
+class ContinueCmd extends FlowAbortCmd {};
+class ReturnCmd extends FlowAbortCmd {
+    constructor(value) { super(); this.value = value; }
+}
 
 module.exports = class Processor {
     constructor (Fr, parent, references, expressions) {
@@ -41,6 +46,9 @@ module.exports = class Processor {
         this.imCols = new Indexable(Fr, 'im');
         this.references.register('im', this.prover);
 
+        this.functions = new Indexable(Fr, 'function');
+        this.references.register('function', this.functions);
+
         this.subairs = new Subairs(Fr);
 
         this.globalConstraints = new Constraints(Fr);
@@ -52,25 +60,34 @@ module.exports = class Processor {
 
         this.executeCounter = 0;
         this.executeStatementCounter = 0;
+        this.functionDeep = 0;
+        this.callstack = []; // TODO
+    }
+    insideFunction() {
+        return this.functionDeep > 0;
     }
     execute(statements) {
         ++this.executeCounter;
         const lstatements = Array.isArray(statements) ? statements : [statements];
-        console.log(`## DEBUG ## ${this.executeCounter}[${lstatements.length}]`)
+        // console.log(`## DEBUG ## ${this.executeCounter}[${lstatements.length}]`)
         for (const st of lstatements) {
             const result = this.executeStatement(st);
-            if (result instanceof BreakCmd || result instanceof ContinueCmd) return result;
+            if (result instanceof FlowAbortCmd) {
+                return result;
+            }
         }
     }
     executeStatement(st) {
+        if (st.debug == 'assigns.pil:20') {
+            console.log('BREAK-POINT');
+        }
         ++this.executeStatementCounter;
         if (typeof st.type === 'undefined') {
             console.log(st);
             this.error(st, `Invalid statement (without type)`);
         }
-        console.log(`## DEBUG ## ${this.executeCounter}.${this.executeStatementCounter} ${st.debug}` );
+        // console.log(`## DEBUG ## ${this.executeCounter}.${this.executeStatementCounter} ${st.debug}` );
         const method = ('exec_'+st.type).replace(/[-_][a-z]/g, (group) => group.slice(-1).toUpperCase());
-//        const method = 'exec' + st.type.charAt(0).toUpperCase() + st.type.slice(1);
         if (!(method in this)) {
             console.log('==== ERROR ====');
                 this.error(st, `Invalid statement type: ${st.type}`);
@@ -82,34 +99,60 @@ module.exports = class Processor {
         const namespace = st.function.namespace;
         const name = st.function.name;
         if (namespace === 'this') {
-            const buildInMethod = 'execBuildIn' + name.charAt(0).toUpperCase() + name.slice(1);
-            if (buildInMethod in this) {
-                this[buildInMethod](st);
+            const builtInMethod = 'execBuiltIn' + name.charAt(0).toUpperCase() + name.slice(1);
+            if (builtInMethod in this) {
+                return this[builtInMethod](st);
             }
-            return;
         }
-        const fname = namespace + '.' + name;
-        this.error(st, `Undefined function statement type: ${fname}`);
+        const tval = this.references.getTypedValue(name);
+        if (tval.value) {
+            // TODO: push without visibility out of function
+            ++this.functionDeep;
+            this.scope.push();
+            const res = tval.value.exec(st);
+            this.scope.pop();
+            --this.functionDeep;
+            return res;
+        }
+        this.error(st, `Undefined function statement type: ${name}`);
     }
     execVar(st) {
         const fullname = this.getFullName(st);
         this.scope.define(fullname, {value: st.init ? this.expressions.e2value(st.init):null});
     }
     execAssign(st) {
-
         // type: number(int), fe, string, col, challenge, public, prover,
         // dimensions:
         this.assign.assign(st.name.name, [], st.value);
         // this.references.set(st.name.name, [], this.expressions.eval(st.value));
     }
-    execBuildInPrintln(s) {
+    execBuiltInPrintln(s) {
 //        const sourceRef = this.parent.fileName + ':' + s.first_line;
         let texts = [];
         for (const arg of s.arguments) {
             texts.push(typeof arg === 'string' ? arg : this.expressions.e2value(arg));
         }
         // [${sourceRef}]
-        console.log(`\x1B[1;35m${texts.join(' ')}\x1B[0m`);
+        console.log(`\x1B[1;35m[${s.debug}] ${texts.join(' ')}\x1B[0m`);
+        return 0;
+    }
+    execBuiltInLength(s) {
+        if (s.arguments.length !== 1) {
+            throw new Error('Invalid number of parameters');
+        }
+        const arg0 = s.arguments[0].expr;
+        if (arg0 && arg0.isReference()) {
+            // TODO: check arrays, multiarrays - no arrays, valid for strings?
+            const [instance,rinfo] = this.expressions.getReferenceInfo(arg0);
+            console.log(rinfo);
+            const operand = arg0.getAloneOperand();
+            return rinfo.lengths[operand.dim];
+        }
+        const value = this.expressions.e2value(s.arguments[0]);
+        if (typeof value === 'string') {
+            return value.length;
+        }
+        EXIT_HERE;
     }
     execIf(s) {
         for (let icond = 0; icond < s.conditions.length; ++icond) {
@@ -121,12 +164,11 @@ module.exports = class Processor {
                 throw new Exception('else only could be on last position');
             }
 
-            if (typeof cond.expression !== 'undefined' && this.expressions.e2value(cond.expression) !== true) {
+            if (typeof cond.expression !== 'undefined' && this.expressions.e2bool(cond.expression) !== true) {
                 continue;
             }
             this.scope.push();
             this.execute(cod.statements);
-            console.log(res);
             this.scope.pop();
             if (typeof res === 'boolean') {
                 return res;
@@ -136,7 +178,7 @@ module.exports = class Processor {
         }
     }
     execWhile(s) {
-        while (this.expressions.e2value(s.condition)) {
+        while (this.expressions.e2bool(s.condition)) {
             this.scope.push();
             this.execute(s.statements);
             this.scope.pop();
@@ -145,20 +187,15 @@ module.exports = class Processor {
     }
     execScopeDefinition(s) {
         this.scope.push();
-        console.log(s);
-        console.log(s.statements);
         const result = this.execute(s.statements);
         this.scope.pop();
         return result;
     }
     execFor(s) {
-        // console.log(s.init);
         let result;
         this.scope.push();
-        console.log('INIT');
-        console.log(s.init[0]);
         this.execute(s.init);
-        while (this.expressions.e2value(s.condition)) {
+        while (this.expressions.e2bool(s.condition)) {
             // if only one statement, scope will not create.
             // if more than one statement, means a scope_definition => scope creation
             result = this.execute(s.statements);
@@ -166,7 +203,6 @@ module.exports = class Processor {
             this.execute(s.increment);
         }
         this.scope.pop();
-        // console.log(s);
 /*
         while (this.expressions.e2value(s.condition)) {
             this.scope.push();
@@ -182,20 +218,17 @@ module.exports = class Processor {
         return this.execForInExpression(s);
     }
     execForInList(s) {
-        console.log(s.list);
         const list = new List(this, s.list);
-        console.log(list.values);
     }
     execForInExpression(s) {
         console.log(s);
         TODO_STOP;
-
     }
     execBreak(s) {
-        return false;
+        return new BreakCmd();
     }
     execContinue(s) {
-        return true;
+        return new ContinueCmd();
     }
     error(s, msg) {
         console.log(s);
@@ -207,18 +240,21 @@ module.exports = class Processor {
         }
     }
     execFunctionDefinition(s) {
-
+        let func = new Function(this, s);
+        this.references.declare(func.name, 'function');
+        console.log(['funcname', func.name])
+        this.references.set(func.name, [], func);
     }
     getExprNumber(expr, s, title) {
-        console.log(expr);
         const se = this.expressions.eval(expr);
-        if (se.op !== 'number') {
-            this.error(s, title + ' is not constant expression');
+        if (typeof se !== 'bigint') {
+//        if (se.op !== 'number') {
+            this.error(s, title + ' is not constant expression (1)');
         }
-        return Number(se.value);
+//        return Number(se.value);
+        return se;
     }
     resolveExpr(expr, s, title) {
-        console.log(expr);
         return this.expressions.eval(expr);
     }
     execNamespace(s) {
@@ -238,7 +274,6 @@ module.exports = class Processor {
         [this.namespace, this.subair ] = previous;
     }
     execSubairDefinition(s) {
-        console.log(`subair_DEFINITION ${s.name}`);
         const subair = s.name ?? false;
         if (subair === false) {
             this.error(s, `subair not defined correctly`);
@@ -260,6 +295,14 @@ module.exports = class Processor {
     execColDeclaration(s) {
         this.colDeclaration(s, 'im');
     }
+    execPublicDeclaration(s) {
+        this.colDeclaration(s, 'public');
+        // TODO: initialization
+        // TODO: verification defined
+    }
+    execExpr(s) {
+        this.expressions.eval(s);
+    }
     decodeNameAndLengths(s) {
         return [s.name, this.decodeLengths(s)];
     }
@@ -269,7 +312,7 @@ module.exports = class Processor {
 
         let lengths = [];
         for (const length of s.lengths) {
-            lengths.push(this.getExprNumber(length));
+            lengths.push(Number(this.getExprNumber(length)));
         }
         return lengths;
     }
@@ -282,14 +325,16 @@ module.exports = class Processor {
             /// TODO: INIT / SEQUENCE
         }
     }
-    declareReference(name, type, lengths = [], data = {}) {
+    declareReference(name, type, lengths = [], data = {}, initValue = null) {
         if (!data.sourceRef) {
             data.sourceRef = this.sourceRef;
         }
-        return this.references.declare(name, type, lengths, data);
+        const res = this.references.declare(name, type, lengths, data);
+        if (initValue !== null) this.references.set(name, [], initValue);
+        return res;
     }
     execCode(s) {
-        this.execute(s.statements);
+        return this.execute(s.statements);
     }
     execConstraint(s) {
         console.log('********** doConstraint ********** (s.expression:)');
@@ -306,13 +351,12 @@ module.exports = class Processor {
     execVariableIncrement(s) {
         const name = s.name;
         const value = this.references.get(name, []);
-        console.log(`VAR ${name} = ${value}`);
+        // console.log(`VAR ${name} = ${value}`);
         this.references.set(name, [], value + s.pre + s.post);
     }
     execVariableDeclaration(s) {
         const init = typeof s.init !== 'undefined';
         const count = s.items.length;
-        console.log(s);
 
         if (init && s.init.length !== count) {
             this.error(s, `Mismatch between len of variables (${count}) and len of their inits (${s.init.length})`);
@@ -321,8 +365,6 @@ module.exports = class Processor {
             const [name, lengths] = this.decodeNameAndLengths(s.items[index]);
             const initValue = init ? this.expressions.e2value(s.init[index]) : null;
             this.references.declare(name, 'var', lengths, { type: s.vtype, sourceRef: this.sourceRef });
-            console.log(['########################',index, init, initValue],typeof s.init);
-            console.log(s.init[index]);
             if (initValue !== null) this.references.set(name, [], initValue);
         }
     }
@@ -362,6 +404,13 @@ module.exports = class Processor {
     }
     evaluateExpression(e){
         // TODO
+        TODO_STOP
         return 0n;
+    }
+    execReturn(s) {
+        if (!this.insideFunction()) {
+            throw new Error('Return is called out of function scope');
+        }
+        return new ReturnCmd(s.value);
     }
 }
