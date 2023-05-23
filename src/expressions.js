@@ -197,7 +197,6 @@ module.exports = class Expressions {
     }
     getReferenceInfo(e, options) {
         const names = this.parent.getNames(e.getAloneOperand());
-        console.log(names);
         return this.references.getTypeInfo(names, e.__indexes, options);
     }
     e2num(expr, s, title = '') {
@@ -208,10 +207,9 @@ module.exports = class Expressions {
         const res = e.expr.eval(this);
         const restype = typeof res;
         if (types.includes(restype)) {
-            return res;
+            return restype === 'number' ? BigInt(res) : res;
         }
 
-        console.log(res);
         e.expr.dump();
         this.error(s, (title ? ' ':'') + `is not constant expression (${restype}) (2)`);
     }
@@ -223,11 +221,12 @@ module.exports = class Expressions {
         if (typeof res === 'string') {
             return res !== '';
         }
-        if (typeof res === 'string') {
+        if (typeof res === 'bigint') {
             return res != 0n;
         }
         if (typeof res === 'number') {
             return res != 0;
         }
+        EXIT_HERE;
     }
 }

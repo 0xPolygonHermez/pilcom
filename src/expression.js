@@ -111,7 +111,11 @@ module.exports = class Expression {
     }
 
     setRuntime (value) {
-        this._set({...value, type: OP_RUNTIME });
+        if (value.type) {
+            console.log(value);
+            throw new Error(`setRuntime value has a not allowed type property`);
+        }
+        this._set({type: OP_RUNTIME, ...value});
     }
 
     insertOne (op, b) {
@@ -124,22 +128,12 @@ module.exports = class Expression {
         }
         const aIsAlone = this.isAlone();
         const bIsAlone = b.isAlone();
-        if (aIsAlone) {    // aIsAlone => !aIsEmpty
-            if (bIsAlone) {
+        if (bIsAlone) {    // aIsAlone => !aIsEmpty
+            if (aIsAlone) {
                 this.stack[0].op = op;
                 this.stack[0].operands.push(b.cloneAlone());
                 return;
             }
-            // aIsAlone && !bIsAlone && !bIsEmpty
-            const apre = this.stack[0];
-            this.stack = [];
-            this.pushStack(b);
-            this.stack.push({op, operands: [apre.operands[0], {type: OP_STACK, offset: 1}]});
-            return;
-        }
-
-        // !aIsAlone
-        if (bIsAlone) {
             let operandA = aIsEmpty ? [] : [{type: OP_STACK, offset: 1}];
             this.stack.push({op, operands: [...operandA, b.cloneAlone()]});
             return;
@@ -170,16 +164,12 @@ module.exports = class Expression {
         const allBsAreAlone = bs.reduce((res, b) => res && b.isAlone(), true);
 
         let elem = {op, operands: []};
-        if (aIsAlone) {  // aIsAlone => !aIsEmpty
-            if (allBsAreAlone) {
-                this.stack[0].op = op;
-                for (const b of bs) {
-                    this.stack[0].operands.push(b.cloneAlone());
-                }
-                return;
+        if (aIsAlone && allBsAreAlone) {
+            this.stack[0].op = op;
+            for (const b of bs) {
+                this.stack[0].operands.push(b.cloneAlone());
             }
-            elem.operands.push(this.cloneOperand(this.stack[0].operands[0]));
-            this.stack = [];
+            return;
         }
 
         let counts = [];
@@ -191,7 +181,7 @@ module.exports = class Expression {
             counts[index] += counts[index + 1];
         }
 
-        if (!aIsAlone && !aIsEmpty) {
+        if (!aIsEmpty) {
             elem = {op, operands: [{type: OP_STACK, offset: counts[0]}]};
         }
         let index = 0;
@@ -226,7 +216,6 @@ module.exports = class Expression {
         }
         this.values = [];
         let top = this.stack.length-1;
-        // this.dump();
         this.instance();
         this.evalStackPos(top);
         return this.values[top];
@@ -389,7 +378,7 @@ module.exports = class Expression {
                 // refType, [offset], next
                 return `${cType}ID_REF ${cProp}refType:${cValue}${op.refType} ${cProp}offset:${cValue}${op.offset} ${cProp}next:${cValue}${op.next}`;
             case OP_STACK:
-                return `${cType}VALUE ${cProp}offset:${cValue}${op.offset} ${cProp}#${cValue}${pos-op.offset}`;
+                return `${cType}STACK ${cProp}offset:${cValue}${op.offset} ${cProp}#${cValue}${pos-op.offset}`;
             case OP_RUNTIME:
                 let props = ''
                 for (const prop in op) {

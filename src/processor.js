@@ -92,8 +92,15 @@ module.exports = class Processor {
             console.log('==== ERROR ====');
                 this.error(st, `Invalid statement type: ${st.type}`);
         }
+        let res;
         this.sourceRef = st.debug ?? '';
-        return this[method](st);
+        try {
+            res = this[method](st);
+        } catch (e) {
+            console.log("EXCEPTION ON "+this.sourceRef);
+            throw e;
+        }
+        return res;
     }
     execCall(st) {
         const namespace = st.function.namespace;
@@ -123,7 +130,13 @@ module.exports = class Processor {
     execAssign(st) {
         // type: number(int), fe, string, col, challenge, public, prover,
         // dimensions:
-        this.assign.assign(st.name.name, [], st.value);
+        let indexes = [];
+        if (st.name.indexes) {
+            for (const index of st.name.indexes) {
+                indexes.push(this.expressions.e2value(index));
+            }
+        }
+        this.assign.assign(st.name.name, indexes, st.value);
         // this.references.set(st.name.name, [], this.expressions.eval(st.value));
     }
     execBuiltInPrintln(s) {
@@ -136,6 +149,26 @@ module.exports = class Processor {
         console.log(`\x1B[1;35m[${s.debug}] ${texts.join(' ')}\x1B[0m`);
         return 0;
     }
+    execBuiltInAssertEq(s) {
+        if (s.arguments.length !== 2) {
+            throw new Error('Invalid number of parameters');
+        }
+        const arg0 = this.expressions.e2value(s.arguments[0]);
+        const arg1 = this.expressions.e2value(s.arguments[1]);
+        if (arg0 !== arg1) {
+            throw new Error(`AssertEq fails ${arg0} vs ${arg1} on ${this.sourceRef}`);
+        }
+        return 0;
+    }
+    execBuiltInAssertNotEq(s) {
+        if (s.arguments.length !== 2) {
+            throw new Error('Invalid number of parameters');
+        }
+        if (this.expressions.e2value(s.arguments[0]) === this.expressions.e2value(s.arguments[1])) {
+            console.log('ASSERT FAILS')
+        }
+        return 0;
+    }
     execBuiltInLength(s) {
         if (s.arguments.length !== 1) {
             throw new Error('Invalid number of parameters');
@@ -144,7 +177,6 @@ module.exports = class Processor {
         if (arg0 && arg0.isReference()) {
             // TODO: check arrays, multiarrays - no arrays, valid for strings?
             const [instance,rinfo] = this.expressions.getReferenceInfo(arg0);
-            console.log(rinfo);
             const operand = arg0.getAloneOperand();
             return rinfo.lengths[operand.dim];
         }
@@ -242,7 +274,6 @@ module.exports = class Processor {
     execFunctionDefinition(s) {
         let func = new Function(this, s);
         this.references.declare(func.name, 'function');
-        console.log(['funcname', func.name])
         this.references.set(func.name, [], func);
     }
     getExprNumber(expr, s, title) {

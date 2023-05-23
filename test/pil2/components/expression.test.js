@@ -36,7 +36,7 @@ describe("Expression", async function () {
         assert.throws(() => {e.setRuntime({name: 'mary', indexes: [1], next: 2})}, Error, 'Set only could be used with empty stack');
         assert.throws(() => {e.setIdReference(10, 'imC', 0, 2)}, Error, 'Set only could be used with empty stack');
 
-        expected = [{op: false, operands: [{type: 3, value: {name: 'joe', indexes: [5], next: 7}}]}];
+        expected = [{op: false, operands: [{type: 3, name: 'joe', indexes: [5], next: 7}]}];
         assert.equal(toJSON(e.stack), toJSON(expected));
 
         e = new Expression();
@@ -145,13 +145,13 @@ describe("Expression", async function () {
 
         let d = new Expression();
         d.insert('+', d1, d2);
-        let expectedD = [{op:'+',operands:[{type:3, value: {name: 'JohnSmith', indexes: [2, 5, 7], next: 10}},
+        let expectedD = [{op:'+',operands:[{type:3, name: 'JohnSmith', indexes: [2, 5, 7], next: 10},
                                            {type:1, id: 103, refType: 'fe', offset: -18746, next: 0}]}];
         expected = expectedD;
         assert.equal(toJSON(d.stack), toJSON(expected));
 
         a.insert('*', d);
-        expected = [...expected, {op:'*',operands:[{type:0, value: 10},{type:2, offset: 1}]}];
+        expected = [{op:false,operands:[{type:0, value: 10}]},...expected, {op:'*',operands:[{type:2, offset: 2},{type:2, offset: 1}]}];
         assert.equal(toJSON(a.stack), toJSON(expected));
 
         a = new Expression();
@@ -169,10 +169,10 @@ describe("Expression", async function () {
 
         let c = new Expression();
         c.insert('+', a, b);
-        let expected = [{op:'+',operands:[{type:0, value: 10},{type:3, value: {name: "Joe", indexes: [2, 10, 13], next: -10}}]}];
+        let expected = [{op:'+',operands:[{type:0, value: 10},{type:3, name: "Joe", indexes: [2, 10, 13], next: -10}]}];
         assert.equal(toJSON(c.stack), toJSON(expected));
 
-        b.stack[0].operands[0].value.indexes[2] = 30;
+        b.stack[0].operands[0].indexes[2] = 30;
         assert.equal(toJSON(c.stack), toJSON(expected));
 
         b = new Expression();
@@ -209,7 +209,7 @@ describe("Expression", async function () {
         let b = new Expression();
         b.setValue(38);
         b.insert('*', a, a);
-        expected = [...expected, ...expected, {op:'*',operands:[{type:0, value: 38},{type:2, offset:2},{type:2, offset:1}]}];
+        expected = [{op:false, operands:[{type:0, value:38}]},...expected, ...expected, {op:'*',operands:[{type:2, offset: 3},{type:2, offset:2},{type:2, offset:1}]}];
         assert.equal(toJSON(b.stack), toJSON(expected));
 
         b.insert('**', a, a);

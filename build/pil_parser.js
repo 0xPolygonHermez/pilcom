@@ -1044,6 +1044,9 @@ function showcode(title, info) {
 }
 function runtime_expr(value) {
     let res = { type: 'expr', expr: new Expression() };
+    if (value.type) {
+        delete value.type;
+    }
     res.expr.setRuntime(value);
     return res;
 }

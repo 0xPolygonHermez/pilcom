@@ -12,38 +12,89 @@ namespace Assigns:: {
     println(bc);
 
     function suma(int a, int b): int {
-        println(a,b);
         return a+b;
-        println("DON'T PRINT THIS LINE");
+        assertEq(0, 1); // never execute this code, perhaps a warning could be nice
     }
 
-    println(length(PSIX));
-    println(length(x1));
-    println(length(q));
-    println(length(q[0]));
-    println(length("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"));
-    int aux = 200;
-    aux = aux + 200;
-    aux = aux + 10;
-    println(aux);
-    aux = aux + PSIX[5];
-    println(aux);
-    println(aux++,aux++);
-    println(aux);
-    aux = PSIX[1];
-    println(aux);
-    println(PSIX[1]);
-    int i = 12;
-//    expr e = aux * x1[i];
-//    println(e);
-    println(PSIX[bc-1]);
-    println(i+25*bc+PSIX[bc+1]);
-    for (i = 0; i < length(PSIX); ++i) {
-        println(PSIX[i] *10);
+    function mycalc(int a, int b): int {
+        return 19 * a + 73 * b;
     }
-    println(suma(10, 12));
-    println(i, aux);
-    println(suma(i, aux));
+
+    assertEq(length(PSIX), 6);
+    assertEq(length(x1), N_MAX);
+    assertEq(length(q), 3);
+    assertEq(length(q[0]), N_MAX);
+    assertEq(length("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"), 36);
+
+    int aux = 200;                      assertEq(aux, 200);
+    aux = aux + 200;                    assertEq(aux, 400);
+    aux = aux + 10;                     assertEq(aux, 410);
+    println(aux);
+
+    aux = aux + PSIX[5];                assertEq(aux, 423);
+    println(aux);
+
+    assertEq(mycalc(aux, aux), 38916);
+
+    int index = 0;
+    int res = PSIX[index'4++] + PSIX[index++] * PSIX[index++];
+    // PSIX[0] + PSIX[1] * PSIX[2] = 2 + 3 * 5 = 17 OK (left-to-right)
+    // PSIX[3] + PSIX[0] * PSIX[1] = 5 + 2 * 3 = 11 FAIL
+
+    assertEq(res, 17);                     assertEq(index, 3);
+
+    index = 0;
+    res = PSIX[++index] + PSIX[++index] * PSIX[++index];
+    // PSIX[1] + PSIX[2] * PSIX[3] = 3 + 5 * 7 = 38
+    // PSIX[3] + PSIX[1] * PSIX[2] = 7 + 3 * 5 = 22
+
+    assertEq(res, 38);                     assertEq(index, 3);
+
+
+    aux = 100; // 101 * 19 + 102 * 73 = 9365
+    assertEq(mycalc(++aux, ++aux), 9365 );      assertEq(aux, 102);
+
+    aux = 100; // 100 * 19 + 101 * 73 = 9273
+    assertEq(mycalc(aux++, aux++), 9273 );      assertEq(aux, 102);
+
+    aux = 100; // 101 + 102 * 103 = 10607 OK (left-to-right)
+               // 103 + 101 * 102 = 10405 FAIL !!!
+    res = ++aux + ++aux * ++aux;
+    assertEq(res, 10607);                       assertEq(aux, 103);
+
+    aux = 100; // 100 + 101 * 102 = 10402 OK (left-to-right)
+               // 102 + 100 * 101 = 10202 FAIL !!!
+
+    res = aux++ + aux++ * aux++;
+    assertEq(res, 10402);                       assertEq(aux, 103);
+
+    aux = PSIX[0];                              assertEq(aux, 2);
+    aux = PSIX[1];                              assertEq(aux, 3);
+    aux = PSIX[2];                              assertEq(aux, 5);
+    aux = PSIX[3];                              assertEq(aux, 7);
+    aux = PSIX[4];                              assertEq(aux, 11);
+    aux = PSIX[5];                              assertEq(aux, 13);
+
+    int i = 12;                                 assertEq(i, 12);
+
+    assertEq(PSIX[bc-1], 7);
+    assertEq(i+25*bc+PSIX[bc+1], 125);
+    int values[6];
+    assertEq(length(PSIX), 6);
+
+    for (i = 0; i < length(PSIX); ++i) {
+        values[i] = PSIX[i] * 10;
+    }
+
+    assertEq(values[0], 20);
+    assertEq(values[1], 30);
+    assertEq(values[2], 50);
+    assertEq(values[3], 70);
+    assertEq(values[4], 110);
+    assertEq(values[5], 130);
+
+    assertEq(suma(10, 12), 22);
+    assertEq(suma(i, aux), 19);
 
     println("Done!!");
 }

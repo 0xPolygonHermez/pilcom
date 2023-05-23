@@ -12,18 +12,14 @@ module.exports = class Assign {
     }
 
     assign (name, indexes, value) {
-        const [instance, info] = this.references.getTypeInfo(name);
-        if (indexes.length > 0 || info.array) {
-            throw new Error('Assignation to array not support at moment');
-        }
+        const [instance, info] = this.references.getTypeInfo(name, indexes);
         const type = instance.getType(info.locator, info.offset);
         this.router.goBy(type, name, indexes, value);
-        // console.log(info);
     }
     _assignTypeInt(name, indexes, value, type) {
         const v = this.expressions.e2value(value);
         if (typeof v === 'number' || typeof v === 'bigint') {
-            return this.references.set(name, [], v);
+            return this.references.set(name, indexes, v);
         }
         console.log(v);
         EXIT_HERE;
