@@ -19,6 +19,17 @@ module.exports = class Multiarray {
     getIndexesOffset(indexes) {
         return this.getIndexesTypedOffset(indexes).offset;
     }
+    offsetToIndexes(offset) {
+        let level = 0;
+        let indexes = [];
+        while (level < this.dim) {
+            const size = this.offsets[level];
+            indexes.push(Math.floor(offset/size));
+            offset = offset % size;
+            ++level;
+        }
+        return indexes;
+    }
     getIndexesTypedOffset(indexes) {
         if (indexes === null || typeof indexes === 'undefined') {
             // TODO: review

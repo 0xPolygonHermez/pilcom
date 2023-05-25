@@ -1,5 +1,6 @@
 const util = require('util');
 const Router = require('./router.js');
+const LabelRanges = require('./label_ranges.js');
 module.exports = class Expressions {
 
     constructor (Fr, parent, references, publics, constants) {
@@ -9,6 +10,22 @@ module.exports = class Expressions {
         this.constants = constants;
         this.parent = parent;
         this.router = new Router(this, 'op', {defaultPrefix: '_eval', multiParams: true});
+        this.labelRanges = new LabelRanges();
+    }
+
+    reserve(count, label, multiarray) {
+        const id = this.expressions.length;
+        for (let times = 0; times < count; ++times) {
+            this.expressions.push(null);
+        }
+        if (label) {
+            this.labelRanges.define(label, id, multiarray);
+        }
+        return id;
+    }
+    getTypedValue(id, offset, type) {
+        const res = { type, value: this.expressions[id + offset], id: id+offset };
+        return res;
     }
     get(id) {
         if (this.isDefined(id)) {
@@ -39,16 +56,7 @@ module.exports = class Expressions {
     insert(e) {
         return this.expressions.push(e) - 1;
     }
-
-    reserve(n) {
-        const fromId = this.expressions.length;
-        for (let times = 0; times < n; ++times) {
-            this.expressions.push(null);
-        }
-        return fromId;
-    }
-
-    toString(e) {
+    __toString(e) {
         console.log(util.inspect(e, false, null, true /* enable colors */))
     }
 
@@ -120,25 +128,21 @@ module.exports = class Expressions {
         EXIT_HERE;
     }
     _evalReference(e) {
+        if (e.name === 'in1') {
+            debugger;
+        }
         const ref = this.resolveReference(e);
         let res = ref;
         switch (ref.type) {
             case 'witness':
             case 'fixed':
+            case 'public':
+                res = ref;
+                break;
             case 'im':
                 // TODO: review next, prior
-
-
-                    // intermediate column was an expression
-/*                                const im = this.get(id);
-                    console.log(e);
-                    console.log([polname, ref, id]);
-                    console.log(['IM', im, id]);
-                    let refexp = this.evaluate(im, mode);
-                    this.reduceExpressionTo1(refexp);
-                    this.update(id, refexp); */
-                    // e.deg = refexp.deg;
-                    res = ref;
+                res = {...res, value: res.id};
+                break;
             case 'fe':
                 res = { op: 'number', value: BigInt(ref.value) };
                 break;
@@ -149,6 +153,7 @@ module.exports = class Expressions {
             default:
                 console.log(e);
                 console.log(ref);
+                console.log('============');
                 throw new Error(`Invalid reference type: ${ref.type}`);
         }
         return res;
@@ -175,6 +180,12 @@ module.exports = class Expressions {
         console.log(a);
         console.log(b);
         EXIT_HERE;
+    }
+    getLabel(type, id, offset, options) {
+        if (type === 'im') {
+            return this.labelRanges.getLabel(id, offset, options);
+        }
+        return this.references.getLabel(type, id, offset, options);
     }
     resolveReference(e) {
         const names = this.parent.getNames(e);

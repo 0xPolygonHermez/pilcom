@@ -9,6 +9,7 @@ const OP_RUNTIME = 3;
 const NATIVE_OPS = ['+', '-', '*', 'neg'];
 
 class ExpressionStackEvaluating {};
+class NonRuntimeEvaluable {};
 module.exports = class Expression {
 
     // op (string)
@@ -20,31 +21,38 @@ module.exports = class Expression {
     // value (bingint)
     // offset (number)
 
+    // TODO: add all operations as if,
     static operations = {
-        mul:  { type: 'arith',   args: 2, handle: (a, b) => a * b,  handleFr: (Fr, a, b) => Fr.mul(a, b)},
-        add:  { type: 'arith',   args: 2, handle: (a, b) => a + b,  handleFr: (Fr, a, b) => Fr.add(a, b)},
-        sub:  { type: 'arith',   args: 2, handle: (a, b) => a - b,  handleFr: (Fr, a, b) => Fr.sub(a, b)},
-        pow:  { type: 'arith',   args: 2, handle: (a, b) => a ** b, handleFr: (Fr, a, b) => Fr.pow(a, b)},
-        neg:  { type: 'arith',   args: 1, handle: (a) => -a,        handleFr: (Fr, a) => Fr.neg(a, b)},
-        gt:   { type: 'cmp',     args: 2, handle: (a, b) => (a > b  ? 1n : 0n)},
-        ge:   { type: 'cmp',     args: 2, handle: (a, b) => (a >= b ? 1n : 0n)},
-        lt:   { type: 'cmp',     args: 2, handle: (a, b) => (a < b  ? 1n : 0n)},
-        le:   { type: 'cmp',     args: 2, handle: (a, b) => (a <= b ? 1n : 0n)},
-        eq:   { type: 'cmp',     args: 2, handle: (a, b) => (a == b ? 1n : 0n)},
-        ne:   { type: 'cmp',     args: 2, handle: (a, b) => (a != b ? 1n : 0n)},
-        and:  { type: 'logical', args: 2, handle: (a, b) => (a && b ? 1n : 0n)},
-        or:   { type: 'logical', args: 2, handle: (a, b) => (a || b ? 1n : 0n)},
-        shl:  { type: 'bit',     args: 2, handle: (a, b) => (a << b ? 1n : 0n)},
-        shr:  { type: 'bit',     args: 2, handle: (a, b) => (a >> b ? 1n : 0n)},
-        band: { type: 'bit',     args: 2, handle: (a, b) => (a & b  ? 1n : 0n)},
-        bor:  { type: 'bit',     args: 2, handle: (a, b) => (a | b  ? 1n : 0n)},
-        bxor: { type: 'bit',     args: 2, handle: (a, b) => (a ^ b  ? 1n : 0n)},
-        not:  { type: 'logical', args: 1, handle: (a) => (a ? 0n : 1n)},
+        mul:  { type: 'arith',   label: '*',  prec:  96, args: 2, handle: (a, b) => a * b,  handleFr: (Fr, a, b) => Fr.mul(a, b)},
+        add:  { type: 'arith',   label: '+',  prec:  10, args: 2, handle: (a, b) => a + b,  handleFr: (Fr, a, b) => Fr.add(a, b)},
+        sub:  { type: 'arith',   label: '-',  prec:  11, args: 2, handle: (a, b) => a - b,  handleFr: (Fr, a, b) => Fr.sub(a, b)},
+        pow:  { type: 'arith',   label: '**', prec:  98, args: 2, handle: (a, b) => a ** b, handleFr: (Fr, a, b) => Fr.pow(a, b)},
+        neg:  { type: 'arith',   label: '-',  prec: 102, args: 1, handle: (a) => -a,        handleFr: (Fr, a) => Fr.neg(a, b)},
+        div:  { type: 'arith',   label: '/',  prec:  94, args: 2, handle: (a, b) => a / b},
+        mod:  { type: 'arith',   label: '%',  prec:  92, args: 1, handle: (a, b) => a % b},
+        gt:   { type: 'cmp',     label: '>',  prec:  76, args: 2, handle: (a, b) => (a > b  ? 1n : 0n)},
+        ge:   { type: 'cmp',     label: '>=', prec:  72, args: 2, handle: (a, b) => (a >= b ? 1n : 0n)},
+        lt:   { type: 'cmp',     label: '<',  prec:  78, args: 2, handle: (a, b) => (a < b  ? 1n : 0n)},
+        le:   { type: 'cmp',     label: '<=', prec:  74, args: 2, handle: (a, b) => (a <= b ? 1n : 0n)},
+        eq:   { type: 'cmp',     label: '==', prec:  66, args: 2, handle: (a, b) => (a == b ? 1n : 0n)},
+        ne:   { type: 'cmp',     label: '!=', prec:  64, args: 2, handle: (a, b) => (a != b ? 1n : 0n)},
+        and:  { type: 'logical', label: '&&', prec:  46, args: 2, handle: (a, b) => (a && b ? 1n : 0n)},
+        or:   { type: 'logical', label: '||', prec:  44, args: 2, handle: (a, b) => (a || b ? 1n : 0n)},
+        shl:  { type: 'bit',     label: '<<', prec:  86, args: 2, handle: (a, b) => (a << b ? 1n : 0n)},
+        shr:  { type: 'bit',     label: '>>', prec:  84, args: 2, handle: (a, b) => (a >> b ? 1n : 0n)},
+        band: { type: 'bit',     label: '&',  prec:  58, args: 2, handle: (a, b) => (a & b  ? 1n : 0n)},
+        bor:  { type: 'bit',     label: '|',  prec:  56, args: 2, handle: (a, b) => (a | b  ? 1n : 0n)},
+        bxor: { type: 'bit',     label: '^',  prec:  54, args: 2, handle: (a, b) => (a ^ b  ? 1n : 0n)},
+        not:  { type: 'logical', label: '!',  prec: 100, args: 1, handle: (a) => (a ? 0n : 1n)},
     }
 
     constructor () {
         this.stack = [];
         this.runtime = false;
+    }
+
+    setParent (parent) {
+        this.parent = parent;
     }
 
     clone() {
@@ -86,8 +94,7 @@ module.exports = class Expression {
     }
 
     // OP_VALUE (value)
-    // OP_NAME_REF (name, indexes, next)      ╮
-    // OP_ID_REF (id, refType, [offset], next)  <╯
+    // OP_ID_REF (id, refType, next)  refType = [im,witness,fixed,prover,public,((expression))]  At end need to calculate next of expression
     // OP_STACK (offset) NOTE: absolute_index = current_index - offset;
     // OP_RUNTIME (data)
 
@@ -99,8 +106,8 @@ module.exports = class Expression {
         this.runtime = this.runtime || operand.type === OP_RUNTIME;
     }
 
-    setIdReference (id, refType, offset, next) {
-        this._set({type: OP_ID_REF, id, refType, offset, next});
+    setIdReference (id, refType, next) {
+        this._set({type: OP_ID_REF, id, refType, next});
     }
 
     setValue (value) {
@@ -132,20 +139,21 @@ module.exports = class Expression {
             if (aIsAlone) {
                 this.stack[0].op = op;
                 this.stack[0].operands.push(b.cloneAlone());
-                return;
+                return this;
             }
             let operandA = aIsEmpty ? [] : [{type: OP_STACK, offset: 1}];
             this.stack.push({op, operands: [...operandA, b.cloneAlone()]});
-            return;
+            return this;
         }
 
         // !aIsAlone (aIsEmpty?) && !bIsAlone
         const count = this.pushStack(b);
         if (aIsEmpty) {
             this.stack.push({op, operands: [{type: OP_STACK, offset: 1}]});
-            return;
+            return this;
         }
         this.stack.push({op, operands: [{type: OP_STACK, offset: count + 1}, {type: OP_STACK, offset: 1}]});
+        return this;
     }
 
     insert (op, ...bs) {
@@ -169,7 +177,7 @@ module.exports = class Expression {
             for (const b of bs) {
                 this.stack[0].operands.push(b.cloneAlone());
             }
-            return;
+            return this;
         }
 
         let counts = [];
@@ -189,89 +197,104 @@ module.exports = class Expression {
             elem.operands.push(b.isAlone() ? b.cloneAlone() : {type: OP_STACK, offset: counts[++index]});
         }
         this.stack.push(elem);
+        return this;
     }
-    evalOperand(op, pos) {
+    evaluateOperandValue(op, pos, deeply) {
+        if (deeply) {
+            if (op.type === OP_STACK) {
+                const stackPos = pos-op.offset;
+                this.evaluateStackPosValue(stackPos);       // TODO: cache and infinite-loops
+                op.__value = this.stack[stackPos].__value;
+            }
+        } else if (op.type === OP_VALUE ) {
+            op.__value = op.value;
+
+        } else if (op.type === OP_ID_REF ) {
+            op.__value = new NonRuntimeEvaluable();
+
+        } else if (op.type === OP_RUNTIME ) {
+            op.__value =this.evaluateRuntime(op);
+        }
+    }
+    evaluateRuntime(op) {
+        let res = this.parent.evalRuntime(op);
+        return res;
+    }
+/*    evalOperandValue(op, pos, deeply) {
         switch (op.type) {
             case OP_VALUE:
-                return op.value;
+                return op.value;x
             case OP_ID_REF:
                 return this.parent.evalIdRef();
             case OP_STACK:
+                if (!deeply) return null;
                 const stackPos = pos-op.offset;
-                if (typeof this.values[stackPos] === 'undefined') {
+                if (typeof this.stack[stackPos].__value === 'undefined') {
                     // TODO: prevent infinite loop
                     this.evalStackPos(stackPos);
-                    if (typeof this.values[stackPos] === 'undefined') EXIT_HERE;
                 }
                 return this.values[stackPos];
             case OP_RUNTIME:
                 const res = this.parent.evalRuntime(op);
                 return res;
         }
+    }*/
+    instanceValues() {
+        for (let se of this.stack) {
+            for (let ope of se.operands) {
+                if (ope.type !== OP_RUNTIME) continue;
+                const value = ope.__value;
+                if (typeof value === 'bigint') {
+                    ope.type = OP_VALUE;
+                    ope.value = value;
+                    continue;
+                }
+                if (typeof value === 'object' && value.type && ['witness', 'fixed', 'im', 'public'].includes(value.type)) {
+                    if (value.type === 'im') {
+                        console.log(['IM', value, ope]);
+                    }
+                    ope.type = OP_ID_REF;
+                    ope.id = value.value;
+                    ope.refType = value.type;
+                    if (typeof value.row !== 'undefined') {
+                        ope.row = value.row;
+                    }
+                    continue;
+                }
+            }
+        }
+    }
+    instance(parent) {
+        let dup = this.clone();
+        dup.eval(parent);
+        dup.instanceValues();
+        return dup;
     }
     eval(parent) {
         this.parent = parent;
         if (typeof parent === 'undefined') {
             console.log('BREAK-HERE');
         }
-        this.values = [];
         let top = this.stack.length-1;
-        this.instance();
-        this.evalStackPos(top);
-        return this.values[top];
+        this.evaluateOperands();
+        this.evaluateStackPosValue(top);
+        return this.stack[top].__value;
     }
-    evalStackPos(pos) {
+    evaluateStackPosValue(pos) {
         const st = this.stack[pos];
-        let operandValues = [];
-        let allOperandsAreRuntimeCalculable = true;
-        // console.log(`\x1B[1;34m**** STACK[${pos}] ****\x1B[0m`);
-/*        for (const op of st.operands) {
-            // console.log(`\x1B[34mSTACK[${pos}]-OP\x1B[0m`);
-            let value = this.evalOperand(op, pos);
-            if (typeof value === 'undefined') {
-                console.log('ERROR CALCULATION OPERAND');
-                console.log(value);
-                console.log(op);
-                EXIT_HERE;
-            }
-            allOperandsAreRuntimeCalculable &= this.isRuntimeCalculable(value);
-            operandValues.push(value);
-        }
-        if (!allOperandsAreRuntimeCalculable) {
-            console.log('SOME-OPERANDS-ARE-NOT-RUNTIME-CALCULABLE');
-            console.log(operandValues);
-            EXIT_HERE;
-        }*/
+
+        this.evaluateStackPosOperands(pos, true);
+
         if (st.op === false) {
-            this.values[pos] = st.operands[0].__value;
+            st.__value = st.operands[0].__value;
             return;
         }
         const opfunc = Expression.operations[st.op] ?? false;
         if (opfunc === false) {
-            console.log(`NOT FOUND OPERATION (${st.op})`);
-            EXIT_HERE;
+            throw new Error(`NOT FOUND OPERATION (${st.op})`);
         }
-        this.values[pos] = opfunc.handle.apply(this, st.operands.map(x => x.__value));
-    }
-    simply() {
-        // not evaluate all. example: x !== 0 ? a / x : 0
-        // no ternary operations pending
-        // first, replace referenced expressions
-        // replace variables, function calls, constants
-
-        for (let index = 0; index < this.stack.length; ++index) {
-            for (let op of this.stack[index].operands) {
-                if (op.type !== OP_STACK) continue;
-                const tvalue = typeof this.values[index - op.offset];
-                if (tvalue === 'undefined') continue;
-                if (tvalue !== 'bigint' && tvalue !== 'number') { // TODO:Fr
-                    console.log(this.values[index - op.offset]);
-                    WARNING_HERE;
-                }
-                op.type = OP_VALUE;
-                delete op.offset;
-                op.value = this.values[index - op.offset];
-            }
+        if (!st.operands.some(x => typeof x === 'object')) {
+            st.__value = opfunc.handle.apply(this, st.operands.map(x => x.__value));
         }
     }
     isRuntimeCalculable(e) {
@@ -283,29 +306,23 @@ module.exports = class Expression {
             if (e.type === 'witness' && e.type === 'fixed') return false;
         }
     }
-    instance() {
+    evaluateOperands() {
         for (let index = 0; index < this.stack.length; ++index) {
-            this.instanceStackElement(this.stack[index], index);
+            this.evaluateStackPosOperands(index, false);
         }
     }
-    instanceStackElement(se, pos) {
-        for (let ope of se.operands) {
-            this.instanceOperand(ope);
-            ope.__value = this.evalOperand(ope, pos);
-            if (typeof ope.__value === 'undefined') {
-                console.log('ERROR CALCULATION OPERAND');
-                console.log(value);
-                console.log(ope);
-                EXIT_HERE;
-            }
-            // allOperandsAreRuntimeCalculable &= this.isRuntimeCalculable(op.__value);
+    evaluateStackPosOperands(pos, deeply) {
+        for (let ope of this.stack[pos].operands) {
+            this.evaluateOperand(ope, pos, deeply);
         }
     }
-    instanceOperand(ope) {
-        this.evaluatePrior(ope);
-        this.evaluateIndexes(ope);
-        this.evaluateNext(ope);
-        // this.evaluateInside(ope);
+    evaluateOperand(ope, pos, deeply) {
+        if (!deeply) {
+            this.evaluatePrior(ope);
+            this.evaluateIndexes(ope);
+            this.evaluateNext(ope);
+        }
+        this.evaluateOperandValue(ope, pos, deeply);
     }
 
     evaluatePrior(ope) {
@@ -331,7 +348,7 @@ module.exports = class Expression {
         if (typeof ope.next === 'undefined') {
             return 0;
         }
-        ope.__next = this.evaluateContent(ope.next);
+        ope.__next = ope.next === false ? 0n : this.evaluateContent(ope.next);
         return ope.__next;
     }
 
@@ -351,11 +368,11 @@ module.exports = class Expression {
     evaluateReference(e) {
         return this.parent.evaluateReference(e);
     }
-    evaluateRuntime(e) {
+/*    evaluateRuntime(e) {
         // function_call op:'call' function: arguments:
         // positional_param op:'positional_param' position:
         // casting op:'cast' cast: value: dim: ??
-    }
+    }*/
     dump() {
         console.log(`\x1B[38;5;214m|==========> DUMP <==========|\x1B[0m`);
         for (let index = this.stack.length-1; index >=0; --index) {
@@ -376,7 +393,7 @@ module.exports = class Expression {
                 return `${cType}VALUE ${cValue}${op.value}`;
             case OP_ID_REF:
                 // refType, [offset], next
-                return `${cType}ID_REF ${cProp}refType:${cValue}${op.refType} ${cProp}offset:${cValue}${op.offset} ${cProp}next:${cValue}${op.next}`;
+                return `${cType}ID_REF ${cProp}refType:${cValue}${op.refType} ${cProp}id:${cValue}${op.id} ${cProp}next:${cValue}${op.next}`;
             case OP_STACK:
                 return `${cType}STACK ${cProp}offset:${cValue}${op.offset} ${cProp}#${cValue}${pos-op.offset}`;
             case OP_RUNTIME:
@@ -388,5 +405,62 @@ module.exports = class Expression {
                 return `${cType}RUNTIME${props}`;
         }
         return `\x1B[1;31m¿¿${op.type}??\x1B[0m`;
+    }
+    // TODO: cache of next
+    instanceNext(next) {
+        let _next = this.instance();
+    }
+    updateOperandNext(op, next) {
+        assert(op.type != RUNTIME);
+
+        if (op.type === OP_ID_REF) {
+            op.next += next;
+        }
+    }
+    toString(options) {
+        let top = this.stack.length-1;
+        return this.stackPosToString(top ,0, options);
+    }
+    stackPosToString(pos, pprec, options) {
+        const st = this.stack[pos];
+        if (st.op === false) {
+            return this.operandToString(st.operands[0], pos, pprec, options);
+        }
+        const opinfo = Expression.operations[st.op];
+        let res;
+        if (st.operands.length === 1) {
+            res = Expression.operations[st.op].label + this.operandToString(st.operands[0], pos, opinfo.prec, options);
+
+        } else if (st.operands.length === 2) {
+            res = this.operandToString(st.operands[0], pos, opinfo.prec, options) + ' ' + Expression.operations[st.op].label + ' ' +
+                  this.operandToString(st.operands[1], pos, opinfo.prec, options);
+        } else {
+            TODO_EXIT
+        }
+        if (pprec > opinfo.prec) {
+            res = '(' + res + ')';
+        }
+        return res;
+    }
+    operandToString(ope, pos, pprec, options) {
+        switch (ope.type) {
+            case OP_VALUE:
+                return ope.value.toString();
+            case OP_ID_REF:
+                // refType, [offset], next
+                let res = this.parent ? this.parent.getLabel(ope.refType, ope.id, ope.offset, options) : false;
+                if (!res) {
+                    res = `${ope.refType}@${ope.id}`;
+                }
+                if (ope.next < 0) res = `${ope.next==-1?'':-ope.next}'${res}`;
+                if (ope.next > 0) res = `${res}'${ope.next==1?'':ope.next}`;
+                return res;
+            case OP_STACK:
+                return this.stackPosToString(pos-ope.offset, pprec, options);
+            case OP_RUNTIME:
+                console.log(ope);
+                TODO;
+        }
+
     }
 }

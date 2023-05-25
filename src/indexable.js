@@ -1,21 +1,30 @@
+const LabelRanges = require("./label_ranges.js");
 module.exports = class Indexable {
 
     constructor (Fr, type) {
         this.Fr = Fr;
         this.values = [];
         this.type = type;
+        this.labelRanges = new LabelRanges();
     }
 
-    reserve(count) {
+    reserve(count, label, multiarray) {
         const id = this.values.length;
         for (let index = 0; index < count; ++index) {
             this.values[index + id] = null;
+        }
+        if (label) {
+            this.labelRanges.define(label, id, multiarray);
         }
         return id;
     }
 
     get(id, offset) {
         return this.values[id + offset]
+    }
+
+    getLabel(id, offset, options) {
+        return this.labelRanges.getLabel(id, offset, options);
     }
 
     getTypedValue(id, offset) {
@@ -35,6 +44,7 @@ module.exports = class Indexable {
     }
 
     set(id, offset, value) {
+        console.log(`\x1B[31mSET@${this.type}(${id}, ${offset}, ${value})\x1B[0m`);
         this.values[id+offset] = value;
     }
 
@@ -62,8 +72,14 @@ module.exports = class Indexable {
         }
     }
     dump () {
+        console.log(`DUMP ${this.type}`);
         for (let index = 0; index < this.values.length; ++index) {
-            console.log(`${index}: ${this.values[index]}`);
+            const value = this.values[index];
+            if (value && typeof value.dump === 'function') {
+                console.log(`#### ${this.type} ${index} ####`);
+                value.dump();
+            }
+            console.log([index, this.values[index]]);
         }
     }
 }

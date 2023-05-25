@@ -7,47 +7,46 @@ module.exports = class Constraints {
     }
 
     get(id) {
-        return this.values[id];
+        return this.constraints[id];
+    }
+
+    getExpr(id) {
+        return this.expressions.get(this.constraints[id].exprId);
     }
 
     isDefined(id) {
-        return (typeof this.values[id] != 'undefined');
+        return (typeof this.constraints[id] != 'undefined');
     }
 
     define(left, right, boundery, sourceRef) {
-
-    }
-
-    set(id, value) {
-        this.values[id] = value;
-    }
-
-    unset(id) {
-        if (id < this.values.length) {
-            delete this.values[id];
+        const id = this.constraints.length;
+        if (right.eval(this.expressions) !== 0n) {
+            left.insert('sub', right);
         }
+        const exprId = this.expressions.insert(left);
+        return this.constraints.push({exprId, sourceRef, boundery}) - 1;
     }
 
     *[Symbol.iterator]() {
-        for (let index = 0; index < this.values.length; ++index) {
+        for (let index = 0; index < this.constraints.length; ++index) {
           yield index;
         }
     }
 
     *values() {
-        for (let value of this.values) {
+        for (let value of this.constraints) {
             yield value;
         }
     }
 
     *keyValues() {
-        for (let index = 0; index < this.values.length; ++index) {
-            yield [index, this.values[index]];
+        for (let index = 0; index < this.constraints.length; ++index) {
+            yield [index, this.constraints[index]];
         }
     }
     dump () {
-        for (let index = 0; index < this.values.length; ++index) {
-            console.log(`${index}: ${this.values[index]}`);
+        for (let index = 0; index < this.constraints.length; ++index) {
+            console.log(`${index}: ${this.constraints[index]}`);
         }
     }
 }

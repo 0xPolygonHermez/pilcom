@@ -12,7 +12,7 @@ module.exports = class Variables {
         this.variables = [];
     }
 
-    reserve(count, data) {
+    reserve(count, label, multiarray, data) {
         this.variables[this.lastId] = { count, type: data.type, values:[] };
         return this.lastId++;
     }

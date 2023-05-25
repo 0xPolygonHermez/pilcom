@@ -1,0 +1,19 @@
+subair Expressions(2**23);
+
+namespace Expressions:: {
+
+    constant N_MAX = 16;
+    constant PSIX[6] = [2, 3, 5, 7, 11, 13];
+
+    col witness x1[N_MAX];
+//    col witness q[3][N_MAX];
+
+    int bc = 4;
+    col tmp = 0;
+    // println(tmp);
+
+    col tmp2 = bc * x1[0];
+    // println(tmp2);
+
+    x1[0] === 4;
+}

@@ -58,7 +58,7 @@ class Compiler {
             }
         }
         let sts = await this.parseSource(fileName, true);
-        this.processor.execute(sts);
+        this.processor.startExecution(sts);
 //        console.log(res);
 /*
         console.log('\x1b[1;35m==== CONSTANTS ====');

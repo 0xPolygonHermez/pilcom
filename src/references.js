@@ -49,13 +49,15 @@ module.exports = class References {
             throw new Error(`${name} was defined previously on ${def.data.sourceRef}`)
         }
 
+        const id = tdata.instance.reserve(size, name, array, data);
         this.definitions[name] = {
             type,
             array,
-            locator: tdata.instance.reserve(size, data),
+            locator: id,
             scope: scopeId,
             data
         }
+        return id;
     }
 
     get (name, indexes = []) {
@@ -63,7 +65,10 @@ module.exports = class References {
         // console.log(`GET ${instance.constructor.name}.get(${info.locator}, ${info.offset})`);
         return instance.get(info.locator, info.offset);
     }
-
+    getLabel(type, id, offset, options) {
+        const instance = this.types[type].instance;
+        return instance.getLabel(id, offset, options);
+    }
     getTypedValue (name, indexes, options) {
         indexes = indexes ?? [];
         options = options ?? {};
@@ -71,7 +76,11 @@ module.exports = class References {
         if (typeof indexes === 'undefined') indexes = [];
 
         const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        let tvalue = instance.getTypedValue(info.locator, info.offset);
+        let tvalue = instance.getTypedValue(info.locator, info.offset, info.type);
+        if (typeof info.row !== 'undefined') {
+            tvalue.row = info.row;
+        }
+
         if (options.full) {
             tvalue.instance = instance;
             tvalue.locator = info.locator;
@@ -110,8 +119,20 @@ module.exports = class References {
         // TODO: control array vs indexes
         const tdata = this._getRegisteredType(def.type);
 
-        const typedOffset = (def.array === false) ? {offset: 0} : def.array.getIndexesTypedOffset(indexes);
-        return [tdata.instance, {locator: def.locator, ...typedOffset}];
+        if (def.array !== false) {
+            // TODO ROW ACCESS
+            const typedOffset = def.array.getIndexesTypedOffset(indexes);
+            return [tdata.instance, {locator: def.locator, ...typedOffset}];
+        }
+        const indexLengthLimit = tdata.instance.rows ? 1 : 0;
+        if (indexes.length > indexLengthLimit) {
+            throw new Error(`Invalid array or row access, too many array levels`);
+        }
+        let extraInfo = {offset: 0, type: def.type};
+        if (indexes.length > 0) {
+            extraInfo.row = indexes[0];
+        }
+        return [tdata.instance, {locator: def.locator, ...extraInfo}];
     }
 
     set (name, indexes, value) {

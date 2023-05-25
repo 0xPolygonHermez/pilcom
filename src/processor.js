@@ -29,32 +29,37 @@ module.exports = class Processor {
         this.references.register('var', this.variables);
 
         this.fixeds = new Ids('fixed');
+        this.fixeds.rows = true;
         this.references.register('fixed', this.fixeds);
 
         this.witness = new Ids('witness');
+        this.witness.rows = true;
         this.references.register('witness', this.witness);
 
         this.constants = new Indexable(Fr, 'constant');
         this.references.register('constant', this.constants);
 
-        this.publics = new Ids(Fr, 'public');
+        this.publics = new Ids('public');
         this.references.register('public', this.publics);
 
-        this.prover = new Ids(Fr, 'prover');
+        this.prover = new Ids('prover');
         this.references.register('prover', this.prover);
 
-        this.imCols = new Indexable(Fr, 'im');
-        this.references.register('im', this.prover);
+//        this.imCols = new Indexable(Fr, 'im');
+//        this.references.register('im', this.imCols);
 
         this.functions = new Indexable(Fr, 'function');
         this.references.register('function', this.functions);
 
         this.subairs = new Subairs(Fr);
 
-        this.globalConstraints = new Constraints(Fr);
-        this.constraints = new Constraints(Fr);
         this.expressions = new Expressions(Fr, this, this.references, this.publics, this.constants);
         this.globalExpressions = new Expressions(Fr, this, this.references, this.publics, this.constants);
+
+        this.references.register('im', this.expressions);
+
+        this.constraints = new Constraints(Fr, this.expressions);
+        this.globalConstraints = new Constraints(Fr, this.globalExpressions);
 
         this.assign = new Assign(Fr, this, this.references, this.expressions);
 
@@ -65,6 +70,12 @@ module.exports = class Processor {
     }
     insideFunction() {
         return this.functionDeep > 0;
+    }
+    startExecution(statements) {
+        this.references.declare('N', 'var', [], { type: 'int', sourceRef: this.sourceRef });
+        this.references.set('N', [], 2**16);
+        this.execute(statements);
+        //this.imCols.dump();
     }
     execute(statements) {
         ++this.executeCounter;
@@ -122,10 +133,6 @@ module.exports = class Processor {
             return res;
         }
         this.error(st, `Undefined function statement type: ${name}`);
-    }
-    execVar(st) {
-        const fullname = this.getFullName(st);
-        this.scope.define(fullname, {value: st.init ? this.expressions.e2value(st.init):null});
     }
     execAssign(st) {
         // type: number(int), fe, string, col, challenge, public, prover,
@@ -277,9 +284,12 @@ module.exports = class Processor {
         this.references.set(func.name, [], func);
     }
     getExprNumber(expr, s, title) {
+        // expr.expr.dump();
         const se = this.expressions.eval(expr);
         if (typeof se !== 'bigint') {
 //        if (se.op !== 'number') {
+            console.log('ERROR');
+            console.log(se);
             this.error(s, title + ' is not constant expression (1)');
         }
 //        return Number(se.value);
@@ -324,10 +334,21 @@ module.exports = class Processor {
         this.colDeclaration(s, 'fixed');
     }
     execColDeclaration(s) {
-        this.colDeclaration(s, 'im');
+        // intermediate column
+        for (const col of s.items) {
+            const colname = this.getFullName(col);
+            const lengths = this.decodeLengths(col);
+            const id = this.declareReference(colname, 'im', lengths, {});
+
+            let init = s.init;
+            if (init && init.expr && typeof init.expr.instance === 'function') {
+                init = init.expr.instance(this.expressions);
+                this.expressions.set(id, init);
+            }
+        }
     }
     execPublicDeclaration(s) {
-        this.colDeclaration(s, 'public');
+        this.colDeclaration(s, 'public', true);
         // TODO: initialization
         // TODO: verification defined
     }
@@ -347,12 +368,19 @@ module.exports = class Processor {
         }
         return lengths;
     }
-    colDeclaration(s, type) {
+    colDeclaration(s, type, ignoreInit) {
         for (const col of s.items) {
             const colname = this.getFullName(col);
             console.log(`COL_DECLARATION(${colname}) type:${type}`);
             const lengths = this.decodeLengths(col);
-            this.declareReference(colname, type, lengths);
+            let init = s.init;
+            if (init && init.expr && typeof init.expr.instance === 'function') {
+                //init.expr.eval(this.expressions);
+                //init.expr.dump();
+                init = init.expr.instance(this.expressions);
+                //init.dump();
+            }
+            this.declareReference(colname, type, lengths, {}, ignoreInit ? null : init);
             /// TODO: INIT / SEQUENCE
         }
     }
@@ -361,7 +389,9 @@ module.exports = class Processor {
             data.sourceRef = this.sourceRef;
         }
         const res = this.references.declare(name, type, lengths, data);
-        if (initValue !== null) this.references.set(name, [], initValue);
+        if (initValue !== null) {
+            this.references.set(name, [], initValue);
+        }
         return res;
     }
     execCode(s) {
@@ -369,15 +399,12 @@ module.exports = class Processor {
     }
     execConstraint(s) {
         console.log('********** doConstraint ********** (s.expression:)');
-        /* let constraint = {op: 'sub', values: [s.left, s.right]};
-        console.log(s);
-        this.expressions.toString(constraint);
-        let expr = this.expressions.evaluate(constraint, {update: true, Fr: this.Fr});
-        console.log('********** doConstraint ********** (expr)');
-        this.expressions.toString(expr);
-        const eidx = this.addExpression(expr);
-        this.constraints.push({fileName: this.relativeFileName, namespace: this.namespace, line: s.first_line, e: eidx});*/
-
+        const id = this.constraints.define(s.left.expr.instance(this.expressions), s.right.expr.instance(this.expressions),false,this.sourceRef);
+        const expr = this.constraints.getExpr(id);
+        expr.dump();
+        expr.setParent(this.expressions);
+        console.log("\x1B[1;36;44m" + expr.toString({hideClass:true})+"\x1B[0m");
+        // expr2.mark();
     }
     execVariableIncrement(s) {
         const name = s.name;

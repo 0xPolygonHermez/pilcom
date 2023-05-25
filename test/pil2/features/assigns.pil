@@ -26,29 +26,36 @@ namespace Assigns:: {
     assertEq(length(q[0]), N_MAX);
     assertEq(length("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"), 36);
 
-    int aux = 200;                      assertEq(aux, 200);
-    aux = aux + 200;                    assertEq(aux, 400);
-    aux = aux + 10;                     assertEq(aux, 410);
+    int aux = 200;                              assertEq(aux, 200);
+    aux = aux + 200;                            assertEq(aux, 400);
+    aux = aux + 10;                             assertEq(aux, 410);
     println(aux);
 
-    aux = aux + PSIX[5];                assertEq(aux, 423);
+    aux = aux + PSIX[5];                        assertEq(aux, 423);
     println(aux);
 
     assertEq(mycalc(aux, aux), 38916);
 
+    assertEq(PSIX[0], 2);
+    assertEq(PSIX[1], 3);
+    assertEq(PSIX[2], 5);
+    assertEq(PSIX[3], 7);
+    assertEq(PSIX[4], 11);
+    assertEq(PSIX[5], 13);
+
     int index = 0;
-    int res = PSIX[index'4++] + PSIX[index++] * PSIX[index++];
+    int res = PSIX[index++] + PSIX[index++] * PSIX[index++];
     // PSIX[0] + PSIX[1] * PSIX[2] = 2 + 3 * 5 = 17 OK (left-to-right)
     // PSIX[3] + PSIX[0] * PSIX[1] = 5 + 2 * 3 = 11 FAIL
 
-    assertEq(res, 17);                     assertEq(index, 3);
+    assertEq(res, 17);                          assertEq(index, 3);
 
     index = 0;
     res = PSIX[++index] + PSIX[++index] * PSIX[++index];
     // PSIX[1] + PSIX[2] * PSIX[3] = 3 + 5 * 7 = 38
     // PSIX[3] + PSIX[1] * PSIX[2] = 7 + 3 * 5 = 22
 
-    assertEq(res, 38);                     assertEq(index, 3);
+    assertEq(res, 38);                          assertEq(index, 3);
 
 
     aux = 100; // 101 * 19 + 102 * 73 = 9365

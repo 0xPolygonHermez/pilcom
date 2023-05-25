@@ -58,7 +58,7 @@ module.exports = class Sequence {
         return [].concat(...this._extend(e.value).map(x => Array(e.times).fill(x)));
     }
 
-    reserve(count, data) {
+    reserve(count, label, multiarray, data) {
         this.variables[this.lastId] = { count, type: data.type, values:[] };
         return this.lastId++;
     }
