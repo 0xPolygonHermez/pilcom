@@ -66,7 +66,7 @@ module.exports = class PackedExpressions {
         const [op] = Object.keys(expr);
         let opes = [];
         for (const ope of Object.values(expr[op])) {
-            opes.push(this.operandToString(ope));
+            opes.push(this.operandToString(ope, options));
         }
 
         if (opes.length == 1) {
@@ -83,7 +83,7 @@ module.exports = class PackedExpressions {
         }
         return e;
     }
-    operandToString(ope) {
+    operandToString(ope, options) {
         const [type] = Object.keys(ope);
         const props = ope[type];
         switch (type) {
@@ -91,22 +91,34 @@ module.exports = class PackedExpressions {
                 return ope.constant.value;
 
             case 'fixedCol':
-                return this.rowOffsetToString(props.rowOffset, `fixed@${props.idx}`);
+                return this.rowOffsetToString(props.rowOffset, this.getLabel('fixed', props.idx, options));
 
             case 'witnessCol':
-                return this.rowOffsetToString(props.rowOffset, `witness@${props.colIdx}`);
+                return this.rowOffsetToString(props.rowOffset, this.getLabel('witness', props.colIdx, options));
 
             case 'publicValue':
-                return `public@${props.idx}`;
+                return this.getLabel('public', props.idx, options);
 
             case 'expression':
-                return '('+this.exprToString(props.value)+')';
+                return '('+this.exprToString(props.value, options)+')';
 
             default:
                 console.log(ope);
                 throw new Error(`Invalid type ${type}`)
         }
 
+    }
+    getLabel(type, id, options) {
+        options = options ?? {};
+        const labels = options.labels;
+        let label;
+        if (typeof labels === 'object' && typeof labels.getLabel === 'function') {
+            label = labels.getLabel(type, id, options);
+        }
+        if (!label) {
+            label = `${type}@${id}`;
+        }
+        return label;
     }
 
 }

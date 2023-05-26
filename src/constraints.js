@@ -53,7 +53,7 @@ module.exports = class Constraints {
             let info = `${index}: ${eid} ${peid} ${constraint.sourceRef}`
 
             if (packed) {
-                info += ' '  + packed.exprToString(peid);
+                info += ' '  + packed.exprToString(peid, {labels: this.expressions, hideClass: true});
             }
             console.log(info);
         }
