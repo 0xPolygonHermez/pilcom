@@ -15,5 +15,7 @@ namespace Expressions:: {
     col tmp2 = bc * x1[0];
     // println(tmp2);
 
+    expr myfirstexpr = bc * x1[0];
+
     x1[0] === 4;
 }

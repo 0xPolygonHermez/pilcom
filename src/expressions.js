@@ -1,6 +1,7 @@
 const util = require('util');
 const Router = require('./router.js');
 const LabelRanges = require('./label_ranges.js');
+const Expression = require('./expression.js');
 module.exports = class Expressions {
 
     constructor (Fr, parent, references, publics, constants) {
@@ -252,5 +253,9 @@ module.exports = class Expressions {
             this.packedIds[id] = this.expressions[id].pack(container, options);
         }
         return this.packedIds[id];
+    }
+    instance(e) {
+        const expr = (e.expr && e.expr instanceof Expression) ? e.expr : e;
+        return expr.instance(this);
     }
 }

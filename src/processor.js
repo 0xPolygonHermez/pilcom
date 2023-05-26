@@ -424,8 +424,17 @@ module.exports = class Processor {
         }
         for (let index = 0; index < count; ++index) {
             const [name, lengths] = this.decodeNameAndLengths(s.items[index]);
-            const initValue = init ? this.expressions.e2value(s.init[index]) : null;
+
             this.references.declare(name, 'var', lengths, { type: s.vtype, sourceRef: this.sourceRef });
+            let initValue = null;
+            if (init) {
+                if (s.vtype === 'expr') {
+                    initValue = this.expressions.instance(s.init[index]);
+                }
+                else {
+                    initValue = this.expressions.e2value(s.init[index]);
+                }
+            }
             if (initValue !== null) this.references.set(name, [], initValue);
         }
     }
