@@ -63,7 +63,7 @@ async function run() {
     console.log("connectionIdentities: " + out.connectionIdentities.length);
     console.log("polIdentities: " + out.polIdentities.length);
 */
-    await fs.promises.writeFile(outputFile.trim(), JSON.stringify(out, null, 1) + "\n", "utf8");
+    // await fs.promises.writeFile(outputFile.trim(), JSON.stringify(out, null, 1) + "\n", "utf8");
 }
 
 run().then(()=> {

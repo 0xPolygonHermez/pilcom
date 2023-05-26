@@ -1,0 +1,112 @@
+const util = require('util');
+
+const OPERATOR_SYMBOLS = {mul: '*', add: '+', sub:'-', neg:'-'};
+module.exports = class PackedExpressions {
+
+    constructor () {
+        this.expressions = [];
+        this.values = [];
+    }
+    insert(expr) {
+        return this.expressions.push(expr) - 1;
+    }
+
+    pop(count, operation) {
+        if (this.values.length < count) {
+            throw new Error(`Not enought elements (${this.values.length} vs ${count}) for operation ${operation}`);
+        }
+        return this.values.splice(-count, count);
+    }
+    mul() {
+        const [lhs, rhs] = this.pop(2, 'mul');
+        return this.insert({mul: {lhs, rhs}});
+    }
+
+    add() {
+        const [lhs, rhs] = this.pop(2, 'add');
+        return this.insert({add: {lhs, rhs}});
+    }
+    sub() {
+        const [lhs, rhs] = this.pop(2, 'sub');
+        return this.insert({sub: {lhs, rhs}});
+    }
+    neg() {
+        const [value] = this.pop(1, 'neg');
+        return this.insert({sub: {value}});
+    }
+    pushConstant (value) {
+        this.values.push({constant: {value}});
+    }
+    pushChallenge (idx, stage = 1) {
+        this.values.push({challenge: {stage, idx}});
+    }
+    pushProverValue (idx) {
+        this.values.push({proverValue: {idx}});
+    }
+    pushPublicValue (idx) {
+        this.values.push({publicValue: {idx}});
+    }
+    pushPeriodicCol (idx, rowOffset = 0) {
+        this.values.push({periodicCol: {idx, rowOffset}});
+    }
+    pushFixedCol (idx, rowOffset = 0) {
+        this.values.push({fixedCol: {idx, rowOffset}});
+    }
+    pushWitnessCol (colIdx, rowOffset = 0, stage = 1) {
+        this.values.push({witnessCol: {colIdx, rowOffset, stage}});
+    }
+    pushExpression (idx) {
+        this.values.push({expression: {value:idx}});
+    }
+    dump() {
+        console.log(util.inspect(this.expressions, false, null, true /* enable colors */));
+    }
+    exprToString(id, options) {
+        const expr = this.expressions[id];
+        const [op] = Object.keys(expr);
+        let opes = [];
+        for (const ope of Object.values(expr[op])) {
+            opes.push(this.operandToString(ope));
+        }
+
+        if (opes.length == 1) {
+            return `${OPERATOR_SYMBOLS[op]}${opes[0]}`;
+        }
+        return opes.join(OPERATOR_SYMBOLS[op]);
+    }
+    rowOffsetToString(rowOffset, e) {
+        if (rowOffset < 0) {
+            return (rowOffset < -1 ? `${-rowOffset}'${e}` : `'${e}`);
+        }
+        if (rowOffset > 0) {
+            return (rowOffset > 1 ? `${e}'${-rowOffset}` : `${e}'`);
+        }
+        return e;
+    }
+    operandToString(ope) {
+        const [type] = Object.keys(ope);
+        const props = ope[type];
+        switch (type) {
+            case 'constant':
+                return ope.constant.value;
+
+            case 'fixedCol':
+                return this.rowOffsetToString(props.rowOffset, `fixed@${props.idx}`);
+
+            case 'witnessCol':
+                return this.rowOffsetToString(props.rowOffset, `witness@${props.colIdx}`);
+
+            case 'publicValue':
+                return `public@${props.idx}`;
+
+            case 'expression':
+                return '('+this.exprToString(props.value)+')';
+
+            default:
+                console.log(ope);
+                throw new Error(`Invalid type ${type}`)
+        }
+
+    }
+
+}

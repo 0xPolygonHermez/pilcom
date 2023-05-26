@@ -284,7 +284,6 @@ module.exports = class ProtoOut {
                 values = {lhs: { expression: { value: this.random(0, expressions)}},
                           rhs: { expression: { value: this.random(0, expressions)}}};
             }
-
             if (addOps > 0) {
                 exprs.push({ add: values });
                 --addOps;

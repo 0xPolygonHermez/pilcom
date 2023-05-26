@@ -6,6 +6,7 @@ module.exports = class Expressions {
     constructor (Fr, parent, references, publics, constants) {
         this.Fr = Fr;
         this.expressions = [];
+        this.packedIds = [];
         this.references = references;
         this.constants = constants;
         this.parent = parent;
@@ -239,5 +240,17 @@ module.exports = class Expressions {
             return res != 0;
         }
         EXIT_HERE;
+    }
+    pack(container, options) {
+        for (let id = 0; id < this.expressions.length; ++id) {
+            if (typeof this.packedIds[id] !== 'undefined') continue;    // already packed
+            this.packedIds[id] = this.expressions[id].pack(container, options);
+        }
+    }
+    getPackedExpressionId(id, container, options) {
+        if (container && typeof this.packedIds[id] === 'undefined') {
+            this.packedIds[id] = this.expressions[id].pack(container, options);
+        }
+        return this.packedIds[id];
     }
 }

@@ -44,9 +44,18 @@ module.exports = class Constraints {
             yield [index, this.constraints[index]];
         }
     }
-    dump () {
+    dump (packed) {
+        console.log('CONSTRAINTS');
         for (let index = 0; index < this.constraints.length; ++index) {
-            console.log(`${index}: ${this.constraints[index]}`);
+            const constraint = this.constraints[index];
+            const eid = constraint.exprId;
+            const peid = this.expressions.getPackedExpressionId(eid);
+            let info = `${index}: ${eid} ${peid} ${constraint.sourceRef}`
+
+            if (packed) {
+                info += ' '  + packed.exprToString(peid);
+            }
+            console.log(info);
         }
     }
 }

@@ -11,6 +11,7 @@ const Sequence = require("./sequence.js");
 const List = require("./list.js");
 const Assign = require("./assign.js");
 const Function = require("./function.js");
+const PackedExpressions = require("./packed_expressions.js");
 
 class FlowAbortCmd {};
 class BreakCmd extends FlowAbortCmd {};
@@ -75,6 +76,10 @@ module.exports = class Processor {
         this.references.declare('N', 'var', [], { type: 'int', sourceRef: this.sourceRef });
         this.references.set('N', [], 2**16);
         this.execute(statements);
+        let packed = new PackedExpressions();
+        this.expressions.pack(packed);
+        packed.dump();
+        this.constraints.dump(packed);
         //this.imCols.dump();
     }
     execute(statements) {

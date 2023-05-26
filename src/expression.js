@@ -461,4 +461,82 @@ module.exports = class Expression {
         }
 
     }
+    pack(container, options) {
+        let top = this.stack.length-1;
+        return this.stackPosPack(container, top, options);
+    }
+    stackPosPack(container, pos, options) {
+        const st = this.stack[pos];
+        if (st.op === false) {
+            this.operandPack(container, st.operands[0], pos, options);
+            return false;
+        }
+        for (const ope of st.operands) {
+            this.operandPack(container, ope, pos, options);
+        }
+        switch (st.op) {
+            case 'mul':
+                return container.mul();
+
+            case 'add':
+                return container.add();
+
+            case 'sub':
+                return container.sub();
+
+            case 'neg':
+                return container.neg();
+
+            default:
+                throw new Error(`Invalid operation ${st.op} on packed expression`);
+        }
+    }
+
+    operandPack(container, ope, pos, options) {
+        switch (ope.type) {
+            case OP_VALUE:
+                container.pushConstant(ope.value);
+                break;
+
+            case OP_ID_REF:
+                this.referencePack(container, ope.refType, ope.id, ope.next, options);
+                break;
+
+            case OP_STACK:
+                // TODO: expression == false;
+                const eid = this.stackPosPack(container, pos-ope.offset, options);
+                if (eid !== false) {        // eid === false => alone operand
+                    container.pushExpression(eid);
+                }
+                break;
+
+            default:
+                console.log(ope);
+                throw new Error(`Invalid reference ${ope.type} on packed expression`);
+        }
+
+    }
+    referencePack(container, type, id, next, options) {
+        // TODO stage
+        switch (type) {
+            case 'im':
+                container.pushExpression(this.parent.getPackedExpressionId(id, container, options));
+                break;
+
+            case 'witness':
+                container.pushWitnessCol(id, next); // TODO: stage
+                break;
+
+            case 'fixed':
+                container.pushFixedCol(id, next);
+                break;
+
+            case 'public':
+                container.pushPublicValue(id);
+                break;
+
+            default:
+                throw new Error(`Invalid reference type ${type} to pack`);
+        }
+    }
 }
