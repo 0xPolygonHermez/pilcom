@@ -65,4 +65,7 @@ module.exports = class Multiarray {
     getLengths() {
         return this.lengths;
     }
+    getSize() {
+        return this.size;
+    }
 }

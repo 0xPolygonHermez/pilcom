@@ -15,8 +15,8 @@ module.exports = class Ids {
         }
         return id;
     }
-    getLabel(id, offset, options) {
-        return this.labelRanges.getLabel(id, offset, options);
+    getLabel(id, options) {
+        return this.labelRanges.getLabel(id, options);
     }
     get(id, offset) {
         return this.getTypedValue(id, offset)

@@ -6,7 +6,7 @@ namespace Fibonacci:: {
     col fixed LLAST = [0...,1];
     col witness l1,l2;
 
-    col l2c = l2;
+    // col l2c = l2;
 
     public in1 = l2[0];
     public in2 = l1[0];

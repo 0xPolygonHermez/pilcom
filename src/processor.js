@@ -398,12 +398,10 @@ module.exports = class Processor {
         return this.execute(s.statements);
     }
     execConstraint(s) {
-        console.log('********** doConstraint ********** (s.expression:)');
         const id = this.constraints.define(s.left.expr.instance(this.expressions), s.right.expr.instance(this.expressions),false,this.sourceRef);
         const expr = this.constraints.getExpr(id);
-        expr.dump();
-        expr.setParent(this.expressions);
-        console.log("\x1B[1;36;44m" + expr.toString({hideClass:true})+"\x1B[0m");
+        // expr.setParent(this.expressions);
+        console.log("\x1B[1;36;44mCONSTRAINT > " + expr.toString({hideClass:true, hideLabel:true})+"\x1B[0m");
         // expr2.mark();
     }
     execVariableIncrement(s) {

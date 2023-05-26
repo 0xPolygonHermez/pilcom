@@ -1,0 +1,22 @@
+subair Fibonacci (2**16);
+
+namespace Fibonacci:: {
+
+    col fixed L1 = [1,0...];
+    col fixed LLAST = [0...,1];
+    col witness values[2];
+
+    public in1 = values[1][0];
+    public in2 = values[0][0];
+    public out = values[0][N-1];
+
+    (values[1]' - values[0])*(1-LLAST) === 0;
+
+    col next = values[0]*values[0] + values[1]*values[1];
+
+    (values[0]' - next)*(1-LLAST) === 0;
+
+    L1 * (values[1] - in1) === 0;
+    L1 * (values[0] - in2) === 0;
+    LLAST * (values[0] - out) === 0;
+}

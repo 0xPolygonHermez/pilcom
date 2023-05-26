@@ -181,11 +181,11 @@ module.exports = class Expressions {
         console.log(b);
         EXIT_HERE;
     }
-    getLabel(type, id, offset, options) {
+    getLabel(type, id, options) {
         if (type === 'im') {
-            return this.labelRanges.getLabel(id, offset, options);
+            return this.labelRanges.getLabel(id, options);
         }
-        return this.references.getLabel(type, id, offset, options);
+        return this.references.getLabel(type, id, options);
     }
     resolveReference(e) {
         const names = this.parent.getNames(e);

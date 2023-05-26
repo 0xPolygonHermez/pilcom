@@ -6,9 +6,9 @@ module.exports = class LabelRanges {
         this.ranges = [];
     }
     define(label, from, multiarray) {
-        this.ranges.push({label, from, multiarray, to: from + (multiarray ? multiarray.size() - 1 : 0)});
+        this.ranges.push({label, from, multiarray, to: from + (multiarray ? multiarray.getSize() - 1 : 0)});
     }
-    getLabel(id, offset, options) {
+    getLabel(id, options) {
         const range = this.ranges.find(e => id >= e.from && id <= e.to);
         if (!range) {
             console.log(this.ranges);
@@ -20,6 +20,7 @@ module.exports = class LabelRanges {
             res = res.replace(/.*::/,'');
         }
         if (range.to !== range.from) {
+            let offset = id - range.from;
             res = res +'['+range.multiarray.offsetToIndexes(offset).join('],[')+']';
         }
         return res;

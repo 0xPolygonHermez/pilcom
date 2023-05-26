@@ -57,6 +57,7 @@ module.exports = class Expression {
 
     clone() {
         let cloned = new Expression();
+        if (this.parent) cloned.parent = this.parent;
         cloned.pushStack(this);
         return cloned;
     }
@@ -250,9 +251,6 @@ module.exports = class Expression {
                     continue;
                 }
                 if (typeof value === 'object' && value.type && ['witness', 'fixed', 'im', 'public'].includes(value.type)) {
-                    if (value.type === 'im') {
-                        console.log(['IM', value, ope]);
-                    }
                     ope.type = OP_ID_REF;
                     ope.id = value.value;
                     ope.refType = value.type;
@@ -448,7 +446,7 @@ module.exports = class Expression {
                 return ope.value.toString();
             case OP_ID_REF:
                 // refType, [offset], next
-                let res = this.parent ? this.parent.getLabel(ope.refType, ope.id, ope.offset, options) : false;
+                let res = (this.parent && !options.hideLabel)? this.parent.getLabel(ope.refType, ope.id, options) : false;
                 if (!res) {
                     res = `${ope.refType}@${ope.id}`;
                 }

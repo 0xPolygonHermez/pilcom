@@ -23,8 +23,8 @@ module.exports = class Indexable {
         return this.values[id + offset]
     }
 
-    getLabel(id, offset, options) {
-        return this.labelRanges.getLabel(id, offset, options);
+    getLabel(id, options) {
+        return this.labelRanges.getLabel(id, options);
     }
 
     getTypedValue(id, offset) {

@@ -65,9 +65,9 @@ module.exports = class References {
         // console.log(`GET ${instance.constructor.name}.get(${info.locator}, ${info.offset})`);
         return instance.get(info.locator, info.offset);
     }
-    getLabel(type, id, offset, options) {
+    getLabel(type, id, options) {
         const instance = this.types[type].instance;
-        return instance.getLabel(id, offset, options);
+        return instance.getLabel(id, options);
     }
     getTypedValue (name, indexes, options) {
         indexes = indexes ?? [];
