@@ -318,6 +318,7 @@ lcs
 
 when_boundary
     : %empty
+        { $$ = { boundary: 'all' }}
 
     | FIRST
         { $$ = { boundary: 'first' }}

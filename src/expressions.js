@@ -99,8 +99,8 @@ module.exports = class Expressions {
         console.log(operand);
         EXIT_HERE;
     }
-    evalRuntime(e) {
-        return this.router.go([e, this.Fr]);
+    evalRuntime(e, parent) {
+        return this.router.go([{...e, parent}, this.Fr]);
     }
     _evalString(e) {
         return e.value;
@@ -130,14 +130,24 @@ module.exports = class Expressions {
         EXIT_HERE;
     }
     _evalReference(e) {
-        if (e.name === 'in1') {
+        if (e.name === 'L1') {
             debugger;
         }
         const ref = this.resolveReference(e);
         let res = ref;
         switch (ref.type) {
-            case 'witness':
             case 'fixed':
+                // DUAL, if access row was a value, if not it's an id
+                // TODO
+                if (typeof res.row === 'undefined') {
+                    res = {type: 'fixed', value: res.value.getId()};
+                } else {
+                    e.parent.fixedRowAccess = true;
+                    res = res.value.getValue(res.row);
+                }
+                console.log(res);
+                break;
+            case 'witness':
             case 'public':
                 res = ref;
                 break;

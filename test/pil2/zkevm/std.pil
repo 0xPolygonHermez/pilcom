@@ -128,3 +128,102 @@ function public_table_prod (prover value, public ptable[][], public rows, challe
     value === res;
 }
 
+
+function subair_permutation_produce (xxxx, expr sel[], expr cols[][]) {
+    // grand product F
+    //    bin,
+    //    [binOp, ...A, ...B, ...op, carry],
+    //    challenge c[2]
+    prover witness x = grand_product([binOp, ...A, ...B, ...op, carry], bin);
+
+    task Binary lookup_check_T(c, Binary::resultBinOp, Binary::['op, ...a, ...b, ...c, 'cout]);
+}
+
+
+function subair_permutation_requires (pcid, expr sel, expr cols[]) {
+    static expr subair_permutation_expr = 1;
+
+    challenge a;
+    challenge b;
+    expr _col = (pcid + col[1] + a * col[2] + a**2 * col[3] + a ** 3 * col[4] + .... - b) * sel + b;
+
+    subair_permutation_expr = subair_permutation_expr * _col;
+
+}
+
+// A B(N1) B(N2)
+/* prover witness pgp[2];
+
+pgp[0] * pgp[1] === 1
+
+A B(N1)
+A B(N2)
+
+
+
+A   B_N1   B_N2
+
+A B_N1
+
+A B_N2
+
+
+c c    c
+A   B_N1   B_N1
+A.c B_N1.c B_N1.c
+
+c    c      c      c
+A    B_N1   B_N1   B_N1
+A.c  B_N1.c B_N1.c
+
+// A B(N1) B(N2)
+prover witness pgp[3];
+
+pgp[0] * pgp[1] * pgp[2] === 1
+
+A B(N1)  pgp[2] === 1
+A B(N2)  pgp[1] === 1
+*/
+prover witness permutation_grand_product[];
+
+prover witness subair_gp;
+prover witness total_gp;
+
+when first { total_gp === 1 };
+total_gp' === total_gp * subair_gp;
+
+function final_subair_permutation () {
+    // subair_permutation_expr;
+
+    col witness subair_permutation_col;
+    // prover witness permutation_grand_product;
+    int index = lenght(permutation_grand_product);
+
+    @col_grand_product permutation_grand_product[index] subair_permutation_col
+    @prover_grand_product permutation_grand_product
+//    @subair_permutation_prover_value permutation_grand_product[index] subair_permutation_col
+    b*c === 1
+
+    // requires
+    subair_permutation_col' === subair_permutation_expr * (subair_permutation_col * (1-L1) + L1);
+    permutation_grand_product[index] === L1 * subair_permutation_col;
+
+    // provides
+    subair_permutation_expr * subair_permutation_col' === (subair_permutation_col * (1-L1) + L1);
+    permutation_grand_product[index] === L1 * subair_permutation_col;
+
+}
+
+// runtime environment global
+
+function final_permutation () {
+    // subair_permutation_expr;
+
+    col witness subair_permutation_col;
+    prover witness permutation_grand_product;
+
+    @subair_permutation_prover_value permutation_grand_product;
+
+    subair_permutation_col' === subair_permutation_expr * (subair_permutation_col * (1-L1) + L1);
+    permutation_grand_product === L1 * subair_permutation_col;
+}

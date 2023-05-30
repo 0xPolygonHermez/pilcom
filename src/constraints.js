@@ -19,6 +19,9 @@ module.exports = class Constraints {
     }
 
     define(left, right, boundery, sourceRef) {
+        if (left.fixedRowAccess || right.fixedRowAccess) {
+            console.log('\x1B[31mWARNING: accessing fixed row acces\x1b[0m');
+        }
         const id = this.constraints.length;
         if (right.eval(this.expressions) !== 0n) {
             left.insert('sub', right);
@@ -47,15 +50,18 @@ module.exports = class Constraints {
     dump (packed) {
         console.log('CONSTRAINTS');
         for (let index = 0; index < this.constraints.length; ++index) {
-            const constraint = this.constraints[index];
-            const eid = constraint.exprId;
-            const peid = this.expressions.getPackedExpressionId(eid);
-            let info = `${index}: ${eid} ${peid} ${constraint.sourceRef}`
-
-            if (packed) {
-                info += ' '  + packed.exprToString(peid, {labels: this.expressions, hideClass: true});
-            }
-            console.log(info);
+            console.log(this.getDebugInfo(index, packed));
         }
+    }
+    getDebugInfo(index, packed) {
+        const constraint = this.constraints[index];
+        const eid = constraint.exprId;
+        const peid = this.expressions.getPackedExpressionId(eid);
+        let info = `${index}: ${eid} ${peid} ${constraint.sourceRef}`
+
+        if (packed) {
+            info += ' '  + packed.exprToString(peid, {labels: this.expressions, hideClass: true});
+        }
+        return info;
     }
 }

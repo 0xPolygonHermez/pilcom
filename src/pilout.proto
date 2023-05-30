@@ -6,8 +6,8 @@ message PilOut {
     bytes baseField = 2;                        // modulus of the base filed
     repeated BasicAir airs = 3;
     repeated uint32 numChallenges = 4;          // number of challenges per stage
-    uin32 numProverValues = 5;
-    uin32 numPublicValues = 6;
+    uint32 numProverValues = 5;
+    uint32 numPublicValues = 6;
     repeated PublicTable publicTables = 7;
     repeated GlobalExpression expressions = 8;
     repeated GlobalConstraint constraints = 9;  // Constraints that apply only to signals
@@ -250,7 +250,7 @@ message Reference {
     ReferenceType type = 3;
     uint32 id = 4;
     uint32 dim = 5;
-    repeated uint32 lenghts = 6;
+    repeated uint32 lengths = 6;
     optional string debugLine = 7;
 }
 

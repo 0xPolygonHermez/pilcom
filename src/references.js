@@ -41,7 +41,7 @@ module.exports = class References {
         }
 
         const def = this.definitions[name];
-        const scopeId = this.scope.declare(name, def ?? false);
+        const scopeId = this.hasScope(type) ? this.scope.declare(name, def ?? false) : 0;
         // scope(name, def) => exception !!!
         //                  => scopeId;
         if (typeof def !== 'undefined') {
@@ -58,6 +58,11 @@ module.exports = class References {
             data
         }
         return id;
+    }
+    hasScope(type) {
+        // TODO: inside function ??
+        // TODO: col reference
+        return ['im', 'witness', 'fixed', 'public', 'prover', 'challenge'].includes(type) === false;
     }
 
     get (name, indexes = []) {
@@ -81,9 +86,10 @@ module.exports = class References {
             tvalue.row = info.row;
         }
 
+        tvalue.id = info.locator;
         if (options.full) {
-            tvalue.instance = instance;
             tvalue.locator = info.locator;
+            tvalue.instance = instance;
             tvalue.offset = info.offset;
         }
         if (info.dim) {
@@ -122,13 +128,23 @@ module.exports = class References {
         if (def.array !== false) {
             // TODO ROW ACCESS
             const typedOffset = def.array.getIndexesTypedOffset(indexes);
-            return [tdata.instance, {locator: def.locator, ...typedOffset}];
+            let res = {locator: def.locator, ...typedOffset};
+
+            // if instance doesn't support offset, add offset inside locator
+            // and set offset = false
+            if (!tdata.options.offsets) {
+                if (res.offset) {
+                    res.locator += res.offset;
+                }
+                res.offset = false;
+            }
+            return [tdata.instance, res];
         }
         const indexLengthLimit = tdata.instance.rows ? 1 : 0;
         if (indexes.length > indexLengthLimit) {
             throw new Error(`Invalid array or row access, too many array levels`);
         }
-        let extraInfo = {offset: 0, type: def.type};
+        let extraInfo = {type: def.type, offset: tdata.options.offsets ? 0:false};
         if (indexes.length > 0) {
             extraInfo.row = indexes[0];
         }
@@ -137,7 +153,11 @@ module.exports = class References {
 
     set (name, indexes, value) {
         const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        return instance.set(info.locator, info.offset, value);
+        if (info.offset === false) {
+            return instance.set(info.locator, value);
+        } else {
+            return instance.set(info.locator, info.offset, value);
+        }
     }
 
     unset(name) {
@@ -146,9 +166,18 @@ module.exports = class References {
         delete this.definitions[name];
     }
 
-/*    *[Symbol.iterator]() {
+    *[Symbol.iterator]() {
         for (let index in this.definitions) {
           yield index;
+        }
+    }
+
+    *keyValuesOfTypes(types) {
+        for (let index in this.definitions) {
+            const def = this.definitions[index];
+            // console.log({index, ...def});
+            if (!types.includes(def.type)) continue;
+            yield [index, def];
         }
     }
 
@@ -162,7 +191,7 @@ module.exports = class References {
         for (let index in this.definitions) {
             yield [index, this.definitions[index]];
         }
-    }*/
+    }
     dump () {
         for (let name in this.definitions) {
             const def = this.definitions[index];

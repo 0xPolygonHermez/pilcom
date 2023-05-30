@@ -1,4 +1,5 @@
 const protobuf = require('protobufjs');
+const {cloneDeep} = require('lodash');
 const Long = require('long');
 
 //
@@ -24,47 +25,28 @@ const MAX_PUBLICS = 50;
 const GLOBAL_EXPRESSIONS = 1000;
 const GLOBAL_CONSTRAINTS = 100;
 
+const REF_TYPE_IM_COL = 0;
+const REF_TYPE_FIXED_COL = 1;
+const REF_TYPE_PERIODIC_COL = 2;
+const REF_TYPE_WITNESS_COL = 3;
+const REF_TYPE_PROVER_VALUE = 4;
+const REF_TYPE_PUBLIC_VALUE = 5;
+const REF_TYPE_PUBLIC_TABLE = 6;
+const REF_TYPE_CHALLENGE = 7;
+
 module.exports = class ProtoOut {
     constructor (Fr) {
+        this.Fr = Fr;
         this.root = protobuf.loadSync(__dirname + '/pilout.proto');
         this.constants = false;
         this.debug = false;
         this.references = true;
         this.varbytes = true;
+        this.airs = [];
+        this.currentAir = null;
+        this.witnessId2ProtoId = [];
+        this.fixedId2ProtoId = [];
         this.buildTypes();
-        /* let data = this.generateBasicAir('myFirstAir', 2**10, MAX_STAGE, MAX_PERIODIC_COLS, MAX_FIXED_COLS, 670, 12000, 630);
-        let len = data.length;
-        data = this.generateBasicAir('myFirstAir', 2**10 * 4, MAX_STAGE, MAX_PERIODIC_COLS, MAX_FIXED_COLS, 670, 12000, 630);*/
-        let data = this.generatePilOut('myFirstAir', 2**10, 8, MAX_PERIODIC_COLS, MAX_FIXED_COLS, 700, 12000, 700);
-        let len = data.length;
-
-        data = this.generatePilOut('myFirstAir', 2**10 * 4, 8, MAX_PERIODIC_COLS, MAX_FIXED_COLS, 700, 12000, 700);
-        let len4 = data.length;
-
-        console.log(Math.ceil((len4 - len)/3));
-        let rowsSize = Math.ceil((len4 - len)/(3*2**10));
-        let fixedSize = len - (rowsSize * 2**10);
-        let fixedMB = Math.round(fixedSize / 2**20);
-        console.log([rowsSize, fixedSize]);
-        console.log(['2**23', Math.ceil(rowsSize * 8 + fixedMB),'MB', fixedSize]);
-        console.log(['2**25', Math.ceil(rowsSize * 32 + fixedMB),'MB', fixedSize]);
-        console.log(['2**27', Math.ceil(rowsSize * 128 + fixedMB),'MB', fixedSize]);
-
-        data = this.generatePilOut('myFirstAir', [2**8, 2**10, 2**12], 8, MAX_PERIODIC_COLS, MAX_FIXED_COLS, 700, 12000, 700);
-        len = data.length;
-
-        data = this.generatePilOut('myFirstAir', [2**10, 2**12, 2**14], 8, MAX_PERIODIC_COLS, MAX_FIXED_COLS, 700, 12000, 700);
-        len4 = data.length;
-
-        console.log(Math.ceil((len4 - len)/3));
-        rowsSize = Math.ceil((len4 - len)/(3*2**8));
-        fixedSize = len - (rowsSize * 2**8);
-        fixedMB = Math.round(fixedSize / 2**20);
-        console.log([rowsSize, fixedSize]);
-        console.log(['2**8,2**10,2**12', Math.ceil(rowsSize / 4 + fixedMB) ,'MB']);
-        console.log(['2**23,2**25,2**27', Math.ceil(rowsSize * 8 + fixedMB) ,'MB']);
-
-        //        this.testReflectionMode();
     }
     buildTypes() {
         this.PilOut = this.root.lookupType('PilOut');
@@ -112,70 +94,28 @@ module.exports = class ProtoOut {
         this.FrontEndFieldArray = this.root.lookupType('FrontEndFieldArray');
         this.FronEndData = this.root.lookupType('FronEndData');
     }
-    testReflectionMode() {
-        let basicAir = new this.BasicAir.create();
-        console.log(basicAir);
-    }
-    generatePilOut(name, rows, airs, periodicCols, fixedCols, witnessCols, expressions, constraints) {
-        const references = periodicCols + fixedCols + witnessCols;
-        let payload = {
+    setupPilOut(name) {
+        this.pilOut = {
             name,
-            baseField: this.bint2buf(0xFFFFFFFF00000001n),
+            baseField: this.bint2buf(this.Fr.p),
             airs: [],
-            numChallenges: new Array(MAX_STAGE).fill(MAX_CHALLENGE),
-            numProverValues: MAX_PROVER_VALUES,
-            numPublicValues: MAX_PUBLICS,
-            expressions: this.generateGlobalExpressions(GLOBAL_EXPRESSIONS, MAX_STAGE),
-            constraints: this.generateGlobalConstraints(GLOBAL_CONSTRAINTS),
-            references: this.generateReferences(references)
-        };
-        if (!Array.isArray(rows)) {
-            rows = [rows];
+            numChallenges: [],
+            numProverValues: 0,
+            numPublicValues: 0,
+            expressions: [],
+            constraints: [],
+            references: []
         }
-        const totalAirs = airs * rows.length;
-        const airPeriodicCols = Math.floor(periodicCols / airs);
-        const airFixedCols = Math.floor(fixedCols / airs);
-        const airWitnessCols = Math.floor(witnessCols / airs);
-        const airExpressions = Math.floor(expressions / airs);
-        const airConstraints = Math.floor(constraints / airs);
-        for (let index = 0; index < totalAirs; ++index) {
-            console.log(`generating air ${index+1}/${totalAirs} .......`);
-            payload.airs.push(this.generateBasicAir(name, rows[index % rows.length], MAX_STAGE, airPeriodicCols, airFixedCols, airWitnessCols, airExpressions, airConstraints));
-        }
-        for (let i = 0; i < totalAirs; ++i) {
-            for (let j = 0; j < totalAirs; ++j) {
-                if (i === j) continue;
-                if (payload.airs[i] === payload.airs[j]) {
-                    console.log(['EQUALS', i, j]);
-                }
-            }
-        }
-
-        let message = this.PilOut.fromObject(payload);
+    }
+    encode() {
+        let message = this.PilOut.fromObject(this.pilOut);
         let data = this.PilOut.encode(message).finish();
+        console.log(data);
         return data;
     }
-    generateBasicAir(name, rows, stages, periodicCols, fixedCols, witnessCols, expressions, constraints) {
-        let payload = {
-            name,
-            numRows: rows,
-            periodicCols: this.generatePeriodicCols(periodicCols),
-            fixedCols: this.generateFixedCols(rows, fixedCols),
-            stageWidths: this.generateStageWidths(stages, witnessCols),
-            expressions: this.generateExpressions(expressions, rows, stages, periodicCols, fixedCols),
-            constraints: this.generateConstraints(constraints)
-        };
-        /*
-        console.log([payload.periodicCols.length,
-                     payload.fixedCols.length,
-                     payload.stageWidths.length,
-                     payload.expressions.length,
-                     payload.constraints.length]);
-        let message = this.BasicAir.fromObject(payload);
-        let data = this.BasicAir.encode(message).finish();
-        console.log(data.length);
-        */
-        return payload;
+    setAir(name, rows) {
+        this.currentAir = {name, numRows: rows};
+        this.pilOut.airs.push(this.currentAir);
     }
     generateReferences(references, totalAirs) {
         if (this.references === false) {
@@ -196,211 +136,210 @@ module.exports = class ProtoOut {
         }
         return items;
     }
-    generateStageWidths(stages, witnessCols) {
-        const size = witnessCols < stages ? stages : witnessCols;
-        const witnessColSize = Math.floor(size / stages);
-        let colSize = witnessCols - (witnessColSize * (stages - 1)); // first value
-        let widths = [];
-        for (let index = 0; index < stages; ++index) {
-            widths.push(colSize);
-            colSize = witnessColSize;
+    setReferences(references) {
+        for(const [name, ref] of references.keyValuesOfTypes(['witness', 'fixed', 'public'])) {
+            console.log(ref);
+            const arrayInfo = ref.array ? ref.array : {dim: 0, lengths: []};
+            const [protoType, id, stage] = this.referenceType2Proto(ref.type, ref.locator);
+            let payout = {
+                name,
+                airId: this.pilOut.airs.length - 1,
+                type: 0,
+                id,
+                stage,
+                dim: arrayInfo.dim,
+                lengths: arrayInfo.lengths,
+                debugLine: ''
+            };
+            this.pilOut.references.push(payout);
         }
-        return widths;
     }
-    generateCols(rows, periodicCols) {
-        // let cols = [{values:[{value:}]}];
-        let cols = [];
-        for (let icol = 0; icol < periodicCols; ++icol) {
+
+    referenceType2Proto(type, id) {
+        switch(type) {
+            case 'im':
+                return [REF_TYPE_IM_COL, id, 0];
+
+            case 'fixed': {
+                console.log(id);
+                const [ftype, protoId] = this.fixedId2ProtoId[id];
+                if (ftype === 'P') return [REF_TYPE_PERIODIC_COL, protoId, 0];
+                return [REF_TYPE_FIXED_COL, protoId, 0];
+            }
+
+            case 'witness': {
+                const [stage, protoId] = this.witnessId2ProtoId[id];
+                return [REF_TYPE_WITNESS_COL, protoId, stage];
+            }
+            case 'prover':
+                return [REF_TYPE_PROVER_VALUE, id, 0];
+
+            case 'public':
+                return [REF_TYPE_PUBLIC_VALUE, id, 0];
+
+            case 'challenge':
+                return [REF_TYPE_CHALLENGE, id, 0];
+
+        }
+        throw new Error(`Invalid reference type ${type}`);
+    }
+
+    setPublics(publics) {
+        this.pilOut.numPublicValues = publics.length;
+    }
+    setFixedCols(fixedCols) {
+        this.setCols(fixedCols, this.currentAir.numRows, false);
+    }
+    setPeriodicCols(periodicCols) {
+        this.setCols(periodicCols, this.currentAir.numRows, true);
+    }
+    setCols(cols, rows, periodic) {
+        const property = periodic ? 'periodicCols':'fixedCols';
+        const airCols = this.setupAirProperty(property);
+
+        const colType = periodic ? 'P':'F';
+        for (const col of cols) {
+            if (col.isPeriodic() !== periodic) continue;
+            this.fixedId2ProtoId[col.id] = [colType, airCols.length];
             let values = [];
             for (let irow = 0; irow < rows; ++irow) {
-                values.push({value: this.randomConstant()});
+                values.push({value: this.bint2buf(col.getValue(irow))});
             }
-            cols.push({values});
+            airCols.push({values});
         }
-        return cols;
+        console.log(airCols[0]);
     }
-    generatePeriodicCols(periodicCols) {
-        return this.generateCols(MAX_PERIODIC_ROWS, periodicCols);
-    }
-    generateFixedCols(rows, fixedCols) {
-        if (this.constants === false) {
-            return [];
+    setWitnessCols(cols) {
+        const stageWidths = this.setupAirProperty('stageWidths');
+        // sort by stage
+        this.witnessId2ProtoId = [];
+        let stages = [];
+        for (const col of cols) {
+            if (col.stage < 1) {
+                throw new Error(`Invalid stage ${col.stage}`);
+            }
+            const stageIndex = col.stage - 1;
+            if (typeof stages[stageIndex] === 'undefined') {
+                stages[stageIndex] = [];
+            }
+            stages[stageIndex].push(col.id);
         }
-        return this.generateCols(rows, fixedCols);
-    }
-    generateExpressions(expressions, rows, stages, periodicCols, fixedCols) {
-        let exprs = [];
-        let percent = Math.floor(expressions / 100);
-        let constantOps = 5 * percent;
-        let challengeOps = 5 * percent;
-        let proverOps = 5 * percent;
-        let publicOps = 5 * percent;
-        let periodicColsOps = 5 * percent;
-        let fixedColOps = 10 * percent;
-        let witnessColOps = 15 * percent;
-        // let expressionOps = totalOps - ....
-        let addOps = 40 * percent;
-        let subOps = 10 * percent;
-        let mulOps = 45 * percent;
-        // let negOps = totalOps - ....
-        for (let index = 0; index < expressions; ++index) {
-            let values;
-            if (constantOps > 0) {
-                values = {lhs: { constant: {value: this.randomFe()}},
-                          rhs: { constant: {value: this.randomFe()}}};
-                --constantOps;
-            }
-            else if (challengeOps > 0) {
-                values = {lhs: { challenge: {stage: this.random(1, stages), idx: this.random(0, MAX_CHALLENGE)}},
-                          rhs: { challenge: {stage: this.random(1, stages), idx: this.random(0, MAX_CHALLENGE)}}};
-                --challengeOps;
-            }
-            else if (proverOps > 0) {
-                values = {lhs: { proverValue: { idx: this.random(0, MAX_PROVER_VALUES)}},
-                          rhs: { proverValue: { idx: this.random(0, MAX_PROVER_VALUES)}}};
-                --proverOps;
-            }
-            else if (publicOps > 0) {
-                values = {lhs: { publicValue: {idx: this.random(0, MAX_PUBLICS)}},
-                          rhs: { publicValue: {idx: this.random(0, MAX_PUBLICS)}}};
-                --publicOps;
-            }
-            else if (periodicColsOps > 0) {
-                values = {lhs: { periodicCol: {idx: this.random(0, periodicCols), rowOffset: this.random(0, periodicCols)}},
-                          rhs: { periodicCol: {idx: this.random(0, periodicCols), rowOffset: this.random(0, periodicCols)}}};
-                --periodicColsOps;
-            }
-            else if (fixedColOps > 0) {
-                values = {lhs: { fixedCol: {idx: this.random(0, fixedCols), rowOffset: this.random(0, rows)}},
-                          rhs: { fixedCol: {idx: this.random(0, fixedCols), rowOffset: this.random(0, rows)}}};
-                --fixedColOps;
-            }
-            else if (witnessColOps > 0) {
-                values = {lhs: { witnessCol: { stage: this.random(1, stages), colIdx: this.random(0, fixedCols), rowOffset: this.random(0, rows)}},
-                          rhs: { witnessCol: { stage: this.random(1, stages), colIdx: this.random(0, fixedCols), rowOffset: this.random(0, rows)}}};
-                --witnessColOps;
-            }
-            else {
-                values = {lhs: { expression: { value: this.random(0, expressions)}},
-                          rhs: { expression: { value: this.random(0, expressions)}}};
-            }
-            if (addOps > 0) {
-                exprs.push({ add: values });
-                --addOps;
-            }
-            else if (subOps > 0) {
-                exprs.push({ sub: values });
-                --subOps;
-            }
-            else if (mulOps > 0) {
-                exprs.push({ mul: values });
-                --mulOps;
-            }
-            else {
-                exprs.push({neg: {value: values.lhs}});
-            }
-        }
-        return exprs;
-    }
-    generateGlobalExpressions(expressions, stages) {
-        let exprs = [];
-        let percent = Math.floor(expressions / 100);
-        let constantOps = 5 * percent;
-        let challengeOps = 10 * percent;
-        let proverOps = 10 * percent;
-        let publicOps = 10 * percent;
-        // let expressionOps = totalOps - ....
-        let addOps = 40 * percent;
-        let subOps = 10 * percent;
-        let mulOps = 45 * percent;
-        // let negOps = totalOps - ....
-        for (let index = 0; index < expressions; ++index) {
-            let values;
-            if (constantOps > 0) {
-                values = {lhs: { constant: {value: this.randomFe()}},
-                          rhs: { constant: {value: this.randomFe()}}};
-                --constantOps;
-            }
-            else if (challengeOps > 0) {
-                values = {lhs: { challenge: {stage: this.random(1, stages), idx: this.random(0, MAX_CHALLENGE)}},
-                          rhs: { challenge: {stage: this.random(1, stages), idx: this.random(0, MAX_CHALLENGE)}}};
-                --challengeOps;
-            }
-            else if (proverOps > 0) {
-                values = {lhs: { proverValue: { idx: this.random(0, MAX_PROVER_VALUES)}},
-                          rhs: { proverValue: { idx: this.random(0, MAX_PROVER_VALUES)}}};
-                --proverOps;
-            }
-            else if (publicOps > 0) {
-                values = {lhs: { publicValue: {idx: this.random(0, MAX_PUBLICS)}},
-                          rhs: { publicValue: {idx: this.random(0, MAX_PUBLICS)}}};
-                --publicOps;
-            }
-            else {
-                values = {lhs: { expression: { value: this.random(0, expressions)}},
-                          rhs: { expression: { value: this.random(0, expressions)}}};
-            }
+        let stageId = 0;
+        for (const stage of stages) {
+            ++stageId;      // stageId starts by 1 (stage0 constant generation)
 
-            if (addOps > 0) {
-                exprs.push({ add: values });
-                --addOps;
-            }
-            else if (subOps > 0) {
-                exprs.push({ sub: values });
-                --subOps;
-            }
-            else if (mulOps > 0) {
-                exprs.push({ mul: values });
-                --mulOps;
-            }
-            else {
-                exprs.push({neg: {value: values.lhs}});
+            stageWidths.push(stage.length);
+
+            // colIdx must be relative stage
+            let index = 0;
+            for (const witnessId of stage) {
+                this.witnessId2ProtoId[witnessId] = [stageId, index++];
             }
         }
-        return exprs;
+        console.log(this.witnessId2ProtoId);
     }
-    generateConstraints(constraints) {
-        const FirstRowConstraints = Number((constraints * 5) / 100);
-        const LastRowConstraints = Number((constraints * 5) / 100);
-        const EveryFrameConstraints = Number((constraints * 5) / 100);
-        const EveryRowConstraints = constraints - FirstRowConstraints - LastRowConstraints - EveryFrameConstraints;
+    setExpressions(packedExpressions) {
+        const expressions = this.setupAirProperty('expressions');
+        for (const packedExpression of packedExpressions) {
+            const e = cloneDeep(packedExpression);
+            const [op] = Object.keys(e);
+            switch (op) {
+                case 'mul':
+                case 'add':
+                case 'sub':
+                    this.translate(e[op].lhs);
+                    this.translate(e[op].rhs);
+                    break;
+                case 'neg':
+                    this.translate(e[op].value);
+                    break;
+                default:
+                    throw new Error(`Invalid operation ${op} on packedExpression`);
+            }
+            expressions.push(e);
+        }
+    }
+    translate(ope) {
+        const [key] = Object.keys(ope);
+        switch (key) {
+            case 'fixedCol': {
+                    // inside pil all fixed columns are equal, after that detect periodic cols
+                    // and it implies change index number and type if finally is a periodic col.
+                    const [type, protoId] = this.fixedId2ProtoId[ope.fixedCol.idx] ?? [false,false];
+                    if (protoId === false) {
+                        console.log(ope);
+                        throw new Error(`Translate: Found invalid fixedColId ${ope.fixedCol.idx}`);
+                    }
+                    ope.fixedCol.colIdx = protoId;
+                    if (type === 'P') {
+                        ope.periodicCol = ope.fixedCol;
+                        delete(ope.fixedCol);
+                    }
+                }
+                break;
 
-        let items = [];
-        for (let index = 0; index < FirstRowConstraints; ++index) {
-            let payload = { firstRow: { expressionIdx: { idx: this.random() }, debugLine: this.randomDebugLine()}};
-            items.push(payload);
+            case 'witnessCol': {
+                    // translate index of witness because witness cols must be order by stage and
+                    // it implies change index number.
+                    const [stage, protoId] = this.witnessId2ProtoId[ope.witnessCol.colIdx] ?? [false, false];
+                    if (protoId === false) {
+                        throw new Error(`Translate: Found invalid witnessColId ${ope.witnessCol.colIdx}`);
+                    }
+                    ope.witnessCol.colIdx = protoId;
+                }
+                break;
+            case 'constant':
+                ope.constant.value = this.bint2buf(ope.constant.value);
+                break;
+        }
+    }
+    setupAirProperty(propname, init = []) {
+        if (this.currentAir === null) {
+            throw new Error('Not defined a current air');
+        }
+        if (typeof this.currentAir[propname] !== 'undefined') {
+            throw new Error(`Property ${propname} already defined on current air`);
+        }
+        this.currentAir[propname] = init;
+        return this.currentAir[propname];
+    }
+    setConstraints(constraints, packed) {
+        let airConstraints = this.setupAirProperty('constraints');
+        for (const [index, constraint] of constraints.keyValues()) {
+            let payload;
+            const debugLine = constraints.getDebugInfo(index, packed);
+            switch (constraint.boundery) {
+                case false:
+                case 'all':
+                    payload = { everyRow: { expressionIdx: { idx: constraint.exprId }, debugLine}};
+                    break;
+
+                case 'first':
+                    payload = { firstRow: { expressionIdx: { idx: constraint.exprId }, debugLine}};
+                    break;
+
+                case 'last':
+                    payload = { lastRow: { expressionIdx: { idx: constraint.exprId }, debugLine}};
+                    break;
+
+                case 'frame':
+                    payload = { everyFrame: { expressionIdx: { idx: constraint.exprId }, offsetMin: 0, offsetMax:0, debugLine}};
+                    break;
+
+                default:
+                    throw new Error(`Invalid contraint boundery '${constraint.boundery}'`);
+
+            }
+            airConstraints.push(payload);
+        }
+        console.log(airConstraints[0]);
+        console.log(airConstraints);
+    }
+    bint2buf(value, bytes = 0) {
+        if (value === 0n && bytes === 0) {
+            return Buffer.alloc(0);
         }
 
-        for (let index = 0; index < LastRowConstraints; ++index) {
-            let payload = { lastRow: { expressionIdx: { idx: this.random() }, debugLine: this.randomDebugLine()}};
-            items.push(payload);
-        }
-        for (let index = 0; index < EveryFrameConstraints; ++index) {
-            let payload = { everyRow: { expressionIdx: { idx: this.random() }, debugLine: this.randomDebugLine()}};
-            items.push(payload);
-        }
-        for (let index = 0; index < EveryRowConstraints; ++index) {
-            let payload = { everyFrame: { expressionIdx: { idx: this.random() }, offsetMin: this.random(), offsetMax: this.random(),
-                                          debugLine: this.randomDebugLine()}};
-            items.push(payload);
-        }
-        return items;
-    }
-    generateGlobalConstraints(constraints) {
-        let items = [];
-        for (let index = 0; index < constraints; ++index) {
-            let payload = { expressionIdx: { idx: this.random() }, debugLine: this.randomDebugLine()};
-            items.push(payload);
-        }
-        return items;
-    }
-    randomDebugLine() {
-        if (this.debug === false) {
-            return null;
-        }
-        return 'example-of-debug-line:'+this.random()+' with-some-information:'+this.random()+' but-no-much';
-    }
-    bint2buf(value ,bytes = 0) {
         const buf = Buffer.alloc(32);
         buf.writeBigInt64BE(value >> 64n*3n, 0);
         buf.writeBigUInt64BE((value >> 64n*2n) & 0xFFFFFFFFFFFFFFFFn, 8);
@@ -454,32 +393,6 @@ module.exports = class ProtoOut {
         const PilOut = root.lookupType('pilout.PilOut');
         console.log(PilOut);
         */
-    }
-    random (min = 0, max = 0xFFFFFFFF) {
-        min = Math.ceil(min);
-        max = Math.floor(max);
-        return Math.floor(Math.random() * (max - min + 1) + min);
-    }
-    randomFe() {
-        return this.randomBuf64Bits();
-    }
-    randomConstant() {
-        // average bytes uses is 4. stats:
-        //
-        //   147180530 x 8 bytes
-        //     1764327 x 7 bytes
-        //     6087939 x 6 bytes
-        //    19033903 x 5 bytes
-        //     9025965 x 4 bytes
-        //    26645051 x 3 bytes
-        //    50516113 x 2 bytes
-        //   161611025 x 1 bytes
-
-        return this.bint2buf(BigInt(this.random(0, 0xFFFFFFFF)), 4);
-    }
-    randomBuf64Bits() {
-        let value = (BigInt(this.random(0, 0xFFFFFFFF)) << 32n) + BigInt(this.random(0, 0xFFFFFFFF));
-        return this.bint2buf(value, 4);
     }
     encodingExamples () {
         const buf = Buffer.alloc(100);

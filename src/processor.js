@@ -12,6 +12,9 @@ const List = require("./list.js");
 const Assign = require("./assign.js");
 const Function = require("./function.js");
 const PackedExpressions = require("./packed_expressions.js");
+const ProtoOut = require("./proto_out.js");
+const FixedCols = require("./fixed_cols.js");
+const WitnessCols = require("./witness_cols.js");
 
 class FlowAbortCmd {};
 class BreakCmd extends FlowAbortCmd {};
@@ -27,13 +30,13 @@ module.exports = class Processor {
         this.references = new References(Fr, this.scope);
 
         this.variables = new Variables(Fr, this.references, this.expressions);
-        this.references.register('var', this.variables);
+        this.references.register('var', this.variables, {offsets: true});
 
-        this.fixeds = new Ids('fixed');
+        this.fixeds = new FixedCols(Fr);
         this.fixeds.rows = true;
         this.references.register('fixed', this.fixeds);
 
-        this.witness = new Ids('witness');
+        this.witness = new WitnessCols(Fr);
         this.witness.rows = true;
         this.references.register('witness', this.witness);
 
@@ -74,13 +77,33 @@ module.exports = class Processor {
     }
     startExecution(statements) {
         this.references.declare('N', 'var', [], { type: 'int', sourceRef: this.sourceRef });
-        this.references.set('N', [], 2**16);
+        this.references.set('N', [], 2**5);
         this.execute(statements);
         let packed = new PackedExpressions();
         this.expressions.pack(packed);
-        packed.dump();
+        //packed.dump();
         this.constraints.dump(packed);
-        //this.imCols.dump();
+        this.fixeds.dump();
+
+        this.generateOut(packed);
+    }
+    generateOut(packed)
+    {
+        let proto = new ProtoOut(this.Fr);
+        proto.setupPilOut('myFirstPil', this.publics);
+        proto.setAir('myFirstAir', 2**5);
+        proto.setFixedCols(this.fixeds);
+        proto.setPeriodicCols(this.fixeds);
+        proto.setConstraints(this.constraints, packed);
+        proto.setWitnessCols(this.witness);
+        proto.setExpressions(packed);
+        proto.setReferences(this.references);
+        proto.encode();
+        // stageWidths
+        // expressions
+
+        // publics
+        // this.imCols.dump();
     }
     execute(statements) {
         ++this.executeCounter;
@@ -94,9 +117,6 @@ module.exports = class Processor {
         }
     }
     executeStatement(st) {
-        if (st.debug == 'assigns.pil:20') {
-            console.log('BREAK-POINT');
-        }
         ++this.executeStatementCounter;
         if (typeof st.type === 'undefined') {
             console.log(st);
@@ -336,7 +356,19 @@ module.exports = class Processor {
         this.colDeclaration(s, 'witness');
     }
     execFixedColDeclaration(s) {
-        this.colDeclaration(s, 'fixed');
+        for (const col of s.items) {
+            const colname = this.getFullName(col);
+            console.log(`COL_FIXED_DECLARATION(${colname})`);
+            const lengths = this.decodeLengths(col);
+            let init = s.sequence;
+            let seq = null;
+            if (init) {
+                seq = new Sequence(this, init, this.references.get('N'));
+                seq.extend();
+                console.log('SEQ:'+seq.values.join(','));
+            }
+            this.declareReference(colname, 'fixed', lengths, {}, seq);
+        }
     }
     execColDeclaration(s) {
         // intermediate column
@@ -383,6 +415,7 @@ module.exports = class Processor {
                 //init.expr.eval(this.expressions);
                 //init.expr.dump();
                 init = init.expr.instance(this.expressions);
+                // init.dump();
                 //init.dump();
             }
             this.declareReference(colname, type, lengths, {}, ignoreInit ? null : init);
@@ -406,6 +439,7 @@ module.exports = class Processor {
         const id = this.constraints.define(s.left.expr.instance(this.expressions), s.right.expr.instance(this.expressions),false,this.sourceRef);
         const expr = this.constraints.getExpr(id);
         // expr.setParent(this.expressions);
+        expr.dump();
         console.log("\x1B[1;36;44mCONSTRAINT > " + expr.toString({hideClass:true, hideLabel:true})+"\x1B[0m");
         // expr2.mark();
     }

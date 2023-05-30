@@ -121,4 +121,10 @@ module.exports = class PackedExpressions {
         return label;
     }
 
+    *[Symbol.iterator]() {
+        for (let index = 0; index < this.expressions.length; ++index) {
+          yield this.expressions[index];
+        }
+    }
+
 }

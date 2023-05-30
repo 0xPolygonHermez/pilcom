@@ -12,7 +12,7 @@ module.exports = class LabelRanges {
         const range = this.ranges.find(e => id >= e.from && id <= e.to);
         if (!range) {
             console.log(this.ranges);
-            return `@${id}[${offset}]`;
+            return `@${id}`;
         }
         let res = range.label;
         options = options ?? {};

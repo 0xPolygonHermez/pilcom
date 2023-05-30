@@ -49,6 +49,7 @@ module.exports = class Expression {
     constructor () {
         this.stack = [];
         this.runtime = false;
+        this.fixedRowAccess = false;
     }
 
     setParent (parent) {
@@ -57,6 +58,7 @@ module.exports = class Expression {
 
     clone() {
         let cloned = new Expression();
+        cloned.fixedRowAccess = this.fixedRowAccess;
         if (this.parent) cloned.parent = this.parent;
         cloned.pushStack(this);
         return cloned;
@@ -218,7 +220,7 @@ module.exports = class Expression {
         }
     }
     evaluateRuntime(op) {
-        let res = this.parent.evalRuntime(op);
+        let res = this.parent.evalRuntime(op, this);
         return res;
     }
 /*    evalOperandValue(op, pos, deeply) {

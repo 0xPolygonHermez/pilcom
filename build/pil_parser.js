@@ -139,6 +139,9 @@ break;
 case 34: case 35:
  this.$ = { statements: [$$[$0-1]] } 
 break;
+case 41:
+ this.$ = { boundary: 'all' }
+break;
 case 42:
  this.$ = { boundary: 'first' }
 break;

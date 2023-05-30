@@ -8,10 +8,14 @@ module.exports = class Indexable {
         this.labelRanges = new LabelRanges();
     }
 
+    getEmptyValue(id, index) {
+        return null;
+    }
     reserve(count, label, multiarray) {
         const id = this.values.length;
         for (let index = 0; index < count; ++index) {
-            this.values[index + id] = null;
+            const absoluteIndex = index + id;
+            this.values[absoluteIndex] = this.getEmptyValue(absoluteIndex, index);
         }
         if (label) {
             this.labelRanges.define(label, id, multiarray);
@@ -40,12 +44,12 @@ module.exports = class Indexable {
         if (this.isDefined(id)) {
             throw new Error(`${id} already defined on ....`)
         }
-        this.set(id, value);
+        this.set(id, 0, value);
     }
 
     set(id, offset, value) {
-        console.log(`\x1B[31mSET@${this.type}(${id}, ${offset}, ${value})\x1B[0m`);
-        this.values[id+offset] = value;
+        console.log([`SET@${this.type}[${id}]`, value]);
+        this.values[id] = value;
     }
 
     unset(id) {
@@ -56,7 +60,7 @@ module.exports = class Indexable {
 
     *[Symbol.iterator]() {
         for (let index = 0; index < this.values.length; ++index) {
-          yield index;
+          yield this.values[index];
         }
     }
 
@@ -72,14 +76,14 @@ module.exports = class Indexable {
         }
     }
     dump () {
-        console.log(`DUMP ${this.type}`);
+        console.log(`DUMP ${this.type} #:${this.values.length}`);
         for (let index = 0; index < this.values.length; ++index) {
             const value = this.values[index];
-            if (value && typeof value.dump === 'function') {
+/*            if (value && typeof value.dump === 'function') {
                 console.log(`#### ${this.type} ${index} ####`);
                 value.dump();
-            }
-            console.log([index, this.values[index]]);
+            }*/
+            console.log(`${index}: ${this.values[index]}`);
         }
     }
 }
