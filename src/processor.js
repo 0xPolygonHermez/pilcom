@@ -76,8 +76,9 @@ module.exports = class Processor {
         return this.functionDeep > 0;
     }
     startExecution(statements) {
+        this.rows = 2**17;
         this.references.declare('N', 'var', [], { type: 'int', sourceRef: this.sourceRef });
-        this.references.set('N', [], 2**5);
+        this.references.set('N', [], this.rows);
         this.execute(statements);
         let packed = new PackedExpressions();
         this.expressions.pack(packed);
@@ -91,7 +92,7 @@ module.exports = class Processor {
     {
         let proto = new ProtoOut(this.Fr);
         proto.setupPilOut('myFirstPil', this.publics);
-        proto.setAir('myFirstAir', 2**5);
+        proto.setAir('myFirstAir', this.rows);
         proto.setFixedCols(this.fixeds);
         proto.setPeriodicCols(this.fixeds);
         proto.setConstraints(this.constraints, packed);
@@ -99,6 +100,7 @@ module.exports = class Processor {
         proto.setExpressions(packed);
         proto.setReferences(this.references);
         proto.encode();
+        proto.saveToFile('tmp/pilout.ptb');
         // stageWidths
         // expressions
 
@@ -364,8 +366,11 @@ module.exports = class Processor {
             let seq = null;
             if (init) {
                 seq = new Sequence(this, init, this.references.get('N'));
+                console.log(`Extending fixed col ${colname} ...`);
+                console.time('extending');
                 seq.extend();
-                console.log('SEQ:'+seq.values.join(','));
+                console.timeEnd('extending');
+                // console.log('SEQ:'+seq.values.join(','));
             }
             this.declareReference(colname, 'fixed', lengths, {}, seq);
         }

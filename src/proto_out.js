@@ -1,6 +1,7 @@
 const protobuf = require('protobufjs');
 const {cloneDeep} = require('lodash');
 const Long = require('long');
+const fs = require('fs');
 
 //
 // Legacy Pil Stats
@@ -109,9 +110,12 @@ module.exports = class ProtoOut {
     }
     encode() {
         let message = this.PilOut.fromObject(this.pilOut);
-        let data = this.PilOut.encode(message).finish();
-        console.log(data);
-        return data;
+        this.data = this.PilOut.encode(message).finish();
+        console.log(this.data);
+        return this.data;
+    }
+    saveToFile(filename) {
+        fs.writeFileSync(filename, this.data);
     }
     setAir(name, rows) {
         this.currentAir = {name, numRows: rows};

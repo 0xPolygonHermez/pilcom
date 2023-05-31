@@ -1,3 +1,5 @@
+const chai = require("chai");
+const assert = chai.assert;
 const Router = require("./router.js");
 
 class SequencePadding {
@@ -72,43 +74,51 @@ module.exports = class Sequence {
         return this.paddingCycleSize;
     }
     extend() {
-        this.values = this._extend(this.expression);
+        this.values = new Array(this.size);
+        this.extendPos = 0;
+        this._extend(this.expression);
+        assert(this.extendPos === this.size);
     }
     _extend(e) {
         return this.router.go(e, '_extend');
     }
     _extendSeqList(e) {
-        let values = [];
+        let count = 0;
         for(const value of e.values) {
-            values = [...values, ...this._extend(value)];
+            count += this._extend(value);
         }
-        return values;
+        return count;
     }
     _extendSequence(e) {
         return this._extendSeqList(e);
     }
     _extendPaddingSeq(e) {
-        let seqValues = this._extend(e.value);
-        let values = [];
-        let remaingValues = this.paddingSize;
-        console.log(seqValues);
-        while (remaingValues > 0) {
-            if (remaingValues >= seqValues.length) {
-                values = [...values, ...seqValues];
-                remaingValues -= seqValues.length;
-            } else {
-                values = [...values, ...seqValues.slice(0, remaingValues)];
-                remaingValues = 0;
-            }
+        let from = this.extendPos;
+        let seqSize = this._extend(e.value);
+        let remaingValues = this.paddingSize - seqSize;
+        if (remaingValues < 0) {
+            throw new Error(`In padding range must be space at least for one time sequence`);
         }
-        return values;
+        while (remaingValues > 0) {
+            let upto = remaingValues >= seqSize ? seqSize : remaingValues;
+            for (let index = 0; index < upto; ++index) {
+                this.values[this.extendPos++] = this.values[from + index];
+            }
+            remaingValues = remaingValues - upto;
+        }
+        return this.paddingSize;
     }
     _extendExpr(e) {
         const num = this.parent.getExprNumber(e);
-        return [num];
+        this.values[this.extendPos++] = num;
+        return 1;
     }
     _extendRepeatSeq(e) {
-        return [].concat(...this._extend(e.value).map(x => Array(e.times).fill(x)));
+        let count = 0;
+        for (let itime = 0; itime < e.times; ++itime) {
+            count += this._extend(e.value);
+        }
+        return count;
     }
 /*
     reserve(count, label, multiarray, data) {
