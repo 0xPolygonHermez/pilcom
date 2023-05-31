@@ -21,7 +21,7 @@ module.exports = class Sequence {
         this.padding = false;
         this.expression = expression;
         this.router = new Router(this, 'type');
-        this.maxSize = maxSize ?? false;
+        this.maxSize = typeof maxSize === 'undefined' ? false : Number(maxSize);
         this.paddingCycleSize = false;
         this.paddingSize = 0;
         this.sizeOf(expression);

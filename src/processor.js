@@ -1,3 +1,4 @@
+const {assert} = require("chai");
 const Scope = require("./scope.js");
 const Expressions = require("./expressions.js");
 const Definitions = require("./definitions.js");
@@ -76,9 +77,7 @@ module.exports = class Processor {
         return this.functionDeep > 0;
     }
     startExecution(statements) {
-        this.rows = 2**17;
         this.references.declare('N', 'var', [], { type: 'int', sourceRef: this.sourceRef });
-        this.references.set('N', [], this.rows);
         this.execute(statements);
         let packed = new PackedExpressions();
         this.expressions.pack(packed);
@@ -111,6 +110,7 @@ module.exports = class Processor {
         ++this.executeCounter;
         const lstatements = Array.isArray(statements) ? statements : [statements];
         // console.log(`## DEBUG ## ${this.executeCounter}[${lstatements.length}]`)
+        console.log(`\x1B[45m====> ${lstatements[0].type}\x1B[0m`);
         for (const st of lstatements) {
             const result = this.executeStatement(st);
             if (result instanceof FlowAbortCmd) {
@@ -341,12 +341,24 @@ module.exports = class Processor {
         this.scope.pop();
         [this.namespace, this.subair ] = previous;
     }
+    evalExpressionList(e) {
+        assert(e.type === 'expression_list');
+        let values = [];
+        for (const value of e.values) {
+            values.push(this.e2value(value));
+        }
+        return values;
+    }
     execSubairDefinition(s) {
         const subair = s.name ?? false;
         if (subair === false) {
             this.error(s, `subair not defined correctly`);
         }
-        let rows = [];
+        let rows = this.evalExpressionList(s.rows);
+        this.rows = rows[0];
+
+        this.references.set('N', [], this.rows);
+
         // TO-DO: eval expressions;
         const subairInfo = {
             sourceRef: this.sourceRef,
@@ -521,5 +533,8 @@ module.exports = class Processor {
             throw new Error('Return is called out of function scope');
         }
         return new ReturnCmd(s.value);
+    }
+    e2value(e, s, title) {
+        return this.expressions.e2value(e, s, title);
     }
 }

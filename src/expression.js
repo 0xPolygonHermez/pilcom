@@ -293,7 +293,11 @@ module.exports = class Expression {
         if (opfunc === false) {
             throw new Error(`NOT FOUND OPERATION (${st.op})`);
         }
-        if (!st.operands.some(x => typeof x === 'object')) {
+        if (!st.operands.some(x => (typeof x === 'object' && x.type !== OP_VALUE))) {
+            if (st.operands.some(x => typeof x.__value !== 'bigint')) {
+                st.operands.forEach(x => console.log(x));
+                throw new Error(`ERROR evaluating operation ${st.op}:`);
+            }
             st.__value = opfunc.handle.apply(this, st.operands.map(x => x.__value));
         }
     }

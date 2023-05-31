@@ -118,7 +118,7 @@ module.exports = class ProtoOut {
         fs.writeFileSync(filename, this.data);
     }
     setAir(name, rows) {
-        this.currentAir = {name, numRows: rows};
+        this.currentAir = {name, numRows: Number(rows)};
         this.pilOut.airs.push(this.currentAir);
     }
     generateReferences(references, totalAirs) {

@@ -68,6 +68,9 @@ module.exports = class Expressions {
             const operation = this.operations[e.op];
             const [a,b,reduced] = this.evaluateValues(e, operation.args, fr);
             if (reduced) {
+                if (typeof a.value !== 'bigint' || typeof b.value !== 'bigint') {
+                    throw new Error(`ERROR evaluatin operation: ${a.value}[${typeof a.value}] ${operation} on ${b.value}[${typeof b.value}]`);
+                }
                 return { op: 'number',
                          value: fr ? operation.handleFr(fr, a.value, b.value) : operation.handle(a.value, b.value) };
             }
