@@ -39,7 +39,7 @@ module.exports = class FixedCols extends Indexable {
         if (control) {
             EXIT_HERE_ONLY_TWO_PARAMETERS;
         }
-        console.log([`SET@${this.type}[${id}]`, value]);
+        // console.log([`SET@${this.type}[${id}]`, value]);
         this.values[id].set(value);
     }
 }

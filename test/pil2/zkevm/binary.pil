@@ -10,7 +10,7 @@
 // OR    (OP:6)
 // XOR   (OP:7)
 
-include "std.pil";
+// include "std.pil";
 
 namespace Binary:: {
 

@@ -298,8 +298,8 @@ module.exports = class Expression {
                 st.operands.forEach(x => console.log(x));
                 throw new Error(`ERROR evaluating operation ${st.op}:`);
             }
-            st.__value = opfunc.handle.apply(this, st.operands.map(x => x.__value));
         }
+        st.__value = opfunc.handle.apply(this, st.operands.map(x => x.__value));
     }
     isRuntimeCalculable(e) {
         const te = typeof e;

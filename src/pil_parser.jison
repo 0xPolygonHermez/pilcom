@@ -124,6 +124,7 @@ transition                                  { return 'TRANSITION' }
 %left ','
 %left DOTS_FILL DOTS_RANGE
 %left DOTS_GEOM_SEQ DOTS_ARITH_SEQ
+%left DOTS_REPEAT       // ':' when means repetition
 %right '=' '*=' '+=' '-='
 %right '?'
 // %left '?'
@@ -165,6 +166,9 @@ function runtime_expr(value) {
 function insert_expr(e, op, ...values) {
     // let res = e;
     // e.expr = new Expression();
+    console.log(e);
+    console.log(op);
+    console.log(values);
     let exprs = values.map((x) => x.expr);
     e.expr.insert.apply(e.expr, [op, ...exprs]);
     return e;
@@ -593,13 +597,13 @@ case_value
     : case_value ',' expression
         { $$ = $1; $$.values.push($3) }
 
-    | case_value ',' expression '..' expression
+    | case_value ',' expression DOTS_RANGE expression
         { $$ = $1; $$.values.push({ from: $3, to: $5 }) }
 
     | expression
         { $$ = { values: [$1] } }
 
-    | expression '..' expression
+    | expression DOTS_RANGE expression
         { $$ = { values: [{ from: $1, to: $3 }] } }
     ;
 
@@ -838,32 +842,68 @@ sequence_definition
         { $$ = {type: 'sequence', values: [{type: 'padding_seq', value: $2}] } }
     ;
 
+
 sequence_list
     : sequence_list ',' sequence
         { $$ = $1; $$.values.push($3) }
 
-    | sequence_list ',' DOTS_ARITH_SEQ ',' sequence
-        { $$ = $1; $$.values.append([{ type: 'arith_seq', final: true }, $5]) }
+    | sequence_list ',' expression ':' expression
+        { $$ = $1; $$.values.push({type: 'repeat_seq', value: $3, times: $5}) }
 
-    | sequence_list ',' DOTS_GEOM_SEQ ',' sequence
-        { $$ = $1; $$.values.append([{ type: 'geom_seq', final: true }, $5]) }
+    | sequence_list ',' expression DOTS_ARITH_SEQ expression
+        { $$ = $1; $$.values.push({type: 'arith_seq', t1: $$.values.pop(), t2: $3, tn: $5}) }
 
-    | sequence_list ',' DOTS_ARITH_SEQ
-        { $$ = $1; $$.values.push({ type: 'arith_seq', final: false }) }
+    | sequence_list ',' expression DOTS_GEOM_SEQ expression
+        { $$ = $1; $$.values.push({type: 'geom_seq', t1: $$.values.pop(), t2: $3, tn: $5}) }
 
-    | sequence_list ',' DOTS_GEOM_SEQ
-        { $$ = $1; $$.values.push({ type: 'geom_seq', final: false }) }
+    | sequence_list ',' expression ':' expression DOTS_ARITH_SEQ expression ':' expression
+        { $$ = $1; $$.values.push({type: 'arith_seq', t1: $$.values.pop(),
+                                   t2: {type: 'repeat_seq', value: $3, times: $5},
+                                   tn: {type: 'repeat_seq', value: $7, times: $9}}) }
+
+    | sequence_list ',' expression ':' expression DOTS_GEOM_SEQ expression ':' expression
+        { $$ = $1; $$.values.push({type: 'geom_seq', t1: $$.values.pop(),
+                                   t2: {type: 'repeat_seq', value: $3, times: $5},
+                                   tn: {type: 'repeat_seq', value: $7, times: $9}}) }
+
+    | sequence_list ',' expression DOTS_ARITH_SEQ
+        { $$ = $1; $$.values.push({type: 'arith_seq', t1: $$.values.pop(), t2: $3, tn: false}) }
+
+    | sequence_list ',' expression DOTS_GEOM_SEQ
+        { $$ = $1; $$.values.push({type: 'geom_seq', t1: $$.values.pop(), t2: $3, tn: false}) }
+
+    | sequence_list ',' expression ':' expression DOTS_ARITH_SEQ
+        { $$ = $1; $$.values.push({type: 'arith_seq', t1: $$.values.pop(),
+                                   t2: {type: 'repeat_seq', value: $3, times: $5},
+                                   tn: false}) }
+
+    | sequence_list ',' expression ':' expression DOTS_GEOM_SEQ
+        { $$ = $1; $$.values.push({type: 'geom_seq', t1: $$.values.pop(),
+                                   t2: {type: 'repeat_seq', value: $3, times: $5},
+                                   tn: false}) }
 
     | sequence
         { $$ = { type: 'seq_list', values: [$1] } }
+
+    | expression ':' expression
+        { $$ = { type: 'seq_list', values: [{type: 'repeat_seq', value: $1, times: $3}] } }
     ;
 
 sequence
     : sequence ':' expression
         { $$ = {type: 'repeat_seq', value: $1, times: $3} }
 
-    | sequence DOTS_RANGE sequence
+    | expression DOTS_RANGE expression %prec EMPTY
         { $$ = {type: 'range_seq', from: $1, to: $3} }
+
+    | expression DOTS_RANGE expression ':' expression  %prec DOTS_REPEAT
+        { $$ = {type: 'range_seq', from: $1, to: {times: $5, ...$3}} }
+
+    | expression ':' expression DOTS_RANGE expression %prec EMPTY
+        { $$ = {type: 'range_seq', from: {times: $3, ...$1}, to: $5}}
+
+    | expression ':' expression DOTS_RANGE expression ':' expression %prec DOTS_REPEAT
+        { $$ = {type: 'range_seq', from: {times: $3, ...$1}, to: {times: $7, ...$5}} }
 
     | sequence DOTS_FILL
         { $$ = {type: 'padding_seq', value: $1} }
@@ -871,7 +911,7 @@ sequence
     | '[' sequence_list ']'
         { $$ = {type: 'seq_list', values: $2} }
 
-    | expression
+    | expression %prec EMPTY
         { $$ = $1 }
     ;
 
@@ -1047,7 +1087,7 @@ expression
         { $$ = insert_expr($1, 'in', $3) }
 
     | expression IS return_type %prec IS
-        { $$ = insert_expr($1, 'is', $3) }
+        { $$ = insert_expr($1, 'is', runtime_expr({op: 'type', vtype: $3.type, dim: $3.dim})) }
 
     | expression AND expression %prec AND
         { $$ = insert_expr($1, 'and', $3) }
@@ -1074,7 +1114,7 @@ expression
         { $$ = insert_expr($1, 'shr', $3) }
 
     | '!' expression %prec '!'
-        { $$ = insert_expr($1, 'not') }
+        { $$ = insert_expr($2, 'not') }
 
     | expression '+' expression %prec '+'
         { $$ = insert_expr($1, 'add', $3) }

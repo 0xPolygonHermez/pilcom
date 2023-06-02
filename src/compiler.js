@@ -85,10 +85,25 @@ class Compiler {
         const parserPerformAction = parser.performAction;
         const parserStateInfo = parser.productions_;
         let compiler = this;
+        /*
+        const __symbol_info__ = this.terminals_[symbol] + ( lexer.match &&
+                              lexer.match != this.terminals_[symbol] ? ` (${lexer.match})`:'');
+        console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+"\x1B[0m");
+        */
         parser.performAction = function (yytext, yyleng, yylineno, yy, yystate, $$, _$ ) {
             const result = parserPerformAction.apply(this, arguments);
             const first = _$[$$.length - 1 - parserStateInfo[yystate][1]];
             const last = _$[$$.length - 1];
+            const sourceRef = `${compiler.relativeFileName}:${last.last_line}`;
+//            if (sourceRef === 'mem_align.pil:48') {
+/*            if (sourceRef === 'sequence.pil:5') {
+                console.log(arguments);
+                console.log(this);
+                console.log(yy);
+                console.log(yyleng);
+                EXIT_HERE;
+            }*/
+            // console.log(`ST_${yystate} ${parserStateInfo[yystate][0]} ${sourceRef}`);
             if (typeof this.$ !== 'object')  {
                 return result;
             }
