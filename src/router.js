@@ -8,6 +8,8 @@ module.exports = class Router {
         this.message = options.message ?? `Not found routing method {1} for property ${property} = {0}`;
         this.cache = options.cache || {};
         this.multiParams = options.multiParams || false;
+        this.prefunc = options.pre || false;
+        this.postfunc = options.post || false;
     }
     getPropertyValue(e) {
         return e[this.routerProperty];
@@ -31,13 +33,12 @@ module.exports = class Router {
         const pvalue = this.getPropertyValue(e);
         const method = this.getRouteMethod(pvalue, prefix);
         if (typeof this.parent[method] !== 'function') {
-            console.log('PARAMS-GO');
-            console.log(params);
-            console.log('PVALUE-GO');
-            console.log(pvalue);
             throw new Error(this.message.replace(/\{0\}/gi, pvalue).replace(/\{1\}/gi, method));
         }
-        return this.parent[method].apply(this.parent, params);
+        if (this.prefunc) this.prefunc.apply(this.parent, [method, ...params]);
+        let res = this.parent[method].apply(this.parent, params);
+        if (this.postfunc) res = this.prefunc.apply(this.parent, [method, res, ...params]);
+        return res;
     }
     goBy(pvalue, ...params) {
         const method = this.getRouteMethod(pvalue);

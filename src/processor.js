@@ -379,9 +379,7 @@ module.exports = class Processor {
             if (init) {
                 seq = new Sequence(this, init, this.references.get('N'));
                 console.log(`Extending fixed col ${colname} ...`);
-                console.time('extending');
                 seq.extend();
-                console.timeEnd('extending');
                 // console.log('SEQ:'+seq.values.join(','));
             }
             this.declareReference(colname, 'fixed', lengths, {}, seq);

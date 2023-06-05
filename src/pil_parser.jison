@@ -840,6 +840,12 @@ sequence_definition
 
     | '[' sequence_list ']' DOTS_FILL
         { $$ = {type: 'sequence', values: [{type: 'padding_seq', value: $2}] } }
+
+    | '[' sequence_list ']' ':' expression
+        { $$ = {type: 'sequence', values: [{type: 'repeat_seq', value: $2, times: $5}]} }
+
+    | '[' sequence_list ']' ':' expression DOTS_FILL
+        { $$ = {type: 'sequence', values: [{type: 'padding_seq', value: {type: 'repeat_seq', value: $2, times: $5}}]} }
     ;
 
 

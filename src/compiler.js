@@ -86,9 +86,19 @@ class Compiler {
         const parserStateInfo = parser.productions_;
         let compiler = this;
         /*
+        state = stack[stack.length - 1];
+        if (this.defaultActions[state]) {
+            action = this.defaultActions[state];
+        } else {
+            if (symbol === null || typeof symbol == 'undefined') {
+                symbol = lex();
+            }
+            action = table[state] && table[state][symbol];
+        }
+        ===>
         const __symbol_info__ = this.terminals_[symbol] + ( lexer.match &&
                               lexer.match != this.terminals_[symbol] ? ` (${lexer.match})`:'');
-        console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+"\x1B[0m");
+console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1)+"\x1B[0m");
         */
         parser.performAction = function (yytext, yyleng, yylineno, yy, yystate, $$, _$ ) {
             const result = parserPerformAction.apply(this, arguments);

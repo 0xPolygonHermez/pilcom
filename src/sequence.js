@@ -10,7 +10,7 @@ class SequencePadding {
     }
 }
 module.exports = class Sequence {
-    static geomInfoCache = [];
+    static cacheGeomN = [];
     // TODO: Review compiler estructures
     // TODO: iterator of values without "extend"
     // TODO: check repetitive sequences (times must be same)
@@ -21,19 +21,39 @@ module.exports = class Sequence {
         this.values = [];
         this.padding = false;
         this.expression = expression;
-        this.router = new Router(this, 'type');
+        this.router = new Router(this, 'type', {pre: this.preRoute});
         this.maxSize = typeof maxSize === 'undefined' ? false : Number(maxSize);
         this.paddingCycleSize = false;
         this.paddingSize = 0;
+        this.extendPos = 0;
+        this.debug = '';
+        this.valueCounter = 0;
         this.sizeOf(expression);
+    }
+    preRoute(method, e) {
+        if (e.debug) this.debug = e.debug;
     }
     getValue(index) {
         return this.values[index];
+    }
+    setValue(index, value) {
+        /* assert(this.extendPos >= 0 && (this.maxSize === false || this.extendPos < this.maxSize),
+               `Invalid value of extendPos:${this.extendPos} maxSize:${this.maxSize}`);*/
+        console.log('SETTING VALUE ['+index+']='+value+' '+this.debug);
+        if ((index >= 0 && (this.maxSize === false || index < this.maxSize) === false)) {
+            console.log(`\x1B[33mERROR Invalid value of extendPos:${index} maxSize:${this.maxSize}  ${this.debug}\x1B[0m`);
+        }
+        if (typeof this.values[index] !== 'undefined') {
+            console.log(`\x1B[33mERROR Rewrite index position:${index} ${this.debug}\x1B[0m`);
+        }
+        ++this.valueCounter;
+        return this.values[index] = value;
     }
     sizeOf(e) {
         this.paddingCycleSize = false;
         this.paddingSize = 0;
         const size = this._sizeOf(e);
+        assert(size >= this.paddingCycleSize, `size(${size}) < paddingCycleSize(${this.paddingCycleSize})`);
         if (this.paddingCycleSize) {
             this.paddingSize = this.maxSize - (size - this.paddingCycleSize);
             this.size = size - this.paddingCycleSize + this.paddingSize;
@@ -66,10 +86,10 @@ module.exports = class Sequence {
     }
     setPaddingSize(size) {
         if (this.maxSize === false) {
-            throw new Error(`Invalid padding sequence without maxSize`);
+            throw new Error(`Invalid padding sequence without maxSize at ${this.debug}`);
         }
         if (this.paddingCycleSize !== false) {
-            throw new Error(`Invalid padding sequence, previous padding sequence has been specified`);
+            throw new Error(`Invalid padding sequence, previous padding sequence already has been specified at ${this.debug}`);
         }
         this.paddingCycleSize = size;
         return this.paddingCycleSize;
@@ -94,9 +114,10 @@ module.exports = class Sequence {
             throw new Error(`In term sequence, t1(${t1Times}), t2(${t2Times})`+
                         (tnTimes === false ? '':` and tn(${tbTimes}`)+'must be same');
         }
-        const t1 = this.e2num(e.t1);
-        const t2 = this.e2num(e.t2);
-        const tn = e.tn === false ? false : this.e2num(e.tn);
+        console.log(e);
+        const t1 = this.e2num(e.t1.type === 'expr' ? e.t1 : e.t1.value);
+        const t2 = this.e2num(e.t2.type === 'expr' ? e.t2 : e.t2.value);
+        const tn = e.tn === false ? false : this.e2num(e.tn.type === 'expr' ? e.tn : e.tn.value);
         if (t1 === t2) {
             throw new Error(`In term sequence, t1(${t1}), t2(${t2}) must be different`);
         }
@@ -114,7 +135,7 @@ module.exports = class Sequence {
         if (tn !== false) {
             const distance = tn - t2;
             if ((delta > 0 && tn < t2) || (delta < 0 && tn > t2) || (distance % delta !== 0n)) {
-                throw new Error(`Invalid terms of arithmetic sequence ${t1},${t2}...${tn}`);
+                throw new Error(`Invalid terms of arithmetic sequence ${t1},${t2}...${tn} at ${this.debug}`);
             }
             return Number(distance/delta + 2n) * times;
         }
@@ -124,51 +145,89 @@ module.exports = class Sequence {
         // TODO review if negative, fe?
     }
     _extendArithSeq(e) {
-        const initialExtendPos = this.extendPos;
-        const [t1, t2, tn] = this.getTermSeqInfo(e);
+        const [t1, t2, tn, times] = this.getTermSeqInfo(e);
         const delta = t2 - t1;
-//         const distance = tn - t2;
-        console.log({tag: 'XXXX-', t1, t2, delta, tn, paddingSize: this.paddingSize});
+        /* console.log({tag: 'XXXX-', t1, t2, delta, tn, paddingSize: this.paddingSize});
         const tfinal = tn === false ? t1 + delta * BigInt(this.paddingSize): tn + delta;
         console.log({tag: 'XXXXX', tn, tfinal, paddingSize: this.paddingSize});
-        const times = 1;
+        let value = t1;*/
+        const count = tn === false ? this.paddingSize : times * (Number(((tn - t1) / delta)) + 1);
+        const finalExtendPos = this.extendPos + count;
+        // console.log({t1, t2, delta, tn, extendPos: this.extendPos, count, finalExtendPos, paddingSize: this.paddingSize});
         let value = t1;
-        while (value !== tfinal) {
-            for (let itimes = 0; itimes < times; ++itimes) {
-                this.values[this.extendPos++] = value;
+        while (this.extendPos < finalExtendPos) {
+            for (let itimes = 0; itimes < times && this.extendPos < finalExtendPos; ++itimes) {
+                this.setValue(this.extendPos++,value);
             }
             value = value + delta;
         }
-        return this.extendPos - initialExtendPos;
+        return count;
     }
-    getGeomInfo(t1, t2, tn, calculateSize = false) {
-        let key = [t1, t2, tn].join('_');
-        let res = Sequence.geomInfoCache[key];
+    calculateGeomN(ratio, ti, tf) {
+        const ratioAsNum = Number(ratio);
+        const rn = tf/ti;
+
+        if (rn <= Number.MAX_SAFE_INTEGER) {
+            return BigInt(Math.round(Math.log(Number(rn))/Math.log(ratioAsNum)));
+        }
+
+        const key = [ratio, rn].join('_');
+        let res = Sequence.cacheGeomN[key];
         if (typeof res !== 'undefined') {
             return res;
         }
 
+        // Path if rn is too big to use Math.log
+        let n = BigInt(Math.floor(Math.log(Number.MAX_SAFE_INTEGER)/Math.log(ratioAsNum)));
+
+        let value = rn;
+        let chunks = [n];
+        let chunkValue = ratio ** n;
+        let chunkValues = [chunkValue];
+        while (chunkValue < rn) {
+            chunkValue = chunkValue * chunkValue;
+            n = n * 2n;
+            chunkValues.push(chunkValue);
+            chunks.push(n);
+        }
+        n = 0n;
+        for (let index = chunks.lenght - 2; index >= 0; --index) {
+            if (value < chunkValues[index]) continue;
+            value = value / chunkValues[index];
+            n = n + chunks[index];
+        }
+        n = n + BigInt(Math.round(Math.log(Number(value))/Math.log(ratioAsNum)));
+        Sequence.cacheGeomN[key] = n;
+        return n;
+    }
+    getGeomInfo(t1, t2, tn, times, calculateSize = false) {
         // TODO: negative values ?
         const reverse = t1 > t2;
         const ratio = reverse ? t1/t2 : t2/t1;
-        const ratioAsNum = Number(ratio);
 
         if ((reverse ? t2:t1) === 0n) {
             console.log({tf, ti, mod:tf % ti, reverse, t1, t2, tn});
             return [false, false, false, false, false];
         }
 
-        if (tn === false) {
+        let n = 0;
+        let padding = tn === false;
+        if (padding) {
             if (calculateSize) {
-                return this.setPaddingSize(2);
+                return [this.setPaddingSize(2), reverse, 0n, 0n, ratio];
             }
+            n = BigInt(Math.floor(this.paddingSize / times));
             if (!reverse) {
-                tn = t1 * (ratio ** this.paddingSize);
+                tn = t1 * (ratio ** n);
+            } else {
+                console.log({tn, t1, ratio, n, paddingSize: this.paddingSize});
+                tn = t1 / (ratio ** n);
+                if (tn === 0n) {
+                    throw new Error(`Invalid geometric sequence must specify last element, implicit last element is < 1 ${this.debug}`)
+                }
             }
-            // TODO: reverse case
-            key = [t1, t2, tn].join('_');
         }
-
+        console.log({calculateSize, n});
         // TODO: review case tn !== false and reverse
         const tf = reverse ? t1 : tn;
         const ti = reverse ? tn : t1;
@@ -176,68 +235,54 @@ module.exports = class Sequence {
             console.log({tf, ti, mod:tf % ti, reverse, t1, t2, tn});
             return [false, false, false, false, false];
         }
-        const rn = tf/ti;
-        let n;
-        if (rn > Number.MAX_SAFE_INTEGER) {
-            // Path if rn is too big to use Math.log
-            n = BigInt(Math.floor(Math.log(Number.MAX_SAFE_INTEGER)/Math.log(ratioAsNum)));
-
-            let value = rn;
-            let chunks = [n];
-            let chunkValue = ratio ** n;
-            let chunkValues = [chunkValue];
-            while (chunkValue < rn) {
-                chunkValue = chunkValue * chunkValue;
-                n = n * 2n;
-                chunkValues.push(chunkValue);
-                chunks.push(n);
-            }
-            n = 0n;
-            for (let index = chunks.lenght - 2; index >= 0; --index) {
-                if (value < chunkValues[index]) continue;
-                value = value / chunkValues[index];
-                n = n + chunks[index];
-            }
-            n = n + BigInt(Math.round(Math.log(Number(value))/Math.log(ratioAsNum)));
+        if (n == 0) {
+            n = this.calculateGeomN(ratio, ti, tf);
+            console.log({_: 'calculateGeomN', n, ratio, ti, tf});
         }
-        else {
-            n = Math.round(Math.log(Number(rn))/Math.log(ratioAsNum));
-        }
-        res = [Number(n), reverse, ti, tf, ratio];
         if (tf !== (ti * (ratio ** BigInt(n)))) {
-            throw new Error(`ERROR geometric seq calculation ${tf} !== (${ti} * (${ratio} ** ${BigInt(n)})`);
+            console.log({padding, calculateSize, ti, tf, ratio, n, t1, t2, tn});
+            throw new Error(`ERROR geometric seq calculation ${tf} !== ${ti} * (${ratio} ** ${BigInt(n)})`);
         }
-        Sequence.geomInfoCache[key] = res;
-        return res;
+        return [Number(n) + 1, reverse, ti, tf, ratio];
     }
     _sizeOfGeomSeq(e) {
         const [t1, t2, tn, times] = this.getTermSeqInfo(e);
         if (t1 === 0n) {
-            throw new Error(`Invalid terms of geometric sequence ${t1},${t2}...${tn}`);
+            throw new Error(`Invalid terms of geometric sequence ${t1},${t2}...${tn} at ${this.debug}`);
         }
-        const [count, reverse, ti, tf, ratio] = this.getGeomInfo(t1, t2, tn);
-        return count * times;
+        const [count, reverse, ti, tf, ratio] = this.getGeomInfo(t1, t2, tn, times, true);
+        return tn === false ? count : count * times;
     }
     _extendGeomSeq(e) {
-        const initialExtendPos = this.extendPos;
-        const [t1, t2, tn] = this.getTermSeqInfo(e);
-        const reverse = t1 > t2;
-        const ratio = reverse ? t1 / t2 : t2 / t1;
-        if (tn !== false) {
-            let value = reverse ? tn : t1;
-            let tfinal = reverse ? t1 : tn;
-            let count = 10;
-            this.extendPos = this.extendPos - (reverse ? count:0);
-            const times = 1;
-            while (value <= tfinal) {
-                for (let itimes = 0; itimes < times; ++itimes) {
-                    this.values[this.extendPos] = value;
-                    this.extendPos = this.extendPos + (reverse ? -1:1);
-                }
-                value = value * ratio;
+        const [t1, t2, _tn, times] = this.getTermSeqInfo(e);
+        const [_count, reverse, ti, tf, ratio] = this.getGeomInfo(t1, t2, _tn, times);
+
+        const padding = _tn === false;
+        const tn = padding ? t1 * (ratio ** BigInt(this.paddingSize - 1)) : _tn;
+        let value = ti;
+        const count = padding ? this.paddingSize : _count * times;
+        this.extendPos = this.extendPos + (reverse ? (count - 1):0);
+        const initialPos = this.extendPos;
+
+        let itimes = reverse && padding && count % times ? count % times :times;
+        console.log({t1,t2,_tn,times,_count, count, value, reverse, ti, tf, ratio, paddingSize: this.paddingSize,
+                     extendPos: this.extendPos, itimes});
+        let remaingValues = count;
+        while (remaingValues > 0) {
+            while (remaingValues > 0 && itimes > 0)  {
+                --remaingValues;
+                --itimes;
+                this.setValue(this.extendPos, value);
+                this.extendPos = this.extendPos + (reverse ? -1:1);
             }
+            itimes = times;
+            value = value * ratio;
         }
-        return this.extendPos - initialExtendPos;
+        if (reverse) {
+            this.extendPos = initialPos + 1;
+        }
+        console.log({tn, _tn, _count, count});
+        return count;
     }
     _extendRangeSeq(e) {
         const [fromValue, toValue, times] = this.getRangeSeqInfo(e);
@@ -247,9 +292,10 @@ module.exports = class Sequence {
         const initialExtendPos = this.extendPos;
         let value = fromValue;
         console.log({fromValue,toValue});
+        assert(times > 0);
         while (value <= toValue) {
             for (let itimes = 0; itimes < times; ++itimes) {
-                this.values[this.extendPos++] = value;
+                this.setValue(this.extendPos++, value);
             }
             value = (value + delta) * ratio;
         }
@@ -261,7 +307,8 @@ module.exports = class Sequence {
         this._extend(this.expression);
         console.log(this.toString());
         console.log([this.extendPos, this.size]);
-        assert(this.extendPos === this.size);
+        assert(this.extendPos === this.size, `extendPos(${this.extendPos}) !== size(${this.size})`);
+        assert(this.valueCounter === this.size);
     }
     _extend(e) {
         return this.router.go(e, '_extend');
@@ -281,17 +328,19 @@ module.exports = class Sequence {
         let seqSize = this._extend(e.value);
         let remaingValues = this.paddingSize - seqSize;
         if (remaingValues < 0) {
-            throw new Error(`In padding range must be space at least for one time sequence`);
+            throw new Error(`In padding range must be space at least for one time sequence at ${this.debug}`);
         }
         if (seqSize < 1) {
             console.log(e.value);
-            throw new Error(`Sequence must be at least one element`);
+            throw new Error(`Sequence must be at least one element at ${this.debug}`);
         }
-        console.log({remaingValues, seqSize});
+        // console.log('SETTING REMAING_VALUES '+remaingValues+' '+seqSize);
+        // console.log({remaingValues, seqSize});
         while (remaingValues > 0) {
             let upto = remaingValues >= seqSize ? seqSize : remaingValues;
+            // console.log(`SETTING UPTO ${upto} ${remaingValues} ${seqSize}`);
             for (let index = 0; index < upto; ++index) {
-                this.values[this.extendPos++] = this.values[from + index];
+                this.setValue(this.extendPos++, this.values[from + index]);
             }
             remaingValues = remaingValues - upto;
         }
@@ -300,14 +349,16 @@ module.exports = class Sequence {
     _extendExpr(e) {
         console.log(e);
         const num = this.e2num(e);
-        this.values[this.extendPos++] = num;
+        this.setValue(this.extendPos++, num);
         return 1;
     }
     _extendRepeatSeq(e) {
         let count = 0;
         const times = this.e2num(e.times);
         for (let itime = 0; itime < times; ++itime) {
+            // console.log('SETTING PRE COUNT '+count);
             count += this._extend(e.value);
+            // console.log('SETTING POST COUNT '+count);
         }
         return count;
     }
