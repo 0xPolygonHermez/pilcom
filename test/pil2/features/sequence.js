@@ -12,7 +12,7 @@ const testCycle = function (name, col, expected, times = 1, N = 2**7) {
     }
 }
 
-describe("Plookup and permutation selectors value Test", async function () {
+describe("Sequences tests", async function () {
 
     const F = new F1Field(0xffffffff00000001n);
     this.timeout(10000000);
