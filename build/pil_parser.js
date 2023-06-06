@@ -995,9 +995,9 @@ function runtime_expr(value) {
 function insert_expr(e, op, ...values) {
     // let res = e;
     // e.expr = new Expression();
-    console.log(e);
-    console.log(op);
-    console.log(values);
+    // console.log(e);
+    // console.log(op);
+    // console.log(values);
     let exprs = values.map((x) => x.expr);
     e.expr.insert.apply(e.expr, [op, ...exprs]);
     return e;

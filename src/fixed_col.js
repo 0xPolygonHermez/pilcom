@@ -29,6 +29,7 @@ module.exports = class FixedCol {
                 EXIT_HERE;
             }
             this.sequence = value;
+            this.rows = this.sequence.values.length;
         }
         else {
             console.log(value);

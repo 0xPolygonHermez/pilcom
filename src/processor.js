@@ -79,16 +79,15 @@ module.exports = class Processor {
     startExecution(statements) {
         this.references.declare('N', 'var', [], { type: 'int', sourceRef: this.sourceRef });
         this.execute(statements);
+    }
+    generateOut()
+    {
         let packed = new PackedExpressions();
         this.expressions.pack(packed);
         //packed.dump();
         this.constraints.dump(packed);
         this.fixeds.dump();
 
-        this.generateOut(packed);
-    }
-    generateOut(packed)
-    {
         let proto = new ProtoOut(this.Fr);
         proto.setupPilOut('myFirstPil', this.publics);
         proto.setAir('myFirstAir', this.rows);
@@ -110,7 +109,7 @@ module.exports = class Processor {
         ++this.executeCounter;
         const lstatements = Array.isArray(statements) ? statements : [statements];
         // console.log(`## DEBUG ## ${this.executeCounter}[${lstatements.length}]`)
-        console.log(`\x1B[45m====> ${lstatements[0].type}\x1B[0m`);
+        // console.log(`\x1B[45m====> ${lstatements[0].type}\x1B[0m`);
         for (const st of lstatements) {
             const result = this.executeStatement(st);
             if (result instanceof FlowAbortCmd) {
@@ -372,13 +371,13 @@ module.exports = class Processor {
     execFixedColDeclaration(s) {
         for (const col of s.items) {
             const colname = this.getFullName(col);
-            console.log(`COL_FIXED_DECLARATION(${colname})`);
+            // console.log(`COL_FIXED_DECLARATION(${colname})`);
             const lengths = this.decodeLengths(col);
             let init = s.sequence;
             let seq = null;
             if (init) {
                 seq = new Sequence(this, init, this.references.get('N'));
-                console.log(`Extending fixed col ${colname} ...`);
+                // console.log(`Extending fixed col ${colname} ...`);
                 seq.extend();
                 // console.log('SEQ:'+seq.values.join(','));
             }

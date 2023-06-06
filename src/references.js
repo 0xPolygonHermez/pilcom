@@ -29,7 +29,7 @@ module.exports = class References {
     }
 
     declare (name, type, lengths = [], data = null) {
-        console.log(`DECLARE_REFERENCE ${name} ${type} []${lengths.length} #${this.scope.deep}`);
+        // console.log(`DECLARE_REFERENCE ${name} ${type} []${lengths.length} #${this.scope.deep}`);
         const tdata = this._getRegisteredType(type);
         let size, array;
         if (lengths && lengths.length) {

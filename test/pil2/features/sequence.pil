@@ -13,7 +13,8 @@ namespace Expressions:: {
     col fixed FACTOR_F = [1,2..*..];
     col fixed ODDS_R = [1:10,3:10..+..13:10]...;
     col fixed FACTOR_R = [1:2,2:2..*..16:2]...;
-    col fixed FACTOR_R2 = [1:10,2:10..*..512:10]...; // TODO: Warning !!!
+    // TODO: warning when sequence is too long
+    col fixed FACTOR_R2 = [1:10,2:10..*..512:10]...;
     col fixed ODDS_RF = [1:10,3:10..+..];
     col fixed FACTOR_RF = [1:10,2:10..*..];
     col fixed R_FACTOR_R = [16:2,8:2..*..1:2]...;

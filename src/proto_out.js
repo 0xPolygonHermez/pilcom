@@ -204,9 +204,11 @@ module.exports = class ProtoOut {
         const colType = periodic ? 'P':'F';
         for (const col of cols) {
             if (col.isPeriodic() !== periodic) continue;
+            const _rows = periodic ? col.rows : rows;
+            console.log(['rows', col.rows]);
             this.fixedId2ProtoId[col.id] = [colType, airCols.length];
             let values = [];
-            for (let irow = 0; irow < rows; ++irow) {
+            for (let irow = 0; irow < _rows; ++irow) {
                 values.push({value: this.bint2buf(col.getValue(irow))});
             }
             airCols.push({values});

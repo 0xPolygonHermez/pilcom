@@ -39,7 +39,7 @@ module.exports = class Sequence {
     setValue(index, value) {
         /* assert(this.extendPos >= 0 && (this.maxSize === false || this.extendPos < this.maxSize),
                `Invalid value of extendPos:${this.extendPos} maxSize:${this.maxSize}`);*/
-        console.log('SETTING VALUE ['+index+']='+value+' '+this.debug);
+        // console.log('SETTING VALUE ['+index+']='+value+' '+this.debug);
         if ((index >= 0 && (this.maxSize === false || index < this.maxSize) === false)) {
             console.log(`\x1B[33mERROR Invalid value of extendPos:${index} maxSize:${this.maxSize}  ${this.debug}\x1B[0m`);
         }
@@ -60,7 +60,6 @@ module.exports = class Sequence {
         } else {
             this.size = size;
         }
-        console.log(`SIZE: ${this.size}`);
 
         return this.size;
     }
@@ -98,7 +97,6 @@ module.exports = class Sequence {
         return this.setPaddingSize(this._sizeOf(e.value));
     }
     getRangeSeqInfo(e) {
-        console.log(e);
         const fromTimes = e.from.times ? Number(this.e2num(e.from.times)): 1;
         const toTimes = e.to.times ? Number(this.e2num(e.to.times)): 1;
         if (fromTimes !== toTimes) {
@@ -114,7 +112,7 @@ module.exports = class Sequence {
             throw new Error(`In term sequence, t1(${t1Times}), t2(${t2Times})`+
                         (tnTimes === false ? '':` and tn(${tbTimes}`)+'must be same');
         }
-        console.log(e);
+        // console.log(e);
         const t1 = this.e2num(e.t1.type === 'expr' ? e.t1 : e.t1.value);
         const t2 = this.e2num(e.t2.type === 'expr' ? e.t2 : e.t2.value);
         const tn = e.tn === false ? false : this.e2num(e.tn.type === 'expr' ? e.tn : e.tn.value);
@@ -206,7 +204,7 @@ module.exports = class Sequence {
         const ratio = reverse ? t1/t2 : t2/t1;
 
         if ((reverse ? t2:t1) === 0n) {
-            console.log({tf, ti, mod:tf % ti, reverse, t1, t2, tn});
+            // console.log({tf, ti, mod:tf % ti, reverse, t1, t2, tn});
             return [false, false, false, false, false];
         }
 
@@ -220,27 +218,27 @@ module.exports = class Sequence {
             if (!reverse) {
                 tn = t1 * (ratio ** n);
             } else {
-                console.log({tn, t1, ratio, n, paddingSize: this.paddingSize});
+                // console.log({tn, t1, ratio, n, paddingSize: this.paddingSize});
                 tn = t1 / (ratio ** n);
                 if (tn === 0n) {
                     throw new Error(`Invalid geometric sequence must specify last element, implicit last element is < 1 ${this.debug}`)
                 }
             }
         }
-        console.log({calculateSize, n});
+        // console.log({calculateSize, n});
         // TODO: review case tn !== false and reverse
         const tf = reverse ? t1 : tn;
         const ti = reverse ? tn : t1;
         if (tf % ti !== 0n || (reverse && tn > t2) || (!reverse && tn < t2)) {
-            console.log({tf, ti, mod:tf % ti, reverse, t1, t2, tn});
+            // console.log({tf, ti, mod:tf % ti, reverse, t1, t2, tn});
             return [false, false, false, false, false];
         }
         if (n == 0) {
             n = this.calculateGeomN(ratio, ti, tf);
-            console.log({_: 'calculateGeomN', n, ratio, ti, tf});
+            // console.log({_: 'calculateGeomN', n, ratio, ti, tf});
         }
         if (tf !== (ti * (ratio ** BigInt(n)))) {
-            console.log({padding, calculateSize, ti, tf, ratio, n, t1, t2, tn});
+            // console.log({padding, calculateSize, ti, tf, ratio, n, t1, t2, tn});
             throw new Error(`ERROR geometric seq calculation ${tf} !== ${ti} * (${ratio} ** ${BigInt(n)})`);
         }
         return [Number(n) + 1, reverse, ti, tf, ratio];
@@ -265,8 +263,8 @@ module.exports = class Sequence {
         const initialPos = this.extendPos;
 
         let itimes = reverse && padding && count % times ? count % times :times;
-        console.log({t1,t2,_tn,times,_count, count, value, reverse, ti, tf, ratio, paddingSize: this.paddingSize,
-                     extendPos: this.extendPos, itimes});
+        // console.log({t1,t2,_tn,times,_count, count, value, reverse, ti, tf, ratio, paddingSize: this.paddingSize,
+        //             extendPos: this.extendPos, itimes});
         let remaingValues = count;
         while (remaingValues > 0) {
             while (remaingValues > 0 && itimes > 0)  {
@@ -281,7 +279,7 @@ module.exports = class Sequence {
         if (reverse) {
             this.extendPos = initialPos + 1;
         }
-        console.log({tn, _tn, _count, count});
+        // console.log({tn, _tn, _count, count});
         return count;
     }
     _extendRangeSeq(e) {
@@ -291,7 +289,6 @@ module.exports = class Sequence {
     extendRangeSeq(fromValue, toValue, times, delta = 1n, ratio = 1n) {
         const initialExtendPos = this.extendPos;
         let value = fromValue;
-        console.log({fromValue,toValue});
         assert(times > 0);
         while (value <= toValue) {
             for (let itimes = 0; itimes < times; ++itimes) {
@@ -305,10 +302,14 @@ module.exports = class Sequence {
         this.values = new Array(this.size);
         this.extendPos = 0;
         this._extend(this.expression);
+    }
+    verify() {
         console.log(this.toString());
         console.log([this.extendPos, this.size]);
-        assert(this.extendPos === this.size, `extendPos(${this.extendPos}) !== size(${this.size})`);
         assert(this.valueCounter === this.size);
+        for (let index = 0; index < size; ++index) {
+            assert(this.values[index] === 'bigint', `type of index ${index} not bigint (${typeof this.values[index]}) ${value}`);
+        }
     }
     _extend(e) {
         return this.router.go(e, '_extend');
@@ -347,7 +348,6 @@ module.exports = class Sequence {
         return this.paddingSize;
     }
     _extendExpr(e) {
-        console.log(e);
         const num = this.e2num(e);
         this.setValue(this.extendPos++, num);
         return 1;

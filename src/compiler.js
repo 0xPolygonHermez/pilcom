@@ -59,6 +59,9 @@ class Compiler {
         }
         let sts = await this.parseSource(fileName, true);
         this.processor.startExecution(sts);
+        if (config.processorTest) {
+            return this.processor;
+        }
 //        console.log(res);
 /*
         console.log('\x1b[1;35m==== CONSTANTS ====');
@@ -203,9 +206,9 @@ console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1
                     }
                 }
             }
-            console.log(`LOADING FILE ${fullFileName} .............`)
+            // console.log(`LOADING FILE ${fullFileName} .............`)
             src = await fs.promises.readFile(fullFileName, "utf8") + "\n";
-            console.log('END LOADING ...');
+            // console.log('END LOADING ...');
         }
         return [src, fileDir, fullFileName, relativeFileName];
     }
