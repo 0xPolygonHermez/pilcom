@@ -13,6 +13,7 @@ module.exports = class Expressions {
         this.parent = parent;
         this.router = new Router(this, 'op', {defaultPrefix: '_eval', multiParams: true});
         this.labelRanges = new LabelRanges();
+        Expression.setParent(this);
     }
 
     reserve(count, label, multiarray) {
@@ -85,12 +86,7 @@ module.exports = class Expressions {
     }
     eval(e) {
         let expr = e.expr;
-        return expr.eval(this);
-        let values = new Array(expr.stack.length);
-        let top = expr.stack.length-1;
-        this.eval2(expr, top, values);
-        console.log(values[top]);
-        return values[top];
+        return expr.eval();
     }
     evalOperand(operand, values) {
         switch (operand.type) {
@@ -128,15 +124,11 @@ module.exports = class Expressions {
         return this.parent.execCall(e);
     }
     evalReference(e) {
-        const ref = this.resolveReference(e);
         console.log(ref);
+        const ref = this.resolveReference(e);
         EXIT_HERE;
     }
-    _evalReference(e) {
-        if (e.name === 'L1') {
-            debugger;
-        }
-        const ref = this.resolveReference(e);
+    evalReferenceValue(ref) {
         let res = ref;
         switch (ref.type) {
             case 'fixed':
@@ -145,10 +137,9 @@ module.exports = class Expressions {
                 if (typeof res.row === 'undefined') {
                     res = {type: 'fixed', value: res.value.getId()};
                 } else {
-                    e.parent.fixedRowAccess = true;
+                    // e.parent.fixedRowAccess = true;
                     res = res.value.getValue(res.row);
                 }
-                console.log(res);
                 break;
             case 'witness':
             case 'public':
@@ -165,13 +156,19 @@ module.exports = class Expressions {
             case 'int':
                 res = BigInt(ref.value);
                 break;
+            case 'expr':
+                res = ref.value;
+                break;
+
             default:
-                console.log(e);
                 console.log(ref);
                 console.log('============');
                 throw new Error(`Invalid reference type: ${ref.type}`);
         }
         return res;
+    }
+    _evalReference(e) {
+        return this.evalReferenceValue(this.resolveReference(e));
     }
     evaluateValues(e, valuesCount, fr) {
         // TODO: check valuesCount
@@ -219,21 +216,31 @@ module.exports = class Expressions {
         if (e.dec === 'post') {
             options.postDelta = -1n;
         }
-        return this.references.getTypedValue(names, e.__indexes, options);
+        let res = this.references.getTypedValue(names, e.__indexes, options);
+        if (typeof e.__next !== 'undefined') {
+            res.__next = res.next = e.__next;
+        } else if (e.next || e.prior) {
+            console.log(e);
+            throw new Error(`INTERNAL: next and prior must be previouly evaluated`);
+        }
+        return res;
     }
     getReferenceInfo(e, options) {
         const names = this.parent.getNames(e.getAloneOperand());
         return this.references.getTypeInfo(names, e.__indexes, options);
     }
-    e2num(expr, s, title = '') {
-        let res = this.e2types(e, s, title, ['number','bigint']);
-        return BigInt(res.value);
+    e2num(e, s, title = '') {
+        return this.e2types(e, s, title, ['number','bigint']);
     }
-    e2types(e, s, title, types) {
-        const res = e.expr.eval(this);
+    e2number(e, s, title = '') {
+        let res = this.e2types(e, s, title, ['number','bigint'], false);
+        return Number(res);
+    }
+    e2types(e, s, title, types, toBigInt = true) {
+        const res = e.expr && e.expr instanceof Expression ? e.expr.eval() : e;
         const restype = typeof res;
         if (types.includes(restype)) {
-            return restype === 'number' ? BigInt(res) : res;
+            return toBigInt && restype === 'number' ? BigInt(res) : res;
         }
 
         e.expr.dump();
@@ -269,6 +276,6 @@ module.exports = class Expressions {
     }
     instance(e) {
         const expr = (e.expr && e.expr instanceof Expression) ? e.expr : e;
-        return expr.instance(this);
+        return expr.instance();
     }
 }

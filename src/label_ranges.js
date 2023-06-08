@@ -11,7 +11,6 @@ module.exports = class LabelRanges {
     getLabel(id, options) {
         const range = this.ranges.find(e => id >= e.from && id <= e.to);
         if (!range) {
-            console.log(this.ranges);
             return `@${id}`;
         }
         let res = range.label;

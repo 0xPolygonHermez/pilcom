@@ -915,7 +915,7 @@ sequence
         { $$ = {type: 'padding_seq', value: $1} }
 
     | '[' sequence_list ']'
-        { $$ = {type: 'seq_list', values: $2} }
+        { $$ = {type: 'seq_list', values:  [$2]} }
 
     | expression %prec EMPTY
         { $$ = $1 }
@@ -949,17 +949,17 @@ expression_list
         { $$ = { type: 'expression_list',  values: [$1] } }
     ;
 
-col_declaration_array
+declaration_array
     : '[' ']'
         { $$ = { dim: 1, lengths: [null] } }
 
     | '[' expression ']'
         { $$ = { dim: 1, lengths: [$2] } }
 
-    | col_declaration_array '[' ']'
+    | declaration_array '[' ']'
         { $$ = { ...$1, dim: $1.dim + 1, lengths: [...$1.lengths, null] } }
 
-    | col_declaration_array '[' expression ']'
+    | declaration_array '[' expression ']'
         { $$ = { ...$1, dim: $1.dim + 1, lengths: [...$1.lengths, $3] } }
     ;
 
@@ -967,7 +967,7 @@ col_declaration_item
     : col_declaration_ident %prec NO_STAGE
         { $$ = $1 }
 
-    | col_declaration_ident col_declaration_array
+    | col_declaration_ident declaration_array
         { $$ = {...$1, ...$2} }
     ;
 
@@ -1064,8 +1064,10 @@ constant_definition
     : CONSTANT IDENTIFIER '=' expression
         { $$ = { type: 'constant_definition', name: $2, value: $4 } }
 
-    | CONSTANT IDENTIFIER '[' expression ']' '=' sequence_definition
-        { $$ = { type: "constant_definition", name: $2, dim:1, lengths: [$4], sequence: $7 } }
+//    | CONSTANT IDENTIFIER '[' expression ']' '=' sequence_definition
+//        { $$ = { type: "constant_definition", name: $2, dim:1, lengths: [$4], sequence: $7 } }
+    | CONSTANT IDENTIFIER declaration_array '=' sequence_definition
+        { $$ = { type: "constant_definition", name: $2, sequence: $5, ...$3 } }
     ;
 
 

@@ -1,5 +1,6 @@
 const util = require('util');
 const {cloneDeep} = require('lodash');
+const {assert} = require("chai");
 
 const OP_VALUE = 0;
 const OP_ID_REF = 1;
@@ -21,6 +22,7 @@ module.exports = class Expression {
     // value (bingint)
     // offset (number)
 
+    static parent;
     // TODO: add all operations as if,
     static operations = {
         mul:  { type: 'arith',   label: '*',  prec:  96, args: 2, handle: (a, b) => a * b,  handleFr: (Fr, a, b) => Fr.mul(a, b)},
@@ -52,14 +54,13 @@ module.exports = class Expression {
         this.fixedRowAccess = false;
     }
 
-    setParent (parent) {
-        this.parent = parent;
+    static setParent (parent) {
+        Expression.parent = parent;
     }
 
     clone() {
         let cloned = new Expression();
         cloned.fixedRowAccess = this.fixedRowAccess;
-        if (this.parent) cloned.parent = this.parent;
         cloned.pushStack(this);
         return cloned;
     }
@@ -70,11 +71,79 @@ module.exports = class Expression {
         }
         const count = e.stack.length;
         for (let index = 0; index < count; ++index) {
-            this.stack.push(cloneDeep(e.stack[index]));
+            this.stack.push(this.cloneDeep(e.stack[index], 'pushStack'));
         }
         return count;
     }
 
+    cloneDeep(e, label = '') {
+        // console.log(`START ${label} (elapsed)`)
+        // const start = new Date();
+        const res = cloneDeep(e);
+        // const end = new Date();
+        // const elapsed = (end-start);
+        // console.log(`END ${label} (elapsed) ${elapsed} ms`);
+        // if (elapsed > 1000) {
+        //    debugger;
+        //}
+        return res;
+    }
+/*    cloneStack(st) {
+        let operands = [];
+        for(const ope of res.operands) {
+            operands.push(this.cloneOperand(ope));
+        }
+        return {...st, operands};
+    }
+    cloneOperand(ope) {
+        let res = {...ope};
+        for(const prop in ope) {
+            if (Array.isArray(ope[prop])) {
+                ope.is
+            }
+
+        }
+    }*/
+    next(dnext) {
+        // console.log(dnext);
+        for (let stack of this.stack) {
+            for (let ope of stack.operands) {
+                switch (ope.type) {
+                    case OP_VALUE:
+                    case OP_STACK:
+                        break;
+                    case OP_ID_REF:
+                        const pnext = Number(ope.next);
+                        // console.log([ope.next, pnext]);
+                        ope.next = ope.next ? pnext + Number(dnext) : Number(dnext);
+                        // console.log(`UPDATE NEXT(${ope.refType}) ${pnext} => ${ope.next}`);
+                        break;
+                    case OP_RUNTIME:
+                        throw new Error(`Instance first do next operation`);
+                }
+            }
+        }
+    }
+    insertStack(e, pos) {
+        const delta = e.stack.length;
+        for (let index = pos; index < this.stack.length; ++index) {
+            for (const ope of this.stack[index].operands) {
+                if (ope.type === OP_STACK && (index - ope.offset) < pos) {
+                    ope.offset += delta;
+                }
+            }
+        }
+        for (let index = this.stack.length - 1; index >= pos; --index) {
+            this.stack[index + delta] = this.stack[index];
+        }
+        for (let index = 0; index < delta; ++index) {
+            // console.log(`this.stack[${index} + ${pos}] = cloneDeep(e.stack[${index}])`);
+            // console.log(e.stack[index]);
+            this.stack[index + pos] = this.cloneDeep(e.stack[index]);
+        }
+        this.fixedRowAccess = this.fixedRowAccess || e.fixedRowAccess;
+        return 1;
+    }
     cloneOperand(operator) {
         return cloneDeep(operator);
     }
@@ -89,6 +158,9 @@ module.exports = class Expression {
 
     getAloneOperand () {
         return this.stack[0].operands[0];
+    }
+    cloneAloneOperand () {
+        return cloneDeep(this.getAloneOperand());
     }
 
     isReference () {
@@ -122,7 +194,7 @@ module.exports = class Expression {
 
     setRuntime (value) {
         if (value.type) {
-            console.log(value);
+            // console.log(value);
             throw new Error(`setRuntime value has a not allowed type property`);
         }
         this._set({type: OP_RUNTIME, ...value});
@@ -216,11 +288,22 @@ module.exports = class Expression {
             op.__value = new NonRuntimeEvaluable();
 
         } else if (op.type === OP_RUNTIME ) {
-            op.__value =this.evaluateRuntime(op);
+            const res = this.evaluateRuntime(op);
+            if (!(res instanceof Expression)) {
+/*                console.log(['res.no-instance', res]);
+                if (deeply) {
+                    op.type = OP_STACK;
+                    console.log(['res.instance', res]);
+                    op.offset = this.insertStack(res.instance(), pos);
+                }*/
+                op.__value = res;
+            }
         }
     }
     evaluateRuntime(op) {
-        let res = this.parent.evalRuntime(op, this);
+        // console.log({_:'OP', ...op});
+        // if (op.name === 'N_MAX') debugger;
+        let res = Expression.parent.evalRuntime(op, this);
         return res;
     }
 /*    evalOperandValue(op, pos, deeply) {
@@ -254,8 +337,10 @@ module.exports = class Expression {
                 }
                 if (typeof value === 'object' && value.type && ['witness', 'fixed', 'im', 'public'].includes(value.type)) {
                     ope.type = OP_ID_REF;
-                    ope.id = value.value;
+                    ope.id = typeof value.value === 'object' ? value.value.id : value.value;
                     ope.refType = value.type;
+                    if (value.next) ope.next = value.next;
+                    if (value.prior) ope.next = value.prior;
                     if (typeof value.row !== 'undefined') {
                         ope.row = value.row;
                     }
@@ -264,21 +349,19 @@ module.exports = class Expression {
             }
         }
     }
-    instance(parent) {
+    instance() {
         let dup = this.clone();
-        dup.eval(parent);
+        dup.evaluateOperands();
+        dup.instanceExpressions();
+        const top = dup.stack.length-1;
+        dup.evaluateStackPosValue(top);
         dup.instanceValues();
         return dup;
     }
-    eval(parent) {
-        this.parent = parent;
-        if (typeof parent === 'undefined') {
-            console.log('BREAK-HERE');
-        }
-        let top = this.stack.length-1;
+    eval() {
         this.evaluateOperands();
-        this.evaluateStackPosValue(top);
-        return this.stack[top].__value;
+        this.evaluateStackPosValue(this.stack.length-1);
+        return this.stack[this.stack.length-1].__value;
     }
     evaluateStackPosValue(pos) {
         const st = this.stack[pos];
@@ -293,13 +376,28 @@ module.exports = class Expression {
         if (opfunc === false) {
             throw new Error(`NOT FOUND OPERATION (${st.op})`);
         }
+        /*
         if (!st.operands.some(x => (typeof x === 'object' && x.type !== OP_VALUE))) {
             if (st.operands.some(x => typeof x.__value !== 'bigint')) {
                 st.operands.forEach(x => console.log(x));
                 throw new Error(`ERROR evaluating operation ${st.op}:`);
             }
+        }*/
+        if (st.operands.some(x => (typeof x === 'object' && x.type !== OP_VALUE && typeof x.__value !== 'bigint'))) {
+            delete st.__value;
+            return;
+/*            if (st.operands.some(x => typeof x.__value !== 'bigint')) {
+                st.operands.forEach(x => console.log(x));
+                throw new Error(`ERROR evaluating operation ${st.op}:`);
+            }*/
         }
-        st.__value = opfunc.handle.apply(this, st.operands.map(x => x.__value));
+
+        try {
+            st.__value = opfunc.handle.apply(this, st.operands.map(x => x.__value));
+        } catch (e) {
+            console.log([{op: st.op},...st.operands.map(x => x.__value)]);
+            throw e;
+        }
     }
     isRuntimeCalculable(e) {
         const te = typeof e;
@@ -308,6 +406,28 @@ module.exports = class Expression {
         }
         if (te === 'object' && e.type) {
             if (e.type === 'witness' && e.type === 'fixed') return false;
+        }
+    }
+    instanceExpressions() {
+        let pos = 0;
+        while (pos < this.stack.length) {
+            let next = true;
+            for (let ope of this.stack[pos].operands) {
+                if (ope.type !== OP_RUNTIME ) continue;
+                const res = this.evaluateRuntime(ope);
+                if (res instanceof Expression) {
+                    // this.dump('THIS');
+                    // res.dump(`INSERT ${pos}`);
+                    ope.type = OP_STACK;
+                    const exprToInsert = res.instance();
+                    if (ope.__next) exprToInsert.next(ope.__next);
+                    ope.offset = this.insertStack(exprToInsert, pos);
+                    // this.dump('RESULT');
+                    next = false;
+                    break;
+                }
+            }
+            if (next) ++pos;
         }
     }
     evaluateOperands() {
@@ -322,6 +442,7 @@ module.exports = class Expression {
     }
     evaluateOperand(ope, pos, deeply) {
         if (!deeply) {
+            this.clearNext(ope);
             this.evaluatePrior(ope);
             this.evaluateIndexes(ope);
             this.evaluateNext(ope);
@@ -329,12 +450,15 @@ module.exports = class Expression {
         this.evaluateOperandValue(ope, pos, deeply);
     }
 
+    clearNext(ope) {
+        ope.__next = 0;
+    }
     evaluatePrior(ope) {
         if (typeof ope.prior === 'undefined') {
             return 0;
         }
-        ope.__prior = this.evaluateContent(ope.prior);
-        return ope.__prior;
+        ope.__next = -this.evaluateContent(ope.prior);
+        return ope.__next;
     }
 
     evaluateIndexes(ope) {
@@ -352,7 +476,14 @@ module.exports = class Expression {
         if (typeof ope.next === 'undefined') {
             return 0;
         }
-        ope.__next = ope.next === false ? 0n : this.evaluateContent(ope.next);
+        const nextValue = this.evaluateContent(ope.next);
+        if (nextValue && ope.__next !== 0) {
+            // it isn't possible by grammar
+            throw new Error(`next and prior are incompatible between them`);
+        }
+        if (nextValue) {
+            ope.__next = nextValue;
+        }
         return ope.__next;
     }
 
@@ -364,21 +495,22 @@ module.exports = class Expression {
             return this.evaluateReference(e);
         }
         if (e.type === 'expr') {
-            return e.expr.eval(this.parent);
+            return e.expr.eval();
         }
         EXIT_HERE;
     }
 
     evaluateReference(e) {
-        return this.parent.evaluateReference(e);
+        return Expression.parent.evaluateReference(e);
     }
 /*    evaluateRuntime(e) {
         // function_call op:'call' function: arguments:
         // positional_param op:'positional_param' position:
         // casting op:'cast' cast: value: dim: ??
     }*/
-    dump() {
-        console.log(`\x1B[38;5;214m|==========> DUMP <==========|\x1B[0m`);
+    dump(title) {
+        title = title ? ` (${title}) `:'';
+        console.log(`\x1B[38;5;214m|==========> DUMP ${title}<==========|\x1B[0m`);
         for (let index = this.stack.length-1; index >=0; --index) {
             const st = this.stack[index];
             let info =`\x1B[38;5;214m#${index} ${st.op}`;
@@ -452,7 +584,7 @@ module.exports = class Expression {
                 return ope.value.toString();
             case OP_ID_REF:
                 // refType, [offset], next
-                let res = (this.parent && !options.hideLabel)? this.parent.getLabel(ope.refType, ope.id, options) : false;
+                let res = (Expression.parent && (!options || !options.hideLabel))? Expression.parent.getLabel(ope.refType, ope.id, options) : false;
                 if (!res) {
                     res = `${ope.refType}@${ope.id}`;
                 }
@@ -526,7 +658,7 @@ module.exports = class Expression {
         // TODO stage
         switch (type) {
             case 'im':
-                container.pushExpression(this.parent.getPackedExpressionId(id, container, options));
+                container.pushExpression(Expression.parent.getPackedExpressionId(id, container, options));
                 break;
 
             case 'witness':

@@ -16,6 +16,7 @@ const PackedExpressions = require("./packed_expressions.js");
 const ProtoOut = require("./proto_out.js");
 const FixedCols = require("./fixed_cols.js");
 const WitnessCols = require("./witness_cols.js");
+const Iterator = require("./iterator.js");
 
 class FlowAbortCmd {};
 class BreakCmd extends FlowAbortCmd {};
@@ -131,6 +132,9 @@ module.exports = class Processor {
         }
         let res;
         this.sourceRef = st.debug ?? '';
+        if (st.debug === 'expr.pil:53') {
+            debugger;
+        }
         try {
             res = this[method](st);
         } catch (e) {
@@ -233,7 +237,7 @@ module.exports = class Processor {
                 continue;
             }
             this.scope.push();
-            this.execute(cod.statements);
+            this.execute(cond.statements);
             this.scope.pop();
             if (typeof res === 'boolean') {
                 return res;
@@ -283,11 +287,43 @@ module.exports = class Processor {
         return this.execForInExpression(s);
     }
     execForInList(s) {
+        let result;
+        this.scope.push();
+        this.execute(s.init);
         const list = new List(this, s.list);
+        // console.log(s);
+        // console.log(s.init.items);
+        for (const value of list.values) {
+            // console.log(s.init.items[0]);
+            this.assign.assign(s.init.items[0].name, [], value);
+            // if only one statement, scope will not create.
+            // if more than one statement, means a scope_definition => scope creation
+            result = this.execute(s.statements);
+            if (result instanceof BreakCmd) break;
+        }
+        this.scope.pop();
     }
     execForInExpression(s) {
-        console.log(s);
-        TODO_STOP;
+        // console.log(s);
+        // s.list.expr.dump();
+        let it = new Iterator(s.list.expr);
+        this.scope.push();
+        this.execute(s.init);
+        let result;
+        for (const value of it) {
+            this.assign.assign(s.init.items[0].name, [], value);
+            result = this.execute(s.statements);
+            if (result instanceof BreakCmd) break;
+        }
+        this.scope.pop();
+        // this.decodeArrayReference(s.list);
+        // [ref, indexs, length] = this.references.getArrayReference(s.list.expr)
+        //
+    }
+    decodeArrayReference(slist) {
+        // console.log(slist);
+        // slist.expr.dump();
+        const [name, indexes, legth] = slist.expr.getRuntimeReference();
     }
     execBreak(s) {
         return new BreakCmd();
@@ -389,11 +425,13 @@ module.exports = class Processor {
         for (const col of s.items) {
             const colname = this.getFullName(col);
             const lengths = this.decodeLengths(col);
+            // if (col.reference)
             const id = this.declareReference(colname, 'im', lengths, {});
 
             let init = s.init;
             if (init && init.expr && typeof init.expr.instance === 'function') {
-                init = init.expr.instance(this.expressions);
+                // init.expr.dump();
+                init = init.expr.instance();
                 this.expressions.set(id, init);
             }
         }
@@ -409,26 +447,31 @@ module.exports = class Processor {
     decodeNameAndLengths(s) {
         return [s.name, this.decodeLengths(s)];
     }
-    decodeLengths(s) {
-        // NAIF TODO
-        if (!Array.isArray(s.lengths)) return [];
-
-        let lengths = [];
-        for (const length of s.lengths) {
-            lengths.push(Number(this.getExprNumber(length)));
+    decodeIndexes(indexes) {
+        let values = [];
+        if (indexes) {
+            for (const index of indexes) {
+                values.push(this.expressions.e2number(index));
+            }
         }
-        return lengths;
+        return values;
+    }
+    decodeLengths(s) {
+        return this.decodeIndexes(s.lengths);
     }
     colDeclaration(s, type, ignoreInit) {
         for (const col of s.items) {
             const colname = this.getFullName(col);
+            if (colname === 'Expressions::p') {
+                debugger;
+            }
             console.log(`COL_DECLARATION(${colname}) type:${type}`);
             const lengths = this.decodeLengths(col);
             let init = s.init;
             if (init && init.expr && typeof init.expr.instance === 'function') {
                 //init.expr.eval(this.expressions);
                 //init.expr.dump();
-                init = init.expr.instance(this.expressions);
+                init = init.expr.instance();
                 // init.dump();
                 //init.dump();
             }
@@ -450,11 +493,11 @@ module.exports = class Processor {
         return this.execute(s.statements);
     }
     execConstraint(s) {
-        const id = this.constraints.define(s.left.expr.instance(this.expressions), s.right.expr.instance(this.expressions),false,this.sourceRef);
+        const id = this.constraints.define(s.left.expr.instance(), s.right.expr.instance(),false,this.sourceRef);
         const expr = this.constraints.getExpr(id);
         // expr.setParent(this.expressions);
-        expr.dump();
-        console.log("\x1B[1;36;44mCONSTRAINT > " + expr.toString({hideClass:true, hideLabel:true})+"\x1B[0m");
+        // expr.dump();
+        console.log(`\x1B[1;36;44mCONSTRAINT > ${expr.toString({hideClass:true, hideLabel:false})} === 0 (${this.sourceRef})\x1B[0m`);
         // expr2.mark();
     }
     execVariableIncrement(s) {
@@ -477,7 +520,9 @@ module.exports = class Processor {
             let initValue = null;
             if (init) {
                 if (s.vtype === 'expr') {
+                    // s.init[index].expr.dump('INIT1 '+name);
                     initValue = this.expressions.instance(s.init[index]);
+                    // initValue.dump('INIT2 '+name);
                 }
                 else {
                     initValue = this.expressions.e2value(s.init[index]);
@@ -490,11 +535,19 @@ module.exports = class Processor {
         if (s.sequence) {
             const lengths = this.decodeLengths(s);
             this.references.declare(s.name, 'constant', lengths, { sourceRef: this.sourceRef });
+
+            const def = this.references.getDefinition(s.name);
+            // TODO: SEQUENCE_ARRAY_LENGTHS
             const seq = new Sequence(this, s.sequence);
+            const asize = def.array.getSize();
+            const ssize = seq.size;
+            if (ssize !== asize) {
+                throw new Error(`Array size mismatch on initialization ${asize} vs ${ssize}`);
+            }
             // TODO, check sizes before extends
             const values = seq.extend();
             for (let index = 0; index < values.length; ++index) {
-                this.references.set(s.name, [index], values[index]);
+                this.references.set(s.name, def.array.offsetToIndexes(index), values[index]);
             }
         } else {
             this.references.declare(s.name, 'constant', [], { sourceRef: this.sourceRef });

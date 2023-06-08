@@ -17,11 +17,18 @@ module.exports = class Assign {
         this.router.goBy(type, name, indexes, value);
     }
     _assignTypeInt(name, indexes, value, type) {
+        // console.log(value);
         const v = this.expressions.e2value(value);
         if (typeof v === 'number' || typeof v === 'bigint') {
             return this.references.set(name, indexes, v);
         }
-        console.log(v);
+        // console.log(v);
         EXIT_HERE;
+    }
+    _assignTypeExpr(name, indexes, value, type) {
+        // console.log(arguments);
+        const v = value.instance();
+        // v.dump('ASSIGN '+name);
+        return this.references.set(name, indexes, v);
     }
 }

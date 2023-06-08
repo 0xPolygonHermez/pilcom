@@ -4,7 +4,7 @@ const WitnessCol = require("./witness_col.js");
 module.exports = class WitnessCols extends Indexable {
 
     constructor (Fr) {
-        super(Fr, 'fixed');
+        super(Fr, 'witness');
     }
 
     getEmptyValue(id, index) {

@@ -29,7 +29,10 @@ module.exports = class References {
     }
 
     declare (name, type, lengths = [], data = null) {
-        // console.log(`DECLARE_REFERENCE ${name} ${type} []${lengths.length} #${this.scope.deep}`);
+        console.log(`DECLARE_REFERENCE ${name} ${type} []${lengths.length} #${this.scope.deep}`);
+        if (name === 'Expressions::p2') {
+            debugger;
+        }
         const tdata = this._getRegisteredType(type);
         let size, array;
         if (lengths && lengths.length) {
@@ -109,8 +112,7 @@ module.exports = class References {
     getTypeInfo (name, indexes = []) {
         return this._getInstanceAndLocator(name, indexes);
     }
-
-    _getInstanceAndLocator (name, indexes) {
+    getDefinition(name) {
         let names = Array.isArray(name) ? name : [name];
         let def;
         for (const name of names) {
@@ -120,7 +122,10 @@ module.exports = class References {
         if (typeof def === 'undefined') {
             throw new Error(`Reference ${names.join(',')} not found`);
         }
-
+        return def;
+    }
+    _getInstanceAndLocator (name, indexes) {
+        const def = this.getDefinition(name);
         // TODO: partial access !!!
         // TODO: control array vs indexes
         const tdata = this._getRegisteredType(def.type);
@@ -152,6 +157,8 @@ module.exports = class References {
     }
 
     set (name, indexes, value) {
+        // console.log({name, indexes, value});
+        // if (name === 'N_MAX') debugger;
         const [instance, info] = this._getInstanceAndLocator(name, indexes);
         if (info.offset === false) {
             return instance.set(info.locator, value);

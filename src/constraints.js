@@ -23,7 +23,7 @@ module.exports = class Constraints {
             console.log('\x1B[31mWARNING: accessing fixed row acces\x1b[0m');
         }
         const id = this.constraints.length;
-        if (right.eval(this.expressions) !== 0n) {
+        if (right.eval() !== 0n) {
             left.insert('sub', right);
         }
         const exprId = this.expressions.insert(left);

@@ -302,6 +302,7 @@ module.exports = class Sequence {
         this.values = new Array(this.size);
         this.extendPos = 0;
         this._extend(this.expression);
+        return this.values;
     }
     verify() {
         console.log(this.toString());

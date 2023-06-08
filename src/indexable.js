@@ -44,11 +44,10 @@ module.exports = class Indexable {
         if (this.isDefined(id)) {
             throw new Error(`${id} already defined on ....`)
         }
-        this.set(id, 0, value);
+        this.set(id, value);
     }
 
-    set(id, offset, value) {
-        console.log([`SET@${this.type}[${id}]`, value]);
+    set(id, value) {
         this.values[id] = value;
     }
 

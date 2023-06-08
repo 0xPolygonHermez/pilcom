@@ -41,7 +41,9 @@ module.exports = class Multiarray {
             offset += this.offsets[idim] * Number(indexes[idim]);
         }
         if (offset >= this.size) {
-            throw Error(`Internal error on variable index access`);
+            console.log(indexes);
+            console.log(this);
+            throw Error(`Internal error on variable index access index:${offset} valid range:[0-${this.size-1}]`);
         }
         const dim = this.offsets.length - dims;
         // arrayType: Array(dim).fill('[]').join(''),

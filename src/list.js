@@ -45,7 +45,6 @@ module.exports = class List {
         return values;
     }
     _extendExpr(e) {
-        console.log(e);
         const num = this.parent.resolveExpr(e);
         return [num];
     }
