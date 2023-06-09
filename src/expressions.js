@@ -11,6 +11,7 @@ module.exports = class Expressions {
         this.references = references;
         this.constants = constants;
         this.parent = parent;
+        this.context = parent.context;
         this.router = new Router(this, 'op', {defaultPrefix: '_eval', multiParams: true});
         this.labelRanges = new LabelRanges();
         Expression.setParent(this);
@@ -200,7 +201,7 @@ module.exports = class Expressions {
         return this.references.getLabel(type, id, options);
     }
     resolveReference(e) {
-        const names = this.parent.getNames(e);
+        const names = this.context.getNames(e);
 
         let options = {};
         if (e.inc === 'pre') {
@@ -226,7 +227,7 @@ module.exports = class Expressions {
         return res;
     }
     getReferenceInfo(e, options) {
-        const names = this.parent.getNames(e.getAloneOperand());
+        const names = this.context.getNames(e.getAloneOperand());
         return this.references.getTypeInfo(names, e.__indexes, options);
     }
     e2num(e, s, title = '') {

@@ -6,12 +6,13 @@ module.exports = class List {
     // TODO: iterator of values without "extend"
     // TODO: check repetitive sequences (times must be same)
 
-    constructor (parent, expression) {
+    constructor (parent, expression, resolve = true) {
         this.parent = parent;
         this.padding = false;
         this.expression = expression;
         this.router = new Router(this, 'type', {defaultPrefix: '_extend'});
         this.values = this.extend();
+        this.resolve = resolve;
     }
     extend() {
         return this._extend(this.expression);
@@ -28,7 +29,7 @@ module.exports = class List {
     }
     _extendAppend(e) {
         let values = [];
-        const element = this.parent.resolveExpr(e.value);
+        const element = this._resolve(e);
         if (!element.dim && element.dim < 1) {
             throw new Error(`Could not extend and append a non array element`)
         }
@@ -45,7 +46,16 @@ module.exports = class List {
         return values;
     }
     _extendExpr(e) {
-        const num = this.parent.resolveExpr(e);
+        const num = this._resolve(e);
         return [num];
+    }
+    _resolve(e) {
+        return this.resolve ? this.parent.resolveExpr(e.value) : e;
+    }
+    _resolveArray(e) {
+        if (this.resolve) {
+            return this.parent.resolveExpr(e.value);
+        }
+        return e;
     }
 }

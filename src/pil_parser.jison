@@ -1250,6 +1250,12 @@ name_optional_index
 
     | name_reference array_index
         { $$ = { ...$1, ...$2 } }
+
+    | REFERENCE
+        { $$ = { name: $1, reference: true, dim: 0 } }
+
+    | REFERENCE type_array
+        { $$ = { name: $1, reference: true, ...$2 } }
     ;
 
 array_index

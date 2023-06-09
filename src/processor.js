@@ -17,6 +17,7 @@ const ProtoOut = require("./proto_out.js");
 const FixedCols = require("./fixed_cols.js");
 const WitnessCols = require("./witness_cols.js");
 const Iterator = require("./iterator.js");
+const Context = require("./context.js");
 
 class FlowAbortCmd {};
 class BreakCmd extends FlowAbortCmd {};
@@ -28,8 +29,9 @@ class ReturnCmd extends FlowAbortCmd {
 module.exports = class Processor {
     constructor (Fr, parent, references, expressions) {
         this.Fr = Fr;
+        this.context = new Context(this.Fr);
         this.scope = new Scope(this.Fr);
-        this.references = new References(Fr, this.scope);
+        this.references = new References(Fr, this.context, this.scope);
 
         this.variables = new Variables(Fr, this.references, this.expressions);
         this.references.register('var', this.variables, {offsets: true});
@@ -132,9 +134,9 @@ module.exports = class Processor {
         }
         let res;
         this.sourceRef = st.debug ?? '';
-        if (st.debug === 'expr.pil:53') {
-            debugger;
-        }
+//        if (st.debug === 'expr.pil:53') {
+//            debugger;
+//        }
         try {
             res = this[method](st);
         } catch (e) {
@@ -167,13 +169,14 @@ module.exports = class Processor {
     execAssign(st) {
         // type: number(int), fe, string, col, challenge, public, prover,
         // dimensions:
-        let indexes = [];
-        if (st.name.indexes) {
-            for (const index of st.name.indexes) {
-                indexes.push(this.expressions.e2value(index));
-            }
+        const indexes = this.decodeIndexes(st.name.indexes)
+        const names = this.context.getNames(st.name);
+        if (st.name.reference) {
+            assert(indexes.length === 0);
+            this.assign.assignReference(names, st.value);
+            return;
         }
-        this.assign.assign(st.name.name, indexes, st.value);
+        this.assign.assign(names, indexes, st.value);
         // this.references.set(st.name.name, [], this.expressions.eval(st.value));
     }
     execBuiltInPrintln(s) {
@@ -290,9 +293,30 @@ module.exports = class Processor {
         let result;
         this.scope.push();
         this.execute(s.init);
+        // if (s.init.items[0].reference) {
+        //     this.execForInListReferences(s);
+        // } else {
+        //     this.execForInListValues(s);
+        // }
+        const reference = s.init.items[0].reference === true;
+        const list = new List(this, s.list, !reference);
+        const name = reference ? this.context.getNames(s.init.items[0]) : s.init.items[0].name;
+        for (const value of list.values) {
+            // console.log(s.init.items[0]);
+            if (reference) {
+                this.assign.assignReference(name, value);
+            } else {
+                this.assign.assign(name, [], value);
+            }
+            // if only one statement, scope will not create.
+            // if more than one statement, means a scope_definition => scope creation
+            result = this.execute(s.statements);
+            if (result instanceof BreakCmd) break;
+        }
+        this.scope.pop();
+    }
+    execForInListValues(s) {
         const list = new List(this, s.list);
-        // console.log(s);
-        // console.log(s.init.items);
         for (const value of list.values) {
             // console.log(s.init.items[0]);
             this.assign.assign(s.init.items[0].name, [], value);
@@ -301,7 +325,19 @@ module.exports = class Processor {
             result = this.execute(s.statements);
             if (result instanceof BreakCmd) break;
         }
-        this.scope.pop();
+    }
+    execForInListReferences(s) {
+        const names = this.context.getNames(s.init.items[0]);
+        assert(!s.init.items[0].indexes);
+        console.log(s.list);
+        for (const value of s.list) {
+            // console.log(s.init.items[0]);
+            this.assign.assignReference(names, value);
+            // if only one statement, scope will not create.
+            // if more than one statement, means a scope_definition => scope creation
+            result = this.execute(s.statements);
+            if (result instanceof BreakCmd) break;
+        }
     }
     execForInExpression(s) {
         // console.log(s);
@@ -368,13 +404,11 @@ module.exports = class Processor {
         }
 
         // TODO: verify if namespace just was declared in this case subair must be the same
-        const previous = [this.namespace, this.subair ];
-        this.namespace = namespace;
-        this.subair = subair;
+        this.context.push(namespace, subair);
         this.scope.push();
         this.execute(s.statements);
         this.scope.pop();
-        [this.namespace, this.subair ] = previous;
+        this.context.pop();
     }
     evalExpressionList(e) {
         assert(e.type === 'expression_list');
@@ -406,7 +440,7 @@ module.exports = class Processor {
     }
     execFixedColDeclaration(s) {
         for (const col of s.items) {
-            const colname = this.getFullName(col);
+            const colname = this.context.getFullName(col);
             // console.log(`COL_FIXED_DECLARATION(${colname})`);
             const lengths = this.decodeLengths(col);
             let init = s.sequence;
@@ -423,14 +457,18 @@ module.exports = class Processor {
     execColDeclaration(s) {
         // intermediate column
         for (const col of s.items) {
-            const colname = this.getFullName(col);
+            const colname = this.context.getFullName(col);
             const lengths = this.decodeLengths(col);
             // if (col.reference)
-            const id = this.declareReference(colname, 'im', lengths, {});
+            const id = this.declareReference(colname, col.reference ? '&im' : 'im', lengths, {});
 
             let init = s.init;
-            if (init && init.expr && typeof init.expr.instance === 'function') {
-                // init.expr.dump();
+            if (!init || !init.expr || typeof init.expr.instance !== 'function') {
+                return;
+            }
+            if (col.reference) {
+                this.references.setReference(colname, s.init.expr);
+            } else {
                 init = init.expr.instance();
                 this.expressions.set(id, init);
             }
@@ -461,10 +499,7 @@ module.exports = class Processor {
     }
     colDeclaration(s, type, ignoreInit) {
         for (const col of s.items) {
-            const colname = this.getFullName(col);
-            if (colname === 'Expressions::p') {
-                debugger;
-            }
+            const colname = this.context.getFullName(col);
             console.log(`COL_DECLARATION(${colname}) type:${type}`);
             const lengths = this.decodeLengths(col);
             let init = s.init;
@@ -554,24 +589,6 @@ module.exports = class Processor {
             const value = this.getExprNumber(s.value, s, `constant ${s.name} definition`);
             this.references.set(s.name, [], value);
         }
-    }
-    getNames(e) {
-        return [e.name, this.getFullName(e)];
-    }
-    getFullName(e) {
-        const _namespace = (((e.namespace ?? 'this') === 'this') ? this.namespace : e.namespace);
-        const _subair = (((e.subair ?? 'this') === 'this') ? this.subair : e.subair);
-
-        let name = '';
-        if (_subair !== '') {
-            name += _subair + '::';
-        }
-        if (_namespace !== '') {
-            name = _namespace + '.';
-        }
-        name += e.name;
-        // console.log(`${e.name} ==> ${name}`)
-        return name;
     }
     evaluateExpression(e){
         // TODO

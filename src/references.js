@@ -1,11 +1,12 @@
+const {assert} = require("chai");
 const Multiarray = require("./multiarray.js");
-
 module.exports = class References {
 
-    constructor (Fr, scope) {
+    constructor (Fr, context, scope) {
         this.Fr = Fr;
         this.definitions = {};
         this.types = {};
+        this.context = context;
         this.scope = scope;
         this.scope.setReferences(this);
     }
@@ -19,21 +20,33 @@ module.exports = class References {
             instance
         }
     }
+    isReferencedType(type) {
+        return type.at(0) === '&'
+    }
+    getReferencedType(type) {
+        return this.isReferencedType(type) ? type.substring(1):type;
+    }
 
     _getRegisteredType (type) {
-        const tdata = this.types[type];
+        const reference = this.isReferencedType(type);
+        const finalType = this.getReferencedType(type);
+        const tdata = this.types[finalType];
         if (typeof tdata === 'undefined') {
-            throw new Error(`unknown type ${type}`);
+            throw new Error(`unknown type ${type} [${finalType}]`);
+        }
+        if (reference) {
+            tdata.reference = true;
+            tdata.referencedType = finalType;
         }
         return tdata;
     }
 
     declare (name, type, lengths = [], data = null) {
         console.log(`DECLARE_REFERENCE ${name} ${type} []${lengths.length} #${this.scope.deep}`);
-        if (name === 'Expressions::p2') {
-            debugger;
+        if (this.isReferencedType(type)) {
+            console.log(type);
+//            debugger;
         }
-        const tdata = this._getRegisteredType(type);
         let size, array;
         if (lengths && lengths.length) {
             array = new Multiarray(lengths);
@@ -52,10 +65,15 @@ module.exports = class References {
             throw new Error(`${name} was defined previously on ${def.data.sourceRef}`)
         }
 
-        const id = tdata.instance.reserve(size, name, array, data);
+        const reference = this.isReferencedType(type);
+
+        const tdata = reference ? {} : this._getRegisteredType(type);
+        const id = reference ? null : tdata.instance.reserve(size, name, array, data);
         this.definitions[name] = {
             type,
             array,
+            reference,
+            referencedType: reference ? type.substring(1) : false,       // to define valid referenced type
             locator: id,
             scope: scopeId,
             data
@@ -76,6 +94,11 @@ module.exports = class References {
     getLabel(type, id, options) {
         const instance = this.types[type].instance;
         return instance.getLabel(id, options);
+    }
+    getTypeR(name, indexes, options) {
+        const [instance, info] = this._getInstanceAndLocator(name, indexes);
+        console.log(instance.constructor.name);
+        return instance.getType(info.locator, info.offset);
     }
     getTypedValue (name, indexes, options) {
         indexes = indexes ?? [];
@@ -149,13 +172,24 @@ module.exports = class References {
         if (indexes.length > indexLengthLimit) {
             throw new Error(`Invalid array or row access, too many array levels`);
         }
-        let extraInfo = {type: def.type, offset: tdata.options.offsets ? 0:false};
+        let extraInfo = {type: def.type, offset: tdata.options.offsets ? 0:false, reference: def.reference, referencedType: def.referencedType};
         if (indexes.length > 0) {
             extraInfo.row = indexes[0];
         }
         return [tdata.instance, {locator: def.locator, ...extraInfo}];
     }
-
+    setReference (name, value) {
+        let dest = this.getDefinition(name);
+        const _value = value.getAloneOperand();
+        assert(_value.type == 3);
+        assert(_value.next == false);
+        assert(_value.op == 'reference');
+        const src = this.getDefinition(this.context.getNames(_value));
+        dest.locator = src.locator;
+        dest.type = src.type;
+        dest.scope = src.scope;
+        dest.array = src.array;
+    }
     set (name, indexes, value) {
         // console.log({name, indexes, value});
         // if (name === 'N_MAX') debugger;

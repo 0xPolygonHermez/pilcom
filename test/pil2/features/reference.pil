@@ -1,0 +1,24 @@
+subair Reference(2**23);
+
+namespace Reference:: {
+
+    constant N_MAX = 32;
+
+    col witness x,y,z,w[4];
+
+    col &p2 = y;
+
+    // &p2 = y;
+
+    // p2 = y;
+
+    p2 === 64;
+
+    &p2 = x;
+
+    p2 === 32;
+
+    for (col &p in [y,z,...w]) {
+        p === 33;
+    }
+}

@@ -12,9 +12,14 @@ module.exports = class Assign {
     }
 
     assign (name, indexes, value) {
-        const [instance, info] = this.references.getTypeInfo(name, indexes);
-        const type = instance.getType(info.locator, info.offset);
+        // type
+        const [type, reference] = this.references.getTypeR(name, indexes)
+        // const [instance, info] = this.references.getTypeInfo(name, indexes);
+        // const type = instance.getType(info.locator, info.offset);
         this.router.goBy(type, name, indexes, value);
+    }
+    assignReference (name, value) {
+        this.references.setReference(name, value.expr);
     }
     _assignTypeInt(name, indexes, value, type) {
         // console.log(value);
