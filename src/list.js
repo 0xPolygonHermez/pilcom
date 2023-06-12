@@ -1,4 +1,5 @@
 const Router = require("./router.js");
+const Expression = require("./expression.js");
 
 module.exports = class List {
 
@@ -6,13 +7,13 @@ module.exports = class List {
     // TODO: iterator of values without "extend"
     // TODO: check repetitive sequences (times must be same)
 
-    constructor (parent, expression, resolve = true) {
+    constructor (parent, expression, reference = false) {
         this.parent = parent;
         this.padding = false;
         this.expression = expression;
         this.router = new Router(this, 'type', {defaultPrefix: '_extend'});
+        this.reference = reference;
         this.values = this.extend();
-        this.resolve = resolve;
     }
     extend() {
         return this._extend(this.expression);
@@ -28,6 +29,12 @@ module.exports = class List {
         return this.router.go(e);
     }
     _extendAppend(e) {
+        if (this.reference) {
+            return this._extendAppendReferences(e);
+        }
+        return this._extendAppendValues(e);
+    }
+    _extendAppendValues(e) {
         let values = [];
         const element = this._resolve(e);
         if (!element.dim && element.dim < 1) {
@@ -45,15 +52,40 @@ module.exports = class List {
         }
         return values;
     }
+    _extendAppendReferences(e) {
+        let values = [];
+        const info = Expression.parent.getReferenceInfo(e.value.expr);
+        let element = e.value.expr.instance().getAloneOperand();
+        if (!element.array || element.array.dim < 1) {
+            throw new Error(`Could not extend and append a non array element`)
+        }
+        // TODO: operand class to do-it
+        const count = element.array.lengths[0];
+        let index = 0;
+        while (index < count) {
+            // TODO: with operand class, invalid clone?
+            const ainfo = element.array.getIndexesTypedOffset([index]);
+            let value = {...element, array: ainfo.array};
+            value.id += ainfo.offset;
+
+            values.push(value);
+            ++index;
+        }
+        return values;
+    }
     _extendExpr(e) {
         const num = this._resolve(e);
         return [num];
     }
     _resolve(e) {
-        return this.resolve ? this.parent.resolveExpr(e.value) : e;
+        if (this.reference) {
+            const expr = e.expr.instance();
+            return expr;
+        }
+        return this.parent.resolveExpr(e.value);
     }
     _resolveArray(e) {
-        if (this.resolve) {
+        if (!this.reference) {
             return this.parent.resolveExpr(e.value);
         }
         return e;

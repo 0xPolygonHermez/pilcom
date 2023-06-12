@@ -1,5 +1,6 @@
 const {assert} = require("chai");
 const Multiarray = require("./multiarray.js");
+const Expression = require("./expression.js");
 module.exports = class References {
 
     constructor (Fr, context, scope) {
@@ -43,10 +44,6 @@ module.exports = class References {
 
     declare (name, type, lengths = [], data = null) {
         console.log(`DECLARE_REFERENCE ${name} ${type} []${lengths.length} #${this.scope.deep}`);
-        if (this.isReferencedType(type)) {
-            console.log(type);
-//            debugger;
-        }
         let size, array;
         if (lengths && lengths.length) {
             array = new Multiarray(lengths);
@@ -123,6 +120,11 @@ module.exports = class References {
 //            tvalue.arrayType = info.arrayType;
             tvalue.lengths = info.lengths;
         }
+        if (info.array) {
+            tvalue.dim = 'DEPRECATED';
+            tvalue.lengths = 'DEPRECATED';
+            tvalue.array = info.array;
+        }
         if (options.preDelta) {
             tvalue.value += options.preDelta;
             instance.set(info.locator, info.offset, tvalue.value);
@@ -180,15 +182,29 @@ module.exports = class References {
     }
     setReference (name, value) {
         let dest = this.getDefinition(name);
-        const _value = value.getAloneOperand();
-        assert(_value.type == 3);
-        assert(_value.next == false);
-        assert(_value.op == 'reference');
-        const src = this.getDefinition(this.context.getNames(_value));
-        dest.locator = src.locator;
-        dest.type = src.type;
-        dest.scope = src.scope;
-        dest.array = src.array;
+        const _value = value instanceof Expression ? value.getAloneOperand() : value;
+        // TODO: reference not knows operand types
+        if (_value.type === 3) {
+            assert(!_value.next);
+            if (_value.op === 'reference') {
+                assert(!_value.array);
+                const src = this.getDefinition(this.context.getNames(_value));
+                dest.locator = src.locator;
+                dest.type = src.type;
+                dest.scope = src.scope;
+                dest.array = false;
+            } else if (_value.op === 'idref') {
+                dest.locator = _value.id;
+                dest.type = _value.refType;
+                dest.scope = false;
+                dest.array = _value.array;
+            }
+        } else {
+            assert(_value.type == 1);
+            assert(!_value.__next);
+            dest.locator = _value.id;
+            dest.type = _value.refType;
+        }
     }
     set (name, indexes, value) {
         // console.log({name, indexes, value});

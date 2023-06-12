@@ -50,7 +50,7 @@ module.exports = class Expression {
 
     constructor () {
         this.stack = [];
-        this.runtime = false;
+        // this.runtime = false;
         this.fixedRowAccess = false;
     }
 
@@ -178,7 +178,7 @@ module.exports = class Expression {
             throw new Error(`Set only could be used with empty stack`);
         }
         this.stack.push({op: false, operands: [cloneDeep(operand)]});
-        this.runtime = this.runtime || operand.type === OP_RUNTIME;
+        // this.runtime = this.runtime || operand.type === OP_RUNTIME;
     }
 
     setIdReference (id, refType, next) {
@@ -200,10 +200,19 @@ module.exports = class Expression {
         this._set({type: OP_RUNTIME, ...value});
     }
 
+    isRuntime () {
+        return this.stack.some(st => this.isRuntimeStackPos(st));
+    }
+    isRuntimeStackPos(st) {
+        return ((st.op !== false &&  NATIVE_OPS.indexOf(st.op) < 0) || st.operands.some(ope => this.isRuntimeOperand(ope)));
+    }
+    isRuntimeOperand(ope) {
+        return (ope.type === OP_RUNTIME);
+    }
     insertOne (op, b) {
         const aIsEmpty = this.stack.length === 0;
         const bIsEmpty = b.stack.length === 0;
-        this.runtime = this.runtime || b.runtime || NATIVE_OPS.indexOf(op) < 0;
+        // this.runtime = this.runtime || b.runtime || NATIVE_OPS.indexOf(op) < 0;
 
         if (bIsEmpty) {
             throw new Error(`insert without operands`);
@@ -238,7 +247,7 @@ module.exports = class Expression {
         const anyEmptyB = bs.some((b) => b.stack.length === 0);
         const aIsEmpty = this.stack.length === 0;
 
-        this.runtime = this.runtime || NATIVE_OPS.indexOf(op) < 0 || bs.some((b) => b.runtime);
+        // this.runtime = this.runtime || NATIVE_OPS.indexOf(op) < 0 || bs.some((b) => b.runtime);
 
         if (anyEmptyB) {
             throw new Error(`insert without operands`);
@@ -327,16 +336,24 @@ module.exports = class Expression {
     }*/
     instanceValues() {
         for (let se of this.stack) {
-            for (let ope of se.operands) {
-                if (ope.type !== OP_RUNTIME) continue;
-                const value = ope.__value;
+            for (let index = 0; index < se.operands.length; ++index) {
+                if (se.operands[index].type !== OP_RUNTIME) continue;
+                const value = se.operands[index].__value;
                 if (typeof value === 'bigint') {
-                    ope.type = OP_VALUE;
-                    ope.value = value;
+                    se.operands[index] = {type: OP_VALUE, value: value};
                     continue;
                 }
                 if (typeof value === 'object' && value.type && ['witness', 'fixed', 'im', 'public'].includes(value.type)) {
-                    ope.type = OP_ID_REF;
+                    let ope = {};
+                    if (value.array) {
+                        // incomplete reference, is a subarray.
+                        ope.type = OP_RUNTIME;
+                        ope.array = value.array;
+                        ope.op = 'idref';
+                    } else {
+                        ope.type = OP_ID_REF;
+                        ope.array = false;
+                    }
                     ope.id = typeof value.value === 'object' ? value.value.id : value.value;
                     ope.refType = value.type;
                     if (value.next) ope.next = value.next;
@@ -344,8 +361,10 @@ module.exports = class Expression {
                     if (typeof value.row !== 'undefined') {
                         ope.row = value.row;
                     }
+                    se.operands[index] = ope;
                     continue;
                 }
+                throw new Error('Invalid value');
             }
         }
     }
@@ -414,6 +433,7 @@ module.exports = class Expression {
             let next = true;
             for (let ope of this.stack[pos].operands) {
                 if (ope.type !== OP_RUNTIME ) continue;
+                // TODO: twice evaluations, be carefull double increment evaluations,etc..
                 const res = this.evaluateRuntime(ope);
                 if (res instanceof Expression) {
                     // this.dump('THIS');

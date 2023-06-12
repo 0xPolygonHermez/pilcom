@@ -37,11 +37,10 @@ module.exports = class Processor {
         this.references.register('var', this.variables, {offsets: true});
 
         this.fixeds = new FixedCols(Fr);
-        this.fixeds.rows = true;
+        this.fixeds.runtimeRows = true;
         this.references.register('fixed', this.fixeds);
 
         this.witness = new WitnessCols(Fr);
-        this.witness.rows = true;
         this.references.register('witness', this.witness);
 
         this.constants = new Indexable(Fr, 'constant');
@@ -173,7 +172,7 @@ module.exports = class Processor {
         const names = this.context.getNames(st.name);
         if (st.name.reference) {
             assert(indexes.length === 0);
-            this.assign.assignReference(names, st.value);
+            this.assign.assignReference(names, st.value.expr.instance());
             return;
         }
         this.assign.assign(names, indexes, st.value);
@@ -299,7 +298,7 @@ module.exports = class Processor {
         //     this.execForInListValues(s);
         // }
         const reference = s.init.items[0].reference === true;
-        const list = new List(this, s.list, !reference);
+        const list = new List(this, s.list, reference);
         const name = reference ? this.context.getNames(s.init.items[0]) : s.init.items[0].name;
         for (const value of list.values) {
             // console.log(s.init.items[0]);
@@ -467,7 +466,7 @@ module.exports = class Processor {
                 return;
             }
             if (col.reference) {
-                this.references.setReference(colname, s.init.expr);
+                this.references.setReference(colname, s.init.expr.instance());
             } else {
                 init = init.expr.instance();
                 this.expressions.set(id, init);
@@ -528,11 +527,16 @@ module.exports = class Processor {
         return this.execute(s.statements);
     }
     execConstraint(s) {
+        if (this.sourceRef === 'reference.pil:47') {
+            debugger;
+        }
+
         const id = this.constraints.define(s.left.expr.instance(), s.right.expr.instance(),false,this.sourceRef);
         const expr = this.constraints.getExpr(id);
         // expr.setParent(this.expressions);
         // expr.dump();
-        console.log(`\x1B[1;36;44mCONSTRAINT > ${expr.toString({hideClass:true, hideLabel:false})} === 0 (${this.sourceRef})\x1B[0m`);
+        console.log(`\x1B[1;36;44mCONSTRAINT      > ${expr.toString({hideClass:true, hideLabel:false})} === 0 (${this.sourceRef})\x1B[0m`);
+        console.log(`\x1B[1;36;44mCONSTRAINT (RAW)> ${expr.toString({hideClass:true, hideLabel:true})} === 0 (${this.sourceRef})\x1B[0m`);
         // expr2.mark();
     }
     execVariableIncrement(s) {

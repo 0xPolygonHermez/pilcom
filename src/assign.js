@@ -19,7 +19,7 @@ module.exports = class Assign {
         this.router.goBy(type, name, indexes, value);
     }
     assignReference (name, value) {
-        this.references.setReference(name, value.expr);
+        this.references.setReference(name, value);
     }
     _assignTypeInt(name, indexes, value, type) {
         // console.log(value);

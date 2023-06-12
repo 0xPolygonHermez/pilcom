@@ -2,23 +2,54 @@ subair Reference(2**23);
 
 namespace Reference:: {
 
+    // TODO: convert in a test
+
     constant N_MAX = 32;
 
-    col witness x,y,z,w[4];
+    col witness x,y,z,w[4], w2[5][10];
 
-    col &p2 = y;
-
-    // &p2 = y;
-
-    // p2 = y;
+    col &p2 = x;
 
     p2 === 64;
 
-    &p2 = x;
+    &p2 = y;
 
-    p2 === 32;
+    p2 === 16;
+
+    int i0 = 0;
+    int i1 = 1;
+    int i2 = 2;
+    int i3 = 3;
+
+    for (col &p in [y,z,w[0]]) {
+        p === 20;
+    }
 
     for (col &p in [y,z]) {
-        p === 33;
+        p === 31;
     }
+
+    for (col &p in [y,z,w[0],w[1],w[2],w[3]]) {
+        p === 32;
+    }
+
+    for (col &p in [w2[0],w2[4]]) {
+        p[1] === 33;
+    }
+
+    for (col &p in [y,z,...w]) {
+       p === 33;
+    }
+    for (col &p in [...w2]) {
+       p[4] === 35;
+    }
+    for (col &p in [y,z,w[i0],w[i1],w[i2],w[i3]]) {
+        p === 34;
+    }
+
+    int i = 0;
+    for (col &p in [y,z,w[i++],w[i++],w[i++],w[i++]]) {
+        p === 300;
+    }
+    println(i);
 }

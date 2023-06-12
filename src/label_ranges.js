@@ -20,7 +20,7 @@ module.exports = class LabelRanges {
         }
         if (range.to !== range.from) {
             let offset = id - range.from;
-            res = res +'['+range.multiarray.offsetToIndexes(offset).join('],[')+']';
+            res = res +'['+range.multiarray.offsetToIndexes(offset).join('][')+']';
         }
         return res;
     }

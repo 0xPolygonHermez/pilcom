@@ -30,10 +30,13 @@ module.exports = class Multiarray {
         }
         return indexes;
     }
+    createSubArray(dim) {
+        return new Multiarray(this.lengths.slice(-dim));
+    }
     getIndexesTypedOffset(indexes) {
         if (indexes === null || typeof indexes === 'undefined') {
             // TODO: review
-            return {offset: 0};
+            return {offset: 0, array: this.createSubArray(this.offsets.length)};
         }
         let offset = 0;
         const dims = Math.min(this.offsets.length, indexes.length);
@@ -46,8 +49,11 @@ module.exports = class Multiarray {
             throw Error(`Internal error on variable index access index:${offset} valid range:[0-${this.size-1}]`);
         }
         const dim = this.offsets.length - dims;
-        // arrayType: Array(dim).fill('[]').join(''),
-        return {offset, dim, lengths: dim ? this.lengths.slice(-dim):[]};
+        if (dim === 0) {
+            return {offset, array: false};
+        }
+        // return {offset, dim, lengths: dim ? this.lengths.slice(-dim):[], array: this.createSubArray(dim)};
+        return {offset, array: this.createSubArray(dim)};
     }
     initOffsets(lengths) {
         this.lengths = lengths;

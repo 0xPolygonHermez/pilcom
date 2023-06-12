@@ -19,6 +19,12 @@ module.exports = class Constraints {
     }
 
     define(left, right, boundery, sourceRef) {
+        if (left.isRuntime()) {
+            throw new Error(`left constraint has runtime no resolved elements`);
+        }
+        if (right.isRuntime()) {
+            throw new Error(`right constraint has runtime no resolved elements`);
+        }
         if (left.fixedRowAccess || right.fixedRowAccess) {
             console.log('\x1B[31mWARNING: accessing fixed row acces\x1b[0m');
         }
