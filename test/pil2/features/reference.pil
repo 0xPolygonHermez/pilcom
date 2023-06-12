@@ -21,12 +21,12 @@ namespace Reference:: {
     int i2 = 2;
     int i3 = 3;
 
-    for (col &p in [y,z,w[0]]) {
-        p === 20;
-    }
-
     for (col &p in [y,z]) {
         p === 31;
+    }
+
+    for (col &p in [y,z,w[0]]) {
+        p === 20;
     }
 
     for (col &p in [y,z,w[0],w[1],w[2],w[3]]) {
@@ -38,7 +38,7 @@ namespace Reference:: {
     }
 
     for (col &p in [y,z,...w]) {
-       p === 33;
+       p === 37;
     }
     for (col &p in [...w2]) {
        p[4] === 35;
@@ -51,5 +51,6 @@ namespace Reference:: {
     for (col &p in [y,z,w[i++],w[i++],w[i++],w[i++]]) {
         p === 300;
     }
-    println(i);
+
+    p2 === i;
 }

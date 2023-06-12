@@ -38,7 +38,7 @@ module.exports = class Constraints {
 
     *[Symbol.iterator]() {
         for (let index = 0; index < this.constraints.length; ++index) {
-          yield index;
+          yield this.constraints[index];
         }
     }
 

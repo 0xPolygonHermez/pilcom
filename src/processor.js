@@ -535,8 +535,8 @@ module.exports = class Processor {
         const expr = this.constraints.getExpr(id);
         // expr.setParent(this.expressions);
         // expr.dump();
-        console.log(`\x1B[1;36;44mCONSTRAINT      > ${expr.toString({hideClass:true, hideLabel:false})} === 0 (${this.sourceRef})\x1B[0m`);
-        console.log(`\x1B[1;36;44mCONSTRAINT (RAW)> ${expr.toString({hideClass:true, hideLabel:true})} === 0 (${this.sourceRef})\x1B[0m`);
+        // console.log(`\x1B[1;36;44mCONSTRAINT      > ${expr.toString({hideClass:true, hideLabel:false})} === 0 (${this.sourceRef})\x1B[0m`);
+        // console.log(`\x1B[1;36;44mCONSTRAINT (RAW)> ${expr.toString({hideClass:true, hideLabel:true})} === 0 (${this.sourceRef})\x1B[0m`);
         // expr2.mark();
     }
     execVariableIncrement(s) {
