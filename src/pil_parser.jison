@@ -1231,6 +1231,12 @@ pol_id
     | name_optional_index "'" '(' expression ')'
         { $$ = { ...$1, next:$4 } }
 
+    | name_optional_index "'" function_call
+        { $$ = { ...$1, next:runtime_expr($3)  } }
+
+    | name_optional_index "'" POSITIONAL_PARAM
+        { $$ = { ...$1, next: runtime_expr({position: $3, op: 'positional_param'}) } }
+
     | "'" name_optional_index %prec LOWER_PREC
         { $$ = { ...$2, prior:1 } }
 
@@ -1239,6 +1245,12 @@ pol_id
 
     | '(' expression ')' "'" name_optional_index
         { $$ = { ...$5, prior:$2 } }
+
+    | function_call "'" name_optional_index
+        { $$ = { ...$3, prior:runtime_expr($1) } }
+
+    | POSITIONAL_PARAM "'" name_optional_index
+        { $$ = { ...$3, prior:runtime_expr({position: $1, op: 'positional_param'}) } }
 
     | name_optional_index
         { $$ = $1 }

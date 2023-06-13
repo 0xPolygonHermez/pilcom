@@ -67,6 +67,7 @@ async function run() {
 }
 
 const originalMethod = console.log
+const maxSourceRefLen = 20;
 console.log = (...args) => {
     let initiator = false;
     try {
@@ -90,7 +91,9 @@ console.log = (...args) => {
     if (initiator === false) {
         originalMethod.apply(console, args);
     } else {
-        originalMethod.apply(console, [`\x1B[30;104m ${initiator} \x1B[0m`, ...args]);
+        initiator = initiator.split(':').slice(0,2).join(':').replace('.js','');
+        initiator = initiator.length > maxSourceRefLen ? ('...' + initiator.substring(-maxSourceRefLen+3)) : initiator.padEnd(maxSourceRefLen);
+        originalMethod.apply(console, [`\x1B[30;104m${initiator} \x1B[0m`, ...args]);
     }
 }
 

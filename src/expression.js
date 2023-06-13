@@ -432,7 +432,8 @@ module.exports = class Expression {
         while (pos < this.stack.length) {
             let next = true;
             for (let ope of this.stack[pos].operands) {
-                if (ope.type !== OP_RUNTIME ) continue;
+                assert(ope.__value instanceof Expression === false);
+                if (ope.type !== OP_RUNTIME || typeof ope.__value !== 'undefined') continue;
                 // TODO: twice evaluations, be carefull double increment evaluations,etc..
                 const res = this.evaluateRuntime(ope);
                 if (res instanceof Expression) {
@@ -517,6 +518,7 @@ module.exports = class Expression {
         if (e.type === 'expr') {
             return e.expr.eval();
         }
+        console.log(e);
         EXIT_HERE;
     }
 
@@ -529,6 +531,7 @@ module.exports = class Expression {
         // casting op:'cast' cast: value: dim: ??
     }*/
     dump(title) {
+        // console.trace();
         title = title ? ` (${title}) `:'';
         console.log(`\x1B[38;5;214m|==========> DUMP ${title}<==========|\x1B[0m`);
         for (let index = this.stack.length-1; index >=0; --index) {

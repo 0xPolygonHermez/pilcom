@@ -57,7 +57,7 @@ module.exports = class References {
         const scopeId = this.hasScope(type) ? this.scope.declare(name, def ?? false) : 0;
         // scope(name, def) => exception !!!
         //                  => scopeId;
-        if (typeof def !== 'undefined') {
+        if (typeof def !== 'undefined' && def.scopeId === scopeId) {
             console.log(def);
             throw new Error(`${name} was defined previously on ${def.data.sourceRef}`)
         }

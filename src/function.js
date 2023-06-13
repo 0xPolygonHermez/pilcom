@@ -1,6 +1,6 @@
 const util = require('util');
 const {cloneDeep} = require('lodash');
-
+const {FlowAbortCmd, BreakCmd, ContinueCmd, ReturnCmd} = require("./flow_cmd.js")
 module.exports = class Function {
 
     constructor (parent, s) {
@@ -27,7 +27,12 @@ module.exports = class Function {
             this.parent.declareReference(name, 'var', [], {type: arg.type}, this.parent.expressions.eval(s.arguments[iarg]));
             ++iarg;
         }
-        let res = this.parent.execute(this.statements);
-        return this.parent.expressions.eval(res.value);
+        let res = this.parent.execute(this.statements, `FUNCTION ${this.name}`);
+        if (res instanceof ReturnCmd) {
+            this.parent.traceLog('[TRACE-BROKE-RETURN]', '38;5;75;48;5;16');
+            const resvalue = res.value.eval();
+            return resvalue;
+        }
+        return res;
     }
 }
