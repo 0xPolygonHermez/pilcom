@@ -1,18 +1,23 @@
-const Definitions = require("./definitions.js");
-const Ids = require("./ids.js");
+const Indexable = require("./indexable.js");
 
-module.exports = class Variables {
+module.exports = class Variables extends Indexable {
 
-    constructor (Fr, references, expressions) {
-        // super(Fr);
+    constructor (Fr, type) {
+        super(Fr, type);
+    }
+    /*
+    constructor (Fr, type, references, expressions) {
+        super(Fr);
         this.Fr = Fr;
         this.references = references;
         this.expressions = expressions;
         this.lastId = 0;
-        this.variables = [];
+        this.type = type;
+        this.values = [];
     }
 
-    reserve(count, label, multiarray, data) {
+    reserve(count, label, multiarray) {
+        this.values
         this.variables[this.lastId] = { count, type: data.type, values:[] };
         return this.lastId++;
     }
@@ -33,5 +38,5 @@ module.exports = class Variables {
     set(id, offset, value) {
         // console.log(['VARIABLE_SET', id, offset, value]);
         this.variables[id].values[offset] = value;
-    }
+    }*/
 }

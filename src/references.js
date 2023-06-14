@@ -43,7 +43,7 @@ module.exports = class References {
     }
 
     declare (name, type, lengths = [], data = null) {
-        console.log(`DECLARE_REFERENCE ${name} ${type} []${lengths.length} #${this.scope.deep}`);
+        // console.log(`DECLARE_REFERENCE ${name} ${type} []${lengths.length} #${this.scope.deep}`);
         let size, array;
         if (lengths && lengths.length) {
             array = new Multiarray(lengths);
@@ -86,7 +86,7 @@ module.exports = class References {
     get (name, indexes = []) {
         const [instance, info] = this._getInstanceAndLocator(name, indexes);
         // console.log(`GET ${instance.constructor.name}.get(${info.locator}, ${info.offset})`);
-        return instance.get(info.locator, info.offset);
+        return instance.get(info.locator + info.offset);
     }
     getLabel(type, id, options) {
         const instance = this.types[type].instance;
@@ -94,8 +94,7 @@ module.exports = class References {
     }
     getTypeR(name, indexes, options) {
         const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        console.log(instance.constructor.name);
-        return [instance.getType(info.locator, info.offset), info.reference];
+        return [instance.getType(info.locator + info.offset), info.reference];
     }
     getTypedValue (name, indexes, options) {
         indexes = indexes ?? [];
@@ -104,7 +103,7 @@ module.exports = class References {
         if (typeof indexes === 'undefined') indexes = [];
 
         const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        let tvalue = instance.getTypedValue(info.locator, info.offset, info.type);
+        let tvalue = instance.getTypedValue(info.locator + info.offset, info.type);
         if (typeof info.row !== 'undefined') {
             tvalue.row = info.row;
         }
@@ -127,10 +126,10 @@ module.exports = class References {
         }
         if (options.preDelta) {
             tvalue.value += options.preDelta;
-            instance.set(info.locator, info.offset, tvalue.value);
+            instance.set(info.locator + info.offset, tvalue.value);
         }
         if (options.postDelta) {
-            instance.set(info.locator, info.offset, tvalue.value + options.postDelta);
+            instance.set(info.locator + info.offset, tvalue.value + options.postDelta);
         }
         return tvalue;
     }
@@ -162,19 +161,17 @@ module.exports = class References {
 
             // if instance doesn't support offset, add offset inside locator
             // and set offset = false
-            if (!tdata.options.offsets) {
-                if (res.offset) {
-                    res.locator += res.offset;
-                }
-                res.offset = false;
+            if (res.offset) {
+                res.locator += res.offset;
             }
+            res.offset = 0;
             return [tdata.instance, res];
         }
         const indexLengthLimit = tdata.instance.rows ? 1 : 0;
         if (indexes.length > indexLengthLimit) {
             throw new Error(`Invalid array or row access, too many array levels`);
         }
-        let extraInfo = {type: def.type, offset: tdata.options.offsets ? 0:false, reference: def.reference, referencedType: def.referencedType};
+        let extraInfo = {type: def.type, offset: 0, reference: def.reference, referencedType: def.referencedType};
         if (indexes.length > 0) {
             extraInfo.row = indexes[0];
         }
@@ -189,10 +186,17 @@ module.exports = class References {
             if (_value.op === 'reference') {
                 assert(!_value.array);
                 const src = this.getDefinition(this.context.getNames(_value));
-                dest.locator = src.locator;
+                if (src.array) {
+                    const __array = src.array.getIndexesTypedOffset(_value.__indexes);
+                    dest.array = __array.array;
+                    dest.locator = src.locator + __array.offset;
+
+                } else {
+                    dest.array = false;
+                    dest.locator = src.locator;
+                }
                 dest.type = src.type;
                 dest.scope = src.scope;
-                dest.array = false;
             } else if (_value.op === 'idref') {
                 dest.locator = _value.id;
                 dest.type = _value.refType;
@@ -211,11 +215,7 @@ module.exports = class References {
         // console.log({name, indexes, value});
         // if (name === 'N_MAX') debugger;
         const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        if (info.offset === false) {
-            return instance.set(info.locator, value);
-        } else {
-            return instance.set(info.locator, info.offset, value);
-        }
+        return instance.set(info.locator + info.offset, value);
     }
 
     unset(name) {

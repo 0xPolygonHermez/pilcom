@@ -20,9 +20,11 @@ module.exports = class Constraints {
 
     define(left, right, boundery, sourceRef) {
         if (left.isRuntime()) {
+            left.dump('LEFT  CONSTRAINT');
             throw new Error(`left constraint has runtime no resolved elements`);
         }
         if (right.isRuntime()) {
+            right.dump('RIGHT CONSTRAINT');
             throw new Error(`right constraint has runtime no resolved elements`);
         }
         if (left.fixedRowAccess || right.fixedRowAccess) {
@@ -32,6 +34,7 @@ module.exports = class Constraints {
         if (right.eval() !== 0n) {
             left.insert('sub', right);
         }
+        left.simplify();
         const exprId = this.expressions.insert(left);
         return this.constraints.push({exprId, sourceRef, boundery}) - 1;
     }

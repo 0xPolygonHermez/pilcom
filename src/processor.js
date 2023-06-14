@@ -23,14 +23,17 @@ const {FlowAbortCmd, BreakCmd, ContinueCmd, ReturnCmd} = require("./flow_cmd.js"
 
 module.exports = class Processor {
     constructor (Fr, parent, references, expressions) {
-        this.trace = true;
+        this.trace = false;
         this.Fr = Fr;
         this.context = new Context(this.Fr);
         this.scope = new Scope(this.Fr);
         this.references = new References(Fr, this.context, this.scope);
 
-        this.variables = new Variables(Fr, this.references, this.expressions);
-        this.references.register('var', this.variables, {offsets: true});
+        this.ints = new Variables(Fr, 'int');
+        this.references.register('int', this.ints);
+
+        this.fes = new Variables(Fr, 'fe');
+        this.references.register('fe', this.fes);
 
         this.fixeds = new FixedCols(Fr);
         this.fixeds.runtimeRows = true;
@@ -75,7 +78,7 @@ module.exports = class Processor {
         return this.functionDeep > 0;
     }
     startExecution(statements) {
-        this.references.declare('N', 'var', [], { type: 'int', sourceRef: this.sourceRef });
+        this.references.declare('N', 'int', [], { sourceRef: this.sourceRef });
         this.execute(statements);
     }
     generateOut()
@@ -140,7 +143,7 @@ module.exports = class Processor {
         }
         let res;
         this.sourceRef = st.debug ?? '';
-        if (st.debug === 'functions2.pil:36') {
+        if (st.debug === 'functions2.pil:53') {
             debugger;
         }
         try {
@@ -227,7 +230,7 @@ module.exports = class Processor {
             // TODO: check arrays, multiarrays - no arrays, valid for strings?
             const [instance,rinfo] = this.expressions.getReferenceInfo(arg0);
             const operand = arg0.getAloneOperand();
-            return rinfo.lengths[operand.dim];
+            return BigInt(rinfo.array.getLength(operand.dim));
         }
         const value = this.expressions.e2value(s.arguments[0]);
         if (typeof value === 'string') {
@@ -518,7 +521,7 @@ module.exports = class Processor {
     colDeclaration(s, type, ignoreInit) {
         for (const col of s.items) {
             const colname = this.context.getFullName(col);
-            console.log(`COL_DECLARATION(${colname}) type:${type}`);
+            // console.log(`COL_DECLARATION(${colname}) type:${type}`);
             const lengths = this.decodeLengths(col);
             let init = s.init;
             if (init && init.expr && typeof init.expr.instance === 'function') {
@@ -546,11 +549,7 @@ module.exports = class Processor {
         return this.execute(s.statements,`CODE ${this.sourceRef}`);
     }
     execConstraint(s) {
-        if (this.sourceRef === 'reference.pil:47') {
-            debugger;
-        }
-
-        const id = this.constraints.define(s.left.expr.instance(), s.right.expr.instance(),false,this.sourceRef);
+        const id = this.constraints.define(s.left.expr.instance(true), s.right.expr.instance(true),false,this.sourceRef);
         const expr = this.constraints.getExpr(id);
         console.log(`\x1B[1;36;44mCONSTRAINT      > ${expr.toString({hideClass:true, hideLabel:false})} === 0 (${this.sourceRef})\x1B[0m`);
         console.log(`\x1B[1;36;44mCONSTRAINT (RAW)> ${expr.toString({hideClass:true, hideLabel:true})} === 0 (${this.sourceRef})\x1B[0m`);
@@ -571,7 +570,7 @@ module.exports = class Processor {
         for (let index = 0; index < count; ++index) {
             const [name, lengths] = this.decodeNameAndLengths(s.items[index]);
 
-            this.references.declare(name, 'var', lengths, { type: s.vtype, sourceRef: this.sourceRef });
+            this.references.declare(name, s.vtype, lengths, { sourceRef: this.sourceRef });
             let initValue = null;
             if (init) {
                 if (s.vtype === 'expr') {

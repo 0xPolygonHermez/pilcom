@@ -27,8 +27,8 @@ module.exports = class Expressions {
         }
         return id;
     }
-    getTypedValue(id, offset, type) {
-        const res = { type, value: this.expressions[id + offset], id: id+offset };
+    getTypedValue(id, type) {
+        const res = { type, value: this.expressions[id], id };
         return res;
     }
     get(id) {

@@ -8,14 +8,17 @@ module.exports = class Indexable {
         this.labelRanges = new LabelRanges();
     }
 
-    getEmptyValue(id, index) {
+    getType(id) {
+        return this.type;
+    }
+    getEmptyValue(id) {
         return null;
     }
     reserve(count, label, multiarray) {
         const id = this.values.length;
         for (let index = 0; index < count; ++index) {
             const absoluteIndex = index + id;
-            this.values[absoluteIndex] = this.getEmptyValue(absoluteIndex, index);
+            this.values[absoluteIndex] = this.getEmptyValue(absoluteIndex);
         }
         if (label) {
             this.labelRanges.define(label, id, multiarray);
@@ -23,16 +26,16 @@ module.exports = class Indexable {
         return id;
     }
 
-    get(id, offset) {
-        return this.values[id + offset]
+    get(id) {
+        return this.values[id]
     }
 
     getLabel(id, options) {
         return this.labelRanges.getLabel(id, options);
     }
 
-    getTypedValue(id, offset) {
-        const res = { type: this.type, value: this.values[id + offset] };
+    getTypedValue(id) {
+        const res = { type: this.type, value: this.values[id] };
         return res;
     }
 

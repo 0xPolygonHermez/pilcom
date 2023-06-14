@@ -7,7 +7,7 @@ const OP_ID_REF = 1;
 const OP_STACK = 2;
 const OP_RUNTIME = 3;
 
-const NATIVE_OPS = ['+', '-', '*', 'neg'];
+const NATIVE_OPS = ['add', 'sub', 'mul', 'neg'];
 
 class ExpressionStackEvaluating {};
 class NonRuntimeEvaluable {};
@@ -50,7 +50,6 @@ module.exports = class Expression {
 
     constructor () {
         this.stack = [];
-        // this.runtime = false;
         this.fixedRowAccess = false;
     }
 
@@ -77,33 +76,10 @@ module.exports = class Expression {
     }
 
     cloneDeep(e, label = '') {
-        // console.log(`START ${label} (elapsed)`)
-        // const start = new Date();
         const res = cloneDeep(e);
-        // const end = new Date();
-        // const elapsed = (end-start);
-        // console.log(`END ${label} (elapsed) ${elapsed} ms`);
-        // if (elapsed > 1000) {
-        //    debugger;
-        //}
         return res;
     }
-/*    cloneStack(st) {
-        let operands = [];
-        for(const ope of res.operands) {
-            operands.push(this.cloneOperand(ope));
-        }
-        return {...st, operands};
-    }
-    cloneOperand(ope) {
-        let res = {...ope};
-        for(const prop in ope) {
-            if (Array.isArray(ope[prop])) {
-                ope.is
-            }
 
-        }
-    }*/
     next(dnext) {
         // console.log(dnext);
         for (let stack of this.stack) {
@@ -178,7 +154,6 @@ module.exports = class Expression {
             throw new Error(`Set only could be used with empty stack`);
         }
         this.stack.push({op: false, operands: [cloneDeep(operand)]});
-        // this.runtime = this.runtime || operand.type === OP_RUNTIME;
     }
 
     setIdReference (id, refType, next) {
@@ -212,7 +187,6 @@ module.exports = class Expression {
     insertOne (op, b) {
         const aIsEmpty = this.stack.length === 0;
         const bIsEmpty = b.stack.length === 0;
-        // this.runtime = this.runtime || b.runtime || NATIVE_OPS.indexOf(op) < 0;
 
         if (bIsEmpty) {
             throw new Error(`insert without operands`);
@@ -299,41 +273,14 @@ module.exports = class Expression {
         } else if (op.type === OP_RUNTIME ) {
             const res = this.evaluateRuntime(op);
             if (!(res instanceof Expression)) {
-/*                console.log(['res.no-instance', res]);
-                if (deeply) {
-                    op.type = OP_STACK;
-                    console.log(['res.instance', res]);
-                    op.offset = this.insertStack(res.instance(), pos);
-                }*/
                 op.__value = res;
             }
         }
     }
     evaluateRuntime(op) {
-        // console.log({_:'OP', ...op});
-        // if (op.name === 'N_MAX') debugger;
         let res = Expression.parent.evalRuntime(op, this);
         return res;
     }
-/*    evalOperandValue(op, pos, deeply) {
-        switch (op.type) {
-            case OP_VALUE:
-                return op.value;x
-            case OP_ID_REF:
-                return this.parent.evalIdRef();
-            case OP_STACK:
-                if (!deeply) return null;
-                const stackPos = pos-op.offset;
-                if (typeof this.stack[stackPos].__value === 'undefined') {
-                    // TODO: prevent infinite loop
-                    this.evalStackPos(stackPos);
-                }
-                return this.values[stackPos];
-            case OP_RUNTIME:
-                const res = this.parent.evalRuntime(op);
-                return res;
-        }
-    }*/
     instanceValues() {
         for (let se of this.stack) {
             for (let index = 0; index < se.operands.length; ++index) {
@@ -379,13 +326,16 @@ module.exports = class Expression {
         this.evaluateIndexes(dope);
         return dope;
     }
-    instance() {
+    instance(simplify = false) {
         let dup = this.clone();
         dup.evaluateOperands();
         dup.instanceExpressions();
         const top = dup.stack.length-1;
         dup.evaluateStackPosValue(top);
         dup.instanceValues();
+        if (simplify) {
+            dup.simplify();
+        }
         return dup;
     }
     eval() {
@@ -398,34 +348,32 @@ module.exports = class Expression {
 
         this.evaluateStackPosOperands(pos, true);
 
-        if (st.op === false) {
-            st.__value = st.operands[0].__value;
-            return;
+
+        delete st.__value;
+        const res = this.calculate(st);
+        if (res !== null) {
+            st.__value = res;
         }
+    }
+    calculate(st) {
+        if (st.op === false) {
+            return st.operands[0].__value;
+        }
+
+        if (st.operands.some(x => (typeof x === 'object' && x.type !== OP_VALUE && typeof x.__value !== 'bigint'))) {
+            return null;
+        }
+
         const opfunc = Expression.operations[st.op] ?? false;
         if (opfunc === false) {
             throw new Error(`NOT FOUND OPERATION (${st.op})`);
         }
-        /*
-        if (!st.operands.some(x => (typeof x === 'object' && x.type !== OP_VALUE))) {
-            if (st.operands.some(x => typeof x.__value !== 'bigint')) {
-                st.operands.forEach(x => console.log(x));
-                throw new Error(`ERROR evaluating operation ${st.op}:`);
-            }
-        }*/
-        if (st.operands.some(x => (typeof x === 'object' && x.type !== OP_VALUE && typeof x.__value !== 'bigint'))) {
-            delete st.__value;
-            return;
-/*            if (st.operands.some(x => typeof x.__value !== 'bigint')) {
-                st.operands.forEach(x => console.log(x));
-                throw new Error(`ERROR evaluating operation ${st.op}:`);
-            }*/
-        }
 
+        const values = st.operands.map(x => x.type === 0 ? x.value : x.__value);
         try {
-            st.__value = opfunc.handle.apply(this, st.operands.map(x => x.__value));
+            return opfunc.handle.apply(this, values);
         } catch (e) {
-            console.log([{op: st.op},...st.operands.map(x => x.__value)]);
+            console.log([{op: st.op},...values]);
             throw e;
         }
     }
@@ -448,19 +396,136 @@ module.exports = class Expression {
                 // TODO: twice evaluations, be carefull double increment evaluations,etc..
                 const res = this.evaluateRuntime(ope);
                 if (res instanceof Expression) {
-                    // this.dump('THIS');
-                    // res.dump(`INSERT ${pos}`);
                     ope.type = OP_STACK;
                     const exprToInsert = res.instance();
                     if (ope.__next) exprToInsert.next(ope.__next);
                     ope.offset = this.insertStack(exprToInsert, pos);
-                    // this.dump('RESULT');
                     next = false;
                     break;
                 }
             }
             if (next) ++pos;
         }
+    }
+    simplify() {
+        let loop = 0;
+        while (this.stack.length > 0) {
+            let updated = false;
+            for (const st of this.stack) {
+                updated = this.simplifyOperation(st) || updated;
+            }
+            this.simplifyStack();
+            if (!updated) break;
+        }
+    }
+    simplifyOperation(st) {
+        if (st.op === false || st.operands.length > 2) {
+            return false;
+        }
+
+        const firstValue = st.operands[0].type === OP_VALUE ? st.operands[0].value : false;
+        const secondValue = st.operands[1].type === OP_VALUE ? st.operands[1].value : false;
+
+        // [op,v1,v2] ==> [v1 op v2]
+        if (firstValue !== false && secondValue !== false) {
+            const res = this.calculate(st);
+            if (res === null) return false;
+            st.operands = [{type: OP_VALUE, value: res}];
+            st.op = false;
+            delete st.__value;
+            delete st.__indexes;
+            delete st.__next;
+            return true;
+        }
+
+        // [neg,value] ==> [false,-value]
+        if (st.op === 'neg' && firstValue !== false) {
+            st.op = false;
+            st.operands[0].value = -st.operands[0].value;
+            return true;
+        }
+
+        const firstZero = firstValue === 0n;
+
+        if (firstZero || secondValue === 0n) {
+            // [mul, 0, x] ==> [0]
+            // [mul, x, 0] ==> [0]
+            if (st.op === 'mul') {
+                st.op = false;
+                st.operands = [st.operands[firstZero ? 0:1]];
+                return true;
+            }
+            // [add, 0, x] ==> [x]
+            // [add, x, 0] ==> [x]
+            if (st.op === 'add') {
+                st.op = false;
+                st.operands = [st.operands[firstZero ? 1:0]];
+                return true;
+            }
+
+            // [sub, x, 0] ==> [x]
+            if (st.op === 'sub' && !firstZero) {
+                st.op = false;
+                return true;
+            }
+        }
+
+        const firstOne = firstValue === 1n;
+
+        // [mul, 1, x] ==> [x]
+        // [mul, x, 1] ==> [x]
+        if (st.op === 'mul' && (firstOne || secondValue === 1n)) {
+            st.op = false;
+            st.operands = [st.operands[firstOne ? 1:0]];
+            return true;
+        }
+
+        // TODO: but must be th
+        // x - x = 0 ???
+        // (x - (- y)) = x + y
+        // (x + (- y)) = x - y
+
+        return false;
+    }
+    simplifyStack() {
+        let translate = [];
+        let stackPos = 0;
+        let stackLen = this.stack.length;
+        for (let istack = 0; istack < stackLen; ++istack) {
+            const st = this.stack[istack];
+            if (st.op === false) {
+                translate[istack] = false;
+                continue;
+            }
+            translate[istack] = stackPos++;
+
+            for (let iope = 0; iope < st.operands.length; ++iope) {
+                if (st.operands[iope].type !== OP_STACK) continue;
+                const absolutePos = istack - st.operands[iope].offset;
+                const newAbsolutePos = translate[absolutePos];
+                assert(absolutePos < istack);
+                if (newAbsolutePos === false) {
+                    this.stack[istack].operands[iope] = this.stack[absolutePos].operands[0];
+                } else {
+                    // stackPos - 1 is new really istack after clear simplified stack positions
+                    const newOffset = (stackPos - 1) - newAbsolutePos;
+                    assert(newOffset > 0);
+                    this.stack[istack].operands[iope].offset = newOffset;
+                }
+            }
+        }
+        let lastPosUsed = false;
+        for (let istack = 0; istack < stackLen; ++istack) {
+            const absoluteNewPos = translate[istack];
+            if (absoluteNewPos === false) continue;
+
+            this.stack[absoluteNewPos] = this.stack[istack];
+            lastPosUsed = absoluteNewPos;
+        }
+        if (lastPosUsed !== false) {
+            this.stack.splice(lastPosUsed + 1);
+        }
+        return stackLen > this.stack.length;
     }
     evaluateOperands() {
         for (let index = 0; index < this.stack.length; ++index) {
@@ -543,7 +608,7 @@ module.exports = class Expression {
     }*/
     dump(title) {
         // console.trace();
-        title = title ? ` (${title}) `:'';
+        title = title ? `(${title}) `:'';
         console.log(`\x1B[38;5;214m|==========> DUMP ${title}<==========|\x1B[0m`);
         for (let index = this.stack.length-1; index >=0; --index) {
             const st = this.stack[index];

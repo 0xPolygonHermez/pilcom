@@ -25,10 +25,10 @@ module.exports = class Function {
             const arg = this.args[name];
             // TODO: arrays and pol references ...
             if (arg.reference) {
-                this.parent.declareReference(name, 'var', [], {type: arg.type});
+                this.parent.declareReference(name, 'int', []);
                 this.parent.references.setReference(name, s.arguments[iarg].expr.getReference());
             } else {
-                this.parent.declareReference(name, 'var', [], {type: arg.type}, this.parent.expressions.eval(s.arguments[iarg]));
+                this.parent.declareReference(name, 'int', [], {}, this.parent.expressions.eval(s.arguments[iarg]));
             }
             ++iarg;
         }

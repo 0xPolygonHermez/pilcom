@@ -8,16 +8,35 @@ function inc (int &k) {
     k = k + 1;
 }
 
+function dup_v (int &k[]) {
+    for (int i = 0; i < length(k); ++i) {
+        k[i] = k[i] * 2;
+    }
+}
+
+function dup_m (int &k[][]) {
+    for (int i = 0; i < length(k); ++i) {
+        for (int j = 0; j < length(k[i]); ++j) {
+            k[i][j] = k[i][j] * 2;
+        }
+    }
+}
+
 namespace Functions:: {
 
     col witness c1,c2,vec[10];
     int values[5];
+    int matrix[2][3];
 
-    values[0] = 100;
-    values[1] = 101;
-    values[2] = 102;
-    values[3] = 103;
-    values[4] = 104;
+    for (int i = 0; i < length(values); ++i) {
+        values[i] = 100 + i;
+    }
+
+    for (int i = 0; i < length(matrix); ++i) {
+        for (int j = 0; j < length(matrix[i]); ++j) {
+            matrix[i][j] = 1000 + 100 * i + j;
+        }
+    }
 
     // f1(c1);
     int x = 10;
@@ -27,19 +46,55 @@ namespace Functions:: {
     inc(x);
     c1 === x;
 
-    c1 === values[0];
-    c1 === values[1];
-    c1 === values[2];
-    c1 === values[3];
-    c1 === values[4];
+    for (int i = 0; i < length(values); ++i) {
+        c1 === values[i];
+    }
 
     inc(values[2]);
 
-    c2 === values[0];
-    c2 === values[1];
-    c2 === values[2];
-    c2 === values[3];
-    c2 === values[4];
+    for (int i = 0; i < length(values); ++i) {
+        c1 === values[i];
+    }
 
-    c1 === x;
+    c1 === x + x;
+
+    c1 === x + 5;
+
+    x = 0;
+    c1 === c2 * x;
+    c1 === x * c2;
+    c1 === 2 * c2 + x;
+    c1 === x + 2 * c2;
+
+    x = 1;
+    c1 === c2 * x;
+    c1 === x * c2;
+
+    dup_v(values);
+
+    for (int i = 0; i < length(values); ++i) {
+        c1 === values[i];
+    }
+
+    for (int i = 0; i < length(matrix); ++i) {
+        for (int j = 0; j < length(matrix[i]); ++j) {
+            c2 === matrix[i][j];
+        }
+    }
+
+    dup_v(matrix[1]);
+
+    for (int i = 0; i < length(matrix); ++i) {
+        for (int j = 0; j < length(matrix[i]); ++j) {
+            c2 === matrix[i][j];
+        }
+    }
+
+    dup_m(matrix);
+
+    for (int i = 0; i < length(matrix); ++i) {
+        for (int j = 0; j < length(matrix[i]); ++j) {
+            c2 === matrix[i][j];
+        }
+    }
 }
