@@ -43,6 +43,11 @@ describe("Functions", async function () {
         verifyNextConstraint("c1 - c1'120","witness@0 - witness@0'120");
         verifyNextConstraint("c1 - 24'c1","witness@0 - 24'witness@0");
 
+        verifyNextConstraint("p1 - 100","witness@11 - 100");
+        verifyNextConstraint("p1 - 314","witness@12 - 314");
+
+        verifyNextConstraint("c1 - 24","witness@0 - 24");
+
         assert.strictEqual(constraints.it.next().done, true);
     });
 

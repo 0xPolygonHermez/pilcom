@@ -12,6 +12,12 @@ function fact(int k): int {
     return k * fact(k - 1);
 }
 
+function procedure(int value) {
+    col witness p1;
+
+    p1 === value;
+}
+
 namespace Functions:: {
 
     col witness c1,vec[10];
@@ -32,4 +38,9 @@ namespace Functions:: {
     c1 === vec[fact(3)];
     c1 === c1'fact(5);
     c1 === fact(4)'c1;
+
+    procedure(100);
+    procedure(314);
+
+    c1 === fact(4);
 }

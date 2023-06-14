@@ -1,0 +1,45 @@
+subair Functions(2**23);
+
+function f1 (col &p1) {
+    p1 === 314;
+}
+
+function inc (int &k) {
+    k = k + 1;
+}
+
+namespace Functions:: {
+
+    col witness c1,c2,vec[10];
+    int values[5];
+
+    values[0] = 100;
+    values[1] = 101;
+    values[2] = 102;
+    values[3] = 103;
+    values[4] = 104;
+
+    // f1(c1);
+    int x = 10;
+
+    c1 === x;
+
+    inc(x);
+    c1 === x;
+
+    c1 === values[0];
+    c1 === values[1];
+    c1 === values[2];
+    c1 === values[3];
+    c1 === values[4];
+
+    inc(values[2]);
+
+    c2 === values[0];
+    c2 === values[1];
+    c2 === values[2];
+    c2 === values[3];
+    c2 === values[4];
+
+    c1 === x;
+}

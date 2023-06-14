@@ -368,6 +368,17 @@ module.exports = class Expression {
             }
         }
     }
+    getReference() {
+        if (!this.isAlone()) {
+            throw new Error(`Invalid expression by reference`);
+        }
+        let dope = this.cloneAloneOperand();
+        if (dope.next || dope.prior) {
+            throw new Error(`Invalid expression by reference`);
+        }
+        this.evaluateIndexes(dope);
+        return dope;
+    }
     instance() {
         let dup = this.clone();
         dup.evaluateOperands();

@@ -24,7 +24,12 @@ module.exports = class Function {
         for (const name in this.args) {
             const arg = this.args[name];
             // TODO: arrays and pol references ...
-            this.parent.declareReference(name, 'var', [], {type: arg.type}, this.parent.expressions.eval(s.arguments[iarg]));
+            if (arg.reference) {
+                this.parent.declareReference(name, 'var', [], {type: arg.type});
+                this.parent.references.setReference(name, s.arguments[iarg].expr.getReference());
+            } else {
+                this.parent.declareReference(name, 'var', [], {type: arg.type}, this.parent.expressions.eval(s.arguments[iarg]));
+            }
             ++iarg;
         }
         let res = this.parent.execute(this.statements, `FUNCTION ${this.name}`);

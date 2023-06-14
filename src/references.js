@@ -95,7 +95,7 @@ module.exports = class References {
     getTypeR(name, indexes, options) {
         const [instance, info] = this._getInstanceAndLocator(name, indexes);
         console.log(instance.constructor.name);
-        return instance.getType(info.locator, info.offset);
+        return [instance.getType(info.locator, info.offset), info.reference];
     }
     getTypedValue (name, indexes, options) {
         indexes = indexes ?? [];
@@ -200,6 +200,7 @@ module.exports = class References {
                 dest.array = _value.array;
             }
         } else {
+            console.log(_value);
             assert(_value.type == 1);
             assert(!_value.__next);
             dest.locator = _value.id;

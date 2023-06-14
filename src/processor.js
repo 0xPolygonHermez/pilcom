@@ -23,7 +23,7 @@ const {FlowAbortCmd, BreakCmd, ContinueCmd, ReturnCmd} = require("./flow_cmd.js"
 
 module.exports = class Processor {
     constructor (Fr, parent, references, expressions) {
-        this.trace = false;
+        this.trace = true;
         this.Fr = Fr;
         this.context = new Context(this.Fr);
         this.scope = new Scope(this.Fr);
@@ -127,7 +127,7 @@ module.exports = class Processor {
     }
     executeStatement(st) {
         const __executeStatementCounter = this.executeStatementCounter++;
-        this.traceLog(`[TRACE] #${__executeStatementCounter} ${this.sourceRef} (DEEP:${this.scope.deep})`, '38;5;75');
+        this.traceLog(`[TRACE] #${__executeStatementCounter} ${st.debug ?? ''} (DEEP:${this.scope.deep})`, '38;5;75');
         if (typeof st.type === 'undefined') {
             console.log(st);
             this.error(st, `Invalid statement (without type)`);
@@ -140,9 +140,9 @@ module.exports = class Processor {
         }
         let res;
         this.sourceRef = st.debug ?? '';
-//        if (st.debug === 'expr.pil:53') {
-//            debugger;
-//        }
+        if (st.debug === 'functions2.pil:36') {
+            debugger;
+        }
         try {
             res = this[method](st);
         } catch (e) {
