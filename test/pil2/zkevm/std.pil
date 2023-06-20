@@ -7,16 +7,17 @@ function extends_fixed_clock_cycles(int cycle, col &cols) {
 function range_check (col p, fe from_value, fe to_value) {
 
 }
+/*
+example:
 
 permutation_check(selF,
                   [ 0, opcode, freeInA[0], freeInB[0], cIn, 0, freeInC[0], cMiddle],
                   selT,
                   [P_LAST, P_OPCODE, BYTE_2A, BYTE, P_CIN, P_USE_CARRY, P_C, P_COUT]);
-
+*/
 
 function permutation_check(col selF, expr colsF[], col selT, expr colsT[]) {
     // TODO: use specific name, not match with other challenge
-    // TODO:
     once global challenge std_alpha;
     once global challenge std_beta;
     once global challenge std_gamma;
@@ -59,7 +60,8 @@ function permutation_check(col selF, expr colsF[], col selT, expr colsT[]) {
 }
 
 function catalan_permutation_check(col selF, expr colsF[], col selT, expr colsT[]) {
-    once global catalan_permutation_check_id = 0;
+    // once global catalan_permutation_check_id = 0;
+    once global int catalan_permutation_check_id = 0;
 
     catalan_permutation_check_id = catalan_permutation_check_id + 1;
 
@@ -107,7 +109,7 @@ final function close_catalan_permutation_check() {
     cols_left === cols_right;
 }
 
-
+/*
     g * c1 = 'g * c1;
     g * c2 = 'g * c2;
     g * c3 = 'g * c3;
@@ -125,11 +127,8 @@ final function close_catalan_permutation_check() {
 
     // L1 * grod === 1;
     // gprod' * (colsT_selected + std_gamma) === gprod * (colsF_selected + std_gamma);
-}
 
-
-
-
+*/
 
 /* match(selector (col),
          selector_value_1, expr_when_selector_value_is_value_1,
@@ -137,7 +136,6 @@ final function close_catalan_permutation_check() {
          :
          selector_value_k, expr_when_selector_value_is_value_k);
 
-*/
 
 col witness sel,x,y;
 
@@ -145,6 +143,7 @@ match(sel,
       1, x + y,
       2, 2 * x + y) === 0;
 
+*/
 
 function match (col sel, ...) : expr {
 
@@ -183,14 +182,15 @@ function match (col sel, ...) : expr {
         }
         bc === 0;
         return res;
-    }
+}
 
 
+/*
     subair_permutation_check(
         Binary::resultBinOp,
         Binary::['op, ...a, ...b, ...c, 'cout]
     );
-
+*/
 
 function subair_permutation_check (expr selF[], expr colsF[][], subair::expr selT[], subair::expr colsT[][]) {
     // grand product F
@@ -199,7 +199,7 @@ function subair_permutation_check (expr selF[], expr colsF[][], subair::expr sel
     //    challenge c[2]
     prover witness x = grand_product([binOp, ...A, ...B, ...op, carry], bin);
 
-    task Binary lookup_check_T(c, Binary::resultBinOp, Binary::['op, ...a, ...b, ...c, 'cout]);
+    // task Binary lookup_check_T(c, Binary::resultBinOp, Binary::['op, ...a, ...b, ...c, 'cout]);
 }
 
 function plookup_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
@@ -218,15 +218,6 @@ function permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
 }
 
 function permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
-    L1 = search([1,0...]);
-
-    if (!(L1 is col)) {
-        // TODO: verify L1 = [1,0...]
-        global col fixed L1 = [1,0...];
-    }
-}
-
-function permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
     col fixed L1 = [1,0...];
 }
 
@@ -234,11 +225,11 @@ function permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
 constant PUBLIC_TABLE_ADD = 1;
 constant PUBLIC_TABLE_PROD = 2;
 
-function public_table_add (prover value, public ptable[][], public rows, challenge zeta, challenge alpha) {
+function public_table_add (prover witness value, public ptable[][], public rows, challenge zeta, challenge alpha) {
     // TBD
 }
 
-function public_table_prod (prover value, public ptable[][], public rows, challenge zeta, challenge alpha) {
+function public_table_prod (prover witness value, public ptable[][], public rows, challenge zeta, challenge alpha) {
 
     int max_rows = length(ptable[0]);
 
@@ -283,23 +274,23 @@ function public_table_prod (prover value, public ptable[][], public rows, challe
 }
 
 
-function subair_permutation_produce (xxxx, expr sel[], expr cols[][]) {
+function subair_permutation_produce (expr sel[], expr cols[][]) {
     // grand product F
     //    bin,
     //    [binOp, ...A, ...B, ...op, carry],
     //    challenge c[2]
     prover witness x = grand_product([binOp, ...A, ...B, ...op, carry], bin);
 
-    task Binary lookup_check_T(c, Binary::resultBinOp, Binary::['op, ...a, ...b, ...c, 'cout]);
+    // task Binary lookup_check_T(c, Binary::resultBinOp, Binary::['op, ...a, ...b, ...c, 'cout]);
 }
 
 
-function subair_permutation_requires (pcid, expr sel, expr cols[]) {
-    static expr subair_permutation_expr = 1;
+function subair_permutation_requires (expr pcid, expr sel, expr cols[]) {
+    once expr subair_permutation_expr = 1;
 
     challenge a;
     challenge b;
-    expr _col = (pcid + col[1] + a * col[2] + a**2 * col[3] + a ** 3 * col[4] + .... - b) * sel + b;
+    // expr _col = (pcid + cols[1] + a * cols[2] + a**2 * cols[3] + a ** 3 * col[4] + .... - b) * sel + b;
 
     subair_permutation_expr = subair_permutation_expr * _col;
 
@@ -338,6 +329,7 @@ pgp[0] * pgp[1] * pgp[2] === 1
 A B(N1)  pgp[2] === 1
 A B(N2)  pgp[1] === 1
 */
+/*
 prover witness permutation_grand_product[];
 
 prover witness subair_gp;
@@ -345,6 +337,7 @@ prover witness total_gp;
 
 when first { total_gp === 1 };
 total_gp' === total_gp * subair_gp;
+*/
 
 function final_subair_permutation () {
     // subair_permutation_expr;
@@ -353,10 +346,10 @@ function final_subair_permutation () {
     // prover witness permutation_grand_product;
     int index = lenght(permutation_grand_product);
 
-    @col_grand_product permutation_grand_product[index] subair_permutation_col
-    @prover_grand_product permutation_grand_product
+    @col_grand_product {gprod: permutation_grand_product[index], air: subair_permutation_col};
+    @prover_grand_product {gprod: permutation_grand_product };
 //    @subair_permutation_prover_value permutation_grand_product[index] subair_permutation_col
-    b*c === 1
+    b*c === 1;
 
     // requires
     subair_permutation_col' === subair_permutation_expr * (subair_permutation_col * (1-L1) + L1);
@@ -370,13 +363,13 @@ function final_subair_permutation () {
 
 // runtime environment global
 
-function final_permutation () {
+final function final_permutation () {
     // subair_permutation_expr;
 
     col witness subair_permutation_col;
     prover witness permutation_grand_product;
 
-    @subair_permutation_prover_value permutation_grand_product;
+    @subair_permutation_prover_value {gprod: permutation_grand_product};
 
     subair_permutation_col' === subair_permutation_expr * (subair_permutation_col * (1-L1) + L1);
     permutation_grand_product === L1 * subair_permutation_col;

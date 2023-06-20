@@ -227,7 +227,10 @@ top_level_block
     | public_declaration
         { $$ = $1 }
 
-    | prover_declaration
+    | prover_witness_declaration
+        { $$ = $1 }
+
+    | subair_witness_declaration
         { $$ = $1 }
 
     | constant_definition
@@ -400,6 +403,26 @@ argument
 
     | basic_type REFERENCE type_array
         { $$ = { type: $1.type, name: $2, reference: true, dim: $3.dim } }
+
+    | SUBAIR '::' subair_type IDENTIFIER
+        { $$ = { subair: $1, type: $3.type, name: $4, reference: false, dim: 0 } }
+
+    | SUBAIR '::' subair_type REFERENCE
+        { $$ = { subair: $1, type: $3.type, name: $4, reference: true, dim: 0 } }
+
+    | SUBAIR '::' subair_type IDENTIFIER type_array
+        { $$ = { subair: $1, type: $3.type, name: $4, reference: false, dim: $5.dim } }
+
+    | SUBAIR '::' subair_type REFERENCE type_array
+        { $$ = { subair: $1, type: $3.type, name: $4, reference: true, dim: $5.dim } }
+    ;
+
+subair_type
+    : EXPR
+        { $$ = { type: 'expr' } }
+
+    | COL
+        { $$ = { type: 'col' } }
     ;
 
 basic_type
@@ -421,8 +444,11 @@ basic_type
     | T_STRING
         { $$ = { type: 'string' } }
 
-    | PROVER
+    | PROVER WITNESS
         { $$ = { type: 'prover' } }
+
+    | SUBAIR WITNESS
+        { $$ = { type: 'subair' } }
 
     | PUBLIC
         { $$ = { type: 'public' } }
@@ -483,7 +509,10 @@ statement_no_closed
     | public_declaration
         { $$ = $1 }
 
-    | prover_declaration
+    | prover_witness_declaration
+        { $$ = $1 }
+
+    | subair_witness_declaration
         { $$ = $1 }
 
     | constant_definition
@@ -537,11 +566,17 @@ codeblock_no_closed
     : variable_declaration
         { $$ = $1 }
 
+    | GLOBAL variable_declaration
+        { $$ = $2; $$.global = true }
+
     | variable_assignment
         { $$ = $1 }
 
     | variable_multiple_assignment
         { $$ = $1 }
+
+    | GLOBAL variable_multiple_assignment
+        { $$ = $2; $$.global = true }
 
     | return_statement
         { $$ = $1 }
@@ -558,6 +593,7 @@ codeblock_no_closed
 
 list_subair
     : %prec EMPTY
+
     | IDENTIFIER '::'
         { $$ = { subair: $1 } }
     ;
@@ -581,7 +617,7 @@ codeblock_closed
         { $$ = { type: 'while', condition: $3, statements: $5 } }
 
     | ONCE non_delimited_statement
-        { $$ = { type: 'while', condition: $3, statements: $5 } }
+        { $$ = { type: 'once', statements: $2 } }
 
     | SWITCH '(' expression ')' case_body
         { $$ = $1 }
@@ -1054,12 +1090,20 @@ public_declaration
         { $$ = { type: 'public_declaration', items: $2.items } }
     ;
 
-prover_declaration
-    : PROVER col_declaration_ident '=' expression
-        { $$ = { type: 'prover_declaration', items: [$2], init: $4 } }
+prover_witness_declaration
+    : PROVER WITNESS col_declaration_ident '=' expression
+        { $$ = { type: 'prover_witness_declaration', items: [$2], init: $4 } }
 
-    | PROVER col_declaration_list
-        { $$ = { type: 'prover_declaration', items: $2.items } }
+    | PROVER WITNESS col_declaration_list
+        { $$ = { type: 'prover_witness_declaration', items: $2.items } }
+    ;
+
+subair_witness_declaration
+    : SUBAIR WITNESS col_declaration_ident '=' expression
+        { $$ = { type: 'subair_witness_declaration', items: [$2], init: $4 } }
+
+    | SUBAIR WITNESS col_declaration_list
+        { $$ = { type: 'subair_witness_declaration', items: $2.items } }
     ;
 
 
