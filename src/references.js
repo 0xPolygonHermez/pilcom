@@ -191,6 +191,10 @@ module.exports = class References {
         }
         return [tdata.instance, {locator: def.locator, ...extraInfo}, def];
     }
+    getReferenceType (name) {
+        let dest = this.getDefinition(name);
+        return dest.type ?? false;
+    }
     setReference (name, value) {
         let dest = this.getDefinition(name);
         const _value = value instanceof Expression ? value.getAloneOperand() : value;

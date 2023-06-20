@@ -5,7 +5,7 @@ function f1 (col &p1) {
 }
 
 function f2 (col p1) {
-    p1 === 314;
+    p1 === 318;
 }
 
 function f1v (col &p1[]) {
@@ -16,14 +16,24 @@ function f1v (col &p1[]) {
 
 function f1v_ (col &p1[]) {
     for (col &p in p1) {
-        p === 31416;
+        p === 31415;
     }
 }
+
+function f1m (col &p1[][]) {
+    for (col &p in p1) {
+        for (col &p2 in p) {
+            p2 === 3113;
+        }
+    }
+}
+
 namespace Functions:: {
 
     col witness c1,c2;
     col witness vec[10];
-    /*
+    col witness m[4][3];
+
     int values[5];
     int matrix[2][3];
 
@@ -35,12 +45,18 @@ namespace Functions:: {
         for (int j = 0; j < length(matrix[i]); ++j) {
             matrix[i][j] = 1000 + 100 * i + j;
         }
-    }*/
+    }
 
     f1(c1);
     f1(c2);
     f1(vec[3]);
+
+    f2(c1);
+    f2(c2);
+    f2(vec[3]);
+
     f1v(vec);
+    f1m(m);
 
     for (col &p in [...vec]) {
         p === 300;

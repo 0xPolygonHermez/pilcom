@@ -24,11 +24,23 @@ module.exports = class Function {
         for (const name in this.args) {
             const arg = this.args[name];
             // TODO: arrays and pol references ...
+            let type = arg.type;
             if (arg.reference) {
-                this.parent.declareReference(name, 'int', []);
-                this.parent.references.setReference(name, s.arguments[iarg].getReference());
+                const ref = s.arguments[iarg].getReference();
+
+                // special case of col, could be witness, fixed or im
+                if (type === 'col') {
+                    type = this.parent.references.getReferenceType(ref.name);
+                }
+                this.parent.declareReference(name, type, []);
+                this.parent.references.setReference(name, ref);
             } else {
-                this.parent.declareReference(name, 'int', [], {}, this.parent.expressions.eval(s.arguments[iarg]));
+                const value = this.parent.expressions.eval(s.arguments[iarg]);
+                if (arg.type === 'col') {
+                    type = value.type;
+                }
+                console.log(type);
+                this.parent.declareReference(name, type, [], {}, value);
             }
             ++iarg;
         }

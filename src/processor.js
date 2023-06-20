@@ -551,6 +551,11 @@ module.exports = class Processor {
         return this.execute(s.statements,`CODE ${this.sourceRef}`);
     }
     execConstraint(s) {
+        if (this.sourceRef === 'functions_cols.pil:8') {
+            s.left.dump(this.sourceRef);
+            s.right.dump(this.sourceRef);
+            debugger;
+        }
         const id = this.constraints.define(s.left.instance(true), s.right.instance(true),false,this.sourceRef);
         const expr = this.constraints.getExpr(id);
         console.log(`\x1B[1;36;44mCONSTRAINT      > ${expr.toString({hideClass:true, hideLabel:false})} === 0 (${this.sourceRef})\x1B[0m`);
