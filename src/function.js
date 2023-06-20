@@ -26,7 +26,7 @@ module.exports = class Function {
             // TODO: arrays and pol references ...
             if (arg.reference) {
                 this.parent.declareReference(name, 'int', []);
-                this.parent.references.setReference(name, s.arguments[iarg].expr.getReference());
+                this.parent.references.setReference(name, s.arguments[iarg].getReference());
             } else {
                 this.parent.declareReference(name, 'int', [], {}, this.parent.expressions.eval(s.arguments[iarg]));
             }

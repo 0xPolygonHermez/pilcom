@@ -1,15 +1,16 @@
 const LabelRanges = require("./label_ranges.js");
 module.exports = class Indexable {
 
-    constructor (Fr, type) {
+    constructor (Fr, type, rtype) {
         this.Fr = Fr;
         this.values = [];
         this.type = type;
+        this.rtype = rtype ?? type;
         this.labelRanges = new LabelRanges();
     }
 
     getType(id) {
-        return this.type;
+        return this.rtype;
     }
     getEmptyValue(id) {
         return null;
@@ -35,7 +36,7 @@ module.exports = class Indexable {
     }
 
     getTypedValue(id) {
-        const res = { type: this.type, value: this.values[id] };
+        const res = { type: this.rtype, value: this.values[id] };
         return res;
     }
 

@@ -22,7 +22,7 @@ module.exports = class Ids {
         return this.getTypedValue(id, offset)
     }
 
-    getTypedValue(id, offset) {
+    getTypedValue(id, offset = 0) {
         return { type: this.type, value: id + offset };
     }
 

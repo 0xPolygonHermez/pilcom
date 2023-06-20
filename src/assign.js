@@ -14,26 +14,22 @@ module.exports = class Assign {
     assign (name, indexes, value) {
         // type
         const [type, reference] = this.references.getTypeR(name, indexes)
-        // const [instance, info] = this.references.getTypeInfo(name, indexes);
-        // const type = instance.getType(info.locator, info.offset);
+        // routing by type
         this.router.goBy(type, name, indexes, value);
     }
     assignReference (name, value) {
         this.references.setReference(name, value);
     }
     _assignTypeInt(name, indexes, value, type) {
-        // console.log(value);
         const v = this.expressions.e2value(value);
         if (typeof v === 'number' || typeof v === 'bigint') {
             return this.references.set(name, indexes, v);
         }
-        // console.log(v);
+        console.log(v);
         EXIT_HERE;
     }
     _assignTypeExpr(name, indexes, value, type) {
-        // console.log(arguments);
         const v = value.instance();
-        // v.dump('ASSIGN '+name);
         return this.references.set(name, indexes, v);
     }
 }

@@ -8,9 +8,147 @@ function range_check (col p, fe from_value, fe to_value) {
 
 }
 
+permutation_check(selF,
+                  [ 0, opcode, freeInA[0], freeInB[0], cIn, 0, freeInC[0], cMiddle],
+                  selT,
+                  [P_LAST, P_OPCODE, BYTE_2A, BYTE, P_CIN, P_USE_CARRY, P_C, P_COUT]);
+
+
+function permutation_check(col selF, expr colsF[], col selT, expr colsT[]) {
+    // TODO: use specific name, not match with other challenge
+    // TODO:
+    once global challenge std_alpha;
+    once global challenge std_beta;
+    once global challenge std_gamma;
+
+    if (length(colsF) != length(colsT)) {
+        error(`colsF and colsT must be same dimensions`);
+    }
+
+    // TODO: optimize to put only once this constraint if witness col, if cols are fixed
+    // check on compilation time, constraint not needed.
+    selF * (1 - selF) === 0;
+    selT * (1 - selT) === 0;
+
+    col fixed L1 = [1,0...]; // compiler optimize and only exists one L1
+
+    // global is visible inside function vs static
+    expr colsF_compressed = 0;
+    expr colsT_compressed = 0;
+    for (int icol = length(colsF) - 1; icol > 0; --icol) {
+        colsF_compressed = (colsF_compressed + colsF[icol]) * std_alpha;
+        colsT_compressed = (colsT_compressed + colsT[icol]) * std_alpha;
+    }
+    colsF_compressed = (colsF_compressed + colsF[0]);
+    colsT_compressed = (colsT_compressed + colsT[0]);
+
+    expr colsF_selected = selF * (colsF_compressed - std_beta) + std_beta;
+    expr colsT_selected = selT * (colsT_compressed - std_beta) + std_beta;
+
+    col witness gprod;
+
+    //                     (colsF_selected + std_gamma)
+    //  gprod === 'gprod * ----------------------------
+    //                     (colsT_selected + std_gamma)
+
+    L1 * 'gprod === 1;
+    gprod * (colsT_selected + std_gamma) === 'gprod * (colsF_selected + std_gamma);
+
+    // L1 * grod === 1;
+    // gprod' * (colsT_selected + std_gamma) === gprod * (colsF_selected + std_gamma);
+}
+
+function catalan_permutation_check(col selF, expr colsF[], col selT, expr colsT[]) {
+    once global catalan_permutation_check_id = 0;
+
+    catalan_permutation_check_id = catalan_permutation_check_id + 1;
+
+    // TODO: use specific name, not match with other challenge
+    once {
+        global challenge std_alpha;
+        global challenge std_beta;
+        global challenge std_gamma;
+
+        global col witness gprod;
+        global expr cols_left = gprod;
+        global expr cols_right = 'gprod;
+    }
+
+    if (length(colsF) != length(colsT)) {
+        error(`colsF and colsT must be same dimensions`);
+    }
+
+    // TODO: optimize to put only once this constraint if witness col, if cols are fixed
+    // check on compilation time, constraint not needed.
+    selF * (1 - selF) === 0;
+    selT * (1 - selT) === 0;
+
+    col fixed L1 = [1,0...]; // compiler optimize and only exists one L1
+
+    // global is visible inside function vs static
+    expr colsF_compressed = 0;
+    expr colsT_compressed = 0;
+    for (int icol = length(colsF); icol > 0; --icol) {
+        colsF_compressed = (colsF_compressed + colsF[icol]) * std_alpha;
+        colsT_compressed = (colsT_compressed + colsT[icol]) * std_alpha;
+    }
+    colsF_compressed = (colsF_compressed + catalan_permutation_check_id);
+    colsT_compressed = (colsT_compressed + catalan_permutation_check_id);
+
+    expr colsF_selected = selF * (colsF_selected - std_beta) + std_beta;
+    expr colsT_selected = selT * (colsT_selected - std_beta) + std_beta;
+
+    cols_left = cols_left * (colsT_selected + std_gamma);
+    cols_right = cols_right * (colsF_selected + std_gamma);
+
+}
+
+final function close_catalan_permutation_check() {
+    cols_left === cols_right;
+}
+
+
+    g * c1 = 'g * c1;
+    g * c2 = 'g * c2;
+    g * c3 = 'g * c3;
+
+
+    g * c1 * c2 * c3 = '
+    //                     (colsF_selected + std_gamma)
+    //  gprod === 'gprod * ----------------------------
+    //                     (colsT_selected + std_gamma)
+
+    L1 * 'gprod === 1;
+    gprod * (colsT_selected + std_gamma) === 'gprod * (colsF_selected + std_gamma);
+
+    gprod * colsT1_sele(cted + std_gamma) * (colsT2_selected + std_gamma) === 'gprod * (colsF_selected + std_gamma) * (colsF_selected + std_gamma);
+
+    // L1 * grod === 1;
+    // gprod' * (colsT_selected + std_gamma) === gprod * (colsF_selected + std_gamma);
+}
+
+
+
+
+
+/* match(selector (col),
+         selector_value_1, expr_when_selector_value_is_value_1,
+         selector_value_2, expr_when_selector_value_is_value_2,
+         :
+         selector_value_k, expr_when_selector_value_is_value_k);
+
+*/
+
+col witness sel,x,y;
+
+match(sel,
+      1, x + y,
+      2, 2 * x + y) === 0;
+
+
 function match (col sel, ...) : expr {
 
-        metadata(`match ${icase}`, sel, argc, argv);
+        @match {sel: sel, argc: argc, argv: argv};
 
         if (argc % 2 != 0) {
             error(`match was called with number incorrect ${argc}`);
@@ -72,10 +210,26 @@ function plookup_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
 }
 
 function permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+    // global once col fixed L1 = [1,0...];
     if (!(L1 is col)) {
+        // TODO: verify L1 = [1,0...]
         global col fixed L1 = [1,0...];
     }
 }
+
+function permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+    L1 = search([1,0...]);
+
+    if (!(L1 is col)) {
+        // TODO: verify L1 = [1,0...]
+        global col fixed L1 = [1,0...];
+    }
+}
+
+function permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+    col fixed L1 = [1,0...];
+}
+
 
 constant PUBLIC_TABLE_ADD = 1;
 constant PUBLIC_TABLE_PROD = 2;
@@ -96,7 +250,7 @@ function public_table_prod (prover value, public ptable[][], public rows, challe
     expr rows_values_constraint = 1;
     expr res;
     expr acc_selector = 0;
-    for (int irow = 0; irow < max_rows; ++irow) {
+    for (int irow = max_rows - 1; irow >= 0; --irow) {
 
         // prepare product expression for current row
         // zeta - (t[0] + alpha * t[1] + alpha**2 * t[2] + ..)
@@ -108,7 +262,7 @@ function public_table_prod (prover value, public ptable[][], public rows, challe
         }                                                               // k = 1 :   cexpr = (ptable[2] * alpha) + ptable[1]) * alpha
         cexpr = zeta - (cexpr + ptable[0][irow]);                      //           cexpr = zeta - ((ptable[2] * alpha) + ptable[1]) * alpha + ptable[0])
 
-        expr lexpr;
+        expr lexpr = 1;
         fe lexpr_res = 1;
         for (int j = 0; j < max_rows; ++j) {
             if (irow == j) continue;
@@ -116,7 +270,7 @@ function public_table_prod (prover value, public ptable[][], public rows, challe
             lexpr_res = lexpr_res * (irow - j);   // (irow - 0) * (irow - 1) * .... = result lexpr when irow
         }
         fe lexpr_res_inv = 1 / lexpr_res;
-        acc_selector = acc_select + lexpr * lexpr_res_inv;
+        acc_selector = acc_selector + lexpr * lexpr_res_inv;
 
         // build expression for binary constraint rows_values_constraint = (rows-0)*(rows-1)*(rows-2)* ..... === 0
         rows_values_constraint = rows_values_constraint * (rows - irow);

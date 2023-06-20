@@ -44,6 +44,8 @@ subair                                      { return 'SUBAIR' }
 aggregable                                  { return 'AGGREGABLE' }
 stage                                       { return 'STAGE' }
 
+once                                        { return 'ONCE' }
+final                                       { return 'FINAL' }
 function                                    { return 'FUNCTION' }
 return                                      { return 'RETURN' }
 
@@ -156,21 +158,21 @@ function showcode(title, info) {
     console.log(title+` ${info.last_line}:${info.last_column}`);
 }
 function runtime_expr(value) {
-    let res = { type: 'expr', expr: new Expression() };
+    let res = new Expression();
     if (value.type) {
         delete value.type;
     }
-    res.expr.setRuntime(value);
+    res.setRuntime(value);
     return res;
 }
+
 function insert_expr(e, op, ...values) {
     // let res = e;
     // e.expr = new Expression();
     // console.log(e);
     // console.log(op);
     // console.log(values);
-    let exprs = values.map((x) => x.expr);
-    e.expr.insert.apply(e.expr, [op, ...exprs]);
+    e.insert.apply(e, [op, ...values]);
     return e;
 }
 //         console.log(`STATE ${state} ${(this.terminals_[symbol] || symbol)}`);
@@ -353,13 +355,16 @@ statement_closed
 
 function_definition
     : FUNCTION IDENTIFIER '(' arguments ')' ':' '[' return_type_list ']' '{' statement_block '}'
-        { $$ = { type: 'function_definition', funcname: $2, ...$4, returns: $8, ...$11 }}
+        { $$ = { type: 'function_definition', final: false, funcname: $2, ...$4, returns: $8, ...$11 }}
 
     | FUNCTION IDENTIFIER '(' arguments ')' ':' return_type '{' statement_block '}'
-        { $$ = { type: 'function_definition', funcname: $2, ...$4, returns: $7, ...$9 }}
+        { $$ = { type: 'function_definition', final: false, funcname: $2, ...$4, returns: $7, ...$9 }}
 
     | FUNCTION IDENTIFIER '(' arguments ')' '{' statement_block '}'
-        { $$ = { type: 'function_definition', funcname: $2, ...$4, returns: false, ...$7 }}
+        { $$ = { type: 'function_definition', final: false, funcname: $2, ...$4, returns: false, ...$7 }}
+
+    | FINAL FUNCTION IDENTIFIER '(' arguments ')' '{' statement_block '}'
+        { $$ = { type: 'function_definition', final: true, funcname: $3, ...$5, returns: false, ...$8 }}
     ;
 
 arguments
@@ -467,7 +472,7 @@ statement_no_closed
         { $$ = $1 }
 
     | expression
-        { $$ = $1 }
+        { $$ = {type: 'expr', expr: $1} }
 
     | expression '===' expression
         { $$ = {type: 'constraint', left: $1, right: $3 } }
@@ -573,6 +578,9 @@ codeblock_closed
         { $$ = { type: 'for_in', init: $3, list: $5, statements: $7 } }
 
     | WHILE '(' expression ')' non_delimited_statement
+        { $$ = { type: 'while', condition: $3, statements: $5 } }
+
+    | ONCE non_delimited_statement
         { $$ = { type: 'while', condition: $3, statements: $5 } }
 
     | SWITCH '(' expression ')' case_body
@@ -822,7 +830,7 @@ stage_definition
 
 constraint
     : expression '===' expression
-        { $$ = { type: 'constraint', value: { type:'expr', op: 'sub', values: [$1,$3] , constraint: true }} }
+        { $$ = { type: 'constraint', left: $1, right: $3 } }
     ;
 
 flexible_string
@@ -903,13 +911,13 @@ sequence
         { $$ = {type: 'range_seq', from: $1, to: $3} }
 
     | expression DOTS_RANGE expression ':' expression  %prec DOTS_REPEAT
-        { $$ = {type: 'range_seq', from: $1, to: {times: $5, ...$3}} }
+        { $$ = {type: 'range_seq', from: $1, to: $3, times: $5} }
 
     | expression ':' expression DOTS_RANGE expression %prec EMPTY
-        { $$ = {type: 'range_seq', from: {times: $3, ...$1}, to: $5}}
+        { $$ = {type: 'range_seq', from: $1, to: $5, times: $3}}
 
     | expression ':' expression DOTS_RANGE expression ':' expression %prec DOTS_REPEAT
-        { $$ = {type: 'range_seq', from: {times: $3, ...$1}, to: {times: $7, ...$5}} }
+        { $$ = {type: 'range_seq', from: $1, to: $5, times: $3, toTimes: $7}} }
 
     | sequence DOTS_FILL
         { $$ = {type: 'padding_seq', value: $1} }
@@ -1167,8 +1175,7 @@ expression
         { $$ = runtime_expr({...$1, dec: 'post'}) }
 
     | NUMBER %prec EMPTY
-        { $$ = {type: 'expr', expr: new Expression() };
-          $$.expr.setValue(BigInt($1)) }
+        { $$ = new Expression(); $$.setValue(BigInt($1)) }
 
     | flexible_string %prec EMPTY
         { $$ = runtime_expr({...$1, op: 'string'}) }
@@ -1281,17 +1288,17 @@ array_index
 
 name_reference
     : IDENTIFIER '.' IDENTIFIER
-        { $$ = { type: 'expr', op: 'reference', next: false, subair: 'this', namespace: $1, name: $3 } }
+        { $$ = { type: 'expr', op: 'reference', next: false, name: $1+'.'+$3 } }
 
     | IDENTIFIER '::' IDENTIFIER '.' IDENTIFIER
-        { $$ = { type: 'expr', op: 'reference', next: false, subair: $1, namespace: $3, name: $5 } }
+        { $$ = { type: 'expr', op: 'reference', next: false, name: $1+'::'+$3+'.'+$5 } }
 
     | IDENTIFIER
-        { $$ = { type: 'expr', op: 'reference', next: false, subair: 'this', namespace: 'this', name: $1 } }
+        { $$ = { type: 'expr', op: 'reference', next: false, name: $1 } }
 
     | IDENTIFIER '::' IDENTIFIER
-        { $$ = { type: 'expr', op: 'reference', next: false, subair: $1, namespace: '', name: $3 } }
+        { $$ = { type: 'expr', op: 'reference', next: false, name: $1+'::'+$3 } }
 
     | '::' IDENTIFIER
-        { $$ = { type: 'expr', op: 'reference', next: false, subair: 'this', namespace: '', name: $2 } }
+        { $$ = { type: 'expr', op: 'reference', next: false, name: '::'+$2 } }
     ;

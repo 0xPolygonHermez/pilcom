@@ -44,6 +44,9 @@ module.exports = class References {
 
     declare (name, type, lengths = [], data = null) {
         // console.log(`DECLARE_REFERENCE ${name} ${type} []${lengths.length} #${this.scope.deep}`);
+        assert(typeof name === 'string');
+        assert(!name.includes('::object'));
+        assert(!name.includes('.object'));
         let size, array;
         if (lengths && lengths.length) {
             array = new Multiarray(lengths);
@@ -85,8 +88,11 @@ module.exports = class References {
 
     get (name, indexes = []) {
         const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        // console.log(`GET ${instance.constructor.name}.get(${info.locator}, ${info.offset})`);
         return instance.get(info.locator + info.offset);
+    }
+    getIdRefValue(type, id) {
+        const tdata = this._getRegisteredType(type);
+        return tdata.instance.getTypedValue(id);
     }
     getLabel(type, id, options) {
         const instance = this.types[type].instance;
@@ -102,13 +108,21 @@ module.exports = class References {
 
         if (typeof indexes === 'undefined') indexes = [];
 
-        const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        let tvalue = instance.getTypedValue(info.locator + info.offset, info.type);
+        const [instance, info, def] = this._getInstanceAndLocator(name, indexes);
+        let tvalue;
+        if (info.array) {
+            // array info, could not be resolved
+            tvalue = {type: info.type ?? def.type, id: info.locator + info.offset };
+        } else {
+            // no array could be resolved
+            tvalue = instance.getTypedValue(info.locator + info.offset, info.type);
+        }
         if (typeof info.row !== 'undefined') {
             tvalue.row = info.row;
         }
-
-        tvalue.id = info.locator;
+        if (!info.array) {
+            tvalue.id = info.locator;
+        }
         if (options.full) {
             tvalue.locator = info.locator;
             tvalue.instance = instance;
@@ -137,7 +151,8 @@ module.exports = class References {
         return this._getInstanceAndLocator(name, indexes);
     }
     getDefinition(name) {
-        let names = Array.isArray(name) ? name : [name];
+        // debugger;
+        let names = this.context.getNames(name);
         let def;
         for (const name of names) {
             def = this.definitions[name];
@@ -153,7 +168,6 @@ module.exports = class References {
         // TODO: partial access !!!
         // TODO: control array vs indexes
         const tdata = this._getRegisteredType(def.type);
-
         if (def.array !== false) {
             // TODO ROW ACCESS
             const typedOffset = def.array.getIndexesTypedOffset(indexes);
@@ -165,7 +179,7 @@ module.exports = class References {
                 res.locator += res.offset;
             }
             res.offset = 0;
-            return [tdata.instance, res];
+            return [tdata.instance, res, def];
         }
         const indexLengthLimit = tdata.instance.rows ? 1 : 0;
         if (indexes.length > indexLengthLimit) {
@@ -175,7 +189,7 @@ module.exports = class References {
         if (indexes.length > 0) {
             extraInfo.row = indexes[0];
         }
-        return [tdata.instance, {locator: def.locator, ...extraInfo}];
+        return [tdata.instance, {locator: def.locator, ...extraInfo}, def];
     }
     setReference (name, value) {
         let dest = this.getDefinition(name);
@@ -185,7 +199,7 @@ module.exports = class References {
             assert(!_value.next);
             if (_value.op === 'reference') {
                 assert(!_value.array);
-                const src = this.getDefinition(this.context.getNames(_value));
+                const src = this.getDefinition(_value.name);
                 if (src.array) {
                     const __array = src.array.getIndexesTypedOffset(_value.__indexes);
                     dest.array = __array.array;
@@ -204,7 +218,6 @@ module.exports = class References {
                 dest.array = _value.array;
             }
         } else {
-            console.log(_value);
             assert(_value.type == 1);
             assert(!_value.__next);
             dest.locator = _value.id;

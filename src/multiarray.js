@@ -1,3 +1,5 @@
+
+const {cloneDeep} = require('lodash');
 module.exports = class Multiarray {
     constructor (lengths, debug) {
         this.debug = debug || '';
@@ -33,6 +35,17 @@ module.exports = class Multiarray {
     createSubArray(dim) {
         return new Multiarray(this.lengths.slice(-dim));
     }
+    applyIndex(obj, indexes) {
+        const res = this.getIndexesTypedOffset(indexes);
+        let dup = cloneDeep(obj);
+        if (dup.id) {
+            dup.id = dup.id + res.offset;
+        }
+        if (dup.array) {
+            dup.array = res.array;
+        }
+        return dup;
+    }
     getIndexesTypedOffset(indexes) {
         if (indexes === null || typeof indexes === 'undefined') {
             // TODO: review
@@ -44,8 +57,6 @@ module.exports = class Multiarray {
             offset += this.offsets[idim] * Number(indexes[idim]);
         }
         if (offset >= this.size) {
-            console.log(indexes);
-            console.log(this);
             throw Error(`Internal error on variable index access index:${offset} valid range:[0-${this.size-1}]`);
         }
         const dim = this.offsets.length - dims;
@@ -76,7 +87,7 @@ module.exports = class Multiarray {
     getSize() {
         return this.size;
     }
-    getLength(dim) {
+    getLength(dim = 0) {
         return this.lengths[dim] ?? 0;
     }
 }

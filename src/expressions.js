@@ -85,9 +85,15 @@ module.exports = class Expressions {
         }
         return this.router.go([e, fr]);
     }
+    checkExpression(e) {
+        if (e.expr || !(e instanceof Expression)) {
+            console.log(e)
+            throw new Error(`Invalid eval argument, must be an Expression`);
+        }
+        return e;
+    }
     eval(e) {
-        let expr = e.expr;
-        return expr.eval();
+        return this.checkExpression(e).eval();
     }
     evalOperand(operand, values) {
         switch (operand.type) {
@@ -99,8 +105,8 @@ module.exports = class Expressions {
         console.log(operand);
         EXIT_HERE;
     }
-    evalRuntime(e, parent) {
-        return this.router.go([{...e, parent}, this.Fr]);
+    evalRuntime(e) {
+        return this.router.go([e, this.Fr]);
     }
     _evalString(e) {
         return e.value;
@@ -124,9 +130,15 @@ module.exports = class Expressions {
     _evalCall(e) {
         return this.parent.execCall(e);
     }
+    _evalIdref(e) {
+        if (e.array) {
+            return e;
+        }
+        return this.evalReferenceValue(this.references.getIdRefValue(e.refType, e.id));
+    }
     evalReference(e) {
+        const ref = this.evalReferenceValue(e);
         console.log(ref);
-        const ref = this.resolveReference(e);
         EXIT_HERE;
     }
     evalReferenceValue(ref) {
@@ -154,6 +166,10 @@ module.exports = class Expressions {
                 res = { op: 'number', value: BigInt(ref.value) };
                 break;
             case 'constant':
+                if (!res.array) {
+                    res = BigInt(res.value);
+                }
+                break;
             case 'int':
                 res = BigInt(ref.value);
                 break;
@@ -163,7 +179,6 @@ module.exports = class Expressions {
 
             default:
                 console.log(ref);
-                console.log('============');
                 throw new Error(`Invalid reference type: ${ref.type}`);
         }
         return res;
@@ -201,7 +216,7 @@ module.exports = class Expressions {
         return this.references.getLabel(type, id, options);
     }
     resolveReference(e) {
-        const names = this.context.getNames(e);
+        const names = this.context.getNames(e.name);
 
         let options = {};
         if (e.inc === 'pre') {
@@ -227,7 +242,7 @@ module.exports = class Expressions {
         return res;
     }
     getReferenceInfo(e, options) {
-        const names = this.context.getNames(e.getAloneOperand());
+        const names = this.context.getNames(e.getAloneOperand().name);
         return this.references.getTypeInfo(names, e.__indexes, options);
     }
     e2num(e, s, title = '') {
@@ -238,13 +253,16 @@ module.exports = class Expressions {
         return Number(res);
     }
     e2types(e, s, title, types, toBigInt = true) {
-        const res = e.expr && e.expr instanceof Expression ? e.expr.eval() : e;
+        let res = e;
+        if (res instanceof Expression) {
+            res = e.eval();
+        }
+        // const res = e.expr && e.expr instanceof Expression ? e.expr.eval() : e;
         const restype = typeof res;
         if (types.includes(restype)) {
             return toBigInt && restype === 'number' ? BigInt(res) : res;
         }
 
-        e.expr.dump();
         this.error(s, (title ? ' ':'') + `is not constant expression (${restype}) (2)`);
     }
     e2value(e, s, title = '') {
@@ -276,7 +294,6 @@ module.exports = class Expressions {
         return this.packedIds[id];
     }
     instance(e) {
-        const expr = (e.expr && e.expr instanceof Expression) ? e.expr : e;
-        return expr.instance();
+        return e.instance();
     }
 }

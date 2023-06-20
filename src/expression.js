@@ -81,7 +81,6 @@ module.exports = class Expression {
     }
 
     next(dnext) {
-        // console.log(dnext);
         for (let stack of this.stack) {
             for (let ope of stack.operands) {
                 switch (ope.type) {
@@ -90,9 +89,7 @@ module.exports = class Expression {
                         break;
                     case OP_ID_REF:
                         const pnext = Number(ope.next);
-                        // console.log([ope.next, pnext]);
                         ope.next = ope.next ? pnext + Number(dnext) : Number(dnext);
-                        // console.log(`UPDATE NEXT(${ope.refType}) ${pnext} => ${ope.next}`);
                         break;
                     case OP_RUNTIME:
                         throw new Error(`Instance first do next operation`);
@@ -113,8 +110,6 @@ module.exports = class Expression {
             this.stack[index + delta] = this.stack[index];
         }
         for (let index = 0; index < delta; ++index) {
-            // console.log(`this.stack[${index} + ${pos}] = cloneDeep(e.stack[${index}])`);
-            // console.log(e.stack[index]);
             this.stack[index + pos] = this.cloneDeep(e.stack[index]);
         }
         this.fixedRowAccess = this.fixedRowAccess || e.fixedRowAccess;
@@ -169,7 +164,6 @@ module.exports = class Expression {
 
     setRuntime (value) {
         if (value.type) {
-            // console.log(value);
             throw new Error(`setRuntime value has a not allowed type property`);
         }
         this._set({type: OP_RUNTIME, ...value});
@@ -290,7 +284,7 @@ module.exports = class Expression {
                     se.operands[index] = {type: OP_VALUE, value: value};
                     continue;
                 }
-                if (typeof value === 'object' && value.type && ['witness', 'fixed', 'im', 'public'].includes(value.type)) {
+                if (typeof value === 'object' && value.type && ['constant','witness', 'fixed', 'im', 'public'].includes(value.type)) {
                     let ope = {};
                     if (value.array) {
                         // incomplete reference, is a subarray.
@@ -301,7 +295,11 @@ module.exports = class Expression {
                         ope.type = OP_ID_REF;
                         ope.array = false;
                     }
-                    ope.id = typeof value.value === 'object' ? value.value.id : value.value;
+                    if (typeof value.value === 'undefined') {
+                        ope.id = value.id;
+                    } else {
+                        ope.id = typeof value.value === 'object' ? value.value.id : value.value;
+                    }
                     ope.refType = value.type;
                     if (value.next) ope.next = value.next;
                     if (value.prior) ope.next = value.prior;
@@ -311,6 +309,7 @@ module.exports = class Expression {
                     se.operands[index] = ope;
                     continue;
                 }
+                console.log(se.operands[index]);
                 throw new Error('Invalid value');
             }
         }
@@ -480,10 +479,21 @@ module.exports = class Expression {
             return true;
         }
 
-        // TODO: but must be th
+        // TODO: be carrefull with next, prior, inc, dec
         // x - x = 0 ???
         // (x - (- y)) = x + y
         // (x + (- y)) = x - y
+        // v1 * x + v2 * x = (v1+v2) * x
+        // v1 * x - v2 * x = (v1-v2) * x
+
+        // TODO: binary cols optimizations, each kind of optimization has a key to enable/disable
+        // this specific optimization.
+        // BC(y) ==> y * x + (1 - y) * z = y * (z - x) + x
+
+
+        // TODO: evaluate all expressions with different prime values (valid values as binary constraints 🤔)
+        // detect same expressions (as bigints or as fe, bigints same implies fe same 🤔).
+        // After, check matchs with other 100% sure method.
 
         return false;
     }
@@ -591,8 +601,8 @@ module.exports = class Expression {
         if (e.op == 'reference') {
             return this.evaluateReference(e);
         }
-        if (e.type === 'expr') {
-            return e.expr.eval();
+        if (e instanceof Expression) {
+            return e.eval();
         }
         console.log(e);
         EXIT_HERE;

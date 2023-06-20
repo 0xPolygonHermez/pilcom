@@ -1,3 +1,4 @@
+const {assert} = require("chai");
 const References = require("./references.js");
 const Expressions = require("./expressions.js");
 const Router = require("./router.js");
@@ -22,22 +23,48 @@ module.exports = class Context {
     getNamespace() {
         return this.namespace;
     }
-    getNames(e) {
-        return [e.name, this.getFullName(e)];
-    }
-    getFullName(e) {
-        const _namespace = (((e.namespace ?? 'this') === 'this') ? this.namespace : e.namespace);
-        const _subair = (((e.subair ?? 'this') === 'this') ? this.subair : e.subair);
+    getNames(name) {
+        if (typeof name.name !== 'undefined') {
+            console.log(name);
+            throw new Error('Invalid name used on getNames');
+        }
 
-        let name = '';
+        let names = typeof name === 'string' ? [name]:name;
+        if (!Array.isArray(names) || names.length !== 1) {
+            return names;
+        }
+        return [names[0], this.getFullName(names[0])];
+    }
+    decodeName(name) {
+        const regex = /((?<subair>\w*)::)?((?<namespace>\w*)\.)?(?<name>\w+)/gm;
+
+        let m;
+
+        while ((m = regex.exec(name)) !== null) {
+            // This is necessary to avoid infinite loops with zero-width matches
+            if (m.index === regex.lastIndex) {
+                regex.lastIndex++;
+            }
+            return [m.groups.subair, m.groups.namespace, m.groups.name];
+        }
+    }
+    getFullName(name) {
+        if (typeof name !== 'string') {
+            console.log(name);
+            throw new Error(`getFullName invalid argument`);
+        }
+        const parts = this.decodeName(name);
+        const [_subair, _namespace, _name] = [parts[0] ?? this.subair, parts[1] ?? this.namespace, parts[2]];
+
+        let fullname = '';
         if (_subair !== '') {
-            name += _subair + '::';
+            fullname += _subair + '::';
         }
         if (_namespace !== '') {
-            name = _namespace + '.';
+            fullname = _namespace + '.';
         }
-        name += e.name;
-        return name;
+        fullname += _name;
+        return fullname;
     }
     push(namespace, subair) {
         this.stack.push([this.subair, this.namespace]);

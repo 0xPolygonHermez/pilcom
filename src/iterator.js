@@ -11,13 +11,8 @@ module.exports = class Iterator {
         }
         this.index = 0;
         this.expr = expr.instance();
-        this.reference = this.expr.cloneAloneOperand();
-        const rinfo = Expression.parent.resolveReference(this.reference);
-        //  (rinfo.dim - (this.reference.dim ?? 0)) > 0
-        this.reference.dim = (this.reference.dim ?? 0) + 1;
-        this.deep = (this.reference.__indexes ?? []).length;
-        this.reference.__indexes = [...(this.reference.__indexes ?? []),this.index];
-        this.count = rinfo.lengths[0];
+        this.reference = this.expr.getReference();
+        this.count = this.reference.array.getLength(0);
     }
     goFirst() {
         this.index = 0;
@@ -46,9 +41,7 @@ module.exports = class Iterator {
     }
 
     getValue() {
-        // console.log(['Iterator::getValue', this.index, this.deep, this.count]);
-        this.reference.__indexes[this.deep] = this.index;
-        return Expression.parent._evalReference(this.reference);
+        return this.reference.array.applyIndex(this.reference, [this.index]);
     }
 
     *[Symbol.iterator]() {

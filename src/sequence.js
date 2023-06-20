@@ -1,6 +1,7 @@
 const chai = require("chai");
 const assert = chai.assert;
 const Router = require("./router.js");
+const Expression = require("./expression.js");
 
 const MAX_ELEMS_GEOMETRIC_SEQUENCE = 300;
 class SequencePadding {
@@ -64,7 +65,8 @@ module.exports = class Sequence {
         return this.size;
     }
     _sizeOf(e) {
-        return this.router.go(e, '_sizeOf');
+        if (e instanceof Expression) return 1;
+        else return this.router.go(e, '_sizeOf');
     }
     _sizeOfSeqList(e) {
         let size = 0;
@@ -75,9 +77,6 @@ module.exports = class Sequence {
     }
     _sizeOfSequence(e) {
         return this._sizeOfSeqList(e);
-    }
-    _sizeOfExpr(e) {
-        return 1
     }
     _sizeOfRepeatSeq(e) {
         const times = Number(this.parent.getExprNumber(e.times));
@@ -97,8 +96,8 @@ module.exports = class Sequence {
         return this.setPaddingSize(this._sizeOf(e.value));
     }
     getRangeSeqInfo(e) {
-        const fromTimes = e.from.times ? Number(this.e2num(e.from.times)): 1;
-        const toTimes = e.to.times ? Number(this.e2num(e.to.times)): 1;
+        const fromTimes = e.times ? Number(this.e2num(e.times)): 1;
+        const toTimes = e.toTimes ? Number(this.e2num(e.toTimes)): fromTimes;
         if (fromTimes !== toTimes) {
             throw new Error(`In range sequence, from(${fromTimes}) and to(${toTimes}) must be same`);
         }
@@ -113,9 +112,9 @@ module.exports = class Sequence {
                         (tnTimes === false ? '':` and tn(${tbTimes}`)+'must be same');
         }
         // console.log(e);
-        const t1 = this.e2num(e.t1.type === 'expr' ? e.t1 : e.t1.value);
-        const t2 = this.e2num(e.t2.type === 'expr' ? e.t2 : e.t2.value);
-        const tn = e.tn === false ? false : this.e2num(e.tn.type === 'expr' ? e.tn : e.tn.value);
+        const t1 = this.e2num(e.t1 instanceof Expression ? e.t1 : e.t1.value);
+        const t2 = this.e2num(e.t2 instanceof Expression ? e.t2 : e.t2.value);
+        const tn = e.tn === false ? false : this.e2num(e.tn instanceof Expression ? e.tn : e.tn.value);
         if (t1 === t2) {
             throw new Error(`In term sequence, t1(${t1}), t2(${t2}) must be different`);
         }
@@ -313,6 +312,9 @@ module.exports = class Sequence {
         }
     }
     _extend(e) {
+        if (e instanceof Expression) {
+            return this._extendExpr(e);
+        }
         return this.router.go(e, '_extend');
     }
     _extendSeqList(e) {

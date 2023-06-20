@@ -26,11 +26,11 @@ namespace Expressions:: {
         bc = bc * 3;
     }
     for (int index in [3,5,7,11,13,17]) {
-       x1[index] === 0;
+       x1[index] === 18;
 
     }
     for (int index in PSIX) {
-       x1[10+index] === 0;
+       x1[10+index] === 40;
     }
     for (int i = 0; i < 2; ++i) {
         for (int j = 0; j < 6; ++j) {
@@ -38,6 +38,6 @@ namespace Expressions:: {
         }
     }
     for (int i = 0; i < 2; ++i) {
-        for (int value in MATRIX[i]) x1[0] === value;
+        for (int value in MATRIX[i]) x1[i] === value;
     }
 }

@@ -1,0 +1,54 @@
+subair Functions(2**23);
+
+function f1 (col &p1) {
+    p1 === 314;
+}
+
+function f2 (col p1) {
+    p1 === 314;
+}
+
+function f1v (col &p1[]) {
+    for (int index = 0; index < length(p1); ++index) {
+        p1[index] === 31416;
+    }
+}
+
+function f1v_ (col &p1[]) {
+    for (col &p in p1) {
+        p === 31416;
+    }
+}
+namespace Functions:: {
+
+    col witness c1,c2;
+    col witness vec[10];
+    /*
+    int values[5];
+    int matrix[2][3];
+
+    for (int i = 0; i < length(values); ++i) {
+        values[i] = 100 + i;
+    }
+
+    for (int i = 0; i < length(matrix); ++i) {
+        for (int j = 0; j < length(matrix[i]); ++j) {
+            matrix[i][j] = 1000 + 100 * i + j;
+        }
+    }*/
+
+    f1(c1);
+    f1(c2);
+    f1(vec[3]);
+    f1v(vec);
+
+    for (col &p in [...vec]) {
+        p === 300;
+    }
+
+    for (col &p in vec) {
+        p === 301;
+    }
+
+    f1v_(vec);
+}

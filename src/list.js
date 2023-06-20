@@ -26,6 +26,9 @@ module.exports = class List {
         return values;
     }
     _extend(e) {
+        if (e instanceof Expression) {
+            return this._extendExpr(e);
+        }
         return this.router.go(e);
     }
     _extendAppend(e) {
@@ -54,8 +57,8 @@ module.exports = class List {
     }
     _extendAppendReferences(e) {
         let values = [];
-        const info = Expression.parent.getReferenceInfo(e.value.expr);
-        let element = e.value.expr.instance().getAloneOperand();
+        const info = Expression.parent.getReferenceInfo(e.value);
+        let element = e.value.instance().getAloneOperand();
         if (!element.array || element.array.dim < 1) {
             throw new Error(`Could not extend and append a non array element`)
         }
@@ -79,10 +82,11 @@ module.exports = class List {
     }
     _resolve(e) {
         if (this.reference) {
-            const expr = e.expr.instance();
+            const expr = e.instance();
             return expr;
         }
-        return this.parent.resolveExpr(e.value);
+        return e.eval();
+        // return this.parent.resolveExpr(e.value);
     }
     _resolveArray(e) {
         if (!this.reference) {
