@@ -39,7 +39,6 @@ module.exports = class Function {
                 if (arg.type === 'col') {
                     type = value.type;
                 }
-                console.log(type);
                 this.parent.declareReference(name, type, [], {}, value);
             }
             ++iarg;

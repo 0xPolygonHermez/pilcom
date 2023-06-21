@@ -550,6 +550,13 @@ module.exports = class Processor {
     execCode(s) {
         return this.execute(s.statements,`CODE ${this.sourceRef}`);
     }
+    execOnce(s) {
+        if (!s.executed) {
+            s.executed = true;
+            return this.execute(s.statements,`CODE ${this.sourceRef}`);
+        }
+        console.log(`Ignore once section because it has already executed ${s.debug}`);
+    }
     execConstraint(s) {
         if (this.sourceRef === 'functions_cols.pil:8') {
             s.left.dump(this.sourceRef);
