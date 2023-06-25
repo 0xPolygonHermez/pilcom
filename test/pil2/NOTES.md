@@ -392,3 +392,10 @@ while (params(e) > 0) {
 - Deferred temporal polynomials
   - unitialized (index, single) - manually tested
   - multiple initialization (index, single) - manually tested
+
+## NOTES
+Stage as label, backend translate to stage.
+  - 0 - fixed
+  - 1 - witness
+  - 2 - lookups
+  - 3 - grandpols

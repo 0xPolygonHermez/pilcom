@@ -1,0 +1,35 @@
+subair BuiltIn(2**23);
+
+function func3(col x[], int len) {
+    assert(length(x) == len);
+}
+
+namespace BuiltIn:: {
+
+    constant N_MAX = 32;
+    constant PSIX[6] = [2, 3, 5, 7, 11, 13];
+    constant MATRIX[2][8] = [[10,11,12,13,14,15,16,17], [20,21,22,23,24,25,26,27]];
+    col witness x1[N_MAX];
+    col witness x2[2*N_MAX];
+
+    int bc = 4;
+    col tmp = 0;
+    expr myfirstexpr = bc * x1[0]'2;
+
+
+    assert(length(N_MAX) == 0);
+    assert(length(PSIX) == 6);
+    assert(length(PSIX[3]) == 0);
+    assert(length(MATRIX) == 2);
+    assert(length(MATRIX[0]) == 8);
+    assert(length(MATRIX[1]) == 8);
+    assert(length(bc) == 0);
+    assert(length(tmp) == 0);
+    assert(length(myfirstexpr) == 0);
+    assert(length(x1) == N_MAX);
+
+    func3(x1, N_MAX);
+    func3(x2, 2 * N_MAX);
+
+    assert(length("HELLO") == 5);
+}

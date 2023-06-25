@@ -28,8 +28,8 @@ module.exports = class Scope {
         console.log(`DEFINE VAR ${name} ${value.value}`);
         this.references.set(name, { type: 'var', value: value.value, scope: this.deep });
     }*/
-    declare (name, ref) {
-        this.shadows[this.deep][name] = ref;
+    declare (name, type, ref) {
+        this.shadows[this.deep][name] = {type, ref};
         return this.deep;
     }
 /*    __set(name, value) {
@@ -41,19 +41,23 @@ module.exports = class Scope {
         console.log(`SET VAR ${name} ${value}`);
         this.references.set(name, ref);
     }*/
-    pop () {
+    pop (excludeTypes = []) {
         if (this.deep < 1) {
             throw new Error('Out of scope');
         }
         const shadows = this.shadows[this.deep];
         for (const name in shadows) {
-            const shadow = shadows[name];
-            if (shadow === false) {
-                // console.log(`UNSET VAR ${name}`);
-                this.references.unset(name);
+            const exclude = excludeTypes.includes(shadows[name].type);
+            if (exclude) console.log(`Excluding from this scope (${name})....`);
+            if (shadows[name].ref === false) {
+                if (!exclude) this.references.unset(name);
             } else {
-                // console.log(`SET VAR ${name} ${shadows[name].value}`);
-                this.references.set(name, shadows[name]);
+                // I could not 'update' reference name, because was an excluded type. This situation
+                // was an error because could exists same name in scope linked.
+                if (exclude) {
+                    throw new Error(`Excluded type ${shadows[name].type} has shadow reference called ${name}`);
+                }
+                this.references.set(name, shadows[name].ref);
             }
         }
         this.shadows[this.deep] = {};

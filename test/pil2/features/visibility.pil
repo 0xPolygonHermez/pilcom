@@ -1,0 +1,13 @@
+subair Visibility(2**23);
+
+
+function sum(int a, int b) : int {
+    return a + b; //  + c;
+}
+
+namespace Visibility:: {
+
+    int c = 13;
+    println(sum(10, 20));
+    println(sum(10, c));
+}

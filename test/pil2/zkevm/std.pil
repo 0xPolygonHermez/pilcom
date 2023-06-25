@@ -16,12 +16,99 @@ permutation_check(selF,
                   [P_LAST, P_OPCODE, BYTE_2A, BYTE, P_CIN, P_USE_CARRY, P_C, P_COUT]);
 */
 
-function permutation_check(col selF, expr colsF[], col selT, expr colsT[]) {
-    // TODO: use specific name, not match with other challenge
-    once global challenge std_alpha;
-    once global challenge std_beta;
-    once global challenge std_gamma;
+function init_challenges(int lookup)
+{
+    once {
+        global challenge std_alpha stage(2);
+        global challenge std_beta stage(2);
+        global challenge std_gamma stage(3);
+    }
+    if (lookup) {
+        once global challenge std_delta stage(3);
+    }
+}
 
+function unbalanced_range_check( expr colF, int from, int to) {
+    init_challenges(1);
+
+    col witness RANGE = [from..to];
+
+    // TODO: optimize to put only once this constraint if witness col, if cols are fixed
+    // check on compilation time, constraint not needed.
+    // selF * (1 - selF) === 0;
+    // selT * (1 - selT) === 0;
+
+    col fixed L1 = [1,0...]; // compiler optimize and only exists one L1
+
+//    @lookup_check {h1:h1, h2:h2, colsT: colsT_selected, colsF: colsF_selected, gprod: gprod };
+
+    @lookup_check {h1, h2, colsT: colsT_selected, colsF: colsF_selected, gprod};
+
+    // Define h1,h2 polynomials
+    col witness h1 stage(2);
+    col witness h2 stage(2);
+
+    // TODO: allow use defined constants as stage id.
+    col witness gprod stage(3);
+
+    //                              (1 + gamma) * (f + delta) * (delta*(1 + gamma) + range + gamma*range')
+    //  gprod' === gprod * ------------------------------------------------------------------------------------
+    //                       (delta*(1 + gamma) + h1 + gamma*h2) * (delta*(1 + gamma) + h2 + gamma*h1')
+
+
+
+    L1 * gprod === 1;
+    gprod' * (std_delta*(1 + std_gamma) + h1 + std_gamma*h2) * (std_delta*(1 + std_gamma) + h2 + std_gamma*h1') === gprod * (1 + std_gamma) * (colsF_selected + std_delta) * (std_delta*(1 + std_gamma) + colsT_selected + std_gamma*colsT_selected');
+}
+
+function lookup_check(col selF, expr colsF[], col selT, expr colsT[]) {
+    init_challenges(1);
+    if (length(colsF) != length(colsT)) {
+        error(`colsF and colsT must be same dimensions`);
+    }
+
+    // TODO: optimize to put only once this constraint if witness col, if cols are fixed
+    // check on compilation time, constraint not needed.
+    selF * (1 - selF) === 0;
+    selT * (1 - selT) === 0;
+
+    col fixed L1 = [1,0...]; // compiler optimize and only exists one L1
+
+    // global is visible inside function vs static
+    expr colsF_compressed = 0;
+    expr colsT_compressed = 0;
+    for (int icol = length(colsF) - 1; icol > 0; --icol) {
+        colsF_compressed = (colsF_compressed + colsF[icol]) * std_alpha;
+        colsT_compressed = (colsT_compressed + colsT[icol]) * std_alpha;
+    }
+    colsF_compressed = (colsF_compressed + colsF[0]);
+    colsT_compressed = (colsT_compressed + colsT[0]);
+
+    expr colsT_selected = selT * (colsT_compressed - std_beta) + std_beta;
+    expr colsF_selected = selF * (colsF_compressed - colsT_selected) + colsT_selected;
+
+//    @lookup_check {h1:h1, h2:h2, colsT: colsT_selected, colsF: colsF_selected, gprod: gprod };
+
+    @lookup_check {h1, h2, colsT: colsT_selected, colsF: colsF_selected, gprod};
+
+    // Define h1,h2 polynomials
+    col witness h1 stage(2);
+    col witness h2 stage(2);
+
+    // TODO: allow use defined constants as stage id.
+    col witness gprod stage(3);
+
+    //                              (1 + gamma) * (f + delta) * (delta*(1 + gamma) + t + gamma*t')
+    //  gprod' === gprod * ------------------------------------------------------------------------------------
+    //                       (delta*(1 + gamma) + h1 + gamma*h2) * (delta*(1 + gamma) + h2 + gamma*h1')
+
+    L1 * gprod === 1;
+    gprod' * (std_delta*(1 + std_gamma) + h1 + std_gamma*h2) * (std_delta*(1 + std_gamma) + h2 + std_gamma*h1') === gprod * (1 + std_gamma) * (colsF_selected + std_delta) * (std_delta*(1 + std_gamma) + colsT_selected + std_gamma*colsT_selected');
+}
+
+function multiset_check(col selF, expr colsF[], col selT, expr colsT[]) {
+    // TODO: use specific name, not match with other challenge
+    init_challenges(0);
     if (length(colsF) != length(colsT)) {
         error(`colsF and colsT must be same dimensions`);
     }
@@ -46,7 +133,8 @@ function permutation_check(col selF, expr colsF[], col selT, expr colsT[]) {
     expr colsF_selected = selF * (colsF_compressed - std_beta) + std_beta;
     expr colsT_selected = selT * (colsT_compressed - std_beta) + std_beta;
 
-    col witness gprod;
+    // TODO: allow use defined constants as stage id.
+    col witness gprod stage(3);
 
     //                     (colsF_selected + std_gamma)
     //  gprod === 'gprod * ----------------------------
@@ -54,59 +142,6 @@ function permutation_check(col selF, expr colsF[], col selT, expr colsT[]) {
 
     L1 * 'gprod === 1;
     gprod * (colsT_selected + std_gamma) === 'gprod * (colsF_selected + std_gamma);
-
-    // L1 * grod === 1;
-    // gprod' * (colsT_selected + std_gamma) === gprod * (colsF_selected + std_gamma);
-}
-
-function catalan_permutation_check(col selF, expr colsF[], col selT, expr colsT[]) {
-    // once global catalan_permutation_check_id = 0;
-    once global int catalan_permutation_check_id = 0;
-
-    catalan_permutation_check_id = catalan_permutation_check_id + 1;
-
-    // TODO: use specific name, not match with other challenge
-    once {
-        global challenge std_alpha;
-        global challenge std_beta;
-        global challenge std_gamma;
-
-        global col witness gprod;
-        global expr cols_left = gprod;
-        global expr cols_right = 'gprod;
-    }
-
-    if (length(colsF) != length(colsT)) {
-        error(`colsF and colsT must be same dimensions`);
-    }
-
-    // TODO: optimize to put only once this constraint if witness col, if cols are fixed
-    // check on compilation time, constraint not needed.
-    selF * (1 - selF) === 0;
-    selT * (1 - selT) === 0;
-
-    col fixed L1 = [1,0...]; // compiler optimize and only exists one L1
-
-    // global is visible inside function vs static
-    expr colsF_compressed = 0;
-    expr colsT_compressed = 0;
-    for (int icol = length(colsF); icol > 0; --icol) {
-        colsF_compressed = (colsF_compressed + colsF[icol]) * std_alpha;
-        colsT_compressed = (colsT_compressed + colsT[icol]) * std_alpha;
-    }
-    colsF_compressed = (colsF_compressed + catalan_permutation_check_id);
-    colsT_compressed = (colsT_compressed + catalan_permutation_check_id);
-
-    expr colsF_selected = selF * (colsF_selected - std_beta) + std_beta;
-    expr colsT_selected = selT * (colsT_selected - std_beta) + std_beta;
-
-    cols_left = cols_left * (colsT_selected + std_gamma);
-    cols_right = cols_right * (colsF_selected + std_gamma);
-
-}
-
-final function close_catalan_permutation_check() {
-    cols_left === cols_right;
 }
 
 /*

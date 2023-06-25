@@ -1,0 +1,93 @@
+subair BuiltIn(2**23);
+
+function func1(col x) {
+    assert(is_array(x) == 0);
+    assert(is_array(x1) == 0);
+    assert(is_array(PSIX) == 1);
+    assert(is_array(bc) == 0);
+    assert(is_array(tmp) == 0);
+    assert(is_array(MATRIX) == 1);
+    assert(is_array(MATRIX[0]) == 1);
+    assert(is_array(MATRIX[2]) == 0);
+    assert(is_array(w1) == 0);
+    assert(is_array(w2) == 0);
+    assert(is_array(w3) == 0);
+    assert(is_array(k1) == 0);
+    assert(is_array(k2) == 0);
+    assert(is_array(k3) == 0);
+    assert(is_array(f1) == 0);
+    assert(is_array(f2) == 0);
+    assert(is_array(f3) == 0);
+    assert(is_array(gw1) == 0);
+    assert(is_array(gw2) == 0);
+    assert(is_array(gk1) == 1);
+    assert(is_array(gk2) == 1);
+    assert(is_array(gf1) == 0);
+    assert(is_array(gf2) == 0);
+}
+function func2(col x[]) {
+    assert(is_array(x) == 1);
+    assert(is_array(x[0]) == 0);
+    assert(is_array(x1) == 0);
+}
+
+namespace BuiltIn:: {
+
+    constant N_MAX = 32;
+    constant PSIX[6] = [2, 3, 5, 7, 11, 13];
+    constant MATRIX[2][8] = [[10,11,12,13,14,15,16,17], [20,21,22,23,24,25,26,27]];
+    col witness x1[N_MAX];
+
+    col witness w1,w2;
+    col fixed f1,f2;
+    col k1,k2;
+
+    global col witness gw1,gw2;
+    global col fixed gf1,gf2;
+    global col gk1[2],gk2[2];
+
+    int bc = 1;
+    col tmp = 0;
+    expr myfirstexpr = bc * x1[0]'2;
+
+    assert(is_array(N_MIN) == 0);
+    assert(is_array(N_MAX) == 0);
+    assert(is_array(PSIX) == 1);
+    assert(is_array(PSIX[0]) == 0);
+    assert(is_array(PSIX[0][0]) == 0);
+    assert(is_array(PSIX[5]) == 0);
+    assert(is_array(PSIX[1+5]) == 0);
+    assert(is_array(PSIX[bc]) == 0);
+    assert(is_array(MATRIX) == 1);
+    assert(is_array(MATRIX[0]) == 1);
+    assert(is_array(MATRIX[bc]) == 1);
+    assert(is_array(MATRIX[2]) == 0);
+    assert(is_array(MATRIX[1][0]) == 0);
+    assert(is_array(MATRIX[0][8]) == 0);
+    assert(is_array(MATRIX[1][8]) == 0);
+    assert(is_array(bc) == 0);
+    assert(is_array(tmp) == 0);
+    assert(is_array(myfirstexpr) == 0);
+    assert(is_array(_myfirstexpr) == 0);
+    assert(is_array(x1) == 1);
+    assert(is_array(x1[0]) == 0);
+    assert(is_array(x1[N_MAX-1]) == 0);
+    assert(is_array(x1[N_MAX]) == 0);
+
+    assert(defined(nondefined) == 0);
+    assert(defined(tmp + 2) == 0);
+    assert(defined(3) == 0);
+
+    assert(defined(w1) == 1);
+    assert(defined(w2) == 1);
+    assert(defined(w3) == 0);
+    assert(defined(k1) == 1);
+    assert(defined(k2) == 1);
+    assert(defined(k3) == 0);
+    assert(defined(f1) == 1);
+    assert(defined(f2) == 1);
+    assert(defined(f3) == 0);
+
+    func1(x1[0]);
+    func2(x1);
+}

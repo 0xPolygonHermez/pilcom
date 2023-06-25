@@ -1,4 +1,4 @@
-const Multiarray = require("./multiarray.js");
+const MultiArray = require("./multi_array.js");
 
 module.exports = class LabelRanges {
 

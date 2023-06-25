@@ -1,5 +1,5 @@
 const {assert} = require("chai");
-const Multiarray = require("./multiarray.js");
+const {MultiArray} = require("./multi_array.js");
 const Expression = require("./expression.js");
 module.exports = class References {
 
@@ -9,9 +9,22 @@ module.exports = class References {
         this.types = {};
         this.context = context;
         this.scope = scope;
+        this.visibilityScope = 0;
+        this.visibilityStack = [];
         this.scope.setReferences(this);
     }
-
+    pushVisibilityScope()
+    {
+        this.visibilityStack.push(this.visibilityScope);
+        this.visibilityScope = this.scope.deep;
+    }
+    popVisibilityScope()
+    {
+        if (this.visibilityStack.length < 1) {
+            throw new Error(`invalid popVisibilitScope`);
+        }
+        this.visibilityScope = this.visibilityStack.pop()
+    }
     register(type, instance, options) {
         if (typeof this.types[type] !== 'undefined') {
             throw new Error(`type ${type} already registered`);
@@ -43,13 +56,13 @@ module.exports = class References {
     }
 
     declare (name, type, lengths = [], data = null) {
-        // console.log(`DECLARE_REFERENCE ${name} ${type} []${lengths.length} #${this.scope.deep}`);
+        console.log(`DECLARE_REFERENCE ${name} ${type} []${lengths.length} #${this.scope.deep}`, data);
         assert(typeof name === 'string');
         assert(!name.includes('::object'));
         assert(!name.includes('.object'));
         let size, array;
         if (lengths && lengths.length) {
-            array = new Multiarray(lengths);
+            array = new MultiArray(lengths);
             size = array.size;
         } else {
             array = false;
@@ -57,7 +70,8 @@ module.exports = class References {
         }
 
         const def = this.definitions[name];
-        const scopeId = this.hasScope(type) ? this.scope.declare(name, def ?? false) : 0;
+        const global = data && data.global;
+        const scopeId = (this.hasScope(type) && !global) ? this.scope.declare(name, type, def ?? false) : 0;
         // scope(name, def) => exception !!!
         //                  => scopeId;
         if (typeof def !== 'undefined' && def.scopeId === scopeId) {
@@ -80,10 +94,35 @@ module.exports = class References {
         }
         return id;
     }
+    isDefined(name, indexes = []) {
+        const names = this.context.getNames(name);
+        let found = false;
+        let def;
+        for (const _name of names) {
+            def = this.definitions[_name] ?? false;
+            if (def) {
+                found = _name;
+                break;
+            }
+        }
+        if (def.scope && def.type !== 'constant' && def.scope < this.visibilityScope) {
+            return false;
+        }
+
+        if (found !== false) {
+            if (Array.isArray(indexes) && indexes.length > 0) {
+                return def.array ? def.array.isValidIndexes(indexes) : false;
+            }
+            return true;
+        }
+
+        return false;
+    }
     hasScope(type) {
         // TODO: inside function ??
         // TODO: col reference
-        return ['im', 'witness', 'fixed', 'public', 'prover', 'challenge'].includes(type) === false;
+        // return ['im', 'witness', 'fixed', 'public', 'prover', 'challenge'].includes(type) === false;
+        return ['public', 'prover', 'challenge','subair'].includes(type) === false;
     }
 
     get (name, indexes = []) {
@@ -160,6 +199,11 @@ module.exports = class References {
         }
         if (typeof def === 'undefined') {
             throw new Error(`Reference ${names.join(',')} not found`);
+        }
+
+        // constants are visible inside functions
+        if (def.scope && def.type !== 'constant' && def.scope < this.visibilityScope) {
+            throw new Error(`Reference ${names.join(',')} not visible from current scope`);
         }
         return def;
     }

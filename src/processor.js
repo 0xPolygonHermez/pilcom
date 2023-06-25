@@ -20,6 +20,7 @@ const WitnessCols = require("./witness_cols.js");
 const Iterator = require("./iterator.js");
 const Context = require("./context.js");
 const {FlowAbortCmd, BreakCmd, ContinueCmd, ReturnCmd} = require("./flow_cmd.js")
+const fs = require('fs');
 
 module.exports = class Processor {
     constructor (Fr, parent, references, expressions) {
@@ -77,12 +78,24 @@ module.exports = class Processor {
         this.functionDeep = 0;
         this.callstack = []; // TODO
         this.breakpoints = ['expr.pil:26'];
+        this.loadBuiltInClass();
+    }
+    loadBuiltInClass() {
+        const filenames = fs.readdirSync(__dirname + '/builtin');
+        this.builtIn = {};
+        for (const filename of filenames) {
+            if (!filename.endsWith('.js')) continue;
+            console.log(`Loading builtin ${filename}.....`);
+            const builtInCls = require(__dirname + '/builtin/'+ filename);
+            const builtInObj = new builtInCls(this);
+            this.builtIn[builtInObj.name] = builtInObj;
+        }
     }
     insideFunction() {
         return this.functionDeep > 0;
     }
     startExecution(statements) {
-        this.references.declare('N', 'int', [], { sourceRef: this.sourceRef });
+        this.references.declare('N', 'int', [], { global: true, sourceRef: this.sourceRef });
         this.execute(statements);
     }
     generateOut()
@@ -162,18 +175,15 @@ module.exports = class Processor {
     }
     execCall(st) {
         const name = st.function.name;
-        if (!name.includes('.')) {
-            const builtInMethod = 'execBuiltIn' + name.charAt(0).toUpperCase() + name.slice(1);
-            if (builtInMethod in this) {
-                return this[builtInMethod](st);
-            }
-        }
-        const tval = this.references.getTypedValue(name);
-        if (tval.value) {
-            // TODO: push without visibility out of function
+        const func = this.builtIn[name] ?? (this.references.getTypedValue(name) || {}).value;
+
+        if (func) {
             ++this.functionDeep;
             this.scope.push();
-            const res = tval.value.exec(st);
+            const mapInfo = func.mapArguments(st);
+            this.references.pushVisibilityScope();
+            const res = func.exec(st, mapInfo);
+            this.references.popVisibilityScope();
             this.scope.pop();
             --this.functionDeep;
             return res;
@@ -193,53 +203,6 @@ module.exports = class Processor {
         }
         this.assign.assign(names, indexes, st.value);
         // this.references.set(st.name.name, [], this.expressions.eval(st.value));
-    }
-    execBuiltInPrintln(s) {
-//        const sourceRef = this.parent.fileName + ':' + s.first_line;
-        let texts = [];
-        for (const arg of s.arguments) {
-            texts.push(typeof arg === 'string' ? arg : this.expressions.e2value(arg));
-        }
-        // [${sourceRef}]
-        console.log(`\x1B[1;35m[${s.debug}] ${texts.join(' ')} (DEEP:${this.scope.deep})\x1B[0m`);
-        return 0;
-    }
-    execBuiltInAssertEq(s) {
-        if (s.arguments.length !== 2) {
-            throw new Error('Invalid number of parameters');
-        }
-        const arg0 = this.expressions.e2value(s.arguments[0]);
-        const arg1 = this.expressions.e2value(s.arguments[1]);
-        if (arg0 !== arg1) {
-            throw new Error(`AssertEq fails ${arg0} vs ${arg1} on ${this.sourceRef}`);
-        }
-        return 0;
-    }
-    execBuiltInAssertNotEq(s) {
-        if (s.arguments.length !== 2) {
-            throw new Error('Invalid number of parameters');
-        }
-        if (this.expressions.e2value(s.arguments[0]) === this.expressions.e2value(s.arguments[1])) {
-            console.log('ASSERT FAILS')
-        }
-        return 0;
-    }
-    execBuiltInLength(s) {
-        if (s.arguments.length !== 1) {
-            throw new Error('Invalid number of parameters');
-        }
-        const arg0 = s.arguments[0];
-        if (arg0 && arg0.isReference()) {
-            // TODO: check arrays, multiarrays - no arrays, valid for strings?
-            const [instance,rinfo] = this.expressions.getReferenceInfo(arg0);
-            const operand = arg0.getAloneOperand();
-            return BigInt(rinfo.array.getLength(operand.dim));
-        }
-        const value = this.expressions.e2value(s.arguments[0]);
-        if (typeof value === 'string') {
-            return value.length;
-        }
-        EXIT_HERE;
     }
     execIf(s) {
         for (let icond = 0; icond < s.conditions.length; ++icond) {
@@ -434,7 +397,7 @@ module.exports = class Processor {
         this.context.push(namespace, subair);
         this.scope.push();
         this.execute(s.statements, `NAMESPACE ${namespace}`);
-        this.scope.pop();
+        this.scope.pop(['witness', 'fixed', 'im']);
         this.context.pop();
     }
     evalExpressionList(e) {
@@ -466,6 +429,7 @@ module.exports = class Processor {
         this.colDeclaration(s, 'witness');
     }
     execFixedColDeclaration(s) {
+        const global = s.global ?? false;
         for (const col of s.items) {
             const colname = this.context.getFullName(col.name);
             // console.log(`COL_FIXED_DECLARATION(${colname})`);
@@ -478,18 +442,19 @@ module.exports = class Processor {
                 seq.extend();
                 // console.log('SEQ:'+seq.values.join(','));
             }
-            this.declareFullReference(colname, 'fixed', lengths, {}, seq);
+            this.declareFullReference(colname, 'fixed', lengths, {global}, seq);
         }
     }
     execColDeclaration(s) {
         // intermediate column
+        const global = s.global ?? false;
         for (const col of s.items) {
             const lengths = this.decodeLengths(col);
-            const id = this.declareFullReference(col.name, col.reference ? '&im' : 'im', lengths, {});
+            const id = this.declareFullReference(col.name, col.reference ? '&im' : 'im', lengths, {global});
 
             let init = s.init;
             if (!init || !init || typeof init.instance !== 'function') {
-                return;
+                continue;
             }
             if (col.reference) {
                 this.references.setReference(col.name, s.init.instance());
@@ -523,13 +488,14 @@ module.exports = class Processor {
         return this.decodeIndexes(s.lengths);
     }
     colDeclaration(s, type, ignoreInit) {
+        const global = s.global ?? false;
         for (const col of s.items) {
             const lengths = this.decodeLengths(col);
             let init = s.init;
             if (init && init && typeof init.instance === 'function') {
                 init = init.instance();
             }
-            this.declareFullReference(col.name, type, lengths, {}, ignoreInit ? null : init);
+            this.declareFullReference(col.name, type, lengths, {global}, ignoreInit ? null : init);
             /// TODO: INIT / SEQUENCE
         }
     }
@@ -581,10 +547,12 @@ module.exports = class Processor {
         if (init && s.init.length !== count) {
             this.error(s, `Mismatch between len of variables (${count}) and len of their inits (${s.init.length})`);
         }
+
         for (let index = 0; index < count; ++index) {
             const [name, lengths] = this.decodeNameAndLengths(s.items[index]);
-
-            this.references.declare(name, s.vtype, lengths, { sourceRef: this.sourceRef });
+            const sourceRef = s.debug ?? this.sourceRef;
+            const global = s.global ?? false;
+            this.references.declare(name, s.vtype, lengths, { global, sourceRef });
             let initValue = null;
             if (init) {
                 if (s.vtype === 'expr') {

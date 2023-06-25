@@ -1,6 +1,6 @@
 
 const {cloneDeep} = require('lodash');
-module.exports = class Multiarray {
+class MultiArray {
     constructor (lengths, debug) {
         this.debug = debug || '';
         this.initOffsets(lengths);
@@ -33,7 +33,7 @@ module.exports = class Multiarray {
         return indexes;
     }
     createSubArray(dim) {
-        return new Multiarray(this.lengths.slice(-dim));
+        return new MultiArray(this.lengths.slice(-dim));
     }
     applyIndex(obj, indexes) {
         const res = this.getIndexesTypedOffset(indexes);
@@ -46,7 +46,7 @@ module.exports = class Multiarray {
         }
         return dup;
     }
-    getIndexesTypedOffset(indexes) {
+    getIndexesOffset(indexes) {
         if (indexes === null || typeof indexes === 'undefined') {
             // TODO: review
             return {offset: 0, array: this.createSubArray(this.offsets.length)};
@@ -54,10 +54,22 @@ module.exports = class Multiarray {
         let offset = 0;
         const dims = Math.min(this.offsets.length, indexes.length);
         for (let idim = 0; idim < dims; ++idim) {
+            if (Number(indexes[idim]) >= this.lengths[idim]) return [false, idim];
             offset += this.offsets[idim] * Number(indexes[idim]);
         }
+        return [offset, dims];
+    }
+    isValidIndexes(indexes) {
+        const [offset, dims] = this.getIndexesOffset(indexes);
+        return (offset !==  false && offset < this.size && dims === indexes.length) ? 1n : 0n;
+    }
+    getIndexesTypedOffset(indexes) {
+        const [offset,dims] = this.getIndexesOffset(indexes);
+        if (offset === false) {
+            throw new ErrorIndexOutOfRange(`Internal error on variable index access index:${this.indexes[dims]} valid range:[0-${this.lengths[dims]-1}]`);
+        }
         if (offset >= this.size) {
-            throw Error(`Internal error on variable index access index:${offset} valid range:[0-${this.size-1}]`);
+            throw new ErrorIndexOutOfRange(`Internal error on variable index access index:${offset} valid range:[0-${this.size-1}]`);
         }
         const dim = this.offsets.length - dims;
         if (dim === 0) {
@@ -91,3 +103,9 @@ module.exports = class Multiarray {
         return this.lengths[dim] ?? 0;
     }
 }
+
+class ErrorIndexOutOfRange extends Error {
+
+}
+
+module.exports = { MultiArray, ErrorIndexOutOfRange };

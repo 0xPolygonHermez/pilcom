@@ -41,7 +41,8 @@ default                                     { return 'DEFAULT' }
 
 when                                        { return 'WHEN' }
 subair                                      { return 'SUBAIR' }
-aggregable                                  { return 'AGGREGABLE' }
+// TODO: composable ??
+aggregatable                                { return 'AGGREGATABLE' }
 stage                                       { return 'STAGE' }
 
 once                                        { return 'ONCE' }
@@ -216,13 +217,13 @@ top_level_block
         { $$ = $1 }
 
     | GLOBAL col_declaration
-        { $$ = $1 }
+        { $$ = {...$2, global:true } }
 
     | challenge_declaration
         { $$ = $1 }
 
     | GLOBAL challenge_declaration
-        { $$ = $1 }
+        { $$ = {...$2, global:true } }
 
     | public_declaration
         { $$ = $1 }
@@ -489,13 +490,13 @@ statement_no_closed
         { $$ = $1 }
 
     | GLOBAL col_declaration
-        { $$ = $1 }
+        { $$ = {...$2, global:true } }
 
     | challenge_declaration
         { $$ = $1 }
 
     | GLOBAL challenge_declaration
-        { $$ = $1 }
+        { $$ = {...$2, global:true } }
 
     | expression
         { $$ = {type: 'expr', expr: $1} }
@@ -567,7 +568,7 @@ codeblock_no_closed
         { $$ = $1 }
 
     | GLOBAL variable_declaration
-        { $$ = $2; $$.global = true }
+        { $$ = {...$2, global:true } }
 
     | variable_assignment
         { $$ = $1 }
@@ -576,7 +577,7 @@ codeblock_no_closed
         { $$ = $1 }
 
     | GLOBAL variable_multiple_assignment
-        { $$ = $2; $$.global = true }
+        { $$ = {...$2, global:true } }
 
     | return_statement
         { $$ = $1 }
