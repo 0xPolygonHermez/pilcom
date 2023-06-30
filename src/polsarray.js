@@ -1,5 +1,6 @@
-const { F1Field } = require("ffjavascript");
+const { F1Field, BigBuffer: BigBufferFr } = require("ffjavascript");
 const fs= require("fs");
+const { BigBuffer } = require("./bigbuffer");
 const { getRoots } = require("./utils");
 
 function newConstantPolsArray(pil, F) {
@@ -157,29 +158,45 @@ class PolsArray {
         await fd.close();
     }
 
-    writeToBuff(buff, pos) {
+    writeToBuffGL(buff) {
         if (typeof buff == "undefined") {
             const constBuffBuff = new ArrayBuffer(this.$$n*this.$$nPols*8);
             buff = new BigUint64Array(constBuffBuff);
         }
-        const buff64 = new BigUint64Array(buff.buffer, buff.byteOffset + pos, this.$$n*this.$$nPols);
         let p=0;
         for (let i=0; i<this.$$n; i++) {
             for (let j=0; j<this.$$nPols; j++) {
-                buff[p++] = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + 0xffffffff00000001n) : this.$$array[j][i];
+                buff[p++] = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
             }
         }
         return buff;
     }
 
-    writeToBigBuffer(buff, pos) {
+    writeToBigBufferGL(buff) {
         if (typeof buff == "undefined") {
-            buff = new BigBuffer(constBuffBuff);
+            buff = new BigBuffer(this.$$n*this.$$nPols);
         }
         let p=0;
         for (let i=0; i<this.$$n; i++) {
             for (let j=0; j<this.$$nPols; j++) {
-                buff.setElement(p++, (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + 0xffffffff00000001n) : this.$$array[j][i]);
+                const value = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
+                buff.setElement(p++, value);
+                
+            }
+        }
+        return buff;
+    }
+
+    writeToBigBuffer(buff, Fr) {
+        if (typeof buff == "undefined") {
+            buff = new BigBufferFr(this.$$n*this.$$nPols*this.F.n8); 
+        }
+        let p=0;
+        for (let i=0; i<this.$$n; i++) {
+            for (let j=0; j<this.$$nPols; j++) {
+                const value = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
+                buff.set(Fr.e(value), p);
+                p += this.F.n8;
             }
         }
         return buff;
