@@ -3,6 +3,8 @@ module.exports = class Scope {
         this.Fr = Fr;
         this.deep = 0;
         this.shadows = [{}];
+        this.instanceType = 'instance';
+        this.stackInstanceTypes = [];
     }
     setReferences(references) {
         this.references = references;
@@ -68,6 +70,15 @@ module.exports = class Scope {
         ++this.deep;
         // console.log(`PUSH ${this.deep}`)
         this.shadows[this.deep] = {};
+    }
+
+    pushInstanceType(type) {
+        this.stackInstanceTypes.push(this.instanceType);
+        this.instanceType = type;
+    }
+    popInstanceType() {
+        this.instanceType = this.stackInstanceTypes.pop();
+        return this.instanceType;
     }
     *[Symbol.iterator]() {
         for (let index in this.references) {

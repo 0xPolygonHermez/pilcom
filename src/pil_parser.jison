@@ -19,7 +19,9 @@ is                                          { return 'IS'; }
 public                                      { return 'PUBLIC'; }
 global                                      { return 'GLOBAL'; }
 constant                                    { return 'CONSTANT' }
-prover                                      { return 'PROVER' }
+prover\s+value                              { return 'PROVER_VALUE' }
+subair\s+value                              { return 'SUBAIR_VALUE' }
+air                                         { return 'AIR' }
 
 int                                         { return 'INT' }
 fe                                          { return 'FE' }
@@ -207,6 +209,9 @@ top_level_block
     | subair_definition
         { $$ = $1 }
 
+    | air_definition
+        { $$ = $1 }
+
     | function_definition
         { $$ = $1 }
 
@@ -228,10 +233,10 @@ top_level_block
     | public_declaration
         { $$ = $1 }
 
-    | prover_witness_declaration
+    | prover_value_declaration
         { $$ = $1 }
 
-    | subair_witness_declaration
+    | subair_value_declaration
         { $$ = $1 }
 
     | constant_definition
@@ -252,6 +257,14 @@ namespace_definition
             $$ = {type: 'namespace', namespace: $2, monolithic: true, subair: false, exp: $4, statements: $7.statements }
         }
     ;
+
+air_definition
+    : AIR '{' statement_block '}'
+        {
+            $$ = {type: 'air', statements: $3.statements };
+        }
+    ;
+
 
 
 delimited_statement
@@ -368,7 +381,14 @@ function_definition
         { $$ = { type: 'function_definition', final: false, funcname: $2, ...$4, returns: false, ...$7 }}
 
     | FINAL FUNCTION IDENTIFIER '(' arguments ')' '{' statement_block '}'
-        { $$ = { type: 'function_definition', final: true, funcname: $3, ...$5, returns: false, ...$8 }}
+        { $$ = { type: 'function_definition', final: 'instance', funcname: $3, ...$5, returns: false, ...$8 }}
+
+    | FINAL AIR FUNCTION IDENTIFIER '(' arguments ')' '{' statement_block '}'
+        { $$ = { type: 'function_definition', final: 'air', funcname: $4, ...$6, returns: false, ...$9 }}
+
+    | FINAL SUBAIR FUNCTION IDENTIFIER '(' arguments ')' '{' statement_block '}'
+        { $$ = { type: 'function_definition', final: 'subair', funcname: $4, ...$6, returns: false, ...$9 }}
+
     ;
 
 arguments
@@ -445,10 +465,10 @@ basic_type
     | T_STRING
         { $$ = { type: 'string' } }
 
-    | PROVER WITNESS
+    | PROVER_VALUE
         { $$ = { type: 'prover' } }
 
-    | SUBAIR WITNESS
+    | SUBAIR_VALUE
         { $$ = { type: 'subair' } }
 
     | PUBLIC
@@ -510,10 +530,10 @@ statement_no_closed
     | public_declaration
         { $$ = $1 }
 
-    | prover_witness_declaration
+    | prover_value_declaration
         { $$ = $1 }
 
-    | subair_witness_declaration
+    | subair_value_declaration
         { $$ = $1 }
 
     | constant_definition
@@ -535,8 +555,14 @@ data_object
     : data_object ',' IDENTIFIER ':' data_value
         { $$ = $1; $$.data[$3] = $5 }
 
+    | data_object ',' IDENTIFIER
+        { $$ = $1; $$.data[$3] = runtime_expr({ type: 'expr', op: 'reference', next: false, name: $3 }) }
+
     | IDENTIFIER ':' data_value
         { $$ = {data: {}}; $$.data[$1] = $3 }
+
+    | IDENTIFIER
+        { $$ = {data: {}}; $$.data[$1] = runtime_expr({ type: 'expr', op: 'reference', next: false, name: $1 }) }
     ;
 
 data_array
@@ -618,7 +644,13 @@ codeblock_closed
         { $$ = { type: 'while', condition: $3, statements: $5 } }
 
     | ONCE non_delimited_statement
-        { $$ = { type: 'once', statements: $2 } }
+        { $$ = { type: 'once', stype: 'instance', statements: $2 } }
+
+    | ONCE SUBAIR non_delimited_statement
+        { $$ = { type: 'once', stype: 'subair', statements: $3 } }
+
+    | ONCE AIR non_delimited_statement
+        { $$ = { type: 'once', stype: 'air', statements: $3 } }
 
     | SWITCH '(' expression ')' case_body
         { $$ = $1 }
@@ -1091,20 +1123,20 @@ public_declaration
         { $$ = { type: 'public_declaration', items: $2.items } }
     ;
 
-prover_witness_declaration
-    : PROVER WITNESS col_declaration_ident '=' expression
-        { $$ = { type: 'prover_witness_declaration', items: [$2], init: $4 } }
+prover_value_declaration
+    : PROVER_VALUE col_declaration_ident '=' expression
+        { $$ = { type: 'prover_value_declaration', items: [$1], init: $3 } }
 
-    | PROVER WITNESS col_declaration_list
-        { $$ = { type: 'prover_witness_declaration', items: $2.items } }
+    | PROVER_VALUE col_declaration_list
+        { $$ = { type: 'prover_value_declaration', items: $1.items } }
     ;
 
-subair_witness_declaration
-    : SUBAIR WITNESS col_declaration_ident '=' expression
-        { $$ = { type: 'subair_witness_declaration', items: [$2], init: $4 } }
+subair_value_declaration
+    : SUBAIR_VALUE col_declaration_ident '=' expression
+        { $$ = { type: 'subair_value_declaration', items: [$1], init: $3 } }
 
-    | SUBAIR WITNESS col_declaration_list
-        { $$ = { type: 'subair_witness_declaration', items: $2.items } }
+    | SUBAIR_VALUE col_declaration_list
+        { $$ = { type: 'subair_value_declaration', items: $1.items } }
     ;
 
 

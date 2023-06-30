@@ -39,6 +39,9 @@ module.exports = class Processor {
         this.vexprs = new Variables(Fr, 'expr');
         this.references.register('expr', this.vexprs);
 
+        this.lexprs = new Variables(Fr, 'lexpr');
+        this.references.register('lexpr', this.lexprs);
+
         this.fixeds = new FixedCols(Fr);
         this.fixeds.runtimeRows = true;
         this.references.register('fixed', this.fixeds);
@@ -51,6 +54,9 @@ module.exports = class Processor {
 
         this.publics = new Ids('public');
         this.references.register('public', this.publics);
+
+        this.challenges = new Ids('challenge');
+        this.references.register('challenge', this.challenges);
 
         this.prover = new Ids('prover');
         this.references.register('prover', this.prover);
@@ -168,16 +174,22 @@ module.exports = class Processor {
             }
             res = this[method](st);
         } catch (e) {
-            console.log("EXCEPTION ON "+this.sourceRef);
+            console.log("EXCEPTION ON "+st.debug+" ("+this.callstack.join(' > ')+")");
             throw e;
         }
         return res;
+    }
+    execAir(st) {
+        this.scope.pushInstanceType('air');
+        this.execute(st.statements);
+        this.scope.popInstanceType();
     }
     execCall(st) {
         const name = st.function.name;
         const func = this.builtIn[name] ?? (this.references.getTypedValue(name) || {}).value;
 
         if (func) {
+            this.callstack.push(st.debug);
             ++this.functionDeep;
             this.scope.push();
             const mapInfo = func.mapArguments(st);
@@ -186,6 +198,7 @@ module.exports = class Processor {
             this.references.popVisibilityScope();
             this.scope.pop();
             --this.functionDeep;
+            this.callstack.pop();
             return res;
         }
         this.error(st, `Undefined function statement type: ${name}`);
@@ -469,6 +482,12 @@ module.exports = class Processor {
         // TODO: initialization
         // TODO: verification defined
     }
+    execChallengeDeclaration(s) {
+        this.colDeclaration(s, 'challenge', true);
+        // TODO: initialization
+        // TODO: verification defined
+    }
+
     execExpr(s) {
         this.expressions.eval(s.expr);
     }

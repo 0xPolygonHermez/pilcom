@@ -1,0 +1,30 @@
+subair Arith(2**16);
+
+include "byte4.pil"
+
+constant ARITH_ID = 2;
+
+namespace Arith:: {
+
+    col witness a[2], b[2], c[2], d[2];
+    col witness carry[2];
+    col witness result;
+
+    col fixed CLK = [1,0:9]...;
+    constant FACTOR = 2**32;
+
+    a[0] * b[0] - carry[0] * FACTOR === c[0];
+    a[1] * b[0] + a[0] * b[1] - carry[1] * FACTOR === c[1];
+    a[1] * b[1] - d[1] * FACTOR === d[0];
+
+    expr byte4col = 0;
+    int index = 0;
+    for (col &r in [...a,...b,...c,...d,...carry]) {
+        r * CLK'(index) === 0;
+        byte4col = byte4col + CLK'(index) * r;
+        ++index;
+    }
+
+    subair_multiset_provides(ARITH_ID, result, [...a,...b,...c,...d]);
+    subair_multiset_requires(BYTE4_ID, result, [byte4col]);
+}

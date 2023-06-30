@@ -1,0 +1,411 @@
+
+function extends_fixed_clock_cycles(int cycle, col &cols) {
+    // or copy, metadata
+}
+
+
+function range_check (col p, fe from_value, fe to_value) {
+
+}
+/*
+example:
+
+permutation_check(selF,
+                  [ 0, opcode, freeInA[0], freeInB[0], cIn, 0, freeInC[0], cMiddle],
+                  selT,
+                  [P_LAST, P_OPCODE, BYTE_2A, BYTE, P_CIN, P_USE_CARRY, P_C, P_COUT]);
+*/
+
+function init_challenges(int lookup)
+{
+    once {
+        global challenge std_alpha stage(2);
+        global challenge std_beta stage(2);
+        global challenge std_gamma stage(3);
+    }
+    if (lookup) {
+        once global challenge std_delta stage(3);
+    }
+}
+
+function unbalanced_range_check( expr colF, int from, int to) {
+    init_challenges(1);
+
+    col witness RANGE = [from..to];
+
+    // TODO: optimize to put only once this constraint if witness col, if cols are fixed
+    // check on compilation time, constraint not needed.
+    // selF * (1 - selF) === 0;
+    // selT * (1 - selT) === 0;
+
+    col fixed L1 = [1,0...]; // compiler optimize and only exists one L1
+
+//    @lookup_check {h1:h1, h2:h2, colsT: colsT_selected, colsF: colsF_selected, gprod: gprod };
+
+    @lookup_check {h1, h2, colsT: colsT_selected, colsF: colsF_selected, gprod};
+
+    // Define h1,h2 polynomials
+    col witness h1 stage(2);
+    col witness h2 stage(2);
+
+    // TODO: allow use defined constants as stage id.
+    col witness gprod stage(3);
+
+    //                              (1 + gamma) * (f + delta) * (delta*(1 + gamma) + range + gamma*range')
+    //  gprod' === gprod * ------------------------------------------------------------------------------------
+    //                       (delta*(1 + gamma) + h1 + gamma*h2) * (delta*(1 + gamma) + h2 + gamma*h1')
+
+
+
+    L1 * gprod === 1;
+    gprod' * (std_delta*(1 + std_gamma) + h1 + std_gamma*h2) * (std_delta*(1 + std_gamma) + h2 + std_gamma*h1') === gprod * (1 + std_gamma) * (colsF_selected + std_delta) * (std_delta*(1 + std_gamma) + colsT_selected + std_gamma*colsT_selected');
+}
+
+function lookup_check(col selF, expr colsF[], col selT, expr colsT[]) {
+    init_challenges(1);
+    if (length(colsF) != length(colsT)) {
+        error(`colsF and colsT must be same dimensions`);
+    }
+
+    // TODO: optimize to put only once this constraint if witness col, if cols are fixed
+    // check on compilation time, constraint not needed.
+    selF * (1 - selF) === 0;
+    selT * (1 - selT) === 0;
+
+    col fixed L1 = [1,0...]; // compiler optimize and only exists one L1
+
+    // global is visible inside function vs static
+    expr colsF_compressed = 0;
+    expr colsT_compressed = 0;
+    for (int icol = length(colsF) - 1; icol > 0; --icol) {
+        colsF_compressed = (colsF_compressed + colsF[icol]) * std_alpha;
+        colsT_compressed = (colsT_compressed + colsT[icol]) * std_alpha;
+    }
+    colsF_compressed = (colsF_compressed + colsF[0]);
+    colsT_compressed = (colsT_compressed + colsT[0]);
+
+    expr colsT_selected = selT * (colsT_compressed - std_beta) + std_beta;
+    expr colsF_selected = selF * (colsF_compressed - colsT_selected) + colsT_selected;
+
+//    @lookup_check {h1:h1, h2:h2, colsT: colsT_selected, colsF: colsF_selected, gprod: gprod };
+
+    @lookup_check {h1, h2, colsT: colsT_selected, colsF: colsF_selected, gprod};
+
+    // Define h1,h2 polynomials
+    col witness h1 stage(2);
+    col witness h2 stage(2);
+
+    // TODO: allow use defined constants as stage id.
+    col witness gprod stage(3);
+
+    //                              (1 + gamma) * (f + delta) * (delta*(1 + gamma) + t + gamma*t')
+    //  gprod' === gprod * ------------------------------------------------------------------------------------
+    //                       (delta*(1 + gamma) + h1 + gamma*h2) * (delta*(1 + gamma) + h2 + gamma*h1')
+
+    L1 * gprod === 1;
+    gprod' * (std_delta*(1 + std_gamma) + h1 + std_gamma*h2) * (std_delta*(1 + std_gamma) + h2 + std_gamma*h1') === gprod * (1 + std_gamma) * (colsF_selected + std_delta) * (std_delta*(1 + std_gamma) + colsT_selected + std_gamma*colsT_selected');
+}
+
+function multiset_check(col selF, expr colsF[], col selT, expr colsT[]) {
+    // TODO: use specific name, not match with other challenge
+    init_challenges(0);
+    if (length(colsF) != length(colsT)) {
+        error(`colsF and colsT must be same dimensions`);
+    }
+
+    // TODO: optimize to put only once this constraint if witness col, if cols are fixed
+    // check on compilation time, constraint not needed.
+    selF * (1 - selF) === 0;
+    selT * (1 - selT) === 0;
+
+    col fixed L1 = [1,0...]; // compiler optimize and only exists one L1
+
+    // global is visible inside function vs static
+    expr colsF_compressed = 0;
+    expr colsT_compressed = 0;
+    for (int icol = length(colsF) - 1; icol > 0; --icol) {
+        colsF_compressed = (colsF_compressed + colsF[icol]) * std_alpha;
+        colsT_compressed = (colsT_compressed + colsT[icol]) * std_alpha;
+    }
+    colsF_compressed = (colsF_compressed + colsF[0]);
+    colsT_compressed = (colsT_compressed + colsT[0]);
+
+    expr colsF_selected = selF * (colsF_compressed - std_beta) + std_beta;
+    expr colsT_selected = selT * (colsT_compressed - std_beta) + std_beta;
+
+    // TODO: allow use defined constants as stage id.
+    col witness gprod stage(3);
+
+    //                     (colsF_selected + std_gamma)
+    //  gprod === 'gprod * ----------------------------
+    //                     (colsT_selected + std_gamma)
+
+    L1 * 'gprod === 1;
+    gprod * (colsT_selected + std_gamma) === 'gprod * (colsF_selected + std_gamma);
+}
+
+/*
+    g * c1 = 'g * c1;
+    g * c2 = 'g * c2;
+    g * c3 = 'g * c3;
+
+
+    g * c1 * c2 * c3 = '
+    //                     (colsF_selected + std_gamma)
+    //  gprod === 'gprod * ----------------------------
+    //                     (colsT_selected + std_gamma)
+
+    L1 * 'gprod === 1;
+    gprod * (colsT_selected + std_gamma) === 'gprod * (colsF_selected + std_gamma);
+
+    gprod * colsT1_sele(cted + std_gamma) * (colsT2_selected + std_gamma) === 'gprod * (colsF_selected + std_gamma) * (colsF_selected + std_gamma);
+
+    // L1 * grod === 1;
+    // gprod' * (colsT_selected + std_gamma) === gprod * (colsF_selected + std_gamma);
+
+*/
+
+/* match(selector (col),
+         selector_value_1, expr_when_selector_value_is_value_1,
+         selector_value_2, expr_when_selector_value_is_value_2,
+         :
+         selector_value_k, expr_when_selector_value_is_value_k);
+
+
+col witness sel,x,y;
+
+match(sel,
+      1, x + y,
+      2, 2 * x + y) === 0;
+
+*/
+
+function match (col sel, ...) : expr {
+
+        @match {sel: sel, argc: argc, argv: argv};
+
+        if (argc % 2 != 0) {
+            error(`match was called with number incorrect ${argc}`);
+        }
+        for (int icase = 0; icase < argc; icase = icase + 2) {
+            if (!(argv[icase] is fe)) error(`selector must be a constant value on ${icase}`);
+            if (!(argv[icase+1] is expr)) error(`expression must be a constant value on ${icase}`);
+        }
+
+        expr bc;
+        expr res;
+        int cases = argc / 2;
+        col L[argc / 2];
+        for (int icase = 0; icase < argc; icase = icase + 2) {
+            expr lexpr;
+            fe invl = 1;
+
+            fe csel = argv[icase];
+            expr cexpr = argv[icase + 1];
+
+            for (int j = 0; j < cases; ++j) {
+                if (i == j) continue;
+                lexpr = lexpr * (sel * argc[2 * j]);
+                invl = invl * (csel - argc[2 * j]);
+            }
+
+            // (b-1)*(b-2)*(b-3)
+            bc = bc * (sel - csel);
+            // L1 * A + L2 * B + L3 * C
+            L[icase] = cexpr * inverse(invl);
+            res = res + L[icase] * cexpr;
+        }
+        bc === 0;
+        return res;
+}
+
+
+/*
+    subair_permutation_check(
+        Binary::resultBinOp,
+        Binary::['op, ...a, ...b, ...c, 'cout]
+    );
+*/
+
+function subair_permutation_check (expr selF[], expr colsF[][], subair::expr selT[], subair::expr colsT[][]) {
+    // grand product F
+    //    bin,
+    //    [binOp, ...A, ...B, ...op, carry],
+    //    challenge c[2]
+    prover witness x = grand_product([binOp, ...A, ...B, ...op, carry], bin);
+
+    // task Binary lookup_check_T(c, Binary::resultBinOp, Binary::['op, ...a, ...b, ...c, 'cout]);
+}
+
+function plookup_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+    if (!(L1 is col)) {
+        global col fixed L1 = [1,0...];
+    }
+
+}
+
+function permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+    // global once col fixed L1 = [1,0...];
+    if (!(L1 is col)) {
+        // TODO: verify L1 = [1,0...]
+        global col fixed L1 = [1,0...];
+    }
+}
+
+function permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
+    col fixed L1 = [1,0...];
+}
+
+
+constant PUBLIC_TABLE_ADD = 1;
+constant PUBLIC_TABLE_PROD = 2;
+
+function public_table_add (prover witness value, public ptable[][], public rows, challenge zeta, challenge alpha) {
+    // TBD
+}
+
+function public_table_prod (prover witness value, public ptable[][], public rows, challenge zeta, challenge alpha) {
+
+    int max_rows = length(ptable[0]);
+
+    // table: ptable <= only first public, need to access the rest
+    // when compiler add extra columns as table@lengths as array of lengths and table@dim as len of
+
+    @public_table { rows: rows, cols: length(ptable), max_rows: max_rows, table: ptable, type: "prod" };
+
+    expr rows_values_constraint = 1;
+    expr res;
+    expr acc_selector = 0;
+    for (int irow = max_rows - 1; irow >= 0; --irow) {
+
+        // prepare product expression for current row
+        // zeta - (t[0] + alpha * t[1] + alpha**2 * t[2] + ..)
+        // zeta - ((((t[m-1] * alpha) + t[m-2]) * alpha + ... + t[1]) * alpha + t[0]
+
+        expr cexpr = 0;                                                 // max_rows = 3
+        for (int k = max_rows - 1; k > 0; --k) {                        // cexpr = 0
+            cexpr = (cexpr + ptable[k][irow]) * alpha;                  // k = 2 :   cexpr = (0 + ptable[2]) * alpha = ptable[2] * alpha
+        }                                                               // k = 1 :   cexpr = (ptable[2] * alpha) + ptable[1]) * alpha
+        cexpr = zeta - (cexpr + ptable[0][irow]);                      //           cexpr = zeta - ((ptable[2] * alpha) + ptable[1]) * alpha + ptable[0])
+
+        expr lexpr = 1;
+        fe lexpr_res = 1;
+        for (int j = 0; j < max_rows; ++j) {
+            if (irow == j) continue;
+            lexpr = lexpr * (rows - j);           // (rows - 0) * (rows - 1) * ....
+            lexpr_res = lexpr_res * (irow - j);   // (irow - 0) * (irow - 1) * .... = result lexpr when irow
+        }
+        fe lexpr_res_inv = 1 / lexpr_res;
+        acc_selector = acc_selector + lexpr * lexpr_res_inv;
+
+        // build expression for binary constraint rows_values_constraint = (rows-0)*(rows-1)*(rows-2)* ..... === 0
+        rows_values_constraint = rows_values_constraint * (rows - irow);
+
+        // res = res * acc_selector * cexpr;
+        res = res + acc_selector * cexpr;
+    }
+    rows_values_constraint === 0;
+    value === res;
+}
+
+
+function subair_permutation_produce (expr sel[], expr cols[][]) {
+    // grand product F
+    //    bin,
+    //    [binOp, ...A, ...B, ...op, carry],
+    //    challenge c[2]
+    prover witness x = grand_product([binOp, ...A, ...B, ...op, carry], bin);
+
+    // task Binary lookup_check_T(c, Binary::resultBinOp, Binary::['op, ...a, ...b, ...c, 'cout]);
+}
+
+
+function subair_permutation_requires (expr pcid, expr sel, expr cols[]) {
+    once expr subair_permutation_expr = 1;
+
+    challenge a;
+    challenge b;
+    // expr _col = (pcid + cols[1] + a * cols[2] + a**2 * cols[3] + a ** 3 * col[4] + .... - b) * sel + b;
+
+    subair_permutation_expr = subair_permutation_expr * _col;
+
+}
+
+// A B(N1) B(N2)
+/* prover witness pgp[2];
+
+pgp[0] * pgp[1] === 1
+
+A B(N1)
+A B(N2)
+
+
+
+A   B_N1   B_N2
+
+A B_N1
+
+A B_N2
+
+
+c c    c
+A   B_N1   B_N1
+A.c B_N1.c B_N1.c
+
+c    c      c      c
+A    B_N1   B_N1   B_N1
+A.c  B_N1.c B_N1.c
+
+// A B(N1) B(N2)
+prover witness pgp[3];
+
+pgp[0] * pgp[1] * pgp[2] === 1
+
+A B(N1)  pgp[2] === 1
+A B(N2)  pgp[1] === 1
+*/
+/*
+prover witness permutation_grand_product[];
+
+prover witness subair_gp;
+prover witness total_gp;
+
+when first { total_gp === 1 };
+total_gp' === total_gp * subair_gp;
+*/
+
+function final_subair_permutation () {
+    // subair_permutation_expr;
+
+    col witness subair_permutation_col;
+    // prover witness permutation_grand_product;
+    int index = lenght(permutation_grand_product);
+
+    @col_grand_product {gprod: permutation_grand_product[index], air: subair_permutation_col};
+    @prover_grand_product {gprod: permutation_grand_product };
+//    @subair_permutation_prover_value permutation_grand_product[index] subair_permutation_col
+    b*c === 1;
+
+    // requires
+    subair_permutation_col' === subair_permutation_expr * (subair_permutation_col * (1-L1) + L1);
+    permutation_grand_product[index] === L1 * subair_permutation_col;
+
+    // provides
+    subair_permutation_expr * subair_permutation_col' === (subair_permutation_col * (1-L1) + L1);
+    permutation_grand_product[index] === L1 * subair_permutation_col;
+
+}
+
+// runtime environment global
+
+final function final_permutation () {
+    // subair_permutation_expr;
+
+    col witness subair_permutation_col;
+    prover witness permutation_grand_product;
+
+    @subair_permutation_prover_value {gprod: permutation_grand_product};
+
+    subair_permutation_col' === subair_permutation_expr * (subair_permutation_col * (1-L1) + L1);
+    permutation_grand_product === L1 * subair_permutation_col;
+}

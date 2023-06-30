@@ -68,7 +68,6 @@ function func3(col x[]) {
     assert(defined(x[0][0]) == 0);
 }
 
-
 namespace BuiltIn:: {
 
     constant N_MAX = 32;

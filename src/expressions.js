@@ -86,7 +86,7 @@ module.exports = class Expressions {
         return this.router.go([e, fr]);
     }
     checkExpression(e) {
-        if (e.expr || !(e instanceof Expression)) {
+        if (typeof e === 'undefined' || e.expr || !(e instanceof Expression)) {
             console.log(e)
             throw new Error(`Invalid eval argument, must be an Expression`);
         }
@@ -148,11 +148,18 @@ module.exports = class Expressions {
                 // DUAL, if access row was a value, if not it's an id
                 // TODO
                 if (typeof res.row === 'undefined') {
-                    res = {type: 'fixed', value: res.value.getId()};
+                    console.log(res);
+                    // res = {type: 'fixed', value: res.value.getId()};
+                    res = {type: 'fixed', value: res.id};
                 } else {
                     // e.parent.fixedRowAccess = true;
                     res = res.value.getValue(res.row);
                 }
+                break;
+            case 'challenge':
+                res = ref;
+                console.log('=========== CHALLENGE ============');
+                console.log(res);
                 break;
             case 'witness':
             case 'public':
@@ -167,14 +174,18 @@ module.exports = class Expressions {
                 break;
             case 'constant':
                 if (!res.array) {
-                    res = BigInt(res.value);
+                    res = (typeof ref.value === 'number' ? BigInt(ref.value) : ref.value);
                 }
                 break;
             case 'int':
-                res = BigInt(ref.value);
+                res = (typeof ref.value === 'number' ? BigInt(ref.value) : ref.value);
                 break;
             case 'expr':
-                res = ref.value;
+                if (ref.value instanceof Expression) {
+                    res = ref.value.instance();
+                } else {
+                    res = ref;
+                }
                 break;
 
             default:

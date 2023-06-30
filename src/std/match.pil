@@ -1,0 +1,53 @@
+/* match(selector (col),
+         selector_value_1, expr_when_selector_value_is_value_1,
+         selector_value_2, expr_when_selector_value_is_value_2,
+         :
+         selector_value_k, expr_when_selector_value_is_value_k);
+
+
+col witness sel,x,y;
+
+match(sel,
+      1, x + y,
+      2, 2 * x + y) === 0;
+
+*/
+
+function match (col sel, ...) : expr {
+
+        @match {sel: sel, argc: argc, argv: argv};
+
+        if (argc % 2 != 0) {
+            error(`match was called with number incorrect ${argc}`);
+        }
+        for (int icase = 0; icase < argc; icase = icase + 2) {
+            if (!(argv[icase] is fe)) error(`selector must be a constant value on ${icase}`);
+            if (!(argv[icase+1] is expr)) error(`expression must be a constant value on ${icase}`);
+        }
+
+        expr bc;
+        expr res;
+        int cases = argc / 2;
+        col L[argc / 2];
+        for (int icase = 0; icase < argc; icase = icase + 2) {
+            expr lexpr;
+            fe invl = 1;
+
+            fe csel = argv[icase];
+            expr cexpr = argv[icase + 1];
+
+            for (int j = 0; j < cases; ++j) {
+                if (i == j) continue;
+                lexpr = lexpr * (sel * argc[2 * j]);
+                invl = invl * (csel - argc[2 * j]);
+            }
+
+            // (b-1)*(b-2)*(b-3)
+            bc = bc * (sel - csel);
+            // L1 * A + L2 * B + L3 * C
+            L[icase] = cexpr * inverse(invl);
+            res = res + L[icase] * cexpr;
+        }
+        bc === 0;
+        return res;
+}

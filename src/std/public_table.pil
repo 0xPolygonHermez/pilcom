@@ -1,0 +1,50 @@
+constant PUBLIC_TABLE_ADD = 1;
+constant PUBLIC_TABLE_PROD = 2;
+
+function public_table_add (prover witness value, public ptable[][], public rows, challenge zeta, challenge alpha) {
+    // TBD
+}
+
+function public_table_prod (prover witness value, public ptable[][], public rows, challenge zeta, challenge alpha) {
+
+    int max_rows = length(ptable[0]);
+
+    // table: ptable <= only first public, need to access the rest
+    // when compiler add extra columns as table@lengths as array of lengths and table@dim as len of
+
+    @public_table { rows: rows, cols: length(ptable), max_rows: max_rows, table: ptable, type: "prod" };
+
+    expr rows_values_constraint = 1;
+    expr res;
+    expr acc_selector = 0;
+    for (int irow = max_rows - 1; irow >= 0; --irow) {
+
+        // prepare product expression for current row
+        // zeta - (t[0] + alpha * t[1] + alpha**2 * t[2] + ..)
+        // zeta - ((((t[m-1] * alpha) + t[m-2]) * alpha + ... + t[1]) * alpha + t[0]
+
+        expr cexpr = 0;                                                 // max_rows = 3
+        for (int k = max_rows - 1; k > 0; --k) {                        // cexpr = 0
+            cexpr = (cexpr + ptable[k][irow]) * alpha;                  // k = 2 :   cexpr = (0 + ptable[2]) * alpha = ptable[2] * alpha
+        }                                                               // k = 1 :   cexpr = (ptable[2] * alpha) + ptable[1]) * alpha
+        cexpr = zeta - (cexpr + ptable[0][irow]);                      //           cexpr = zeta - ((ptable[2] * alpha) + ptable[1]) * alpha + ptable[0])
+
+        expr lexpr = 1;
+        fe lexpr_res = 1;
+        for (int j = 0; j < max_rows; ++j) {
+            if (irow == j) continue;
+            lexpr = lexpr * (rows - j);           // (rows - 0) * (rows - 1) * ....
+            lexpr_res = lexpr_res * (irow - j);   // (irow - 0) * (irow - 1) * .... = result lexpr when irow
+        }
+        fe lexpr_res_inv = 1 / lexpr_res;
+        acc_selector = acc_selector + lexpr * lexpr_res_inv;
+
+        // build expression for binary constraint rows_values_constraint = (rows-0)*(rows-1)*(rows-2)* ..... === 0
+        rows_values_constraint = rows_values_constraint * (rows - irow);
+
+        // res = res * acc_selector * cexpr;
+        res = res + acc_selector * cexpr;
+    }
+    rows_values_constraint === 0;
+    value === res;
+}

@@ -284,7 +284,8 @@ module.exports = class Expression {
                     se.operands[index] = {type: OP_VALUE, value: value};
                     continue;
                 }
-                if (typeof value === 'object' && value.type && ['constant','witness', 'fixed', 'im', 'public'].includes(value.type)) {
+                if (typeof value === 'object' && value.type &&
+                    ['constant','witness', 'fixed', 'im', 'public', 'expr', 'challenge'].includes(value.type)) {
                     let ope = {};
                     if (value.array) {
                         // incomplete reference, is a subarray.
@@ -295,7 +296,7 @@ module.exports = class Expression {
                         ope.type = OP_ID_REF;
                         ope.array = false;
                     }
-                    if (typeof value.value === 'undefined') {
+                    if (typeof value.value === 'undefined' || value.value === null) {
                         ope.id = value.id;
                     } else {
                         ope.id = typeof value.value === 'object' ? value.value.id : value.value;
@@ -309,6 +310,7 @@ module.exports = class Expression {
                     se.operands[index] = ope;
                     continue;
                 }
+                console.log(value);
                 console.log(se.operands[index]);
                 throw new Error('Invalid value');
             }
@@ -703,8 +705,12 @@ module.exports = class Expression {
             case OP_STACK:
                 return this.stackPosToString(pos-ope.offset, pprec, options);
             case OP_RUNTIME:
-                console.log(ope);
-                TODO;
+                if (ope.op === 'reference' && ope.name) {
+                    return `RUNTIME{${ope.name}}`
+                }
+                return `RUNTIME{${ope.op}(${ope.name??''})}`;
+                //console.log(ope);
+
         }
 
     }

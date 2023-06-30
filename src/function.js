@@ -1,6 +1,8 @@
 const util = require('util');
 const {cloneDeep} = require('lodash');
-const {FlowAbortCmd, BreakCmd, ContinueCmd, ReturnCmd} = require("./flow_cmd.js")
+const {FlowAbortCmd, BreakCmd, ContinueCmd, ReturnCmd} = require("./flow_cmd.js");
+const Expression = require("./expression.js");
+const List = require("./list.js");
 module.exports = class Function {
 
     constructor (parent, s) {
@@ -26,15 +28,23 @@ module.exports = class Function {
         }
     }
     mapArguments(s) {
+        for (const arg of s.arguments) {
+            console.log(arg);
+            if (arg.stack && arg.stack[0]) {
+                console.log(arg.stack[0].operands);
+            }
+        }
         // mapArgument was called before enter on function visibility scope because
         // inside function arguments "values" aren't visible.
         let iarg = 0;
         for (const name in this.args) {
+            console.log(`MAP-ARGUMENTS ${this.name} (arg[${iarg}]: ${name})`);
             const arg = this.args[name];
             // TODO: arrays and pol references ...
             let type = arg.type;
             const argDim = arg.dim ? arg.dim : 0;
             if (arg.reference) {
+                console.log(`${this.name}.MAP-REFERENCE`);
                 const ref = s.arguments[iarg].getReference();
 
                 // special case of col, could be witness, fixed or im
@@ -47,7 +57,13 @@ module.exports = class Function {
                 }
                 this.parent.declareReference(name, type, ref.array ? ref.array.lengths : []);
                 this.parent.references.setReference(name, ref);
-            } else {
+            } else if (arg.type === 'int' || arg.type === 'fe') {
+                console.log(`${this.name}.MAP-INT/FE`, iarg);
+                console.log(s.arguments[iarg]);
+                if (s.arguments[iarg] instanceof Expression) {
+                    console.log(s.arguments[iarg].stack[0].operands);
+                    s.arguments[iarg].dump();
+                }
                 const value = this.parent.expressions.eval(s.arguments[iarg]);
                 if (arg.type === 'col') {
                     type = value.type;
@@ -56,7 +72,39 @@ module.exports = class Function {
                 if (dim !== argDim) {
                     throw new Error(`Invalid array on ${this.parent.sourceRef}`);
                 }
+                // TODO: review? no referece?
                 this.parent.declareReference(name, type, value.array ? value.array.lengths: [], {}, value);
+            } else {
+                console.log(`MAP-${arg.type}`);
+                // TODO: type conversion, mapping in other class
+                if (s.arguments[iarg].type === 'expression_list') {
+                    // check (argDim === 1 && arg.type === 'expr')
+                    const list = new List(this, s.arguments[iarg], false);
+                    const values = s.arguments[iarg].values;
+                    this.parent.declareReference(name, type, [values.length], {});
+                    let index = 0;
+                    for (const value of list.values) {
+                        console.log(value);
+                        this.parent.references.set(name, [index++], value.instance());
+                    }
+                } else if (!(s.arguments[iarg] instanceof Expression)) {
+                    console.log(arg);
+                    console.log(s.arguments[iarg]);
+                    EXIT_HERE;
+                } else {
+                    console.log(s.arguments[iarg]);
+                    s.arguments[iarg].dump();
+                    const value = s.arguments[iarg].instance();
+                    value.dump();
+                    if (arg.type === 'col') {
+                        type = value.type;
+                    }
+                    const dim = value.array ? value.array.dim : 0;
+                    if (dim !== argDim) {
+                        throw new Error(`Invalid array on ${this.parent.sourceRef}`);
+                    }
+                    this.parent.declareReference(name, type, value.array ? value.array.lengths: [], {}, value);
+                }
             }
             ++iarg;
         }

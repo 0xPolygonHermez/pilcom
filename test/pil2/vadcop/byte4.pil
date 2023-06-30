@@ -1,0 +1,28 @@
+subair Byte4(2**16);
+
+constant BYTE4_ID = 1;
+
+namespace Byte4:: {
+
+    /////// Constant Polynomials
+    col fixed CLK = [0:3,1]...;
+    col witness byteIn;
+    col witness bits[8];
+    col witness out;
+    col witness result;
+
+    // byteIn range_check(0, 255)
+
+    out' === (1 - CLK) * (out * 256) + byteIn;
+    result * (1 - result) === 0;
+    result * (1 - CLK) === 0;
+
+    expr byteFromBits;
+    for (int i = 0; i < 8; ++i) {
+        byteFromBits += bits[i] * 2**i;
+        bits[i] * (1 - bits[i]) === 0;
+    }
+    byteFromBits === byteIn;
+
+    subair_multiset_provides(BYTE4_ID, result, [out]);
+}

@@ -1,0 +1,24 @@
+subair Permutation(2**10);
+
+include "../../../lib/std.pil"
+
+namespace Permutation:: {
+
+    col witness a,b,r;
+
+    expr colsF[3];
+    colsF[0] = a;
+    colsF[1] = b;
+    colsF[2] = r;
+
+    expr colsT[3];
+    colsT[0] = a;
+    colsT[1] = b;
+    colsT[2] = r;
+
+    col witness c;
+    expr sel = c;
+//    multiset_check(1, [a,b,r], 1, [A,B,R]);
+    multiset_check(sel+2, colsF, sel, colsT);
+
+}

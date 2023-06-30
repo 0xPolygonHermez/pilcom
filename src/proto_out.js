@@ -36,7 +36,7 @@ const REF_TYPE_PUBLIC_TABLE = 6;
 const REF_TYPE_CHALLENGE = 7;
 
 module.exports = class ProtoOut {
-    constructor (Fr) {
+    constructor (Fr, options = {}) {
         this.Fr = Fr;
         this.root = protobuf.loadSync(__dirname + '/pilout.proto');
         this.constants = false;
@@ -47,7 +47,20 @@ module.exports = class ProtoOut {
         this.currentAir = null;
         this.witnessId2ProtoId = [];
         this.fixedId2ProtoId = [];
+        this.options = options;
+        this.bigIntType = options.bigIntType ?? 'Buffer';
+        this.toBaseField = this.mapBigIntType();
         this.buildTypes();
+    }
+    mapBigIntType() {
+        switch (this.bigIntType) {
+            case 'Buffer': return this.bint2buf;
+            case 'BigInt': return this.bint2bint;
+            case 'uint8':
+                this.uint8size = this.options.uint8size ?? 8;
+                return this.bint2uint8;
+        }
+        throw new Error(`Invalid bigIntType ${this.bigIntType} on ProtoOut`);
     }
     buildTypes() {
         this.PilOut = this.root.lookupType('PilOut');
@@ -98,7 +111,7 @@ module.exports = class ProtoOut {
     setupPilOut(name) {
         this.pilOut = {
             name,
-            baseField: this.bint2buf(this.Fr.p),
+            baseField: this.toBaseField(this.Fr.p),
             airs: [],
             numChallenges: [],
             numProverValues: 0,
@@ -209,7 +222,7 @@ module.exports = class ProtoOut {
             this.fixedId2ProtoId[col.id] = [colType, airCols.length];
             let values = [];
             for (let irow = 0; irow < _rows; ++irow) {
-                values.push({value: this.bint2buf(col.getValue(irow))});
+                values.push({value: this.toBaseField(col.getValue(irow))});
             }
             airCols.push({values});
         }
@@ -295,7 +308,7 @@ module.exports = class ProtoOut {
                 }
                 break;
             case 'constant':
-                ope.constant.value = this.bint2buf(ope.constant.value);
+                ope.constant.value = this.toBaseField(ope.constant.value);
                 break;
         }
     }
@@ -341,7 +354,22 @@ module.exports = class ProtoOut {
         console.log(airConstraints[0]);
         console.log(airConstraints);
     }
+    bint2uint8(value, bytes = 0) {
+        let result = new Uint8Array(this.uint8size);
+        for (let index = 0; index < this.uint8size; ++index) {
+            result[this.uint8size - index - 1] = value & 0xFF;
+            value = value >> 8;
+        }
+        assert(value === 0n);
+        return result;
+    }
+    bint2bint(value, bytes = 0) {
+        return BigInt(value);
+    }
     bint2buf(value, bytes = 0) {
+        if (this.bitIntType === 'bigint') {
+            return BigInt(value);
+        }
         if (value === 0n && bytes === 0) {
             return Buffer.alloc(0);
         }
@@ -407,8 +435,8 @@ module.exports = class ProtoOut {
         console.log("***** BaseField ******");
         let BaseFieldElement = this.root.lookupType('BaseFieldElement');
         let payload =
-          { value: this.bint2buf(0x102030405060708090A0B0C0D0E0F0n) };
-//          { value: this.bint2buf(-1n) };
+          { value: this.toBaseField(0x102030405060708090A0B0C0D0E0F0n) };
+//          { value: this.toBaseField(-1n) };
         console.log(BaseFieldElement.verify(payload));
         let message = BaseFieldElement.fromObject(payload);
         console.log(message);
@@ -433,7 +461,7 @@ module.exports = class ProtoOut {
         payload =
           { name: 'AAAAAAAAAA', numRows: numRows+'' };
 //          { name: 'myFirstPilOut', numRows: Long.fromValue(2n**23n) };
-//          { value: this.bint2buf(-1n) };
+//          { value: this.toBaseField(-1n) };
         console.log(BasicAir.verify(payload));
         message = BasicAir.fromObject(payload);
         console.log(message);

@@ -32,13 +32,16 @@ module.exports = class List {
         return this.router.go(e);
     }
     _extendAppend(e) {
+        console.log(e);
         if (this.reference) {
             return this._extendAppendReferences(e);
         }
         return this._extendAppendValues(e);
     }
     _extendAppendValues(e) {
+        console.log("=================  appendValues ==================");
         let values = [];
+        console.log(e);
         const element = this._resolve(e);
         if (!element.dim && element.dim < 1) {
             throw new Error(`Could not extend and append a non array element`)
@@ -56,6 +59,7 @@ module.exports = class List {
         return values;
     }
     _extendAppendReferences(e) {
+        console.log("=================  appendReferences ==================");
         let values = [];
         const info = Expression.parent.getReferenceInfo(e.value);
         let element = e.value.instance().getAloneOperand();
@@ -85,6 +89,7 @@ module.exports = class List {
             const expr = e.instance();
             return expr;
         }
+        console.log(e);
         return e.eval();
         // return this.parent.resolveExpr(e.value);
     }

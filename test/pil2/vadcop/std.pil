@@ -1,0 +1,111 @@
+air {
+    constant MAX_MULTISET_ID=1000;
+    expr multiset_gprods[MAX_MULTISET_ID + 1];
+    int multiset_cols[MAX_MULTISET_ID + 1];
+    int multiset_provides[MAX_MULTISET_ID + 1];
+    int multiset_requires[MAX_MULTISET_ID + 1];
+
+    for (int index = 0; index < length(multiset_cols); ++index) {
+        multiset_cols[index] = 0;
+    }
+}
+
+function init_multiset_challenges(int lookup)
+{
+    if (!defined(std_alpha)) {
+        // TODO: could be challenge non global
+        global challenge std_alpha stage(2);
+        global challenge std_beta stage(2);
+        global challenge std_gamma stage(3);
+    }
+}
+
+// function to verify that number of columns of same multiset (requires, provides)
+// was the same.
+
+function check_multiset_id_and_cols(int id, int _cols, int provides) {
+    if (id < 1 || id > MAX_MULTISET_ID) {
+        error("id of multiset must be between 1 and $0", MAX_MULTISET_ID);
+    }
+    if (_cols < 1) {
+        error("number of cols of multiset #$0 must be greater than 0", id);
+    }
+    println(_cols,id,multiset_cols[id]);
+    if (multiset_cols[id] == 0) {
+        multiset_gprods[id] = 1;
+        multiset_cols[id] = _cols;
+        multiset_provides[id] = 0;
+        multiset_requires[id] = 0;
+    } else if (multiset_cols[id] != _cols) {
+        error("number of cols of multiset #$0 must be $1", id, multiset_cols[id]);
+    }
+
+    if (provides) {
+        if (multiset_provides[id]) {
+            error("multiset #$0 provides was called before", id);
+        }
+        multiset_provides[id] = 1;
+    } else {
+        if (multiset_requires[id]) {
+            error("multiset id #$0 provides was called before", id);
+        }
+        multiset_requires[id] = 1;
+    }
+
+    // TODO: future versions structs?
+    // TODO: builtin vars like __SOURCE_REF__
+    // TODO: store where defined require, provides (souce:line)
+}
+
+function subair_multiset_requires(int id, expr sel, expr cols[]) {
+    // verify if correct id and cols
+    check_multiset_id_and_cols(id, length(cols), 0);
+
+    // TODO: use specific name, not match with other challenge
+    init_multiset_challenges(0);
+
+    // TODO: optimize to put only once this constraint if witness col, if cols are fixed
+    // check on compilation time, constraint not needed.
+
+    // TODO: optimization of constraints, at end review if expressions was fixed check on
+    // compilation time the constraint
+    sel * (1 - sel) === 0;
+
+    col fixed L1 = [1,0...]; // compiler optimize and only exists one L1
+
+    // global is visible inside function vs static
+    expr cols_compressed = 0;
+    println(length(cols));
+    for (int icol = length(cols) - 1; icol > 0; --icol) {
+        println(icol);
+        cols_compressed = (cols_compressed + cols[icol]) * std_alpha;
+    }
+    cols_compressed = (cols_compressed + cols[0]);
+
+    expr cols_selected = sel * (cols_compressed - std_beta) + std_beta;
+
+    // TODO: allow use defined constants as stage id.
+    col witness gprod stage(3);
+    //                     (colsF_selected + std_gamma)
+    //  gprod === 'gprod * ----------------------------
+    //                     (colsT_selected + std_gamma)
+
+    subair value multiset_gprod;
+
+    multiset_gprods[i] = multiset_gprods[i] * multiset_gprod;
+    L1 * 'gprod === multiset_gprod;
+    gprod * (colsT_selected + std_gamma) === 'gprod * (colsF_selected + std_gamma);
+}
+
+final air function multiset_air_constraints() {
+    for (int index = 0; index < MAX_MULTISET_ID; ++index) {
+        if (multiset_cols[index] == 0) continue;
+        if (multiset_provides[index] == 0) {
+
+        }
+
+    }
+}
+function subair_multiset_provides(fe id, expr sel, expr cols[] ) {
+
+}

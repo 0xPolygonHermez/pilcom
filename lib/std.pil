@@ -55,7 +55,7 @@ function lookup_check(col selF, expr colsF[], col selT, expr colsT[]) {
     gprod' * (std_delta*(1 + std_gamma) + h1 + std_gamma*h2) * (std_delta*(1 + std_gamma) + h2 + std_gamma*h1') === gprod * (1 + std_gamma) * (colsF_selected + std_delta) * (std_delta*(1 + std_gamma) + colsT_selected + std_gamma*colsT_selected');
 }
 
-function multiset_check(col selF, expr colsF[], col selT, expr colsT[]) {
+function multiset_check(expr selF, expr colsF[], expr selT, expr colsT[]) {
     // TODO: use specific name, not match with other challenge
     init_challenges(0);
     if (length(colsF) != length(colsT)) {
@@ -64,6 +64,8 @@ function multiset_check(col selF, expr colsF[], col selT, expr colsT[]) {
 
     // TODO: optimize to put only once this constraint if witness col, if cols are fixed
     // check on compilation time, constraint not needed.
+
+    // TODO: verify if selF or selT is constant value 1 or 0, if 1 no need these constraints
     selF * (1 - selF) === 0;
     selT * (1 - selT) === 0;
 
