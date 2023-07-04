@@ -1,8 +1,6 @@
-subair Byte4(2**16);
+subair Byte4(2**16) {
 
-constant BYTE4_ID = 1;
-
-namespace Byte4:: {
+    constant BYTE4_ID = 1;
 
     /////// Constant Polynomials
     col fixed CLK = [0:3,1]...;

@@ -1,21 +1,13 @@
 
 include "std.pil"
 include "arith.pil"
-air {
-    pepe === 1;
-}
-namespace Main:: {
 
-    pepe === L1 * gprod;
-    col fixed CLK = [1,0:7]...;
-    col witness empty;
+subair aggregate Main (2**21, 2**23, 2**25) {
+
+    col witness use_arith;
     col witness a[2],b[2],c[2],d[2];
 
-    for (col &r in [a,b,c,d]) {
-        for (int i=0; i<2; ++i) {
-            (r[i]'-r[i]) * (1-CLK) === 0;
-        }
-    }
+    use_arith * (1 - use_arith) === 0;
 
-    subair_multiset_requires(ARITH_ID, CLK, [...a,...b,...c,...d]);
+    subair_multiset_requires(ARITH_ID, use_arith, [...a,...b,...c,...d]);
 }

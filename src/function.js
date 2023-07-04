@@ -85,7 +85,7 @@ module.exports = class Function {
                     let index = 0;
                     for (const value of list.values) {
                         console.log(value);
-                        this.parent.references.set(name, [index++], value.instance());
+                        this.parent.references.set(name, [index++], value instanceof Expression ? value.instance() : value);
                     }
                 } else if (!(s.arguments[iarg] instanceof Expression)) {
                     console.log(arg);

@@ -19,8 +19,11 @@ is                                          { return 'IS'; }
 public                                      { return 'PUBLIC'; }
 global                                      { return 'GLOBAL'; }
 constant                                    { return 'CONSTANT' }
-prover\s+value                              { return 'PROVER_VALUE' }
+air\s+value                                 { return 'AIR_VALUE' }
 subair\s+value                              { return 'SUBAIR_VALUE' }
+instance\s+value                            { return 'INSTANCE_VALUE' }
+subair                                      { return 'SUBAIR' }
+instance                                    { return 'INSTANCE' }
 air                                         { return 'AIR' }
 
 int                                         { return 'INT' }
@@ -42,12 +45,13 @@ case                                        { return 'CASE' }
 default                                     { return 'DEFAULT' }
 
 when                                        { return 'WHEN' }
-subair                                      { return 'SUBAIR' }
 // TODO: composable ??
-aggregatable                                { return 'AGGREGATABLE' }
+aggregate                                   { return 'AGGREGATE' }
 stage                                       { return 'STAGE' }
 
 once                                        { return 'ONCE' }
+on                                          { return 'ON' }
+private                                     { return 'PRIVATE' }
 final                                       { return 'FINAL' }
 function                                    { return 'FUNCTION' }
 return                                      { return 'RETURN' }
@@ -233,10 +237,13 @@ top_level_block
     | public_declaration
         { $$ = $1 }
 
-    | prover_value_declaration
+    | air_value_declaration
         { $$ = $1 }
 
     | subair_value_declaration
+        { $$ = $1 }
+
+    | instance_value_declaration
         { $$ = $1 }
 
     | constant_definition
@@ -244,17 +251,9 @@ top_level_block
     ;
 
 namespace_definition
-    : NAMESPACE IDENTIFIER '::' IDENTIFIER '{' statement_block '}'
+    : NAMESPACE IDENTIFIER '{' statement_block '}'
         {
             $$ = {type: 'namespace', namespace: $4, monolithic: false, subair: $2, statements: $6.statements };
-        }
-    | NAMESPACE IDENTIFIER '::' '{' statement_block '}'
-        {
-            $$ = {type: 'namespace', namespace: '', monolithic: false, subair: $2, statements: $5.statements }
-        }
-    | NAMESPACE IDENTIFIER '(' expression ')' '{' statement_block '}'
-        {
-            $$ = {type: 'namespace', namespace: $2, monolithic: true, subair: false, exp: $4, statements: $7.statements }
         }
     ;
 
@@ -370,24 +369,32 @@ statement_closed
         { $$ = $1 }
     ;
 
+function
+    : FUNCTION IDENTIFIER
+        { $$ = {private: false, funcname: $2} }
+
+    | PRIVATE FUNCTION IDENTIFIER
+        { $$ = {private: true, funcname: $3} }
+    ;
+
 function_definition
-    : FUNCTION IDENTIFIER '(' arguments ')' ':' '[' return_type_list ']' '{' statement_block '}'
-        { $$ = { type: 'function_definition', final: false, funcname: $2, ...$4, returns: $8, ...$11 }}
+    : function '(' arguments ')' ':' '[' return_type_list ']' '{' statement_block '}'
+        { $$ = { ...$1, type: 'function_definition', final: false, ...$3, returns: $7, ...$10 }}
 
-    | FUNCTION IDENTIFIER '(' arguments ')' ':' return_type '{' statement_block '}'
-        { $$ = { type: 'function_definition', final: false, funcname: $2, ...$4, returns: $7, ...$9 }}
+    | function '(' arguments ')' ':' return_type '{' statement_block '}'
+        { $$ = { ...$1, type: 'function_definition', final: false, ...$3, returns: $6, ...$8 }}
 
-    | FUNCTION IDENTIFIER '(' arguments ')' '{' statement_block '}'
-        { $$ = { type: 'function_definition', final: false, funcname: $2, ...$4, returns: false, ...$7 }}
+    | function '(' arguments ')' '{' statement_block '}'
+        { $$ = { ...$1, type: 'function_definition', final: false, ...$3, returns: false, ...$6 }}
 
-    | FINAL FUNCTION IDENTIFIER '(' arguments ')' '{' statement_block '}'
-        { $$ = { type: 'function_definition', final: 'instance', funcname: $3, ...$5, returns: false, ...$8 }}
+    | FINAL function '(' arguments ')' '{' statement_block '}'
+        { $$ = { ...$2, type: 'function_definition', final: 'instance', ...$4, returns: false, ...$7 }}
 
-    | FINAL AIR FUNCTION IDENTIFIER '(' arguments ')' '{' statement_block '}'
-        { $$ = { type: 'function_definition', final: 'air', funcname: $4, ...$6, returns: false, ...$9 }}
+    | FINAL AIR function '(' arguments ')' '{' statement_block '}'
+        { $$ = { ...$3, type: 'function_definition', final: 'air', ...$5, returns: false, ...$8 }}
 
-    | FINAL SUBAIR FUNCTION IDENTIFIER '(' arguments ')' '{' statement_block '}'
-        { $$ = { type: 'function_definition', final: 'subair', funcname: $4, ...$6, returns: false, ...$9 }}
+    | FINAL SUBAIR function '(' arguments ')' '{' statement_block '}'
+        { $$ = { ...$3, type: 'function_definition', final: 'subair', ...$5, returns: false, ...$8 }}
 
     ;
 
@@ -524,13 +531,19 @@ statement_no_closed
     | expression '===' expression
         { $$ = {type: 'constraint', left: $1, right: $3 } }
 
+    | delayed_function_call
+        { $$ = {...$1, type: 'delayed_function_call'} }
+
     | include_directive
         { $$ = $1 }
 
     | public_declaration
         { $$ = $1 }
 
-    | prover_value_declaration
+    | air_value_declaration
+        { $$ = $1 }
+
+    | instance_value_declaration
         { $$ = $1 }
 
     | subair_value_declaration
@@ -589,6 +602,29 @@ function_call
         { $$ = { op: 'call', function: $1, arguments: $3.values } }
     ;
 
+delayed_function_event
+    : FINAL
+      { $$ = $1 }
+    ;
+
+delayed_function_scope
+    : %empty
+
+    | AIR
+        { $$ = $1 }
+
+    | SUBAIR
+        { $$ = $1 }
+
+    ;
+
+
+delayed_function_call
+    : ON delayed_function_event delayed_function_scope name_optional_index '(' multiple_expression_list ')'
+        { $$ = { op: 'delayed_call', event: $2, scope: $3, function: $4, arguments: $6.values } }
+    ;
+
+
 codeblock_no_closed
     : variable_declaration
         { $$ = $1 }
@@ -618,18 +654,14 @@ codeblock_no_closed
         { $$ = { type: 'break' } }
     ;
 
-list_subair
-    : %prec EMPTY
-
-    | IDENTIFIER '::'
-        { $$ = { subair: $1 } }
-    ;
-
 in_expression
     : expression
         { $$ = $1 }
 
-    | list_subair '[' expression_list ']'
+    | IDENTIFIER '::' '[' expression_list ']'
+        { $$ = { ...$3, ...$5, subair: $1 } }
+
+    | '[' expression_list ']'
         { $$ = { ...$1, ...$3 } }
     ;
 
@@ -999,14 +1031,23 @@ sequence
     ;
 
 multiple_expression_list
-    : multiple_expression_list ',' expression %prec ','
+    : %empty    %prec EMPTY
+        { $$ = {values: []} }
+
+    | multiple_expression_list ',' expression %prec ','
         { $$ = $1; $$.values.push($3) }
 
-    | multiple_expression_list ',' list_subair '[' expression_list ']' %prec ','
-        { $$ = $1; $$.values.push({ type: 'expression_list', subair: $4, values: $5.values }) }
+    | multiple_expression_list ',' IDENTIFIER '::' '[' expression_list ']' %prec ','
+        { $$ = $1; $$.values.push({ type: 'expression_list', subair: $3, values: $6.values }) }
 
-    | list_subair '[' expression_list ']'
-        { $$ = { type: 'expression_list', subair: $1, values: $3.values } }
+    | multiple_expression_list ',' '[' expression_list ']' %prec ','
+        { $$ = $1; $$.values.push({ type: 'expression_list', values: $4.values }) }
+
+    | IDENTIFIER '::' '[' expression_list ']' %prec NO_EMPTY
+        { $$ = { type: 'expression_list', subair: $1, values: $4.values } }
+
+    | '[' expression_list ']' %prec NO_EMPTY
+        { $$ = { type: 'expression_list', values: $2.values } }
 
     | expression
         { $$ = { type: 'expression_list', values: [$1] } }
@@ -1123,12 +1164,20 @@ public_declaration
         { $$ = { type: 'public_declaration', items: $2.items } }
     ;
 
-prover_value_declaration
-    : PROVER_VALUE col_declaration_ident '=' expression
-        { $$ = { type: 'prover_value_declaration', items: [$1], init: $3 } }
+air_value_declaration
+    : AIR_VALUE col_declaration_ident '=' expression
+        { $$ = { type: 'air_value_declaration', items: [$1], init: $3 } }
 
-    | PROVER_VALUE col_declaration_list
-        { $$ = { type: 'prover_value_declaration', items: $1.items } }
+    | AIR_VALUE col_declaration_list
+        { $$ = { type: 'air_value_declaration', items: $1.items } }
+    ;
+
+instance_value_declaration
+    : INSTANCE_VALUE col_declaration_ident '=' expression
+        { $$ = { type: 'instance_value_declaration', items: [$1], init: $3 } }
+
+    | INSTANCE_VALUE col_declaration_list
+        { $$ = { type: 'instance_value_declaration', items: $1.items } }
     ;
 
 subair_value_declaration
@@ -1141,8 +1190,11 @@ subair_value_declaration
 
 
 subair_definition
-    : SUBAIR IDENTIFIER '(' expression_list ')'
-        { $$ = { type: 'subair_definition', name: $2, rows: $4 } }
+    : SUBAIR AGGREGATE IDENTIFIER '(' expression_list ')'  '{' statement_block '}'
+        { $$ = { type: 'subair_definition', aggregable: false, props: $2, name: $3, rows: $5, statements: $8.statements } }
+
+    | SUBAIR IDENTIFIER '(' expression_list ')'  '{' statement_block '}'
+        { $$ = { type: 'subair_definition', aggregate: false, name: $2, rows: $4, statements: $7.statements } }
     ;
 
 constant_definition

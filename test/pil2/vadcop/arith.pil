@@ -1,16 +1,18 @@
-subair Arith(2**16);
+include "byte4.pil";
 
-include "byte4.pil"
+subair Arith(2**16) {
 
-constant ARITH_ID = 2;
-
-namespace Arith:: {
+    constant ARITH_ID = 2;
 
     col witness a[2], b[2], c[2], d[2];
     col witness carry[2];
     col witness result;
 
     col fixed CLK = [1,0:9]...;
+    // col fixed CLK[10];
+    // CLK[0] = [1, 0:9]...;
+    // CLK[1] = [0, 1, 0:8]...;
+    // CLK[9] = [0:9, 1]...;
     constant FACTOR = 2**32;
 
     a[0] * b[0] - carry[0] * FACTOR === c[0];
@@ -20,11 +22,17 @@ namespace Arith:: {
     expr byte4col = 0;
     int index = 0;
     for (col &r in [...a,...b,...c,...d,...carry]) {
-        r * CLK'(index) === 0;
+        (r'-r) * (1-CLK) === 0;
+        // 0
+        // 0 + CLK0 * a[0]
+        // 0 + CLK0 * a[0] + CLK1 * a[1] + ...
         byte4col = byte4col + CLK'(index) * r;
         ++index;
     }
+    // byte4col = CLK0 * a[0] + CLK1 * a[1] + CLK2 * b[0] + ...
+    result * (1 - result) === 0;
+    (result'-result) * (1-CLK) === 0;
 
-    subair_multiset_provides(ARITH_ID, result, [...a,...b,...c,...d]);
+    subair_multiset_provides(ARITH_ID, result * CLK'9, [...a,...b,...c,...d]);
     subair_multiset_requires(BYTE4_ID, result, [byte4col]);
 }
