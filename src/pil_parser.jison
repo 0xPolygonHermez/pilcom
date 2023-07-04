@@ -21,7 +21,6 @@ global                                      { return 'GLOBAL'; }
 constant                                    { return 'CONSTANT' }
 air\s+value                                 { return 'AIR_VALUE' }
 subair\s+value                              { return 'SUBAIR_VALUE' }
-instance\s+value                            { return 'INSTANCE_VALUE' }
 subair                                      { return 'SUBAIR' }
 instance                                    { return 'INSTANCE' }
 air                                         { return 'AIR' }
@@ -241,9 +240,6 @@ top_level_block
         { $$ = $1 }
 
     | subair_value_declaration
-        { $$ = $1 }
-
-    | instance_value_declaration
         { $$ = $1 }
 
     | constant_definition
@@ -541,9 +537,6 @@ statement_no_closed
         { $$ = $1 }
 
     | air_value_declaration
-        { $$ = $1 }
-
-    | instance_value_declaration
         { $$ = $1 }
 
     | subair_value_declaration
@@ -1166,26 +1159,18 @@ public_declaration
 
 air_value_declaration
     : AIR_VALUE col_declaration_ident '=' expression
-        { $$ = { type: 'air_value_declaration', items: [$1], init: $3 } }
+        { $$ = { type: 'air_value_declaration', items: [$2], init: $4 } }
 
     | AIR_VALUE col_declaration_list
-        { $$ = { type: 'air_value_declaration', items: $1.items } }
-    ;
-
-instance_value_declaration
-    : INSTANCE_VALUE col_declaration_ident '=' expression
-        { $$ = { type: 'instance_value_declaration', items: [$1], init: $3 } }
-
-    | INSTANCE_VALUE col_declaration_list
-        { $$ = { type: 'instance_value_declaration', items: $1.items } }
+        { $$ = { type: 'air_value_declaration', items: $2.items } }
     ;
 
 subair_value_declaration
-    : SUBAIR_VALUE col_declaration_ident '=' expression
-        { $$ = { type: 'subair_value_declaration', items: [$1], init: $3 } }
+    : SUBAIR_VALUE AGGREGATE '(' IDENTIFIER ')' col_declaration_ident '=' expression
+        { $$ = { type: 'subair_value_declaration', items: [$6], init: $8 } }
 
-    | SUBAIR_VALUE col_declaration_list
-        { $$ = { type: 'subair_value_declaration', items: $1.items } }
+    | SUBAIR_VALUE AGGREGATE '(' IDENTIFIER ')' col_declaration_list
+        { $$ = { type: 'subair_value_declaration', items: $6.items } }
     ;
 
 

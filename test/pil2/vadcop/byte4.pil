@@ -22,5 +22,5 @@ subair Byte4(2**16) {
     }
     byteFromBits === byteIn;
 
-    subair_multiset_provides(BYTE4_ID, result, [out]);
+    multiset_provides(BYTE4_ID, result, [out]);
 }

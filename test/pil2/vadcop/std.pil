@@ -1,14 +1,14 @@
 constant MAX_MULTISET_ID=1000;
 
-function subair_multiset_requires(int id, expr sel, expr cols[]) {
-    subair_multiset(0, id, sel, cols);
+function multiset_requires(int id, expr sel, expr cols[]) {
+    multiset(0, id, sel, cols);
 }
 
-function subair_multiset_provides(int id, expr sel, expr cols[]) {
-    subair_multiset(1, id, sel, cols);
+function multiset_provides(int id, expr sel, expr cols[]) {
+    multiset(1, id, sel, cols);
 }
 
-private function subair_multiset(int provides, int id, expr sel, expr cols[]) {
+function multiset(int provides, int id, expr sel, expr cols[]) {
     // verify if correct id and cols
     check_multiset_id_and_cols(id, length(cols), provides);
 
@@ -35,15 +35,15 @@ private function subair_multiset(int provides, int id, expr sel, expr cols[]) {
 
     if (provides) {
         // adding all products of provides called in this subair
-        subair_multiset_gprod_provides = subair_multiset_gprod_provides * cols_selected ;
+        multiset_gprod_provides = multiset_gprod_provides * cols_selected ;
     } else {
         // adding all products of requires called in this subair
-        subair_multiset_gprod_requires = subair_multiset_gprod_requires * cols_selected;
+        multiset_gprod_requires = multiset_gprod_requires * cols_selected;
     }
 
-    on final subair_multiset_instance_constraints();
-    on final subair subair_multiset_subair_constraints();
-    on final air subair_multiset_air_constraints();
+    on final multiset_instance_constraints();
+    on final subair multiset_subair_constraints();
+    on final air multiset_air_constraints();
 }
 
 private function init_multiset_challenges(int lookup)
@@ -64,7 +64,6 @@ private function check_multiset_id_and_cols(int id, int _cols, int provides) {
         int multiset_cols[MAX_MULTISET_ID + 1];
         int multiset_provides[MAX_MULTISET_ID + 1];
         int multiset_requires[MAX_MULTISET_ID + 1];
-
     }
 
     if (id < 1 || id > MAX_MULTISET_ID) {
@@ -90,26 +89,18 @@ private function check_multiset_id_and_cols(int id, int _cols, int provides) {
     }
 
     once air {
-        global expr subair_multiset_air_gprod = 1;
+        global expr multiset_air_gprod = 1;
     }
     once subair {
-        subair value aggregate(mul) subair_multiset_subair_gprod;
-        // subair value subair_multiset_subair_gprod;
-        // subair value subair_multiset_subair_gprod aggregate(prod) instance value subair_multiset_instance_gprod;
-        // subair value subair_multiset_subair_gprod (subair_multiset_instance_gprod);
-        // subair value subair_multiset_subair_gprod = recursive(1, self * subair_multiset_instance_gprod);
-        // subair value subair_multiset_subair_gprod = [1, 'subair_multiset_subair_gprod * subair_multiset_instance_gprod, ...];
-        // subair value subair_multiset_subair_gprod = recursive(1, 'subair_multiset_subair_gprod * subair_multiset_instance_gprod);
-        // subair value subair_multiset_subair_gprod = 1, 'subair_multiset_subair_gprod * subair_multiset_instance_gprod,...
-        // subair value subair_multiset_subair_gprod = (1, 'subair_multiset_subair_gprod * subair_multiset_instance_gprod);
+        subair value aggregate(mul) multiset_subair_gprod;
     }
     once {
-        global expr subair_multiset_gprod_requires = 1;
-        global expr subair_multiset_gprod_provides = 1;
+        global expr multiset_gprod_requires = 1;
+        global expr multiset_gprod_provides = 1;
     }
 }
 
-private function subair_multiset_instance_constraints() {
+private function multiset_instance_constraints() {
 
     // TODO: allow use defined constants as stage id.
     col witness gprod stage(3);
@@ -121,27 +112,24 @@ private function subair_multiset_instance_constraints() {
 
     col fixed L1 = [1,0...]; // compiler optimize and only exists one L1
 
-    col gprod2 = 'L1 * ( 1 - gprod) + gprod;
+    col previous_gprod = 'gprod * (1 - L1) + L1;  // L1 == 1 ? 1 : 'gprod
 
-    // constraint instance_value with grand product
+    grod * multiset_gprod_provides === previous_gprod * multiset_gprod_requires;
 
-    gprod2 * subair_multiset_gprod_provides === 'gprod2 * subair_multiset_gprod_requires;
-
-    L1 * 'gprod === subair_multiset_subair_gprod;
+    L1' * (gprod - multiset_subair_gprod) === 0;
 }
 
-private function subair_multiset_subair_constraints() {
-    // subair_multiset_air_gprod = subair_multiset_air_gprod * subair_multiset_instance_gprod;
-    subair_multiset_air_gprod = subair_multiset_air_gprod * subair_multiset_subair_gprod;
+private function multiset_subair_constraints() {
+    multiset_air_gprod = multiset_air_gprod * multiset_subair_gprod;
 }
 
-private function subair_multiset_air_constraints() {
-    check_subair_multiset_was_complete();
+private function multiset_air_constraints() {
+    check_multiset_was_complete();
 
-    subair_multiset_air_gprod === 1;
+    multiset_air_gprod === 1;
 }
 
-private function check_subair_multiset_was_complete() {
+private function check_multiset_was_complete() {
     for (int index = 0; index < MAX_MULTISET_ID; ++index) {
         if (multiset_cols[index] == 0) continue;
         if (multiset_requires[index] == 0) {

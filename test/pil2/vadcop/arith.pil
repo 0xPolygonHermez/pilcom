@@ -33,6 +33,6 @@ subair Arith(2**16) {
     result * (1 - result) === 0;
     (result'-result) * (1-CLK) === 0;
 
-    subair_multiset_provides(ARITH_ID, result * CLK'9, [...a,...b,...c,...d]);
-    subair_multiset_requires(BYTE4_ID, result, [byte4col]);
+    multiset_provides(ARITH_ID, result * CLK'9, [...a,...b,...c,...d]);
+    multiset_requires(BYTE4_ID, result, [byte4col]);
 }

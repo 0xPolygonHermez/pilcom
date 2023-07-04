@@ -9,5 +9,5 @@ subair aggregate Main (2**21, 2**23, 2**25) {
 
     use_arith * (1 - use_arith) === 0;
 
-    subair_multiset_requires(ARITH_ID, use_arith, [...a,...b,...c,...d]);
+    multiset_requires(ARITH_ID, use_arith, [...a,...b,...c,...d]);
 }
