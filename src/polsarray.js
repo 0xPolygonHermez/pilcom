@@ -207,7 +207,7 @@ class PolsArray {
             n = res.bytesRead;
             p += n;
             for (let l=0; l<n; l+=this.F.n8) {
-                this.$$array[i++][j] = this.F.fromRprBE(buff, l);
+                this.$$array[i++][j] = this.F.fromRprLE(buff, l);
                 if (i==this.$$nPols) {
                     i=0;
                     j++;
@@ -230,7 +230,7 @@ class PolsArray {
         for (let i=0; i<this.$$n; i++) {
             for (let j=0; j<this.$$nPols; j++) {
                 const element = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
-                this.F.toRprBE(buff, p, element);
+                this.F.toRprLE(buff, p, element);
                 p += this.F.n8;
 
                 if(p == buff.length) {
