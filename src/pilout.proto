@@ -81,7 +81,11 @@ message GlobalOperand {
         uint32 idx = 1;
     }
 
-    message PublicTableValue {
+    message PublicTableAggregatedValue {
+        uint32 idx = 1;
+    }
+
+    message PublicTableColumn {
         uint32 idx = 1;         // public table index
         uint32 colIdx = 2;      // column index within the table
     }
@@ -95,8 +99,9 @@ message GlobalOperand {
         Challenge challenge = 2;
         ProverValue proverValue = 3;
         PublicValue publicValue = 4;
-        PublicTableValue publicTableValue = 5;
-        Expression expression = 6;
+        PublicTableAggregatedValue publicTableAggregatedValue = 5;
+        PublicTableColumn publicTableColumn = 6;
+        Expression expression = 7;
     }
 }
 

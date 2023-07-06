@@ -1,37 +1,31 @@
 // -----------------------------------------------
 // VADCOP support
-subproof spMain (2**25);
-subproof spArith (2**10, 2**16);
-subproof aggregable spBin (2**10, 2**16);
+subair aggregate Main (2**25) {
 
-namespace Main subproof spMain;
-:
-:
-namespace RAM subproof spArith;
-:
-:
-namespace ROM subproof spBin;
-:
-:
-namespace Arith subproof Arith;
-:
-:
-namespace Bin subproof spBin;
-:
-:
+    // optional namespace
+    namespace Mem {
+
+    }
+
+    // optional namespace
+    namespace Rom {
+
+    }
+}
+subair aggregate Arith(2**20,2**23,2**25) {
+
+}
+
+subair aggregate Binary(2**23,2**25) {
+
+}
 
 // subproof
 
 // -----------------------------------------------
-// Constructive language (types)
+// Constructive language (runtime types)
 
-// col types
-col intermediate_col;
-col fixed fixed_col;
-col witness witness_col;
-
-// constructive types
-integer number_without_limits;
+int number_without_limits;
 fe field_element;
 expr to_build_constraints;
 string for_development;
@@ -40,13 +34,42 @@ string for_development;
 constant PIWEI = 3141592653589793238;
 
 // arrays
-col intermediate_col[10];
-col witness witness_col[i*2];
-integer number_without_limits[10][20];
+int number_without_limits[10][20];
 expr to_build_constraints[16];
+constant MY_NUMBERS[8] = [2,3,5,7,11,13,17,19];
+constant MATRIX[2][8] = [[1,3,5,7,9,11,13,15],
+                         [2,4,6,8,10,12,14,18]];
 
 // references
-col &currentcol = mycol;
+int &currentvalue = myvalue;
+fe &pos = current_pos;
+
+// -----------------------------------------------
+// Constructive language (other types)
+
+// col types
+col intermediate_col;
+col fixed fixed_col;
+col witness witness_col;
+
+// proof types
+public batch_num;
+challenge gamma;
+
+// vadcop types
+air value finalresult;
+subair value aggregate(mul) multiset;
+
+// arrays
+col intermediate_col[10];
+col witness witness_col[i*2];
+
+// references
+col &current_col = intermediate_col;
+// col references could be reference to intermediate, fixed or witness
+col &current_witness_col = witness_col;
+col &current_fixed_col = fixed_col;
+col witness &last_witness_col = witness_col;
 
 // -----------------------------------------------
 // Constructive language (control)
@@ -56,7 +79,7 @@ col witness x1[16], y1[16], x2[16], y2[16], x3[16], y3[16];
 col witness s, q[3][16];
 
 // Latch
-for (integer i = 0; i<16; ++i) {
+for (int i = 0; i<16; ++i) {
    for(col &p in [x1,y1,x2,y2,x3,y3,s,q[0],q[1],q[2]]) {
        p[i]' * (1 - CLK32) === p[i] * (1 - CLK32);
    }
@@ -67,7 +90,7 @@ for (col &flag in flags) {
     flag * (1 - flag) === 0;
 }
 
-integer index = 0;
+int index = 0;
 while (index < length(flags)) {
     flags[index] * (1 - flags[index]) === 0;
     ++index;
@@ -76,10 +99,14 @@ while (index < length(flags)) {
 // -----------------------------------------------
 // Constructive language (control 2)
 
-integer index = 0;
-do {
+int index = 0;
+while (index < 5) {
     if (index < 0) break;           // break could be used on for,do,while,switch-case
     if (index % 2 == 0) continue;   // continue could be used on for,do,while
+}
+
+do {
+    // do something
 } while (++index < 10)
 
 if (value != current_value) {
@@ -88,22 +115,24 @@ if (value != current_value) {
     // do something else
 }
 
+// switch-case without break
 switch (key) {
     case 1:
         value++;
-        break;
-    case 4:
+    case 3,16:
         value = 13;
-        break;
+    case 8..15:
+        value = 17;
+    case 17,20..31,33:
+        value = 19;
     else:
         value = 0;
-        break;
 }
 
 // -----------------------------------------------
 // Constructive language (example)
 
-integer nbits = log2(N);                            // log2 is a buildin function
+int nbits = log2(N);                                // log2 is a buildin function
 
 col witness lJmpnCondValue;                         // first nbits of conditional value
 col jmpnCondValue = JMPN*(isNeg*2**32 + op0);       // verified using plookup with STEP
@@ -168,74 +197,102 @@ when not first { d * e === a }
 // -----------------------------------------------
 // Constructive language (functions)
 
-function factorial (integer n) : integer {
+function factorial (int n) : int {
     if (n == 1) return 1;
     return n * factorial(n-1);
 }
 
 function myfunc (expr &selector, expr cols[]) { ... }     // arrays and references
 
-function sum(...) : integer {                  // number variable of parameters
-    integer total = 0;
-    for (integer index = 0; index < length(args); ++index) {
-        if (!(args[index] is integer)) error(`sum: invalid parameter #${index}, it must be an integer`);
+function sum(...) : int {                  // number variable of parameters
+    int total = 0;
+    for (int index = 0; index < length(args); ++index) {
+        if (!(args[index] is int)) error("sum: invalid parameter #$0, it must be an integer", index);
         total += args[index];
     }
     return total;
 }
 
-function swap(integer a, integer b) : [integer, integer] { ... } // multiple returns
+function swap(int a, int b) : [int, int] { ... } // multiple returns
 function swap(string a, string b) : [string, string] { .... }    // parametric polymorphism (overloading)
-function next3(integer a) : [integer,integer, integer] { return [a+1,a+2,a+3]; }
+function next3(int a) : [int,int, int] { return [a+1,a+2,a+3]; }
 
 [c,] = swap(a,b);       // ignore one return value
 [c,...] = next3(10);    // ignore rest of return values
 [n1,,n3] = next3(k);    // ignore one return value
 
+
+// -----------------------------------------------
+// Constructive language (deferred functions)
+
+// called each time that one instance finish
+final function on_instance_final_was_called (){
+}
+
+// called each time that one subair finish
+final subair function on_subair_final_was_called (){
+}
+
+// called at end
+final air function on_instance_final_was_called (){
+}
+
+function myfunc (expr &selector, expr cols[]) {
+    // only if function was executed
+    // only one time by instance
+    on final instance_finished_func(with_args);
+    // only one time by subair
+    on final subair subair_finished_func(arg1, arg2);
+    // only one time is called
+    on final air final_func(with_args);
+}
+
+// private functions, only visible inside same source file
+private function internal_lib_helper() {
+}
 // -----------------------------------------------
 // Constructive language (functions)
 
 col fixed L1 = [1,0...];
 
-// inside when only constraints
-when L1 {
-  a === a';
-  b === b';
+when first c === 23;
+
+when first {
+  a === 0;
+  b === 0;
 }
 
-when(L1, [
-  a === a',
-  b === b'
-]);
-
-for (integer index = 0; index < 16; ++index) {
-    when (1-L1) { a[index] === b[index] + (1 - c) }
-}
-for (integer index = 0; index < 16; ++index) {
-    when(1-L1, [ a[index] === b[index] + (1 - c) ]);
+when last {
+  gprod === 1,
 }
 
-col optional c;
-
-if (bits > 23) {
-    col c = a + b;
-    col c = a + b;
-    c === 0;
+when frame {
+    a'3 === a + a' + a'2;
 }
 
-if (bits > 25) {
-    col d = c * 2;
+when (1-L1) {
+    for (integer index = 0; index < 16; ++index) {
+        a[index] === b[index] + (1 - c);
+    }
 }
 
-when (row != N - 1) {
-  d * e === a;
+constant MAX_PUBLIC_TABLE_ROWS = 32;
+constant PUBLIC_TABLE_COLS = 10;
+
+function prodColyumns(rowElements) {
+    expression expr = 0;
+    for (int i=0; i<length(column; i++)) {
+        expr = (expr + rowElements[i])*alfa;
+    }
+    return expr;
 }
 
-when (row != 0) { a === b * c }
-when (row != 0) a === b * c;
 
-JORDI: when només constraints;
-JORDI: estem utilizant rows.
+
+public table aggregate(prod, prodColumns) gprods[PUBLIC_TABLE_COLS][MAX_PUBLIC_TABLE_ROWS] ;
+
+memory * gprod === 1
+binary * gprod0[1] === 1;
 
 // -----------------------------------------------
 // Challenges access
@@ -243,10 +300,11 @@ JORDI: estem utilizant rows.
 col witness a1, a2, b1, b2;
 
 col witness stage(2) h1, h2;
-challenge stage(2) u;
+challenge stage(2) epsilon;
+challenge stage(3) betas[4];
 
-col f = a1 + u*a2;
-col t = b1 + u*b2;
+col f = a1 + epsilon * a2;
+col t = b1 + epsilon * b2;
 
 col witness stage(3) z;
 challenge stage(3) delta, gamma;
@@ -255,10 +313,6 @@ when L1 {z === 1};
 
 z' * ((delta*(1+gamma) + h1 + gamma*h2)) * ((delta*(1+gamma) + h2 + gamma*h1')) ===
    z * (1+gamma)*(delta + f)*(delta*(1+gamma) + t + gamma*t');
-
-global challenge alfa stage(1) subproof(Main, Keccak);
-global challenge gamma stage(1) subproof(Main, Poseidon);
-global public beta stage(1) subproof(Main, Poseidon);
 
 // -----------------------------------------------
 // Fixed columns generation
@@ -281,7 +335,7 @@ col fixed FACTOR = [1,2,..*..,2**32]...;    // 1,2,4,8,16,32,64,128,256,512,1024
 col fixed F;
 F[0] = 0;
 F[1] = 1;
-for (integer i=2; i<N; ++i) {
+for (int i=2; i<N; ++i) {
    F[i] = F[i-1] + F[i-2];
 }
 
@@ -327,10 +381,6 @@ for (integer i = 0; i < 16; ++i) {
    }
 }
 
-// lookup_check(bin,
-//         [A0,A1,..,A7,B0,B1,...,B7,C0,C1,...,C7],
-//         LATCH,
-//         [abc[0],abc[1],...,abc[7],'abc[0],'abc[1],...,'abc[7],2'abc[0],2'abc[1],...,2'abc[7]]
 
 // -----------------------------------------------
 // Range checks
@@ -352,47 +402,47 @@ range_check(clkC, 0, 255);
 // -----------------------------------------------
 // Custom data
 
-// custom data provides extra information to nexts steps (backend)
 function lookup_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
-    @lookup_check [selF, colsF, selT, colsT];
+   @lookup {selF:selF, colsF:colsF, selT:selT, colsT: colsT};
 }
 
 // to extend to new features
-function myfuturefunc (expr value) {
-    @myfuturefunc value
+function myfuturefunc (expr v) {
+   @myfuturefunc {colsF: v}
 }
 
-// custom data could be more complex as key: value or combinations
-function plookup (expr selF, expr colsF[], expr selT, expr colsT[]) {
-    @the_name_that_I_want {selF: 1,     // keys aren't resolved
-              colsF: colsF,             // values resolved (value, expression or column reference)
-              selT: 1,
-              colsT: colsT};
+// front-end data could be more complex as key: value or combinations
+function lookup (expr selF, expr colsF[], expr selT, expr colsT[]) {
+   @the_name_that_I_want {selF: 1,     // keys aren't resolved
+             colsF: colsF,             // values resolved (value, expression or column reference)
+             selT: 1,
+             colsT: colsT};
 }
+
 
 // -----------------------------------------------
 // Buildin functions
 
+// builtin variables
 N                                           // key with number of rows
-bits                                        // key with bits of N
-prime                                       // key with prime of fe
+BITS                                        // key with bits of N
+PRIME                                       // key with prime of fe
+SOURCE                                      // string with source reference (pil)
 
-print("hello");                             // print values without LF
-println(" world my name is", name);         // same as print but with LF
-warning("number too big, be careful");      // show warning but continue
-error("division by zero");                  // show error and doesn't continue
-assert(expected == res, "invalid result");  // if conditions was false then show error and doesn't continue
+print("hello");                                 // print values without LF
+println(" world my name is", name);             // same as print but with LF
+warning("number $0 too big, be careful", i);    // show warning but continue
+error("division by zero");                      // show error and doesn't continue
+assert(expected == res, "invalid result");      // if conditions was false then show error and doesn't continue
 
 namespace_of(A)                             // return namespace of A (string)
-subproof_of(A)                              // return subproof of A (string)
+subair_of(A)                                // return subproof of A (string)
 stage_of(A)                                 // return stage of A (integer)
-length(A)                                   // return length of array (integer), return -1 if A isn't an array
-lengths(A)                                  // return array of length arrays, empty array if A isn't an array
+length(A)                                   // return length of array (integer) or length of string
+dim(A)                                      // return number of dimensions
 log2(N)                                     // return log2 of N
-inverse(N)                                  // return inverse of fe
 is_array(A)                                 // return if A is an array
-is_declared(A)                              // return if A is declared (defined or not)
-is_defined(A)                               // return if A is declared and defined
+defined(A)                                  // return if A is declared and defined
 
 A is fe                                     // return if A is an fe (could be used with other types)
 A is expr[]                                 // return if A is an array of expressions
@@ -637,3 +687,4 @@ results in parallel stack, array of 32 bytes.
 
 expression of 10240 operations = 360K (expressions) + 320K (results)
 */
+

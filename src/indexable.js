@@ -28,7 +28,7 @@ module.exports = class Indexable {
     }
 
     get(id) {
-        return this.values[id]
+        return this.values[id] ?? this.undefined;
     }
 
     getLabel(id, options) {
@@ -63,7 +63,7 @@ module.exports = class Indexable {
 
     *[Symbol.iterator]() {
         for (let index = 0; index < this.values.length; ++index) {
-          yield this.values[index];
+          yield this.values[index] ?? this.undefined;
         }
     }
 

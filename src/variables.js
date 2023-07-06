@@ -4,39 +4,9 @@ module.exports = class Variables extends Indexable {
 
     constructor (Fr, type) {
         super(Fr, type);
+        this.undefined = 0;
     }
-    /*
-    constructor (Fr, type, references, expressions) {
-        super(Fr);
-        this.Fr = Fr;
-        this.references = references;
-        this.expressions = expressions;
-        this.lastId = 0;
-        this.type = type;
-        this.values = [];
+    getEmptyValue(id) {
+        return 0;
     }
-
-    reserve(count, label, multiarray) {
-        this.values
-        this.variables[this.lastId] = { count, type: data.type, values:[] };
-        return this.lastId++;
-    }
-    get(id, offset) {
-        // console.log(['GET', id]);
-        // console.log(this.variables[id].values[offset]);
-        return this.variables[id].values[offset];
-    }
-    getTypedValue(id, offset) {
-        const vdata = this.variables[id];
-        // console.log(['VDATA', id]);
-        // console.log(vdata.values[offset]);
-        return {type: vdata.type, value: vdata.values[offset] };
-    }
-    getType(id, offset) {
-        return this.variables[id].type;
-    }
-    set(id, offset, value) {
-        // console.log(['VARIABLE_SET', id, offset, value]);
-        this.variables[id].values[offset] = value;
-    }*/
 }

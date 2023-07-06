@@ -8,21 +8,22 @@ function multiset_provides(int id, expr sel, expr cols[]) {
     multiset(1, id, sel, cols);
 }
 
-function multiset(int provides, int id, expr sel, expr cols[]) {
+// public table aggregate(prod, aggregate_function, MEMORY) pt_memory[3][10];
+
+function aggregate_function ( public table tb, int id ) : expr {
     // verify if correct id and cols
     check_multiset_id_and_cols(id, length(cols), provides);
 
-    // TODO: use specific name, not match with other challenge
     init_multiset_challenges(0);
 
-    // TODO: optimize to put only once this constraint if witness col, if cols are fixed
-    // check on compilation time, constraint not needed.
+    expr cols_selected = multiset_prepare_cols(id, 1, cols);
 
-    // TODO: optimization of constraints, at end review if expressions was fixed check on
-    // compilation time the constraint
-    sel * (1 - sel) === 0;
+    on final air check_multiset_was_complete();
 
-    // global is visible inside function vs static
+    return cols_selected;
+}
+
+function multiset_prepare_cols ( int id, expr sel, expr cols[] ) :expr {
     expr cols_compressed = 0;
     for (int icol = length(cols) - 1; icol >= 0; --icol) {
         cols_compressed = (cols_compressed + cols[icol]) * std_alpha;
@@ -32,10 +33,27 @@ function multiset(int provides, int id, expr sel, expr cols[]) {
     cols_compressed = cols_compressed + id;
 
     expr cols_selected = sel * (cols_compressed + std_beta - 1) + 1;
+    return cols_selected;
+}
+
+function multiset(int provides, int id, expr sel, expr cols[]) {
+    // verify if correct id and cols
+    check_multiset_id_and_cols(id, length(cols), provides);
+
+    init_multiset_challenges(0);
+
+    // TODO: optimize to put only once this constraint if witness col, if cols are fixed
+    // check on compilation time, constraint not needed.
+
+    // TODO: optimization of constraints, at end review if expressions was fixed check on
+    // compilation time the constraint
+    sel * (1 - sel) === 0;
+
+    expr cols_selected = multiset_prepare_cols(id, sel, cols);
 
     if (provides) {
         // adding all products of provides called in this subair
-        multiset_gprod_provides = multiset_gprod_provides * cols_selected ;
+        multiset_gprod_provides = multiset_gprod_provides * cols_selected;
     } else {
         // adding all products of requires called in this subair
         multiset_gprod_requires = multiset_gprod_requires * cols_selected;
@@ -50,8 +68,8 @@ private function init_multiset_challenges(int lookup)
 {
     if (!defined(std_alpha)) {
         // TODO: could be challenge non global
-        global challenge std_alpha stage(2);
-        global challenge std_beta stage(2);
+        global challenge stage(2) std_alpha;
+        global challenge stage(2) std_beta;
     }
 }
 
@@ -103,7 +121,7 @@ private function check_multiset_id_and_cols(int id, int _cols, int provides) {
 private function multiset_instance_constraints() {
 
     // TODO: allow use defined constants as stage id.
-    col witness gprod stage(3);
+    col witness stage(3) gprod;
 
     //                     (requires_selected + std_gamma)
     //  gprod === 'gprod * ----------------------------

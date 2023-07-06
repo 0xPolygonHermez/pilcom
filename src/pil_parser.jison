@@ -16,6 +16,7 @@ namespace                                   { return 'NAMESPACE'; }
 include                                     { return 'INCLUDE'; }
 in                                          { return 'IN'; }
 is                                          { return 'IS'; }
+public\s+table                              { return 'PUBLIC_TABLE'; }
 public                                      { return 'PUBLIC'; }
 global                                      { return 'GLOBAL'; }
 constant                                    { return 'CONSTANT' }
@@ -236,6 +237,9 @@ top_level_block
     | public_declaration
         { $$ = $1 }
 
+    | public_table_declaration
+        { $$ = $1 }
+
     | air_value_declaration
         { $$ = $1 }
 
@@ -335,10 +339,7 @@ lcs
     // TODO_
 
 when_boundary
-    : %empty
-        { $$ = { boundary: 'all' }}
-
-    | FIRST
+    : FIRST
         { $$ = { boundary: 'first' }}
 
     | LAST
@@ -352,11 +353,11 @@ statement_closed
     : codeblock_closed
         { $$ = { type: 'code', statements: $1 }; }
 
-    | WHEN when_boundary expression "{" when_body "}"
-        { $$ = { type: 'when', statements: $1, expression: $3, ...$2 }; }
+    | WHEN '(' expression ')' non_delimited_statement
+        { $$ = { type: 'when', statements: $4, expression: $3 } }
 
-/*    | WHEN when_boundary '(' expression ')' constraint CS
-        { $$ = { type: "when", statements: $1, expression: $3, ...$2 }; }*/
+    | WHEN when_boundary non_delimited_statement
+        { $$ = { ...$2, type: "when", statements: $3 } }
 
     | METADATA '{' data_object '}'
         { $$ = { type: 'metadata', data: $3 } }
@@ -468,14 +469,20 @@ basic_type
     | T_STRING
         { $$ = { type: 'string' } }
 
-    | PROVER_VALUE
+    | AIR_VALUE
         { $$ = { type: 'prover' } }
 
     | SUBAIR_VALUE
         { $$ = { type: 'subair' } }
 
+    | INSTANCE_VALUE
+        { $$ = { type: 'instance' } }
+
     | PUBLIC
         { $$ = { type: 'public' } }
+
+    | PUBLIC_TABLE
+        { $$ = { type: 'publicTable' } }
 
     | FUNCTION
         { $$ = { type: 'function' } }
@@ -536,6 +543,9 @@ statement_no_closed
     | public_declaration
         { $$ = $1 }
 
+    | public_table_declaration
+        { $$ = $1 }
+
     | air_value_declaration
         { $$ = $1 }
 
@@ -577,17 +587,6 @@ data_array
 
     | data_value
         { $$ = { values: [ $1 ]} }
-    ;
-
-when_body
-    : when_body CS constraint
-        { $$ = { ...$1, constraints: [ ...$1.constraints, $3 ] } }
-
-    | when_body CS
-        { $$ = $1 }
-
-    | constraint
-        { $$ = { constraints: [$1] } }
     ;
 
 function_call
@@ -922,11 +921,6 @@ stage_definition
         { $$ = { stage: DEFAULT_STAGE } }
     ;
 
-constraint
-    : expression '===' expression
-        { $$ = { type: 'constraint', left: $1, right: $3 } }
-    ;
-
 flexible_string
     : STRING
         { $$ = { type: 'string', value: $1 } }
@@ -1107,46 +1101,46 @@ col_declaration_list
 */
 
 col_declaration
-    : COL col_declaration_list stage_definition
-        { $$ = { type: 'col_declaration', items: $2.items, stage: $3.stage }; }
+    : COL stage_definition col_declaration_list
+        { $$ = { type: 'col_declaration', items: $3.items, stage: $2.stage }; }
 
-    | COL col_declaration_ident stage_definition '=' expression  // (1)
-        { $$ = { type: 'col_declaration', items: [$2], stage: $3.stage, init: $5 } }
+    | COL stage_definition col_declaration_ident '=' expression  // (1)
+        { $$ = { type: 'col_declaration', items: [$3], stage: $2.stage, init: $5 } }
 
-    | COL WITNESS col_declaration_list stage_definition
-        { $$ = { type: 'witness_col_declaration', items: $3.items, stage: $4.stage } }
+    | COL WITNESS stage_definition col_declaration_list
+        { $$ = { type: 'witness_col_declaration', items: $4.items, stage: $3.stage } }
 
-    | COL FIXED col_declaration_list stage_definition
-        { $$ = { type: 'fixed_col_declaration', items: $3.items, stage: $4.stage } }
+    | COL FIXED stage_definition col_declaration_list
+        { $$ = { type: 'fixed_col_declaration', items: $4.items, stage: $3.stage } }
 
-    | COL FIXED col_declaration_ident stage_definition '=' expression  // (1)
-        { $$ = { type: 'fixed_col_declaration', items: [$3], stage: $4.stage, init: $6 } }
+    | COL FIXED stage_definition col_declaration_ident '=' expression  // (1)
+        { $$ = { type: 'fixed_col_declaration', items: [$4], stage: $3.stage, init: $6 } }
 
-    | COL FIXED col_declaration_ident stage_definition '=' sequence_definition  // (1)
-        { $$ = { type: 'fixed_col_declaration',  items: [$3], stage: $4.stage, sequence: $6 } }
+    | COL FIXED stage_definition col_declaration_ident '=' sequence_definition  // (1)
+        { $$ = { type: 'fixed_col_declaration',  items: [$4], stage: $3.stage, sequence: $6 } }
 
-    | SUBAIR '::' COL col_declaration_list stage_definition
-        { $$ = { type: 'col_declaration', external: true, items: $4.items, stage: $5.stage } }
+    | SUBAIR '::' COL stage_definition col_declaration_list
+        { $$ = { type: 'col_declaration', external: true, items: $5.items, stage: $4.stage } }
 
-    | SUBAIR '::' COL col_declaration_ident stage_definition '=' expression  // (1)
-        { $$ = { type: 'col_declaration', external: true, items: [$4], stage: $5.stage, init: $7 } }
+    | SUBAIR '::' COL stage_definition col_declaration_ident '=' expression  // (1)
+        { $$ = { type: 'col_declaration', external: true, items: [$5], stage: $4.stage, init: $7 } }
 
-    | SUBAIR '::' COL WITNESS col_declaration_list stage_definition
-        { $$ = { type: 'witness_col_declaration', external: true, items: $5.items, stage: $6.stage } }
+    | SUBAIR '::' COL WITNESS stage_definition col_declaration_list
+        { $$ = { type: 'witness_col_declaration', external: true, items: $6.items, stage: $5.stage } }
 
-    | SUBAIR '::' COL FIXED col_declaration_list stage_definition
-        { $$ = { type: 'fixed_col_declaration', external: true, items: $5.items, stage: $6.stage } }
+    | SUBAIR '::' COL FIXED stage_definition col_declaration_list
+        { $$ = { type: 'fixed_col_declaration', external: true, items: $6.items, stage: $5.stage } }
 
-    | SUBAIR '::' COL FIXED col_declaration_ident stage_definition '=' expression  // (1)
-        { $$ = { type: 'fixed_col_declaration', external: true, items: [$5], stage: $6.stage, init: $8 } }
+    | SUBAIR '::' COL FIXED stage_definition col_declaration_ident '=' expression  // (1)
+        { $$ = { type: 'fixed_col_declaration', external: true, items: [$6], stage: $5.stage, init: $8 } }
 
-    | SUBAIR '::' COL FIXED col_declaration_ident stage_definition '=' sequence_definition  // (1)
-        { $$ = { type: 'fixed_col_declaration', external: true, items: [$5], stage: $6.stage, sequence: $8 } }
+    | SUBAIR '::' COL FIXED stage_definition col_declaration_ident '=' sequence_definition  // (1)
+        { $$ = { type: 'fixed_col_declaration', external: true, items: [$6], stage: $5.stage, sequence: $8 } }
     ;
 
 challenge_declaration
-    : CHALLENGE col_declaration_list stage_definition
-        { $$ = { type: 'challenge_declaration', items: $2.items, stage: $3.stage } }
+    : CHALLENGE stage_definition col_declaration_list
+        { $$ = { type: 'challenge_declaration', items: $3.items, stage: $2.stage } }
     ;
 
 public_declaration
@@ -1155,6 +1149,14 @@ public_declaration
 
     | PUBLIC col_declaration_list
         { $$ = { type: 'public_declaration', items: $2.items } }
+    ;
+
+public_table_declaration
+    : PUBLIC_TABLE AGGREGATE '(' IDENTIFIER ',' IDENTIFIER ',' expression_list ')' IDENTIFIER '[' expression ']' '[' expression ']'
+        { $$ = { type: 'public_table_declaration', aggregateType: $4, aggregateFunction: $6, name: $10, args: $8, cols: $12, rows: $15} }
+
+    | PUBLIC_TABLE AGGREGATE '(' IDENTIFIER ',' IDENTIFIER ')' IDENTIFIER '[' expression ']' '[' expression ']'
+        { $$ = { type: 'public_table_declaration', aggregateType: $4, aggregateFunction: $6, name: $8, args: [], cols: $10, rows: $13} }
     ;
 
 air_value_declaration
