@@ -10,10 +10,10 @@ function init_challenges(int extra) {
 }
 
 function init_coset_constants(int len) {
-    global std_ks = [];
+    global std_ks[len];
 
     for (int i = 0; i < len; ++i) {
-        std_ks.push(global constant k[i]);
+        std_ks[i] = global constant k[i];
     }
 }
 
@@ -141,12 +141,12 @@ function connection_check(expr cols[], expr Sperms[]) {
     col witness gprod stage(3);
 
     // Define SIDs[i] = k_i·X polynomials
-    expr SIDs = []
+    expr SIDs[len];
     for (int icol = 0; icol < len; ++icol) {
-        SIDs.push(std_ks[icol] * IDEN);
+        SIDs[icol] = std_ks[icol] * IDEN;
     }
 
-    //                      (f_0 + gamma·X + delta) · (f_1 + gamma·k_1·X + delta) · ... · (f_N + gamma·k_2·X + delta)
+    //                      (f_0 + gamma·X + delta) · (f_1 + gamma·k_1·X + delta) · ... · (f_N + gamma·k_n·X + delta)
     //  gprod' === gprod * -------------------------------------------------------------------------------------------
     //                      (f_0 + gamma·S_0 + delta) · (f_1 + gamma·S_1 + delta) · ... · (f_N + gamma·S_n + delta)
 
