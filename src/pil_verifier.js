@@ -36,7 +36,7 @@ module.exports = async function verifyPil(F, pil, cmPols, constPols, config = {}
     for (let i=0; i<pil.expressions.length; i++) pols.exps[i] = {};
     for (let i=0; i<pil.nConstants; i++) pols.const[i] = {};
 
-// 1.- Prepare commited polynomials.
+// 1.- Prepare committed polynomials.
     for (let i=0; i<cmPols.$$nPols; i++) {
         pols.cm[i].v_n = cmPols.$$array[i];
     }

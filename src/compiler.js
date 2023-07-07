@@ -267,7 +267,7 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
                     ctx.expressions.push(s.selT);
                     pu.selT = selTidx;
                 }
-                if (pu.f.length != pu.t.length ) error(s, `${s.type} with diferent number of elements`);
+                if (pu.f.length != pu.t.length ) error(s, `${s.type} with different number of elements`);
                 if (s.type == "PLOOKUPIDENTITY") {
                     ctx.plookupIdentities.push(pu);
                 } else {
@@ -293,7 +293,7 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
                     ctx.expressions.push(s.connections[j]);
                     ci.connections.push(etidx);
                 }
-                if (ci.pols.length != ci.connections.length ) error(s, `connection with diferent number of elements`);
+                if (ci.pols.length != ci.connections.length ) error(s, `connection with different number of elements`);
                 ctx.connectionIdentities.push(ci);
             } else if (s.type == "PUBLICDECLARATION") {
                 if (ctx.publics[s.name]) error(s, `name already defined ${s.name}`);
@@ -422,7 +422,7 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
         for (let i=0; i<ctx.expressions.length; i++) {
             if (!ctx.expressions[i].simplified) {
                 if (ctx.config.disableUnusedError) {
-                    console.log(`WARNING: Unused expresion ${ctx.expressions[i].poldef || i} on ${ctx.expressions[i].fileName}:${ctx.expressions[i].first_line}`);
+                    console.log(`WARNING: Unused expression ${ctx.expressions[i].poldef || i} on ${ctx.expressions[i].fileName}:${ctx.expressions[i].first_line}`);
                 } else {
                     error(ctx.expressions[i], `Unused expression ${ctx.expressions[i].poldef || i} `);
                 }
