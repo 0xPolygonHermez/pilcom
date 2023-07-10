@@ -25,6 +25,7 @@ subair\s+value                              { return 'SUBAIR_VALUE' }
 subair                                      { return 'SUBAIR' }
 instance                                    { return 'INSTANCE' }
 air                                         { return 'AIR' }
+scope                                       { return 'SCOPE' }
 
 int                                         { return 'INT' }
 fe                                          { return 'FE' }
@@ -288,6 +289,15 @@ non_delimited_statement
 
     | '{' statement_block '}'
         { $$ = { type: 'scope_definition', ...$2 }; }
+
+    | SCOPE expression_list '{' statement_block '}'
+        { $$ = { type: 'named_scope_definition', stype: 'instance', name: $2, ...$4 }; }
+
+    | SCOPE SUBAIR expression_list '{' statement_block '}'
+        { $$ = { type: 'named_scope_definition', stype: 'subair', name: $3, ...$5 }; }
+
+    | SCOPE AIR expression_list '{' statement_block '}'
+        { $$ = { type: 'named_scope_definition', stype: 'air', name: $3, ...$5 }; }
     ;
 
 statement_list

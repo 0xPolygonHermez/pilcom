@@ -597,27 +597,239 @@ function next() {
     return counter++;
 }
 
+// multiset example
 
-permutation_check (
-    hashK + hashK1,
-        [ addr,
-          op0, op1, op2, op3,
-        ],
-    PaddingKK.crLatch * PaddingKK.r8valid,
-        [
-          PaddingKK.addr,
-          PaddingKK.crV0C, PaddingKK.crV1C, PaddingKK.crV2C, PaddingKK.crV3C,
-        ]
-    );
+subair aggregate Main(2**23, 2**25) {
 
-function permutation_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
-    setup_L1();
-    @permutation_check { selF: selF, colsF: colsF, selT: colsT }
+    // here are defined cols and constraints of Main
+
+    // define all rows required from Main
+    // KECCAK_ID identifier of this multiset.
+    // hashK + hashK1 is the selector
+    // addr, op[0], op[1], op[2], op[3] are involved cols
+    multiset
+    multiset_require(KECCAK_ID, hashK + hashK1, [addr,op0, op1, op2, op3]);
 }
 
-function permutation_check (expr colsF[], expr colsT[]) {
-    permutation_check(1, colsF, 1, colsT);
+
+subair aggregate Keccak(2**23, 2**25) {
+
+    constant KECCAK_ID=10;
+
+    // here are defined cols and constraints of HashK
+
+    // define all rows provided from HashK
+    // crLatch * r8valid is the selector
+    // addr, crVC[0], crVC[1], crVC[2], crVC[3] are involved cols
+    multiset_provide(KECCAK_ID, crLatch * r8valid, [addr, crVC[0], crVC[1], crVC[2], crVC[3]);
 }
+
+
+connect_require(CONNECT_ID, [addr, op0, op1, op2, op3]);
+connect_add(CONNECT_ID, addr, offset + 23, op3, offset + 26);  // crea les columnes fixed, + permuta => final instance connect_final
+connect_add(CONNECT_ID, op3, offset + 17, op1, offset + 105);  // permuta
+// final => connect_provide(CONNECT_ID, [_addr, _op0,...])
+
+int connect_id = connect_require([addr, op0, op1, op2, op3]);
+connect_add(connect_id, addr, offset + 23, op3, offset + 26);  // crea les columnes fixed, + permuta => final instance connect_final
+connect_add(connect_id, op3, offset + 17, op1, offset + 105);  // permuta
+
+
+
+connect_require(CONNECT_ID, [addr, op0, op1, op2, op3]);
+connect_provide(CONNECT_ID, [addr, op[0], op[1], op[2], op[3]]);
+
+
+function init_coset_constants(int len) {
+    global std_ks[len];
+
+    for (int i = 0; i < len; ++i) {
+        std_ks[i] = K[i];
+    }
+}
+
+// constant CONNECT_K =
+// constant CONNECT_WI =
+
+
+// init_ks
+// exports.getKs = function getKs(Fr, n) {
+//     const ks = [Fr.k];
+//     for (let i=1; i<n; i++) {
+//         ks[i] = Fr.mul(ks[i-1], ks[0]);
+//     }
+//     return ks;
+// }
+
+constant MAX_CONNECT_COLS = 16;
+
+private function init_connect_ks (int len) {
+    if (defined(CONNECT_KS)) return;
+
+    if (len > MAX_CONNECT_COLS) {
+        error("too many cols (MAX_CONNECT_COLS)");
+    }
+    if (!defined(CONNECT_K)) {
+        error("to use connect functions constant CONNECT_K and CONNECT_WI must be defined");
+    }
+
+
+    constant CONNECT_KS[MAX_CONNECT_COLS];
+
+    fe ks0 = CONNECT_K;
+    CONNECT_KS[0] = ks0;
+    for (int i=1; i<MAX_CONNECT_COLS; ++i) {
+        CONNECT_KS[i] = CONNECT_KS[i-1] * ks0;
+    }
+}
+
+// let w = F.one;
+// for (let i=0; i<N; i++) {
+//     pols.ConnA[i] = w;
+//     pols.ConnB[i] = F.mul(w, ks[0]);
+//     pols.ConnC[i] = F.mul(w, ks[1]);
+//     w = F.mul(w, wi);
+// }
+
+
+
+object o = new connect([addr, op0, op1, op2, op3]);
+o.add(addr, offset + 23, op3, offset + 26);
+
+connect_require(CONNECT_ID, [addr, op0, op1, op2, op3]);
+connect_add(CONNECT_ID, addr, offset + 23, op3, offset + 26);  // crea les columnes fixed, + permuta => final instance connect_final
+connect_add(CONNECT_ID, op3, offset + 17, op1, offset + 105);  // permuta
+
+class Connect {
+
+
+
+
+}
+
+
+private function init_connect_constants(int len): col fixed [] {
+    col fixed CONNECT_CONSTANTS[len];
+    fe w = 1;
+    for (int irow = 0; irow < N; ++irow) {
+        CONNECT_CONSTANTS[0][irow] = w;
+        for (int icol = 1; icol < len; ++icol) {
+            CONNECT_CONSTANTS[icol][irow] = w * CONNECT_KS[icol-1];
+        }
+        w = w * CONNECT_WI;
+    }
+    return CONNECT_CONSTANTS;
+}
+
+function connect_require(int id, expr cols[]) {
+    constant len = length(cols);
+
+    scope air CONNECT_SCOPE,id {
+        int connect_cols;
+        col fixed connect_constants[len];
+        // TODO: feature copy-arrays
+        // expr connect_cols_expr = cols;
+        expr connect_cols_expr[MAX_ID][];
+        expr connect_cols_expr[len];
+
+        connect_cols = len;
+        init_challenges(1);
+        init_connect_ks(len);
+        connect_constants = init_connect_constants(len);
+        // TODO: feature copy-arrays
+        // connect_cols_expr = cols;
+
+        for (int i = 0; i < len; ++i) {
+            connect_cols_expr[i] = cols[i];
+        }
+    }
+    // array to verify in compilation-time number of columns
+
+}
+
+//     function connect(p1, i1, p2, i2) {
+//        [p1[i1], p2[i2]] = [p2[i2], p1[i1]];
+//    }
+
+function search_expr (expr needle, expr haystack[]):integer {
+    int index = 0;
+    int len = length(haystack);
+    while (index < len) {
+        if (needle == haystack[index]) {
+            return index;
+        }
+        ++index;
+    }
+    return -1;
+}
+
+function connect_add(int id, expr col_a, int row_a, expr col_b, int row_b) {
+    // TODO: verify row_a, row_b [0, N-1]
+    scope air CONNECT_SCOPE,id {
+        int colid_a = search_expr(col_a, connect_cols_exp);
+        int colid_b = search_expr( , connect_cols_exp);
+        fe previous_a = connect_cols_expr[colid_a][row_a];
+        connect_cols_expr[colid_a][row_a] = connect_cols_expr[colid_b][row_b];
+        connect_cols_expr[colid_b][row_b] = previous_a;
+    }
+    final connect_final(id);
+}
+
+private function connect_final(int id) {
+    scope CONNECT_SCOPE, id {
+        connect_provide(id, connect_cols_exp);
+    }
+}
+
+/**
+ * Given multisets A1,...,An and B1,...,Bn, check whether A1,...,An does not vary
+ * after applying the permutation B1,...,Bn to itself.
+ * @param cols columns subject to the permutation
+ * @param Sperms columns defining the permutation
+ * @return Constraints to be satisfied by A and B to ensure the connection check
+ */
+function connection_check(expr cols[], expr Sperms[]) {
+    constant len = length(cols);
+
+    init_challenges(1);
+    init_coset_constants(len);
+
+    if (len != length(Sperms)) {
+        error(`cols and Sperms must be same dimensions`);
+    }
+
+    col fixed L1 = [1,0...];
+    col fixed IDEN = [1,omega,..*..,omega**(N-1)];
+
+    col witness gprod stage(3);
+
+    // Define SIDs[i] = k_i·X polynomials
+    expr SIDs[len];
+    for (int icol = 0; icol < len; ++icol) {
+        SIDs[icol] = CONNECT_KS[icol] * IDEN;
+    }
+
+    //                      (f_0 + gamma·X + delta) · (f_1 + gamma·k_1·X + delta) · ... · (f_N + gamma·k_n·X + delta)
+    //  gprod' === gprod * -------------------------------------------------------------------------------------------
+    //                      (f_0 + gamma·S_0 + delta) · (f_1 + gamma·S_1 + delta) · ... · (f_N + gamma·S_n + delta)
+
+    expr numerator = 1;
+    expr denominator = 1;
+    for (int icol = 0; icol < len; ++icol) {
+        numerator = numerator * (cols[icol] + std_gamma*SIDs[icol] + std_delta);
+        denominator = denominator * (cols[icol] + std_gamma*Sperms[icol] + std_delta);
+    }
+
+    L1 * (gprod - 1) === 0;
+    gprod' * denominator === gprod * numerator;
+}
+
+
+
+
+
+
+
 
 subproof_permutation_check (
     hashK + hashK1,

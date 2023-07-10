@@ -78,43 +78,43 @@ private function init_multiset_challenges(int lookup)
 
 private function check_multiset_id_and_cols(int id, int _cols, int provides) {
 
-    once air {
-        int multiset_cols[MAX_MULTISET_ID + 1];
-        int multiset_provides[MAX_MULTISET_ID + 1];
-        int multiset_requires[MAX_MULTISET_ID + 1];
-    }
+    scope air MULTISET, id {
+        persistent int multiset_cols;
+        persistent int multiset_provides;
+        persistent int multiset_requires;
 
-    if (id < 1 || id > MAX_MULTISET_ID) {
-        error("id of multiset must be between 1 and $0", MAX_MULTISET_ID);
-    }
-    if (_cols < 1) {
-        error("number of cols of multiset #$0 must be greater than 0", id);
-    }
-    // non defined
+        if (id < 1 || id > MAX_MULTISET_ID) {
+            error("id of multiset must be between 1 and $0", MAX_MULTISET_ID);
+        }
+        if (_cols < 1) {
+            error("number of cols of multiset #$0 must be greater than 0", id);
+        }
+        // non defined
 
-    if (multiset_cols[id] == 0) {
-        // TODO: G2 - structs
-        multiset_cols[id] = _cols;
-        // multiset_source[id] == __SOURCE__
-    } else if (multiset_cols[id] != _cols) {
-        error("number of cols of multiset #$0 must be $1", id, multiset_cols[id]);
-    }
+        if (multiset_cols[id] == 0) {
+            // TODO: G2 - structs
+            multiset_cols[id] = _cols;
+            // multiset_source[id] == __SOURCE__
+        } else if (multiset_cols[id] != _cols) {
+            error("number of cols of multiset #$0 must be $1", id, multiset_cols[id]);
+        }
 
-    if (provides) {
-        ++multiset_provides[id];
-    } else {
-        ++multiset_requires[id];
-    }
+        if (provides) {
+            ++multiset_provides[id];
+        } else {
+            ++multiset_requires[id];
+        }
 
-    once air {
-        global expr multiset_air_gprod = 1;
-    }
-    once subair {
-        subair value aggregate(mul) multiset_subair_gprod;
-    }
-    once {
-        global expr multiset_gprod_requires = 1;
-        global expr multiset_gprod_provides = 1;
+        once air {
+            global expr multiset_air_gprod = 1;
+        }
+        once subair {
+            subair value aggregate(mul) multiset_subair_gprod;
+        }
+        once {
+            global expr multiset_gprod_requires = 1;
+            global expr multiset_gprod_provides = 1;
+        }
     }
 }
 
