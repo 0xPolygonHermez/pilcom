@@ -2,7 +2,7 @@
 include "std.pil"
 include "arith.pil"
 
-subair aggregate Main (2**21, 2**23, 2**25) {
+subproof aggregate Main (2**21, 2**23, 2**25) {
 
     col witness use_arith;
     col witness a[2],b[2],c[2],d[2];

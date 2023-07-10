@@ -109,6 +109,7 @@ module.exports = class Expressions {
         return this.router.go([e, this.Fr]);
     }
     _evalString(e) {
+        if (e.template) return this.parent.evaluateTemplate(e.value);
         return e.value;
     }
     eval2(e, pos, values) {

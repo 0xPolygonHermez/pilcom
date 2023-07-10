@@ -1,6 +1,6 @@
 include "byte4.pil";
 
-subair Arith(2**16) {
+subproof Arith(2**16) {
 
     constant ARITH_ID = 2;
 

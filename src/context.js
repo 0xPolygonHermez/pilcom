@@ -6,19 +6,19 @@ const Router = require("./router.js");
 module.exports = class Context {
     constructor (Fr) {
         this.Fr = Fr;
-        this.namespace = false;
-        this.subair = false;
+        this.namespace = '';
+        this.subproof = false;
         this.stack = [];
     }
 
-    setNamespace(namespace, subair) {
+    setNamespace(namespace, subproof) {
         this.namespace = namespace;
-        if (typeof subair !== 'undefined') {
-            this.subair = subair;
+        if (typeof subproof !== 'undefined') {
+            this.subproof = subproof;
         }
     }
-    getSubair() {
-        return this.subair;
+    getSubproof() {
+        return this.subproof;
     }
     getNamespace() {
         return this.namespace;
@@ -36,7 +36,7 @@ module.exports = class Context {
         return [names[0], this.getFullName(names[0])];
     }
     decodeName(name) {
-        const regex = /((?<subair>\w*)::)?((?<namespace>\w*)\.)?(?<name>\w+)/gm;
+        const regex = /((?<subproof>\w*)::)?((?<namespace>\w*)\.)?(?<name>\w+)/gm;
 
         let m;
 
@@ -45,7 +45,7 @@ module.exports = class Context {
             if (m.index === regex.lastIndex) {
                 regex.lastIndex++;
             }
-            return [m.groups.subair, m.groups.namespace, m.groups.name];
+            return [m.groups.subproof, m.groups.namespace, m.groups.name];
         }
     }
     getFullName(name) {
@@ -54,11 +54,11 @@ module.exports = class Context {
             throw new Error(`getFullName invalid argument`);
         }
         const parts = this.decodeName(name);
-        const [_subair, _namespace, _name] = [parts[0] ?? this.subair, parts[1] ?? this.namespace, parts[2]];
+        const [_subproof, _namespace, _name] = [parts[0] ?? this.subproof, parts[1] ?? this.namespace, parts[2]];
 
         let fullname = '';
-        if (_subair !== '') {
-            fullname += _subair + '::';
+        if (_subproof !== '') {
+            fullname += _subproof + '::';
         }
         if (_namespace !== '') {
             fullname = _namespace + '.';
@@ -66,11 +66,11 @@ module.exports = class Context {
         fullname += _name;
         return fullname;
     }
-    push(namespace, subair) {
-        this.stack.push([this.subair, this.namespace]);
-        this.setNamespace(namespace, subair);
+    push(namespace, subproof) {
+        this.stack.push([this.subproof, this.namespace]);
+        this.setNamespace(namespace, subproof);
     }
     pop() {
-        [this.subair, this.namespace] = this.stack.pop();
+        [this.subproof, this.namespace] = this.stack.pop();
     }
 }

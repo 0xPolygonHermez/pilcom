@@ -20,12 +20,13 @@ public\s+table                              { return 'PUBLIC_TABLE'; }
 public                                      { return 'PUBLIC'; }
 global                                      { return 'GLOBAL'; }
 constant                                    { return 'CONSTANT' }
-air\s+value                                 { return 'AIR_VALUE' }
-subair\s+value                              { return 'SUBAIR_VALUE' }
-subair                                      { return 'SUBAIR' }
-instance                                    { return 'INSTANCE' }
+proof\s+value                               { return 'PROOF_VALUE' }
+subproof\s+value                            { return 'SUBPROOF_VALUE' }
+subproof                                    { return 'SUBPROOF' }
 air                                         { return 'AIR' }
+proof                                       { return 'PROOF' }
 scope                                       { return 'SCOPE' }
+persistent                                  { return 'PERSISTENT' }
 
 int                                         { return 'INT' }
 fe                                          { return 'FE' }
@@ -170,6 +171,7 @@ function runtime_expr(value) {
     if (value.type) {
         delete value.type;
     }
+    console.log(value);
     res.setRuntime(value);
     return res;
 }
@@ -208,13 +210,13 @@ lopcs
     ;
 
 top_level_block
-    : namespace_definition
+    /* : namespace_definition
+        { $$ = $1 }
+*/
+    : subproof_definition
         { $$ = $1 }
 
-    | subair_definition
-        { $$ = $1 }
-
-    | air_definition
+    | proof_definition
         { $$ = $1 }
 
     | function_definition
@@ -226,14 +228,8 @@ top_level_block
     | col_declaration
         { $$ = $1 }
 
-    | GLOBAL col_declaration
-        { $$ = {...$2, global:true } }
-
     | challenge_declaration
         { $$ = $1 }
-
-    | GLOBAL challenge_declaration
-        { $$ = {...$2, global:true } }
 
     | public_declaration
         { $$ = $1 }
@@ -241,38 +237,29 @@ top_level_block
     | public_table_declaration
         { $$ = $1 }
 
-    | air_value_declaration
+    | proof_value_declaration
         { $$ = $1 }
 
-    | subair_value_declaration
+    | subproof_value_declaration
         { $$ = $1 }
 
     | constant_definition
         { $$ = $1 }
+
     ;
 
 namespace_definition
     : NAMESPACE IDENTIFIER '{' statement_block '}'
         {
-            $$ = {type: 'namespace', namespace: $4, monolithic: false, subair: $2, statements: $6.statements };
+            $$ = {type: 'namespace', namespace: $4, monolithic: false, subproof: $2, statements: $6.statements };
         }
     ;
 
-air_definition
-    : AIR '{' statement_block '}'
+proof_definition
+    : PROOF '{' statement_block '}'
         {
-            $$ = {type: 'air', statements: $3.statements };
+            $$ = {type: 'proof', statements: $3.statements };
         }
-    ;
-
-
-
-delimited_statement
-    : non_delimited_statement  // %prec non_delimited_statement
-        { $$ = $1; }
-
-    | statement_no_closed
-        { $$ = $1; }
     ;
 
 non_delimited_statement
@@ -286,18 +273,9 @@ non_delimited_statement
 
     | statement_no_closed lcs %prec CS
         { $$ = $1; }
-
+/*
     | '{' statement_block '}'
-        { $$ = { type: 'scope_definition', ...$2 }; }
-
-    | SCOPE expression_list '{' statement_block '}'
-        { $$ = { type: 'named_scope_definition', stype: 'instance', name: $2, ...$4 }; }
-
-    | SCOPE SUBAIR expression_list '{' statement_block '}'
-        { $$ = { type: 'named_scope_definition', stype: 'subair', name: $3, ...$5 }; }
-
-    | SCOPE AIR expression_list '{' statement_block '}'
-        { $$ = { type: 'named_scope_definition', stype: 'air', name: $3, ...$5 }; }
+        { $$ = { type: 'scope_definition', ...$2 }; }*/
     ;
 
 statement_list
@@ -374,6 +352,15 @@ statement_closed
 
     | function_definition
         { $$ = $1 }
+
+    | namespace_definition
+        { $$ = $1 }
+
+    | '{' statement_block '}'
+        { $$ = { type: 'scope_definition', ...$2 }; }
+
+    | SCOPE expression_list '{' statement_block '}'
+        { $$ = { type: 'named_scope_definition', stype: 'air', name: $2, ...$4 }; }
     ;
 
 function
@@ -395,13 +382,13 @@ function_definition
         { $$ = { ...$1, type: 'function_definition', final: false, ...$3, returns: false, ...$6 }}
 
     | FINAL function '(' arguments ')' '{' statement_block '}'
-        { $$ = { ...$2, type: 'function_definition', final: 'instance', ...$4, returns: false, ...$7 }}
+        { $$ = { ...$2, type: 'function_definition', final: 'air', ...$4, returns: false, ...$7 }}
 
-    | FINAL AIR function '(' arguments ')' '{' statement_block '}'
-        { $$ = { ...$3, type: 'function_definition', final: 'air', ...$5, returns: false, ...$8 }}
+    | FINAL PROOF function '(' arguments ')' '{' statement_block '}'
+        { $$ = { ...$3, type: 'function_definition', final: 'proof', ...$5, returns: false, ...$8 }}
 
-    | FINAL SUBAIR function '(' arguments ')' '{' statement_block '}'
-        { $$ = { ...$3, type: 'function_definition', final: 'subair', ...$5, returns: false, ...$8 }}
+    | FINAL SUBPROOF function '(' arguments ')' '{' statement_block '}'
+        { $$ = { ...$3, type: 'function_definition', final: 'subproof', ...$5, returns: false, ...$8 }}
 
     ;
 
@@ -439,20 +426,20 @@ argument
     | basic_type REFERENCE type_array
         { $$ = { type: $1.type, name: $2, reference: true, dim: $3.dim } }
 
-    | SUBAIR '::' subair_type IDENTIFIER
-        { $$ = { subair: $1, type: $3.type, name: $4, reference: false, dim: 0 } }
+    | SUBPROOF '::' subproof_type IDENTIFIER
+        { $$ = { subproof: $1, type: $3.type, name: $4, reference: false, dim: 0 } }
 
-    | SUBAIR '::' subair_type REFERENCE
-        { $$ = { subair: $1, type: $3.type, name: $4, reference: true, dim: 0 } }
+    | SUBPROOF '::' subproof_type REFERENCE
+        { $$ = { subproof: $1, type: $3.type, name: $4, reference: true, dim: 0 } }
 
-    | SUBAIR '::' subair_type IDENTIFIER type_array
-        { $$ = { subair: $1, type: $3.type, name: $4, reference: false, dim: $5.dim } }
+    | SUBPROOF '::' subproof_type IDENTIFIER type_array
+        { $$ = { subproof: $1, type: $3.type, name: $4, reference: false, dim: $5.dim } }
 
-    | SUBAIR '::' subair_type REFERENCE type_array
-        { $$ = { subair: $1, type: $3.type, name: $4, reference: true, dim: $5.dim } }
+    | SUBPROOF '::' subproof_type REFERENCE type_array
+        { $$ = { subproof: $1, type: $3.type, name: $4, reference: true, dim: $5.dim } }
     ;
 
-subair_type
+subproof_type
     : EXPR
         { $$ = { type: 'expr' } }
 
@@ -479,14 +466,14 @@ basic_type
     | T_STRING
         { $$ = { type: 'string' } }
 
+    | PROOF_VALUE
+        { $$ = { type: 'proof' } }
+
+    | SUBPROOF_VALUE
+        { $$ = { type: 'subproof' } }
+
     | AIR_VALUE
-        { $$ = { type: 'prover' } }
-
-    | SUBAIR_VALUE
-        { $$ = { type: 'subair' } }
-
-    | INSTANCE_VALUE
-        { $$ = { type: 'instance' } }
+        { $$ = { type: 'air' } }
 
     | PUBLIC
         { $$ = { type: 'public' } }
@@ -532,11 +519,29 @@ statement_no_closed
     | GLOBAL col_declaration
         { $$ = {...$2, global:true } }
 
+    | PERSISTENT col_declaration
+        { $$ = {...$2, persistent:'air' } }
+
+    | PERSISTENT SUBPROOF col_declaration
+        { $$ = {...$3, persistent:'subproof'} }
+
+    | PERSISTENT PROOF col_declaration
+        { $$ = {...$3, persistent:'proof' } }
+
     | challenge_declaration
         { $$ = $1 }
 
     | GLOBAL challenge_declaration
         { $$ = {...$2, global:true } }
+
+    | PERSISTENT challenge_declaration
+        { $$ = {...$2, persistent:'air' } }
+
+    | PERSISTENT SUBPROOF challenge_declaration
+        { $$ = {...$3, persistent:'subproof'} }
+
+    | PERSISTENT PROOF challenge_declaration
+        { $$ = {...$3, persistent:'proof' } }
 
     | expression
         { $$ = {type: 'expr', expr: $1} }
@@ -556,10 +561,10 @@ statement_no_closed
     | public_table_declaration
         { $$ = $1 }
 
-    | air_value_declaration
+    | proof_value_declaration
         { $$ = $1 }
 
-    | subair_value_declaration
+    | subproof_value_declaration
         { $$ = $1 }
 
     | constant_definition
@@ -612,10 +617,10 @@ delayed_function_event
 delayed_function_scope
     : %empty
 
-    | AIR
+    | PROOF
         { $$ = $1 }
 
-    | SUBAIR
+    | SUBPROOF
         { $$ = $1 }
 
     ;
@@ -634,6 +639,15 @@ codeblock_no_closed
     | GLOBAL variable_declaration
         { $$ = {...$2, global:true } }
 
+    | PERSISTENT variable_declaration
+        { $$ = {...$2, persistent:'air' } }
+
+    | PERSISTENT SUBPROOF variable_declaration
+        { $$ = {...$3, persistent:'subproof' } }
+
+    | PERSISTENT PROOF variable_declaration
+        { $$ = {...$3, persistent:'proof' } }
+
     | variable_assignment
         { $$ = $1 }
 
@@ -643,10 +657,16 @@ codeblock_no_closed
     | GLOBAL variable_multiple_assignment
         { $$ = {...$2, global:true } }
 
-    | return_statement
-        { $$ = $1 }
+    | PERSISTENT variable_multiple_assignment
+        { $$ = {...$2, persistent:'air' } }
 
-    | DO delimited_statement WHILE '(' expression ')'
+    | PERSISTENT SUBPROOF variable_multiple_assignment
+        { $$ = {...$2, persistent:'subproof' } }
+
+    | PERSISTENT PROOF variable_multiple_assignment
+        { $$ = {...$2, persistent:'proof' } }
+
+    | return_statement
         { $$ = $1 }
 
     | CONTINUE
@@ -661,7 +681,7 @@ in_expression
         { $$ = $1 }
 
     | IDENTIFIER '::' '[' expression_list ']'
-        { $$ = { ...$3, ...$5, subair: $1 } }
+        { $$ = { ...$3, ...$5, subproof: $1 } }
 
     | '[' expression_list ']'
         { $$ = { ...$1, ...$3 } }
@@ -677,14 +697,29 @@ codeblock_closed
     | WHILE '(' expression ')' non_delimited_statement
         { $$ = { type: 'while', condition: $3, statements: $5 } }
 
+    | DO non_delimited_statement WHILE '(' expression ')'
+        { $$ = { type: 'do', condition: $5, statements: $2 } }
+
+    | DO statement_no_closed WHILE '(' expression ')'
+        { $$ = { type: 'do', condition: $5, statements: $2 } }
+
     | ONCE non_delimited_statement
-        { $$ = { type: 'once', stype: 'instance', statements: $2 } }
+        { $$ = { type: 'once', stype: 'air', statements: $2 } }
 
-    | ONCE SUBAIR non_delimited_statement
-        { $$ = { type: 'once', stype: 'subair', statements: $3 } }
+    | ONCE SUBPROOF non_delimited_statement
+        { $$ = { type: 'once', stype: 'subproof', statements: $3 } }
 
-    | ONCE AIR non_delimited_statement
-        { $$ = { type: 'once', stype: 'air', statements: $3 } }
+    | ONCE PROOF non_delimited_statement
+        { $$ = { type: 'once', stype: 'proof', statements: $3 } }
+
+    | ONCE PERSISTENT '{' statement_block '}'
+        { $$ = { type: 'once', stype: 'air', persistent: 'air', statements: $4.statements } }
+
+    | ONCE PERSISTENT SUBPROOF '{' statement_block '}'
+        { $$ = { type: 'once', stype: 'subproof', persistent: 'subproof',  statements: $5.statements } }
+
+    | ONCE PERSISTENT PROOF '{' statement_block '}'
+        { $$ = { type: 'once', stype: 'proof', persistent: 'proof',  statements: $5.statements } }
 
     | SWITCH '(' expression ')' case_body
         { $$ = $1 }
@@ -767,7 +802,7 @@ variable_declaration
     | EXPR variable_declaration_list
         { $$ = { type: 'variable_declaration', vtype: 'expr', items: $2.items } }
 
-    | SUBAIR '::' EXPR variable_declaration_list
+    | SUBPROOF '::' EXPR variable_declaration_list
         { $$ = { type: 'variable_declaration', vtype: 'expr', items: $4.items } }
 
     | T_STRING variable_declaration_list
@@ -785,7 +820,7 @@ variable_declaration
     | EXPR variable_declaration_item '=' expression
         { $$ = { type: 'variable_declaration', vtype: 'expr', items: [$2], init: [$4] } }
 
-    | SUBAIR '::' EXPR variable_declaration_item '=' expression
+    | SUBPROOF '::' EXPR variable_declaration_item '=' expression
         { $$ = { type: 'variable_declaration', vtype: 'expr', external: true, items: [$4], init: [$6] } }
 
     | T_STRING variable_declaration_item '=' expression
@@ -803,7 +838,7 @@ variable_declaration
     | EXPR '[' variable_declaration_list ']' '=' '[' expression_list ']'
         { $$ = { type: 'variable_declaration', vtype: 'expr', items: $3.items, init: $7 } }
 
-    | SUBAIR '::' EXPR '[' variable_declaration_list ']' '=' '[' expression_list ']'
+    | SUBPROOF '::' EXPR '[' variable_declaration_list ']' '=' '[' expression_list ']'
         { $$ = { type: 'variable_declaration', vtype: 'expr', items: $5.items, init: $9 } }
 
     | T_STRING '[' variable_declaration_list ']' '=' '[' expression_list ']'
@@ -936,7 +971,7 @@ flexible_string
         { $$ = { type: 'string', value: $1 } }
 
     | TEMPLATE_STRING
-        { $$ = { type: 'template', value: $1 } }
+        { $$ = { type: 'string', template: true, value: $1 } }
     ;
 
 
@@ -1035,13 +1070,13 @@ multiple_expression_list
         { $$ = $1; $$.values.push($3) }
 
     | multiple_expression_list ',' IDENTIFIER '::' '[' expression_list ']' %prec ','
-        { $$ = $1; $$.values.push({ type: 'expression_list', subair: $3, values: $6.values }) }
+        { $$ = $1; $$.values.push({ type: 'expression_list', subproof: $3, values: $6.values }) }
 
     | multiple_expression_list ',' '[' expression_list ']' %prec ','
         { $$ = $1; $$.values.push({ type: 'expression_list', values: $4.values }) }
 
     | IDENTIFIER '::' '[' expression_list ']' %prec NO_EMPTY
-        { $$ = { type: 'expression_list', subair: $1, values: $4.values } }
+        { $$ = { type: 'expression_list', subproof: $1, values: $4.values } }
 
     | '[' expression_list ']' %prec NO_EMPTY
         { $$ = { type: 'expression_list', values: $2.values } }
@@ -1129,22 +1164,22 @@ col_declaration
     | COL FIXED stage_definition col_declaration_ident '=' sequence_definition  // (1)
         { $$ = { type: 'fixed_col_declaration',  items: [$4], stage: $3.stage, sequence: $6 } }
 
-    | SUBAIR '::' COL stage_definition col_declaration_list
+    | SUBPROOF '::' COL stage_definition col_declaration_list
         { $$ = { type: 'col_declaration', external: true, items: $5.items, stage: $4.stage } }
 
-    | SUBAIR '::' COL stage_definition col_declaration_ident '=' expression  // (1)
+    | SUBPROOF '::' COL stage_definition col_declaration_ident '=' expression  // (1)
         { $$ = { type: 'col_declaration', external: true, items: [$5], stage: $4.stage, init: $7 } }
 
-    | SUBAIR '::' COL WITNESS stage_definition col_declaration_list
+    | SUBPROOF '::' COL WITNESS stage_definition col_declaration_list
         { $$ = { type: 'witness_col_declaration', external: true, items: $6.items, stage: $5.stage } }
 
-    | SUBAIR '::' COL FIXED stage_definition col_declaration_list
+    | SUBPROOF '::' COL FIXED stage_definition col_declaration_list
         { $$ = { type: 'fixed_col_declaration', external: true, items: $6.items, stage: $5.stage } }
 
-    | SUBAIR '::' COL FIXED stage_definition col_declaration_ident '=' expression  // (1)
+    | SUBPROOF '::' COL FIXED stage_definition col_declaration_ident '=' expression  // (1)
         { $$ = { type: 'fixed_col_declaration', external: true, items: [$6], stage: $5.stage, init: $8 } }
 
-    | SUBAIR '::' COL FIXED stage_definition col_declaration_ident '=' sequence_definition  // (1)
+    | SUBPROOF '::' COL FIXED stage_definition col_declaration_ident '=' sequence_definition  // (1)
         { $$ = { type: 'fixed_col_declaration', external: true, items: [$6], stage: $5.stage, sequence: $8 } }
     ;
 
@@ -1169,29 +1204,29 @@ public_table_declaration
         { $$ = { type: 'public_table_declaration', aggregateType: $4, aggregateFunction: $6, name: $8, args: [], cols: $10, rows: $13} }
     ;
 
-air_value_declaration
-    : AIR_VALUE col_declaration_ident '=' expression
-        { $$ = { type: 'air_value_declaration', items: [$2], init: $4 } }
+proof_value_declaration
+    : PROOF_VALUE col_declaration_ident '=' expression
+        { $$ = { type: 'proof_value_declaration', items: [$2], init: $4 } }
 
-    | AIR_VALUE col_declaration_list
-        { $$ = { type: 'air_value_declaration', items: $2.items } }
+    | PROOF_VALUE col_declaration_list
+        { $$ = { type: 'proof_value_declaration', items: $2.items } }
     ;
 
-subair_value_declaration
-    : SUBAIR_VALUE AGGREGATE '(' IDENTIFIER ')' col_declaration_ident '=' expression
-        { $$ = { type: 'subair_value_declaration', items: [$6], init: $8 } }
+subproof_value_declaration
+    : SUBPROOF_VALUE AGGREGATE '(' IDENTIFIER ')' col_declaration_ident '=' expression
+        { $$ = { type: 'subproof_value_declaration', items: [$6], init: $8 } }
 
-    | SUBAIR_VALUE AGGREGATE '(' IDENTIFIER ')' col_declaration_list
-        { $$ = { type: 'subair_value_declaration', items: $6.items } }
+    | SUBPROOF_VALUE AGGREGATE '(' IDENTIFIER ')' col_declaration_list
+        { $$ = { type: 'subproof_value_declaration', items: $6.items } }
     ;
 
 
-subair_definition
-    : SUBAIR AGGREGATE IDENTIFIER '(' expression_list ')'  '{' statement_block '}'
-        { $$ = { type: 'subair_definition', aggregable: false, props: $2, name: $3, rows: $5, statements: $8.statements } }
+subproof_definition
+    : SUBPROOF AGGREGATE IDENTIFIER '(' expression_list ')'  '{' statement_block '}'
+        { $$ = { type: 'subproof_definition', aggregable: false, props: $2, name: $3, rows: $5, statements: $8.statements } }
 
-    | SUBAIR IDENTIFIER '(' expression_list ')'  '{' statement_block '}'
-        { $$ = { type: 'subair_definition', aggregate: false, name: $2, rows: $4, statements: $7.statements } }
+    | SUBPROOF IDENTIFIER '(' expression_list ')'  '{' statement_block '}'
+        { $$ = { type: 'subproof_definition', aggregate: false, name: $2, rows: $4, statements: $7.statements } }
     ;
 
 constant_definition

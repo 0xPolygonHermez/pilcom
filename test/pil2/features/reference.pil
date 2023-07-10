@@ -1,8 +1,4 @@
-subair Reference(2**23);
-
-namespace Reference:: {
-
-    // TODO: convert in a test
+subproof Reference(2**23) {
 
     constant N_MAX = 32;
 
@@ -38,10 +34,10 @@ namespace Reference:: {
     }
 
     for (col &p in [y,z,...w]) {
-       p === 37;
+    p === 37;
     }
     for (col &p in [...w2]) {
-       p[4] === 35;
+    p[4] === 35;
     }
     for (col &p in [y,z,w[i0],w[i1],w[i2],w[i3]]) {
         p === 34;
