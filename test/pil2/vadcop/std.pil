@@ -6,8 +6,6 @@ function multiset_provides(int id, expr sel, expr cols[]) {
     multiset(1, id, sel, cols);
 }
 
-constant TS = 7;
-constant KK = `Cons${TS}ant${4+2}periquito${TS*3}`;
 // public table aggregate(prod, aggregate_function, MEMORY) pt_memory[3][10];
 
 function aggregate_function ( public table tb, int id ) : expr {
