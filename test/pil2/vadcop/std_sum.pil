@@ -1,25 +1,22 @@
-constant MAX_MULTISET_ID=1000;
+constant MAX_MULTISET_ID = 1000;
+constant MAX_LOOKUP_ID = 1000;
 
-private function init_multiset_challenges(int stage3) {
+// Multiset Checks
+// --------------------------------------------------------------------------------------------
+private function init_multiset_challenges() {
     if (!defined(std_alpha)) {
         global challenge stage(2) std_alpha;
     } else if (!defined(std_beta)) {
         global challenge stage(2) std_beta;
-    } else if (!defined(std_gamma)) {
-        global challenge stage(3) std_gamma;
-    }
-
-    if (stage3 && !defined(std_delta)) {
-        global challenge stage(3) std_delta;
     }
 }
 
 function multiset_requires(int id, expr sel, expr cols[]) {
-    multiset(0, id, sel, cols);
+    multiset_update(0, id, sel, cols);
 }
 
 function multiset_provides(int id, expr sel, expr cols[]) {
-    multiset(1, id, sel, cols);
+    multiset_update(1, id, sel, cols);
 }
 
 // public table aggregate(prod, aggregate_function, MEMORY) pt_memory[3][10];
@@ -75,7 +72,7 @@ private function check_multiset_id_and_cols(int id, int _cols, int provides) {
         global expr multiset_air_gsum = 0;
     }
     once subair {
-        subair value aggregate(mul) multiset_subair_gsum;
+        subair value aggregate(sum) multiset_subair_gsum;
     }
     once {
         global expr multiset_gsum_requires = 0;
@@ -99,18 +96,11 @@ function multiset_prepare_cols (int id, expr sel, expr cols[]): expr {
     // first extra col was id of multiset
     cols_compressed = cols_compressed + id;
 
-    expr cols_selected = sel * (cols_compressed - std_beta) + std_beta;
+    expr cols_selected = sel * (cols_compressed + std_beta - 1) + 1;
     return cols_selected;
 }
 
-/**
- * Given columns C₀,...,Cₙ₋₁, and selector S, reduces the selected vector argument to a simple column argument.
- * @param id (unique) identifier of the argument
- * @param sel selector of the argument
- * @param cols columns of the argument
- * @return S·([C₀ + C₁·α + ... + Cₙ₋₁·αⁿ⁻¹] + β - 1) + 1
- */
-function multiset(int provides, int id, expr sel, expr cols[]) {
+function multiset_update(int provides, int id, expr sel, expr cols[]) {
     // verify if correct id and cols
     check_multiset_id_and_cols(id, length(cols), provides);
 
@@ -141,8 +131,7 @@ function multiset(int provides, int id, expr sel, expr cols[]) {
 
 private function multiset_instance_constraints() {
 
-    col witness stage(3) gsum_requires;
-    col witness stage(3) gsum_provides;
+    col witness stage(3) gsum;
 
     //                                   1            
     //  gsum === ('gsum +  ----------------------------) * (1 - L1)
@@ -151,13 +140,10 @@ private function multiset_instance_constraints() {
 
     col fixed L1 = [1,0...];
 
-    L1 * gsum_requires = 0;
-    L1 * gsum_provides = 0;
+    // L1 * gsum = 0; // Not necessary
     // (gsum - 'gsum * (1 - L1)) * 'gsum_requires + gsum*(1 - gsum_requires)*(1 - L1) === 1 - L1;
-    (gsum_requires - 'gsum_requires * (1 - L1)) * 'multiset_gsum_requires === 1 - L1;
-    (gsum_provides - 'gsum_provides * (1 - L1)) * 'multiset_gsum_provides === 1 - L1;
-    L1 * ('gsum_requires - multiset_subair_gsum) === 0;
-    L1 * ('gsum_provides - multiset_subair_gsum) === 0;
+    (gsum - 'gsum * (1 - L1)) * 'multiset_gsum === 1 - L1;
+    L1 * ('gsum - multiset_subair_gsum) === 0;
 }
 
 private function multiset_subair_constraints() {
@@ -178,6 +164,167 @@ private function check_multiset_was_complete() {
         }
         if (multiset_provides[index] == 0) {
             error("multiset #$0 defined without provides", id);
+        }
+    }
+}
+
+
+// Lookup Checks
+// --------------------------------------------------------------------------------------------
+private function init_lookup_challenges() {
+    if (!defined(std_alpha)) {
+        global challenge stage(2) std_alpha;
+    } else if (!defined(std_beta)) {
+        global challenge stage(2) std_beta;
+    } else if (!defined(std_gamma)) {
+        global challenge stage(3) std_gamma;
+    }
+}
+
+function lookup_requires(int id, expr sel, expr cols[]) {
+    lookup_update(0, id, sel, cols);
+}
+
+function lookup_provides(int id, expr sel, expr cols[]) {
+    lookup_update(1, id, sel, cols);
+}
+
+/**
+ * Verifies the number of columns of same lookup check (requires, provides) is the same.
+ * @param id (unique) identifier of the lookup check
+ * @param _cols number of columns of the lookup check
+ * @param provides 1 if provides, 0 if requires
+ */
+private function check_lookup_id_and_cols(int id, int _cols, int provides) {
+
+    once air {
+        int lookup_cols[MAX_LOOKUP_ID + 1];
+        int lookup_provides[MAX_LOOKUP_ID + 1];
+        int lookup_requires[MAX_LOOKUP_ID + 1];
+    }
+
+    if (id < 1 || id > MAX_LOOKUP_ID) {
+        error("id of lookup must be between 1 and $0", MAX_LOOKUP_ID);
+    }
+    if (_cols < 1) {
+        error("number of cols of lookup #$0 must be greater than 0", id);
+    }
+
+    if (lookup_cols[id] == 0) {
+        lookup_cols[id] = _cols;
+    } else if (lookup_cols[id] != _cols) {
+        error("number of cols of lookup #$0 must be $1", id, lookup_cols[id]);
+    }
+
+    if (provides) {
+        ++lookup_provides[id];
+    } else {
+        ++lookup_requires[id];
+    }
+
+    once air {
+        global expr lookup_air_gsum = 0;
+    }
+    once subair {
+        subair value aggregate(sum) lookup_subair_gsum;
+    }
+    once {
+        global expr lookup_gsum_requires = 0;
+        global expr lookup_gsum_provides = 0;
+    }
+}
+
+/**
+ * Given columns C₀,...,Cₙ₋₁, and selector S, reduces the selected vector argument to a single column argument.
+ * @param id (unique) identifier of the argument
+ * @param sel selector of the argument
+ * @param cols columns of the argument
+ * @return S·([C₀ + C₁·α + ... + Cₙ₋₁·αⁿ⁻¹] + β - 1) + 1
+ */
+function lookup_prepare_cols (int id, expr sel, expr cols[]): expr {
+    expr cols_compressed = 0;
+    for (int icol = length(cols) - 1; icol >= 0; --icol) {
+        cols_compressed = (cols_compressed + cols[icol]) * std_alpha;
+    }
+
+    // first extra col was id of lookup
+    cols_compressed = cols_compressed + id;
+
+    expr cols_selected = sel * (cols_compressed + std_beta - 1) + 1;
+    return cols_selected;
+}
+
+function lookup_update(int provides, int id, expr sel, expr cols[]) {
+    // verify if correct id and cols
+    check_lookup_id_and_cols(id, length(cols), provides);
+
+    init_lookup_challenges();
+
+    sel * (1 - sel) === 0;
+
+    // selected vector to simple column reduction
+    expr cols_selected = lookup_prepare_cols(id, sel, cols);
+
+    if (provides) {
+        // adding all sums of provides called in this subair
+        lookup_gsum_provides = lookup_gsum_provides + cols_selected;
+    } else {
+        // adding all sums of requires called in this subair
+        lookup_gsum_requires = lookup_gsum_requires + cols_selected;
+    }
+
+    // 1] define constraints at the instance level
+    on final lookup_instance_constraints();
+
+    // 2] update constraints at the subair level
+    on final subair lookup_subair_constraints();
+
+    // 3] update constraints at the air level
+    on final air lookup_air_constraints();
+}
+
+private function lookup_instance_constraints() {
+
+    // Define the (normalized) multiplicity polynomial m:
+    //          |j ∈ [N]: f_j = t_i|
+    // mul_i = ----------------------
+    //          |j ∈ [N]: t_j = t_i|
+    @lookup_check {mul: mul, colsT: colsT_selected, colsF: colsF_selected, gsum: gsum };
+    col witness stage(2) mul;
+
+    col witness stage(3) gsum;
+
+    //                                   'm                                1
+    //  gsum === ('gsum +  ----------------------------------- - ------------------------------------) * (1 - L1)
+    //                     ('lookup_gsum_provides + std_gamma)    ('lookup_gsum_requires + std_gamma)
+
+
+    col fixed L1 = [1,0...];
+
+    // L1 * gsum = 0; // Not necessary
+    // (gsum - 'gsum * (1 - L1)) * 'lookup_gsum === 1 - L1;
+    (gsum - 'gsum * (1 - L1)) * 'gsum_requires + gsum*(1 - 'gsum_requires)*L1 === 1 - L1;
+    L1 * ('gsum - lookup_subair_gsum) === 0;
+}
+
+private function lookup_subair_constraints() {
+    lookup_air_gsum = lookup_air_gsum + lookup_subair_gsum;
+}
+
+private function lookup_air_constraints() {
+    check_lookup_was_complete();
+
+    lookup_air_gsum === 0;
+}
+
+private function check_lookup_was_complete() {
+    for (int index = 0; index < MAX_LOOKUP_ID; ++index) {
+        if (lookup_cols[index] == 0) continue;
+        if (lookup_requires[index] == 0) {
+            error("lookup #$0 defined without requires", id);
+        }
+        if (lookup_provides[index] == 0) {
+            error("lookup #$0 defined without provides", id);
         }
     }
 }
