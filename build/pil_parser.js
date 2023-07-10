@@ -1109,7 +1109,6 @@ function runtime_expr(value) {
     if (value.type) {
         delete value.type;
     }
-    console.log(value);
     res.setRuntime(value);
     return res;
 }

@@ -618,25 +618,14 @@ module.exports = class Processor {
         let tags = [];
         let lindex = 0;
         while ((m = regex.exec(template)) !== null) {
-            // This is necessary to avoid infinite loops with zero-width matches
             if (m.index === regex.lastIndex) {
                 regex.lastIndex++;
             }
-            console.log(m);
             tags.push({pre: m.input.substring(lindex, m.index), expr: m[0].substring(2,m[0].length-1)});
             lindex = m.index + m[0].length;
-            // console.log(['MATCH', m]);
-            // The result can be accessed through the `m`-variable.
-            // m.forEach((match, groupIndex) => {
-            //     console.log(`Found match, group ${groupIndex}: ${match}`);
-            // });
         }
         const lastS = template.substring(lindex);
-        console.log(tags);
-        console.log(lastS);
-
         const codeTags = tags.map((x, index) => 'constant ____'+index+' = '+x.expr+";").join("\n");
-        console.log(codeTags);
         const compiledTags = this.compiler.parseExpression(codeTags);
         return compiledTags.map((e, index) => tags[index].pre + this.e2value(e.value)).join('')+lastS;
     }
