@@ -1,13 +1,13 @@
-constant MAX_MULTISET_ID=1000;
-constant MAX_LOOKUP_ID = 1000;
+constant MAX_MULTISET_IDS = 100;
+constant MAX_LOOKUP_IDS = 100;
 
 // Multiset Checks
 // --------------------------------------------------------------------------------------------
 private function init_multiset_challenges() {
     if (!defined(std_alpha)) {
-        global challenge stage(2) std_alpha;
+        challenge stage(2) std_alpha;
     } else if (!defined(std_beta)) {
-        global challenge stage(2) std_beta;
+        challenge stage(2) std_beta;
     }
 }
 
@@ -42,46 +42,48 @@ function multiset_provide(int id, expr sel, expr cols[]) {
  * @param _cols number of columns of the multiset check
  * @param provide 1 if provide, 0 if require
  */
-private function check_multiset_id_and_cols(int id, int _cols, int provide) {
+private function check_multiset_id_and_cols(int id, int cols_count, int provide) {
 
-    once proof {
-        int multiset_cols[MAX_MULTISET_ID + 1];
-        int multiset_provide[MAX_MULTISET_ID + 1];
-        int multiset_require[MAX_MULTISET_ID + 1];
-    }
+    proof int multiset_count;
+    proof int multiset_ids[MAX_MULTISET_IDS];
 
-    if (id < 1 || id > MAX_MULTISET_ID) {
-        error("id of multiset must be between 1 and $0", MAX_MULTISET_ID);
-    }
-    if (_cols < 1) {
-        error("number of cols of multiset #$0 must be greater than 0", id);
-    }
-    // non defined
+    scope persistent proof `std.multiset.${id}` {
+        scope int multiset_cols;
+        scope int multiset_provides;
+        scope int multiset_requires;
 
-    if (multiset_cols[id] == 0) {
-        // TODO: G2 - structs
-        multiset_cols[id] = _cols;
-        // multiset_source[id] == __SOURCE__
-    } else if (multiset_cols[id] != _cols) {
-        error("number of cols of multiset #$0 must be $1", id, multiset_cols[id]);
-    }
+        if (cols_count < 1) {
+            error(`number of cols of multiset #${id} must be greater than 0`);
+        }
 
-    if (provide) {
-        ++multiset_provide[id];
-    } else {
-        ++multiset_require[id];
-    }
+        if (multiset_cols == 0) {
+            // first time called
+            multiset_cols = cols_count;
+            // add id on a list to verify at final
+            multiset_push_id(id);
+        } else if (multiset_cols != cols_count) {
+            error(`number of cols of multiset #${id} must be ${multiset_cols}`);
+        }
 
-    once proof {
-        global expr multiset_proof_gprod = 1;
+        if (provides == 1) {
+            ++multiset_provides;
+        } else {
+            ++multiset_requires;
+        }
+
+        proof expr multiset_air_gprod = 1;
+        subproof value aggregate(prod) multiset_subproof_gprod;
+        air expr multiset_gprod_requires = 1;
+        air expr multiset_gprod_provides = 1;
     }
-    once subproof {
-        subproof value aggregate(mul) multiset_subproof_gprod;
+}
+
+private function multiset_push_id(int id) {
+
+    if (multiset_count == MAX_MULTISET_IDS) {
+        error(`too many multiset ids, current limit was MAX_MULTISET_IDS(${MAX_MULTISET_IDS})`);
     }
-    once {
-        global expr multiset_gprod_require = 1;
-        global expr multiset_gprod_provide = 1;
-    }
+    multiset_ids[multiset_count++] = id;
 }
 
 /**
@@ -100,6 +102,9 @@ function multiset_prepare_cols(int id, expr sel, expr cols[]): expr {
     // the id is added to avoid soundness issues between different multiset checks
     cols_compressed = cols_compressed + id;
 
+    if (sel == 1) {
+        return cols_compressed + std_beta;
+    }
     expr cols_selected = sel * (cols_compressed + std_beta - 1) + 1;
     return cols_selected;
 }
@@ -117,7 +122,9 @@ function multiset_update(int provide, int id, expr sel, expr cols[]) {
 
     init_multiset_challenges();
 
-    sel * (1 - sel) === 0;
+    if (sel != 1) {
+        sel * (1 - sel) === 0;
+    }
 
     // selected vector to simple column reduction
     expr cols_selected = multiset_prepare_cols(id, sel, cols);
@@ -131,7 +138,7 @@ function multiset_update(int provide, int id, expr sel, expr cols[]) {
     }
 
     // 1] define constraints at the air level
-    on final multiset_air();
+    on final air multiset_air();
 
     // 2] update values at the subproof level
     on final subproof multiset_subproof();
@@ -168,13 +175,15 @@ private function multiset_proof() {
 }
 
 private function check_multiset_was_complete() {
-    for (int index = 0; index < MAX_MULTISET_ID; ++index) {
-        if (multiset_cols[index] == 0) continue;
-        if (multiset_require[index] == 0) {
-            error("multiset #$0 defined without require", id);
-        }
-        if (multiset_provide[index] == 0) {
-            error("multiset #$0 defined without provide", id);
+    for (int index = 0; index < multiset_count; ++index) {
+        int id = multiset_ids[index];
+        scope persistent proof `std.multiset.${id}` {
+            if (multiset_require == 0) {
+                error(`multiset #${id} defined without require`);
+            }
+            if (multiset_provide == 0) {
+                error(`multiset #${id} defined without provide`);
+            }
         }
     }
 }
@@ -202,13 +211,13 @@ private function init_lookup_challenges() {
 private function check_lookup_id_and_cols(int id, int _cols, int provide) {
 
     once proof {
-        int lookup_cols[MAX_LOOKUP_ID + 1];
-        int lookup_provide[MAX_LOOKUP_ID + 1];
-        int lookup_require[MAX_LOOKUP_ID + 1];
+        int lookup_cols[MAX_LOOKUP_IDS + 1];
+        int lookup_provide[MAX_LOOKUP_IDS + 1];
+        int lookup_require[MAX_LOOKUP_IDS + 1];
     }
 
-    if (id < 1 || id > MAX_LOOKUP_ID) {
-        error("id of lookup must be between 1 and $0", MAX_LOOKUP_ID);
+    if (id < 1 || id > MAX_LOOKUP_IDS) {
+        error("id of lookup must be between 1 and $0", MAX_LOOKUP_IDS);
     }
     if (_cols < 1) {
         error("number of cols of lookup #$0 must be greater than 0", id);
@@ -388,7 +397,226 @@ private function lookup_proof() {
 }
 
 private function check_lookup_was_complete() {
-    for (int index = 0; index < MAX_LOOKUP_ID; ++index) {
+    for (int index = 0; index < MAX_LOOKUP_IDS; ++index) {
+        if (lookup_cols[index] == 0) continue;
+        if (lookup_require[index] == 0) {
+            error("lookup #$0 defined without require", id);
+        }
+        if (lookup_provide[index] == 0) {
+            error("lookup #$0 defined without provide", id);
+        }
+    }
+}
+// --------------------------------------------------------------------------------------------
+
+// Connection Checks
+// --------------------------------------------------------------------------------------------
+private function init_lookup_challenges() {
+    if (!defined(std_alpha)) {
+        global challenge stage(2) std_alpha;
+    } else if (!defined(std_gamma)) {
+        global challenge stage(3) std_gamma;
+    } else if (!defined(std_delta)) {
+        global challenge stage(3) std_delta
+    }
+}
+
+/**
+ * Verifies the number of columns of same lookup check (require, provide) is the same.
+ * @param id (unique) identifier of the lookup check
+ * @param _cols number of columns of the lookup check
+ * @param provide 1 if provide, 0 if require
+ */
+private function check_lookup_id_and_cols(int id, int _cols, int provide) {
+
+    once proof {
+        int lookup_cols[MAX_LOOKUP_IDS + 1];
+        int lookup_provide[MAX_LOOKUP_IDS + 1];
+        int lookup_require[MAX_LOOKUP_IDS + 1];
+    }
+
+    if (id < 1 || id > MAX_LOOKUP_IDS) {
+        error("id of lookup must be between 1 and $0", MAX_LOOKUP_IDS);
+    }
+    if (_cols < 1) {
+        error("number of cols of lookup #$0 must be greater than 0", id);
+    }
+
+    if (lookup_cols[id] == 0) {
+        lookup_cols[id] = _cols;
+    } else if (lookup_cols[id] != _cols) {
+        error("number of cols of lookup #$0 must be $1", id, lookup_cols[id]);
+    }
+
+    if (provide) {
+        ++lookup_provide[id];
+    } else {
+        ++lookup_require[id];
+    }
+
+    once proof {
+        global expr lookup_proof_gprod = 1;
+    }
+    once subproof {
+        subproof value aggregate(mul) lookup_subproof_gprod;
+    }
+    once {
+        global expr lookup_gprod_require = 1;
+        global expr lookup_gprod_provide = 1;
+    }
+}
+
+/**
+ * Given columns C₀,...,Cₙ₋₁, and selector S, reduces the selected vector argument to a single column argument.
+ * @param id (unique) identifier of the argument
+ * @param sel selector of the argument
+ * @param cols columns of the argument
+ * @return S·[C₀ + C₁·α + ... + Cₙ₋₁·αⁿ⁻¹]
+ */
+function lookup_prepare_cols (int id, expr sel, expr cols[]): expr {
+    expr cols_compressed = 0;
+    for (int icol = length(cols) - 1; icol >= 0; --icol) {
+        cols_compressed = (cols_compressed + cols[icol]) * std_alpha;
+    }
+
+    // the id is added to avoid soundness issues between different lookup checks
+    cols_compressed = cols_compressed + id;
+
+    expr cols_selected = sel * cols_compressed;
+    return cols_selected;
+}
+
+/**
+ * Given columns C₀,...,Cₙ₋₁, and selector S, it 1] defines the constraints at the air level, 2] updates the values at the subproof level, and 3] updates the constraints at the proof level.
+ * @param provide boolean indicating if updating a provide or a require
+ * @param id (unique) identifier of the argument
+ * @param sel selector of the argument
+ * @param cols columns of the argument
+ */
+function lookup_provide(int provide, int id, expr sel, expr cols[]) {
+    // verify if correct id and cols
+    check_lookup_id_and_cols(id, length(cols), provide);
+
+    init_lookup_challenges();
+
+    sel * (1 - sel) === 0;
+
+    // selected vector to simple column reduction
+    expr cols_selected = lookup_prepare_cols(id, sel, cols);
+
+    if (provide) {
+        // adding all products of provide called in this air
+        lookup_gprod_provide = lookup_gprod_provide * cols_selected;
+    } else {
+        // adding all products of require called in this air
+        lookup_gprod_require = lookup_gprod_require * cols_selected;
+    }
+
+    // 1] define constraints at the air level
+    on final lookup_air();
+
+    // 2] update values at the subproof level
+    on final subproof lookup_subproof();
+
+    // 3] update constraints at the proof level
+    on final proof lookup_proof();
+}
+
+function lookup_require(int provide, int id, expr sel, expr cols[]) {
+    // verify if correct id and cols
+    check_lookup_id_and_cols(id, length(cols), provide);
+
+    init_lookup_challenges();
+
+    sel * (1 - sel) === 0;
+
+    // selected vector to simple column reduction
+    expr cols_selected = lookup_prepare_cols(id, sel, cols);
+
+    if (provide) {
+        // adding all products of provide called in this air
+        lookup_gprod_provide = lookup_gprod_provide * cols_selected;
+    } else {
+        // adding all products of require called in this air
+        lookup_gprod_require = lookup_gprod_require * cols_selected;
+    }
+
+    // 1] define constraints at the air level
+    on final lookup_air();
+
+    // 2] update values at the subproof level
+    on final subproof lookup_subproof();
+
+    // 3] update constraints at the proof level
+    on final proof lookup_proof();
+}
+
+function lookup_update(int id, expr selR, expr colsR[], expr selP, expr colsP[]) {
+    // verify if correct id and cols
+    check_lookup_id_and_cols(id, length(colsP), 1);
+    check_lookup_id_and_cols(id, length(colsR), 0);
+
+    init_lookup_challenges();
+
+    selP * (1 - selP) === 0;
+    selR * (1 - selR) === 0;
+
+    // selected vector to simple column reduction
+    expr colsP_selected = lookup_prepare_cols(id, selP, colsP);
+    expr _colsR_selected = lookup_prepare_cols(id, selR, colsR);
+    expr colsR_selected = _colsR_selected + colsP_selected * (1 - selR)
+
+    lookup_gprod_provide = lookup_gprod_provide * colsP_selected;
+    lookup_gprod_require = lookup_gprod_require * colsR_selected;
+
+    // 1] define constraints at the air level
+    on final lookup_air();
+
+    // 2] update values at the subproof level
+    on final subproof lookup_subproof();
+
+    // 3] update constraints at the proof level
+    on final proof lookup_proof();
+}
+
+private function lookup_air() {
+    @lookup_check {h1: h1, h2: h2, colsT: lookup_gprod_provide, colsF: lookup_gprod_require, gprod};
+
+    // Define h1,h2 polynomials
+    col witness h1 stage(2);
+    col witness h2 stage(2);
+
+    col witness stage(3) gprod;
+
+    //                                                (1 + gamma) * (f + delta) * (delta*(1 + gamma) + t + gamma*t')
+    //  gprod === ('gprod * (1 - L1) + L1) * -------------------------------------------------------------------------------
+    //                                          (delta*(1 + gamma) + h1 + gamma*h2) * (delta*(1 + gamma) + h2 + gamma*h1')
+
+
+    expr numerator = (1 + std_gamma) * (lookup_gprod_require + std_delta) * (std_delta * (1 + std_gamma) + lookup_gprod_provide + gamma * lookup_gprod_provide')
+    expr denominator = (std_delta * (1 + std_gamma) + h1 + gamma * h2) * (std_delta * (1 + std_gamma) + h2 + gamma * h1')
+
+    col fixed L1 = [1,0...];
+
+    expr previous_gprod = 'gprod * (1 - L1) + L1;  // L1 == 1 ? 1 : 'gprod
+
+    grod * denominator === previous_gprod * numerator;
+
+    L1' * (gprod - lookup_subproof_gprod) === 0;
+}
+
+private function lookup_subproof() {
+    lookup_proof_gprod = lookup_proof_gprod * lookup_subproof_gprod;
+}
+
+private function lookup_proof() {
+    check_lookup_was_complete();
+
+    lookup_proof_gprod === 1;
+}
+
+private function check_lookup_was_complete() {
+    for (int index = 0; index < MAX_LOOKUP_IDS; ++index) {
         if (lookup_cols[index] == 0) continue;
         if (lookup_require[index] == 0) {
             error("lookup #$0 defined without require", id);
