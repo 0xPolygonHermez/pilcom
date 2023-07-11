@@ -254,6 +254,13 @@ module.exports = class Processor {
         this.scope.pop();
         return result;
     }
+    execNamedScopeDefinition(s) {
+        console.log(s);
+        this.scope.push();
+        const result = this.execute(s.statements, `SCOPE ${this.sourceRef}`);
+        this.scope.pop();
+        return result;
+    }
     execFor(s) {
         let result;
         this.scope.push();
@@ -572,8 +579,8 @@ module.exports = class Processor {
         for (let index = 0; index < count; ++index) {
             const [name, lengths] = this.decodeNameAndLengths(s.items[index]);
             const sourceRef = s.debug ?? this.sourceRef;
-            const global = s.global ?? false;
-            this.references.declare(name, s.vtype, lengths, { global, sourceRef });
+            const scope = s.scope ?? false;
+            this.references.declare(name, s.vtype, lengths, { scope, sourceRef });
             let initValue = null;
             if (init) {
                 if (s.vtype === 'expr') {

@@ -1,38 +1,11 @@
-function multiset_requires(int id, expr sel, expr cols[]) {
+constant MAX_MULTISET_IDS = 100;
+
+function multiset_require(int id, expr sel, expr cols[]) {
     multiset(0, id, sel, cols);
 }
 
-function multiset_provides(int id, expr sel, expr cols[]) {
+function multiset_provide(int id, expr sel, expr cols[]) {
     multiset(1, id, sel, cols);
-}
-
-// public table aggregate(prod, aggregate_function, MEMORY) pt_memory[3][10];
-
-function aggregate_function ( public table tb, int id ) : expr {
-    // verify if correct id and cols
-    check_multiset_id_and_cols(id, length(cols), provides);
-
-    init_multiset_challenges(0);
-
-    expr cols_selected = multiset_prepare_cols(id, 1, cols);
-
-    on final proof check_multiset_was_complete();
-
-    return cols_selected;
-}
-
-function multiset_prepare_cols ( int id, expr sel, expr cols[] ) :expr {
-    expr cols_compressed = 0;
-    for (int icol = length(cols) - 1; icol >= 0; --icol) {
-        cols_compressed = (cols_compressed + cols[icol]) * std_alpha;
-    }
-
-    // first extra col was id of multiset
-    cols_compressed = cols_compressed + id;
-    if (sel == 1) {
-        return cols_compressed + std_beta;
-    }
-    return sel * (cols_compressed + std_beta - 1) + 1;
 }
 
 function multiset(int provides, int id, expr sel, expr cols[]) {
@@ -65,56 +38,85 @@ function multiset(int provides, int id, expr sel, expr cols[]) {
     on final proof multiset_proof_constraints();
 }
 
+// aggregate tables
+// public table aggregate(prod, aggregate_function, MEMORY) pt_memory[3][10];
+
+function aggregate_function ( public table tb, int id ) : expr {
+    // verify if correct id and cols
+    check_multiset_id_and_cols(id, length(cols), provides);
+
+    init_multiset_challenges(0);
+
+    expr cols_selected = multiset_prepare_cols(id, 1, cols);
+
+    on final proof check_multiset_was_complete();
+
+    return cols_selected;
+}
+
+private function multiset_prepare_cols ( int id, expr sel, expr cols[] ) :expr {
+    expr cols_compressed = 0;
+    for (int icol = length(cols) - 1; icol >= 0; --icol) {
+        cols_compressed = (cols_compressed + cols[icol]) * std_alpha;
+    }
+
+    // first extra col was id of multiset
+    cols_compressed = cols_compressed + id;
+    if (sel == 1) {
+        return cols_compressed + std_beta;
+    }
+    return sel * (cols_compressed + std_beta - 1) + 1;
+}
+
 private function init_multiset_challenges(int lookup)
 {
     if (!defined(std_alpha)) {
         // TODO: could be challenge non global
-        global challenge stage(2) std_alpha;
-        global challenge stage(2) std_beta;
+        challenge stage(2) std_alpha;
+        challenge stage(2) std_beta;
     }
 }
 
-// function to verify that number of columns of same multiset (requires, provides)
-// was the same.
+private function multiset_push_id (int id) {
 
-private function check_multiset_id_and_cols(int id, int _cols, int provides) {
+    if (multiset_count == MAX_MULTISET_IDS) {
+        error(`too many multiset ids, current limit was MAX_MULTISET_IDS(${MAX_MULTISET_IDS})`);
+    }
+    multiset_ids[multiset_count++] = id;
+}
 
-    scope `std.multiset.${id}` {
-        once persistent proof {
-            int multiset_cols;
-            int multiset_provides;
-            int multiset_requires;
-        }
+private function check_multiset_id_and_cols(int id, int _cols, int provides)
+{
+    proof int multiset_count;
+    proof int multiset_ids[MAX_MULTISET_IDS];
+
+    scope persistent proof `std.multiset.${id}` {
+        scope int multiset_cols;
+        scope int multiset_provides;
+        scope int multiset_requires;
 
         if (_cols < 1) {
-            error("number of cols of multiset #$0 must be greater than 0", id);
+            error(`number of cols of multiset #${id} must be greater than 0`);
         }
-        // non defined
 
         if (multiset_cols == 0) {
-            // TODO: G2 - structs
-            multiset_cols[id] = _cols;
+            multiset_cols = _cols;
+            multiset_push_id(id);
             // multiset_source[id] == __SOURCE__
-        } else if (multiset_cols[id] != _cols) {
-            error("number of cols of multiset #$0 must be $1", id, multiset_cols[id]);
+        } else if (multiset_cols != _cols) {
+            error(`number of cols of multiset #${id} must be ${multiset_cols}`);
         }
 
-        if (provides) {
-            ++multiset_provides[id];
+        if (provides == 1) {
+            ++multiset_provides;
         } else {
-            ++multiset_requires[id];
+            ++multiset_requires;
         }
 
-        once proof {
-            global expr multiset_air_gprod = 1;
-        }
-        once subproof {
-            subproof value aggregate(prod) multiset_subair_gprod;
-        }
-        once {
-            global expr multiset_gprod_requires = 1;
-            global expr multiset_gprod_provides = 1;
-        }
+        proof expr multiset_air_gprod = 1;
+        subproof value aggregate(prod) multiset_subair_gprod;
+        air expr multiset_gprod_requires = 1;
+        air expr multiset_gprod_provides = 1;
     }
 }
 
@@ -138,23 +140,27 @@ private function multiset_air_constraints() {
 }
 
 private function multiset_subproof_constraints() {
+
     multiset_proof_gprod = multiset_proof_gprod * multiset_subproof_gprod;
 }
 
 private function multiset_proof_constraints() {
-    check_multiset_was_complete();
 
+    check_multiset_was_complete();
     multiset_proof_gprod === 1;
 }
 
 private function check_multiset_was_complete() {
-    for (int index = 0; index < MAX_MULTISET_ID; ++index) {
-        if (multiset_cols[index] == 0) continue;
-        if (multiset_requires[index] == 0) {
-            error("multiset #$0 defined without requires", id);
-        }
-        if (multiset_provides[index] == 0) {
-            error("multiset #$0 defined without provides", id);
+
+    for (int index = 0; index < multiset_count; ++index) {
+        int id = multiset_ids[index];
+        scope persistent proof `std.multiset.${id}` {
+            if (multiset_requires == 0) {
+                error(`multiset #${id} defined without requires`);
+            }
+            if (multiset_provides == 0) {
+                error(`multiset #${id} defined without provides`);
+            }
         }
     }
 }

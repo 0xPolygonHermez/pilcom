@@ -900,3 +900,33 @@ results in parallel stack, array of 32 bytes.
 expression of 10240 operations = 360K (expressions) + 320K (results)
 */
 
+
+// function to verify that number of columns of same multiset (requires, provides)
+// was the same.
+
+    scope `myscope` {
+        :
+    }
+
+    scope `myscope-${id}` {
+    }
+
+
+    // scopes could be persistent when exit of scope, for this reason
+    // when scope was used/defined must indicate when it's destroyed
+
+    scope persistent proof `mypersistent-scope-${id}` {
+        // this scope was destroyed at final
+    }
+
+    scope persistent air `mypersistent-scope-${id}` {
+        // this scope was destroyed when air finish
+    }
+
+    // global define element on other scope, in this case scope_reference = proof
+    global proof expr myproofexpr;
+
+    // global could be defined on namedscope
+    global `myscope` expr myproofexpr;
+    global `myscope` expr myproofexpr;
+    global `myscope` expr myproofexpr;

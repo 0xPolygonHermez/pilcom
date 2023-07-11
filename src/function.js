@@ -92,13 +92,7 @@ module.exports = class Function {
                     console.log(s.arguments[iarg]);
                     EXIT_HERE;
                 } else {
-                    console.log(s.arguments[iarg]);
-                    s.arguments[iarg].dump();
-                    const value = s.arguments[iarg].instance();
-                    value.dump();
-                    if (arg.type === 'col') {
-                        type = value.type;
-                    }
+                    const value = s.arguments[iarg].instance().getAloneOperand();
                     const dim = value.array ? value.array.dim : 0;
                     if (dim !== argDim) {
                         throw new Error(`Invalid array on ${this.parent.sourceRef}`);

@@ -18,7 +18,6 @@ in                                          { return 'IN'; }
 is                                          { return 'IS'; }
 public\s+table                              { return 'PUBLIC_TABLE'; }
 public                                      { return 'PUBLIC'; }
-global                                      { return 'GLOBAL'; }
 constant                                    { return 'CONSTANT' }
 proof\s+value                               { return 'PROOF_VALUE' }
 subproof\s+value                            { return 'SUBPROOF_VALUE' }
@@ -155,6 +154,7 @@ transition                                  { return 'TRANSITION' }
 %left "'"
 %left '.'
 %right INC DEC UMINUS UPLUS '!'
+%right TEMPLATE_STRING SCOPE
 
 %nonassoc '('
 
@@ -358,8 +358,23 @@ statement_closed
     | '{' statement_block '}'
         { $$ = { type: 'scope_definition', ...$2 }; }
 
-    | SCOPE expression_list '{' statement_block '}'
-        { $$ = { type: 'named_scope_definition', stype: 'air', name: $2, ...$4 }; }
+    | SCOPE TEMPLATE_STRING '{' statement_block '}'
+        { $$ = { type: 'named_scope_definition', persistent: false, name: $2.value, ...$4 }; }
+
+    | SCOPE PERSISTENT defined_scopes TEMPLATE_STRING '{' statement_block '}'
+        { $$ = { type: 'named_scope_definition', persistent: $3, name: $4.value, ...$6 }; }
+    ;
+
+defined_scopes
+    : AIR
+        { $$ = $1 }
+
+    | SUBPROOF
+        { $$ = $1 }
+
+    | PROOF
+        { $$ = $1 }
+
     ;
 
 function
@@ -508,6 +523,18 @@ return_type
         { $$ = { type: $1.type, dim: $2.dim } }
     ;
 
+scope_reference
+    : defined_scopes
+        { $$ = { scope: $1 } }
+
+    | SCOPE TEMPLATE_STRING
+        { $$ = { scope: $2.value }}
+
+    | SCOPE
+        { $$ = { scope: true }}
+
+    ;
+
 statement_no_closed
     : codeblock_no_closed
         { $$ = { type: 'code', statements: $1 } }
@@ -515,32 +542,11 @@ statement_no_closed
     | col_declaration
         { $$ = $1 }
 
-    | GLOBAL col_declaration
-        { $$ = {...$2, global:true } }
-
-    | PERSISTENT col_declaration
-        { $$ = {...$2, persistent:'air' } }
-
-    | PERSISTENT SUBPROOF col_declaration
-        { $$ = {...$3, persistent:'subproof'} }
-
-    | PERSISTENT PROOF col_declaration
-        { $$ = {...$3, persistent:'proof' } }
+    | scope_reference col_declaration
+        { $$ = {...$1, ...$2} }
 
     | challenge_declaration
         { $$ = $1 }
-
-    | GLOBAL challenge_declaration
-        { $$ = {...$2, global:true } }
-
-    | PERSISTENT challenge_declaration
-        { $$ = {...$2, persistent:'air' } }
-
-    | PERSISTENT SUBPROOF challenge_declaration
-        { $$ = {...$3, persistent:'subproof'} }
-
-    | PERSISTENT PROOF challenge_declaration
-        { $$ = {...$3, persistent:'proof' } }
 
     | expression
         { $$ = {type: 'expr', expr: $1} }
@@ -635,35 +641,14 @@ codeblock_no_closed
     : variable_declaration
         { $$ = $1 }
 
-    | GLOBAL variable_declaration
-        { $$ = {...$2, global:true } }
-
-    | PERSISTENT variable_declaration
-        { $$ = {...$2, persistent:'air' } }
-
-    | PERSISTENT SUBPROOF variable_declaration
-        { $$ = {...$3, persistent:'subproof' } }
-
-    | PERSISTENT PROOF variable_declaration
-        { $$ = {...$3, persistent:'proof' } }
+    | scope_reference variable_declaration
+        { $$ = {...$1, ...$2} }
 
     | variable_assignment
         { $$ = $1 }
 
-    | variable_multiple_assignment
-        { $$ = $1 }
-
-    | GLOBAL variable_multiple_assignment
-        { $$ = {...$2, global:true } }
-
-    | PERSISTENT variable_multiple_assignment
-        { $$ = {...$2, persistent:'air' } }
-
-    | PERSISTENT SUBPROOF variable_multiple_assignment
-        { $$ = {...$2, persistent:'subproof' } }
-
-    | PERSISTENT PROOF variable_multiple_assignment
-        { $$ = {...$2, persistent:'proof' } }
+    | scope_reference variable_multiple_assignment
+        { $$ = {...$1, ...$2} }
 
     | return_statement
         { $$ = $1 }
@@ -673,6 +658,18 @@ codeblock_no_closed
 
     | BREAK
         { $$ = { type: 'break' } }
+
+    | CONTINUE TEMPLATE_STRING
+        { $$ = { type: 'continue', scope: $2.value } }
+
+    | BREAK TEMPLATE_STRING
+        { $$ = { type: 'break', scope: $2.value } }
+
+    | CONTINUE SCOPE
+        { $$ = { type: 'continue', scope: true } }
+
+    | BREAK SCOPE
+        { $$ = { type: 'break', scope: true } }
     ;
 
 in_expression
@@ -702,23 +699,8 @@ codeblock_closed
     | DO statement_no_closed WHILE '(' expression ')'
         { $$ = { type: 'do', condition: $5, statements: $2 } }
 
-    | ONCE non_delimited_statement
-        { $$ = { type: 'once', stype: 'air', statements: $2 } }
-
-    | ONCE SUBPROOF non_delimited_statement
-        { $$ = { type: 'once', stype: 'subproof', statements: $3 } }
-
-    | ONCE PROOF non_delimited_statement
-        { $$ = { type: 'once', stype: 'proof', statements: $3 } }
-
-    | ONCE PERSISTENT '{' statement_block '}'
-        { $$ = { type: 'once', stype: 'air', persistent: 'air', statements: $4.statements } }
-
-    | ONCE PERSISTENT SUBPROOF '{' statement_block '}'
-        { $$ = { type: 'once', stype: 'subproof', persistent: 'subproof',  statements: $5.statements } }
-
-    | ONCE PERSISTENT PROOF '{' statement_block '}'
-        { $$ = { type: 'once', stype: 'proof', persistent: 'proof',  statements: $5.statements } }
+    | ONCE scope_reference non_delimited_statement
+        { $$ = { ...$2, type: 'once', statements: $3 } }
 
     | SWITCH '(' expression ')' case_body
         { $$ = $1 }
