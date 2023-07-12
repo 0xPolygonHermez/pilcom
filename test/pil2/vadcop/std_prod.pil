@@ -1,5 +1,5 @@
-constant MAX_MULTISET_IDS = 100;
-constant MAX_LOOKUP_IDS = 100;
+constant MAX_MULTISET_OPIDS = 100;
+constant MAX_LOOKUP_OPIDS = 100;
 
 // Multiset Checks
 // --------------------------------------------------------------------------------------------
@@ -11,10 +11,12 @@ private function init_multiset_challenges() {
     }
 }
 
+// User interface for multiset requires
 function multiset_require(int opid, expr sel, expr cols[]) {
     multiset_update(0, opid, sel, cols);
 }
 
+// User interface for multiset provides
 function multiset_provide(int opid, expr sel, expr cols[]) {
     multiset_update(1, opid, sel, cols);
 }
@@ -23,85 +25,91 @@ function multiset_provide(int opid, expr sel, expr cols[]) {
 // Should we keep the following two functions?
 // public table aggregate(prod, aggregate_function, MEMORY) pt_memory[3][10];
 
-// function aggregate_function ( public table tb, int id ) : expr {
-//     // verify if correct id and cols
-//     check_multiset_id_and_cols(id, length(cols), provide);
+// function aggregate_function ( public table tb, int opid ) : expr {
+//     // verify if correct opid and cols
+//     check_multiset_opid_and_cols(opid, length(cols), provide);
 
 //     init_multiset_challenges();
 
-//     expr cols_selected = multiset_prepare_cols(id, 1, cols);
+//     expr cols_selected = multiset_prepare_cols(opid, 1, cols);
 
-//     on final proof check_multiset_was_complete();
+//     on final proof check_multiset_was_completed();
 
 //     return cols_selected;
 // }
 
 /**
  * Verifies the number of columns of same multiset check (require, provide) is the same.
- * @param id (unique) identifier of the multiset check
+ * @param opid (unique) identifier of the multiset check
  * @param _cols number of columns of the multiset check
  * @param provide 1 if provide, 0 if require
  */
-private function check_multiset_id_and_cols(int id, int cols_count, int provide) {
+private function check_multiset_opid_and_cols(int opid, int cols_count, int provide) {
 
-    once proof int multiset_count;
-    once proof int multiset_ids[MAX_MULTISET_IDS];
+    proof int multiset_count;
+    proof int multiset_opids[MAX_MULTISET_OPIDS];
 
-    scope persistent proof `std.multiset.${id}` {
-        once scope int multiset_cols;
-        once scope int multiset_provide;
-        once scope int multiset_require;
+    scope persistent proof `std.multiset.${opid}` {
+        scope int multiset_cols;
+        scope int multiset_provide;
+        scope int multiset_require;
 
         if (cols_count < 1) {
-            error(`number of cols of multiset #${id} must be greater than 0`);
+            error(`The number of columns of multiset #${opid} must be at least 1`);
         }
 
         if (multiset_cols == 0) {
             // first time called
             multiset_cols = cols_count;
-            // add id on a list to verify at final
-            multiset_push_id(id);
+            // add opid on a list to verify at final
+            multiset_push_opid(opid);
         } else if (multiset_cols != cols_count) {
-            error(`number of cols of multiset #${id} must be ${multiset_cols}`);
+            error(`The number of columns of multiset #${opid} should be equal to ${multiset_cols}`);
         }
 
-        if (provide == 1) {
+        if (provide) {
+            if (multiset_provide > 0) {
+                error(`Multiset #${opid} provide was called previously`);
+            }
             ++multiset_provide;
         } else {
+            if (multiset_require > 0) {
+                error(`Multiset #${opid} provide was called previously`);
+            }
             ++multiset_require;
         }
 
-        once proof expr multiset_proof_gprod = 1;
-        once subproof value aggregate(prod) multiset_subproof_gprod;
-        once air expr multiset_gprod_require = 1;
-        once air expr multiset_gprod_provide = 1;
+        proof expr multiset_proof_gprod = 1;
+        subproof value aggregate(prod) multiset_subproof_gprod;
+        air expr multiset_gprod_require = 1;
+        air expr multiset_gprod_provide = 1;
     }
 }
 
 
-private function multiset_push_id(int id) {
+private function multiset_push_opid(int opid) {
 
-    if (multiset_count == MAX_MULTISET_IDS) {
-        error(`too many multiset ids, current limit was MAX_MULTISET_IDS(${MAX_MULTISET_IDS})`);
+    if (multiset_count == MAX_MULTISET_OPIDS) {
+        error(`Too many multiset ids, the current limit is ${MAX_MULTISET_OPIDS}`);
     }
-    multiset_ids[multiset_count++] = id;
+    multiset_opids[multiset_count++] = opid;
 }
 
 /**
- * Given columns C₀,...,Cₙ₋₁, and selector S, reduces the selected vector argument to a single column argument.
- * @param id (unique) identifier of the argument
+ * Given columns C₁,...,Cₙ, and selector S, reduces the selected vector argument to a single column argument.
+ * @param opid (unique) identifier of the argument
  * @param sel selector of the argument
- * @param cols columns of the argument
- * @return S·([C₀ + C₁·α + ... + Cₙ₋₁·αⁿ⁻¹] + β - 1) + 1
+ * @param cols array of columns of the argument
+ * @return S·([opid + C₁·α + C₂·α² + ... + Cₙ·αⁿ] + β - 1) + 1
  */
-function multiset_prepare_cols(int id, expr sel, expr cols[]): expr {
+function multiset_prepare_cols(int opid, expr sel, expr cols[]): expr {
     expr cols_compressed = 0;
     for (int icol = length(cols) - 1; icol >= 0; --icol) {
         cols_compressed = (cols_compressed + cols[icol]) * std_alpha;
     }
 
-    // the id is added to avoid soundness issues between different multiset checks
-    cols_compressed = cols_compressed + id;
+    // the opid is added to avoid soundness issues between different multiset checks
+    cols_compressed = cols_compressed + opid;
 
     if (sel == 1) {
         return cols_compressed + std_beta;
@@ -113,13 +121,13 @@ function multiset_prepare_cols(int id, expr sel, expr cols[]): expr {
 /**
  * Given columns C₀,...,Cₙ₋₁, and selector S, it 1] defines the constraints at the air level, 2] updates the values at the subproof level, and 3] updates the constraints at the proof level.
  * @param provide boolean indicating if updating a provide or a require
- * @param id (unique) identifier of the argument
+ * @param opid (unique) identifier of the argument
  * @param sel selector of the argument
  * @param cols columns of the argument
  */
-function multiset_update(int provide, int id, expr sel, expr cols[]) {
-    // verify if correct id and cols
-    check_multiset_id_and_cols(id, length(cols), provide);
+function multiset_update(int provide, int opid, expr sel, expr cols[]) {
+    // verify if correct opid and cols
+    check_multiset_opid_and_cols(opid, length(cols), provide);
 
     init_multiset_challenges();
 
@@ -128,7 +136,7 @@ function multiset_update(int provide, int id, expr sel, expr cols[]) {
     }
 
     // selected vector to simple column reduction
-    expr cols_selected = multiset_prepare_cols(id, sel, cols);
+    expr cols_selected = multiset_prepare_cols(opid, sel, cols);
 
     if (provide) {
         // adding all products of provide called in this air
@@ -151,9 +159,9 @@ function multiset_update(int provide, int id, expr sel, expr cols[]) {
 private function multiset_air() {
     col witness stage(3) gprod;
 
-    //                                            require_selected
+    //                                          multiset_gprod_require
     //  gprod === ('gprod * (1 - L1) + L1) * ----------------------------
-    //                                            provide_selected
+    //                                          multiset_gprod_provide
 
 
     col fixed L1 = [1,0...];
@@ -170,20 +178,21 @@ private function multiset_subproof() {
 }
 
 private function multiset_proof() {
-    check_multiset_was_complete();
+    check_multiset_was_completed();
 
     multiset_proof_gprod === 1;
 }
 
-private function check_multiset_was_complete() {
+// It checks wheter there is some multiset check without either provide or require
+private function check_multiset_was_completed() {
     for (int index = 0; index < multiset_count; ++index) {
-        int id = multiset_ids[index];
-        scope persistent proof `std.multiset.${id}` {
+        int opid = multiset_opids[index];
+        scope persistent proof `std.multiset.${opid}` {
             if (multiset_require == 0) {
-                error(`multiset #${id} defined without require`);
+                error(`Multiset #${opid} defined without require`);
             }
             if (multiset_provide == 0) {
-                error(`multiset #${id} defined without provide`);
+                error(`Multiset #${opid} defined without provide`);
             }
         }
     }
@@ -191,7 +200,6 @@ private function check_multiset_was_complete() {
 // --------------------------------------------------------------------------------------------
 
 // Lookup Checks
-// TODO: Implement cross-subproof lookups
 // --------------------------------------------------------------------------------------------
 private function init_lookup_challenges() {
     if (!defined(std_alpha)) {
@@ -205,42 +213,45 @@ private function init_lookup_challenges() {
 
 /**
  * Verifies the number of columns of same lookup check (require, provide) is the same.
- * @param id (unique) identifier of the lookup check
+ * @param opid (unique) identifier of the lookup check
  * @param _cols number of columns of the lookup check
  * @param provide 1 if provide, 0 if require
  */
-private function check_lookup_id_and_cols(int id, int cols_count, int provide) {
+private function check_lookup_opid_and_cols(int opid, int cols_count, int provide) {
 
     proof int lookup_count;
-    proof int lookup_ids[MAX_LOOKUP_IDS];
+    proof int lookup_opids[MAX_LOOKUP_OPIDS];
 
-    scope persistent air `std.lookup.${id}` {
+    scope persistent air `std.lookup.${opid}` {
         scope int lookup_cols;
         scope int lookup_provide;
         scope int lookup_require;
         scope expr colsP_selected;
         scope expr colsR_pre_selected;
         scope expr colsR_selR;
+        scope expr colsR_selected;
 
         if (cols_count < 1) {
-            error(`number of cols of lookup #${id} must be greater than 0`);
+            error(`The number of columns of lookup #${opid} must be at least 1`);
         }
 
         if (lookup_cols == 0) {
+            // first time called
             lookup_cols = cols_count;
-            lookup_push_id(id);
+            // add opid on a list to verify at final
+            lookup_push_opid(opid);
         } else if (lookup_cols != cols_count) {
-            error(`number of cols of lookup #${id} must be ${lookup_cols[id]}`);
+            error(`The number of columns of lookup #${opid} should be equal to ${lookup_cols}`);
         }
 
         if (provide) {
             if (lookup_provide > 0) {
-                error(`lookup #${id} provide was called previously`);
+                error(`Lookup #${opid} provide was called previously`);
             }
             ++lookup_provide;
         } else {
             if (lookup_require > 0) {
-                error(`lookup #${id} provide was called previously`);
+                error(`Lookup #${opid} provide was called previously`);
             }
             ++lookup_require;
         }
@@ -252,19 +263,20 @@ private function check_lookup_id_and_cols(int id, int cols_count, int provide) {
 
 /**
  * Given columns C₀,...,Cₙ₋₁, and selector S, reduces the selected vector argument to a single column argument.
- * @param id (unique) identifier of the argument
+ * @param opid (unique) identifier of the argument
  * @param sel selector of the argument
  * @param cols columns of the argument
- * @return S·[C₀ + C₁·α + ... + Cₙ₋₁·αⁿ⁻¹]
+ * @return S·[opid + C₁·α + C₂·α² + ... + Cₙ·αⁿ]
  */
-function lookup_prepare_cols (int id, expr sel, expr cols[]): expr {
+function lookup_prepare_cols (int opid, expr sel, expr cols[]): expr {
     expr cols_compressed = 0;
     for (int icol = length(cols) - 1; icol >= 0; --icol) {
         cols_compressed = (cols_compressed + cols[icol]) * std_alpha;
     }
 
-    // the id is added to avoid soundness issues between different lookup checks
-    cols_compressed = cols_compressed + id;
+    // the opid is added to avoid soundness issues between different lookup checks
+    cols_compressed = cols_compressed + opid;
+    
     if (sel == 1) {
         return cols_compressed;
     }
@@ -273,17 +285,17 @@ function lookup_prepare_cols (int id, expr sel, expr cols[]): expr {
 }
 
 /**
- * Given columns C₀,...,Cₙ₋₁, and selector S, it 1] defines the constraints at the air level, 2] updates the values at the subproof level, and 3] updates the constraints at the proof level.
+ * Given columns C₀,...,Cₙ₋₁, and selector S, it defines the constraints at the air level
  * @param provide boolean indicating if updating a provide or a require
- * @param id (unique) identifier of the argument
+ * @param opid (unique) identifier of the argument
  * @param sel selector of the argument
  * @param cols columns of the argument
  */
 
-function lookup_update(int id, expr selR, expr colsR[], expr selP, expr colsP[]) {
-    // verify if correct id and cols
-    check_lookup_id_and_cols(id, length(colsP), 1);
-    check_lookup_id_and_cols(id, length(colsR), 0);
+function lookup_update(int opid, expr selR, expr colsR[], expr selP, expr colsP[]) {
+    // verify if correct opid and cols
+    check_lookup_opid_and_cols(opid, length(colsP), 1);
+    check_lookup_opid_and_cols(opid, length(colsR), 0);
 
     init_lookup_challenges();
 
@@ -296,22 +308,23 @@ function lookup_update(int id, expr selR, expr colsR[], expr selP, expr colsP[])
     }
 
     // selected vector to simple column reduction
-    colsP_selected = lookup_prepare_cols(id, selP, colsP);
-    colsR_pre_selected = lookup_prepare_cols(id, selR, colsR);
-    colsR_selR = selR;
+    colsP_selected = lookup_prepare_cols(opid, selP, colsP);
 
-    expr colsR_selected = colsR_pre_selected + colsP_selected * (1 - selR)
+    colsR_pre_selected = lookup_prepare_cols(opid, selR, colsR);
+    colsR_selR = selR;
+    colsR_selected = colsR_pre_selected + colsP_selected * (1 - colsR_selR)
 
     lookup_gprod_provide = lookup_gprod_provide * colsP_selected;
     lookup_gprod_require = lookup_gprod_require * colsR_selected;
 
-    // 1] define constraints at the air level
+    // define constraints at the air level
     on final air lookup_air();
 }
 
 private function lookup_air() {
-    check_lookup_was_complete();
+    check_lookup_was_completed();
 
+    // TODO: To be implemented
     @lookup_check {h1: h1, h2: h2, colsT: lookup_gprod_provide, colsF: lookup_gprod_require, gprod};
 
     // Define h1,h2 polynomials
@@ -334,19 +347,19 @@ private function lookup_air() {
 
     grod * denominator === previous_gprod * numerator;
 
-//    L1' * (gprod - lookup_subproof_gprod) === 0;
     L1' * (gprod - 1) === 0;
 }
 
-private function check_lookup_was_complete() {
+// It checks wheter there is some multiset check without either provide or require
+private function check_lookup_was_completed() {
     for (int index = 0; index < lookup_count; ++index) {
-        int id = lookup_ids[index];
-        scope persistent proof `std.lookup.${id}` {
+        int opid = lookup_opids[index];
+        scope persistent proof `std.lookup.${opid}` {
             if (lookup_require == 0) {
-                error(`lookup #${id} defined without require`);
+                error(`Lookup #${opid} defined without require`);
             }
             if (lookup_provide == 0) {
-                error(`lookup #${id} defined without provide`);
+                error(`Lookup #${opid} defined without provide`);
             }
         }
     }
