@@ -1,6 +1,3 @@
-constant MAX_MULTISET_OPIDS = 100;
-constant MAX_LOOKUP_OPIDS = 100;
-
 // Multiset Checks
 // --------------------------------------------------------------------------------------------
 private function init_multiset_challenges() {
@@ -20,7 +17,6 @@ function multiset_require(int opid, expr sel, expr cols[]) {
 function multiset_provide(int opid, expr sel, expr cols[]) {
     multiset_update(1, opid, sel, cols);
 }
-
 
 // Should we keep the following two functions?
 // public table aggregate(prod, aggregate_function, MEMORY) pt_memory[3][10];
@@ -46,53 +42,51 @@ function multiset_provide(int opid, expr sel, expr cols[]) {
  */
 private function check_multiset_opid_and_cols(int opid, int cols_count, int provide) {
 
-    proof int multiset_count;
-    proof int multiset_opids[MAX_MULTISET_OPIDS];
-
-    scope persistent proof `std.multiset.${opid}` {
-        scope int multiset_cols;
-        scope int multiset_provide;
-        scope int multiset_require;
-
-        if (cols_count < 1) {
-            error(`The number of columns of multiset #${opid} must be at least 1`);
-        }
-
-        if (multiset_cols == 0) {
-            // first time called
-            multiset_cols = cols_count;
-            // add opid on a list to verify at final
-            multiset_push_opid(opid);
-        } else if (multiset_cols != cols_count) {
-            error(`The number of columns of multiset #${opid} should be equal to ${multiset_cols}`);
-        }
-
-        if (provide) {
-            if (multiset_provide > 0) {
-                error(`Multiset #${opid} provide was called previously`);
-            }
-            ++multiset_provide;
-        } else {
-            if (multiset_require > 0) {
-                error(`Multiset #${opid} provide was called previously`);
-            }
-            ++multiset_require;
-        }
-
-        proof expr multiset_proof_gprod = 1;
-        subproof value aggregate(prod) multiset_subproof_gprod;
-        air expr multiset_gprod_require = 1;
-        air expr multiset_gprod_provide = 1;
+    if (cols_count < 1) {
+        error(`The number of columns of multiset #${opid} must be at least 1`);
     }
-}
 
-
-private function multiset_push_opid(int opid) {
-
-    if (multiset_count == MAX_MULTISET_OPIDS) {
-        error(`Too many multiset ids, the current limit is ${MAX_MULTISET_OPIDS}`);
+    namespace proof.std.multiset alias ms {
+        int opids[];
+        expr gprod = 1;
     }
-    multiset_opids[multiset_count++] = opid;
+
+    namespace subproof.std.multiset {
+        subproofval aggregate(prod) prod_result;
+    }
+
+    namespace air.std.multiset {
+        expr gprod_require = 1;
+        expr gprod_provide = 1;
+    }
+
+    namespace proof.std.multiset.`id${opid}` alias msid {
+        int cols;
+        int provide;
+        int require;
+    }
+
+    if (msid.cols == 0) {
+        // first time called
+        msid.cols = cols_count;
+        // add opid on a list to verify at final
+        ms.opids[] = opid;
+    } else if (msid.cols != cols_count) {
+        error(`The number of columns of multiset #${opid} should be equal to ${msid.cols}`);
+    }
+
+    if (provide) {
+        if (msid.provide > 0) {
+            error(`Multiset #${opid} provide was called previously`);
+        }
+        ++msid.provide;
+    } else {
+        if (msid.require > 0) {
+            error(`Multiset #${opid} provide was called previously`);
+        }
+        ++msid.require;
+    }
+    
 }
 
 /**
@@ -138,12 +132,13 @@ function multiset_update(int provide, int opid, expr sel, expr cols[]) {
     // selected vector to simple column reduction
     expr cols_selected = multiset_prepare_cols(opid, sel, cols);
 
+    use air.std.multiset;
     if (provide) {
         // adding all products of provide called in this air
-        multiset_gprod_provide = multiset_gprod_provide * cols_selected;
+        gprod_provide = gprod_provide * cols_selected;
     } else {
         // adding all products of require called in this air
-        multiset_gprod_require = multiset_gprod_require * cols_selected;
+        gprod_require = gprod_require * cols_selected;
     }
 
     // 1] define constraints at the air level
@@ -159,41 +154,38 @@ function multiset_update(int provide, int opid, expr sel, expr cols[]) {
 private function multiset_air() {
     col witness stage(3) gprod;
 
-    //                                          multiset_gprod_require
+    //                                              gprod_require
     //  gprod === ('gprod * (1 - L1) + L1) * ----------------------------
-    //                                          multiset_gprod_provide
+    //                                              gprod_provide
 
 
     col fixed L1 = [1,0...];
 
     expr previous_gprod = 'gprod * (1 - L1) + L1;  // L1 == 1 ? 1 : 'gprod
 
-    grod * multiset_gprod_provide === previous_gprod * multiset_gprod_require;
+    grod * air.std.multiset.gprod_provide === previous_gprod * air.std.multiset.gprod_require;
 
-    L1' * (gprod - multiset_subproof_gprod) === 0;
+    L1' * (gprod - subproof.std.multiset.prod_result) === 0;
 }
 
 private function multiset_subproof() {
-    multiset_proof_gprod = multiset_proof_gprod * multiset_subproof_gprod;
+    proof.std.multiset.gprod = proof.std.multiset.gprod * subproof.std.multiset.prod_result;
 }
 
 private function multiset_proof() {
     check_multiset_was_completed();
 
-    multiset_proof_gprod === 1;
+    proof.std.multiset.gprod === 1;
 }
 
 // It checks wheter there is some multiset check without either provide or require
 private function check_multiset_was_completed() {
-    for (int index = 0; index < multiset_count; ++index) {
-        int opid = multiset_opids[index];
-        scope persistent proof `std.multiset.${opid}` {
-            if (multiset_require == 0) {
-                error(`Multiset #${opid} defined without require`);
-            }
-            if (multiset_provide == 0) {
-                error(`Multiset #${opid} defined without provide`);
-            }
+    for (int opid in proof.std.multiset.opids) {
+        if (proof.std.multiset.`id${opid}`.require == 0) {
+            error(`Multiset #${opid} defined without require`);
+        }
+        if (proof.std.multiset.`id${opid}`.provide == 0) {
+            error(`Multiset #${opid} defined without provide`);
         }
     }
 }
@@ -219,45 +211,45 @@ private function init_lookup_challenges() {
  */
 private function check_lookup_opid_and_cols(int opid, int cols_count, int provide) {
 
-    proof int lookup_count;
-    proof int lookup_opids[MAX_LOOKUP_OPIDS];
+    if (cols_count < 1) {
+        error(`The number of columns of lookup #${opid} must be at least 1`);
+    }
 
-    scope persistent air `std.lookup.${opid}` {
-        scope int lookup_cols;
-        scope int lookup_provide;
-        scope int lookup_require;
-        scope expr colsP_selected;
-        scope expr colsR_pre_selected;
-        scope expr colsR_selR;
-        scope expr colsR_selected;
+    namespace air.std.lookup alias look {
+        int opids[];
+        expr gprod_require = 1;
+        expr gprod_provide = 1;
+    }
 
-        if (cols_count < 1) {
-            error(`The number of columns of lookup #${opid} must be at least 1`);
+    namespace air.std.lookup.`id${opid}` alias lookid {
+        int cols;
+        int provide;
+        int require;
+        expr colsP_selected;
+        expr colsR_pre_selected;
+        expr colsR_selR;
+        expr colsR_selected;
+    }
+
+    if (lookid.cols == 0) {
+        // first time called
+        lookid.cols = cols_count;
+        // add opid on a list to verify at final
+        look.opids[] = opid;
+    } else if (lookid.cols != cols_count) {
+        error(`The number of columns of lookup #${opid} should be equal to ${lookid.cols}`);
+    }
+
+    if (provide) {
+        if (lookid.provide > 0) {
+            error(`Lookup #${opid} provide was called previously`);
         }
-
-        if (lookup_cols == 0) {
-            // first time called
-            lookup_cols = cols_count;
-            // add opid on a list to verify at final
-            lookup_push_opid(opid);
-        } else if (lookup_cols != cols_count) {
-            error(`The number of columns of lookup #${opid} should be equal to ${lookup_cols}`);
+        ++lookid.provide;
+    } else {
+        if (lookid.require > 0) {
+            error(`Lookup #${opid} provide was called previously`);
         }
-
-        if (provide) {
-            if (lookup_provide > 0) {
-                error(`Lookup #${opid} provide was called previously`);
-            }
-            ++lookup_provide;
-        } else {
-            if (lookup_require > 0) {
-                error(`Lookup #${opid} provide was called previously`);
-            }
-            ++lookup_require;
-        }
-
-        air expr lookup_gprod_require = 1;
-        air expr lookup_gprod_provide = 1;
+        ++lookid.require;
     }
 }
 
@@ -291,14 +283,12 @@ function lookup_prepare_cols (int opid, expr sel, expr cols[]): expr {
  * @param sel selector of the argument
  * @param cols columns of the argument
  */
-
 function lookup_update(int opid, expr selR, expr colsR[], expr selP, expr colsP[]) {
     // verify if correct opid and cols
     check_lookup_opid_and_cols(opid, length(colsP), 1);
     check_lookup_opid_and_cols(opid, length(colsR), 0);
 
     init_lookup_challenges();
-
 
     if (selP != 1) {
         selP * (1 - selP) === 0;
@@ -308,14 +298,17 @@ function lookup_update(int opid, expr selR, expr colsR[], expr selP, expr colsP[
     }
 
     // selected vector to simple column reduction
+    use air.std.lookup.`id${opid}`;
     colsP_selected = lookup_prepare_cols(opid, selP, colsP);
 
     colsR_pre_selected = lookup_prepare_cols(opid, selR, colsR);
     colsR_selR = selR;
     colsR_selected = colsR_pre_selected + colsP_selected * (1 - colsR_selR)
 
-    lookup_gprod_provide = lookup_gprod_provide * colsP_selected;
-    lookup_gprod_require = lookup_gprod_require * colsR_selected;
+
+    use air.std.lookup;
+    gprod_provide = gprod_provide * lookid.colsP_selected;
+    gprod_require = gprod_require * lookid.colsR_selected;
 
     // define constraints at the air level
     on final air lookup_air();
@@ -324,8 +317,9 @@ function lookup_update(int opid, expr selR, expr colsR[], expr selP, expr colsP[
 private function lookup_air() {
     check_lookup_was_completed();
 
-    // TODO: To be implemented
-    @lookup_check {h1: h1, h2: h2, colsT: lookup_gprod_provide, colsF: lookup_gprod_require, gprod};
+    use air.std.lookup;
+
+    @lookup_check {h1: h1, h2: h2, colsT: gprod_provide, colsF: gprod_require, gprod};
 
     // Define h1,h2 polynomials
     col witness h1 stage(2);
@@ -337,8 +331,7 @@ private function lookup_air() {
     //  gprod === ('gprod * (1 - L1) + L1) * -------------------------------------------------------------------------------
     //                                          (delta*(1 + gamma) + h1 + gamma*h2) * (delta*(1 + gamma) + h2 + gamma*h1')
 
-
-    expr numerator = (1 + std_gamma) * (lookup_gprod_require + std_delta) * (std_delta * (1 + std_gamma) + lookup_gprod_provide + gamma * lookup_gprod_provide')
+    expr numerator = (1 + std_gamma) * (gprod_require + std_delta) * (std_delta * (1 + std_gamma) + gprod_provide + gamma * gprod_provide')
     expr denominator = (std_delta * (1 + std_gamma) + h1 + gamma * h2) * (std_delta * (1 + std_gamma) + h2 + gamma * h1')
 
     col fixed L1 = [1,0...];
@@ -352,15 +345,12 @@ private function lookup_air() {
 
 // It checks wheter there is some multiset check without either provide or require
 private function check_lookup_was_completed() {
-    for (int index = 0; index < lookup_count; ++index) {
-        int opid = lookup_opids[index];
-        scope persistent proof `std.lookup.${opid}` {
-            if (lookup_require == 0) {
-                error(`Lookup #${opid} defined without require`);
-            }
-            if (lookup_provide == 0) {
-                error(`Lookup #${opid} defined without provide`);
-            }
+    for (opid in air.std.lookup.opids) {
+        if (air.std.lookup.`id${opid}`.require == 0) {
+            error(`Lookup #${opid} defined without require`);
+        }
+        if (air.std.lookup.`id${opid}`.provide == 0) {
+            error(`Lookup #${opid} defined without provide`);
         }
     }
 }

@@ -1,7 +1,5 @@
 // Do the batching of multiple multiset/lookup checks to the same table
 
-constant MAX_OPIDS = 200;
-
 private function init_challenges() {
     if (!defined(std_alpha)) {
         challenge stage(2) std_alpha;
@@ -34,49 +32,52 @@ function lookup_provide(int opid, expr sel, expr cols[]) {
  */
 private function check_id_and_cols(int opid, int cols_count, int provide) {
 
-    once proof int args_count;
-    once proof int args_opids[MAX_OPIDS];
-
-    scope persistent proof `std.arg.${opid}` {
-        once scope int args_cols;
-        once scope int args_provide;
-        once scope int args_require;
-
-        if (cols_count < 1) {
-            error(`number of cols of arg #${opid} must be greater than 0`);
-        }
-
-        if (args_cols == 0) {
-            // first time called
-            args_cols = cols_count;
-            // add opid on a list to verify at final
-            push_id(opid);
-        } else if (args_cols != cols_count) {
-            error(`number of cols of arg #${opid} must be ${args_cols}`);
-        }
-
-        if (args_provide == 1) {
-            ++args_provide;
-        } else {
-            ++args_require;
-        }
-
-        once proof expr proof_gsum = 0;
-        once subproof value aggregate(sum) subproof_gsum;
-        once air expr gsum_require_mul_count[MAX_OPIDS];
-        once air expr gsum_require[MAX_OPIDS];
-        once air expr gsum_provide_mul_count[MAX_OPIDS];
-        once air expr gsum_provide[MAX_OPIDS];
+    if (cols_count < 1) {
+        error(`The number of cols of arg #${opid} must be at least 1`);
     }
-}
 
-
-private function push_id(int opid) {
-
-    if (args_count == MAX_OPIDS) {
-        error(`too many arg opids, current limit was MAX_OPIDS(${MAX_OPIDS})`);
+    namespace proof.std.args alias args {
+        int opids[];
+        expr gsum = 0;
     }
-    args_opids[args_count++] = opid;
+
+    namespace subproof.std.args {
+        subproofval aggregate(sum) gsum_result;
+    }
+
+    namespace air.std.args {
+        expr gsum_require_mul_count[];
+        expr gsum_require[];
+        expr gsum_provide_mul_count[];
+        expr gsum_provide[];
+    }
+
+    namespace proof.std.args.`id${opid}` alias argsid {
+        int cols;
+        int provide;
+        int require;
+    }
+
+    if (argsid.cols == 0) {
+        // first time called
+        argsid.cols = cols_count;
+        // add opid on a list to verify at final
+        args.opids[] = opid;
+    } else if (argsid.cols != cols_count) {
+        error(`The number of cols of arg #${opid} must be ${argsid.cols}`);
+    }
+
+    if (provide) {
+        if (argsid.provide > 0) {
+            error(`Arg #${opid} provide was called previously`);
+        }
+        ++argsid.provide;
+    } else {
+        if (argsid.require > 0) {
+            error(`Arg #${opid} provide was called previously`);
+        }
+        ++argsid.require;
+    }
 }
 
 /**
@@ -172,11 +173,11 @@ private function air_constraints() {
     expr RHS = RHS1 - RHS2;
 
     (gsum - 'gsum * (1 - L1)) * LHS === RHS;
-    L1' * (gsum - subproof_gsum) === 0;
+    L1' * (gsum - gsum_result) === 0;
 }
 
 private function subproof_update() {
-    proof_gsum = proof_gsum + subproof_gsum;
+    proof_gsum = proof_gsum + gsum_result;
 }
 
 private function proof_constraints() {
@@ -186,15 +187,13 @@ private function proof_constraints() {
 }
 
 private function check_was_completed() {
-    for (int index = 0; index < args_count; ++index) {
-        int opid = args_opids[index];
-        scope persistent proof `std.arg.${opid}` {
-            if (args_require == 0) {
-                error(`arg #${opid} defined without require`);
-            }
-            if (args_provide == 0) {
-                error(`arg #${opid} defined without provide`);
-            }
+    for (int index = 0; index < length(args.opids); ++index) {
+        int opid = args.opids[index];
+        if (argsid.require == 0) {
+            error(`Arg #${opid} defined without require`);
+        }
+        if (argsid.provide == 0) {
+            error(`Arg #${opid} defined without provide`);
         }
     }
 }
