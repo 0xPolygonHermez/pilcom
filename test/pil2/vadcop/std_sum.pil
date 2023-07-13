@@ -1,4 +1,4 @@
-// Do the batching of multiple multiset/lookup checks to the same table
+// TODO: Optimization. Do the batching of multiple multiset/lookup checks to the same table
 
 private function init_challenges() {
     if (!defined(std_alpha)) {
@@ -36,23 +36,23 @@ private function check_id_and_cols(int opid, int cols_count, int provide) {
         error(`The number of columns of PIOP #${opid} must be at least 1`);
     }
 
-    namespace proof.std.piop alias piop {
+    container proof.std.piop alias piop {
         int opids[];
         expr gsum = 0;
     }
 
-    namespace subproof.std.piop {
+    container subproof.std.piop {
         subproofval aggregate(sum) gsum_result;
     }
 
-    namespace air.std.piop {
+    container air.std.piop {
         expr gsum_require_mul_count[];
         expr gsum_require[];
         expr gsum_provide_mul_count[];
         expr gsum_provide[];
     }
 
-    namespace proof.std.piop.`id${opid}` alias piopid {
+    container proof.std.piop.`id${opid}` alias piopid {
         int cols;
         int provide;
         int require;
