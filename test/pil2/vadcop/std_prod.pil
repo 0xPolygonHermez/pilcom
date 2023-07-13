@@ -203,6 +203,30 @@ private function init_lookup_challenges() {
     }
 }
 
+// User interface for lookup requires
+function lookup_require(int opid, expr sel, expr cols[]) {
+    use air.std.lookup.`id${opid}`;
+
+    if (provide == 1) {
+        lookup_update_require(opid, sel, cols);
+    } else {
+        selR = sel;
+        colsR = cols;
+    }
+}
+
+// User interface for lookup provides
+function lookup_provide(int opid, expr sel, expr cols[]) {
+    use air.std.lookup.`id${opid}`;
+
+    if (require == 0) {
+        lookup_update_require(opid, selR, colsR);
+        lookup_update_provide(opid, sel, cols);
+    } else {
+        lookup_update_provide(opid, sel, cols);
+    }
+}
+
 /**
  * Verifies the number of columns of same lookup check (require, provide) is the same.
  * @param opid (unique) identifier of the lookup check
@@ -225,6 +249,10 @@ private function check_lookup_opid_and_cols(int opid, int cols_count, int provid
         int cols;
         int provide;
         int require;
+
+        expr selR;
+        expr colsR[];
+
         expr colsP_selected;
         expr colsR_pre_selected;
         expr colsR_selR;
@@ -283,31 +311,43 @@ function lookup_prepare_cols (int opid, expr sel, expr cols[]): expr {
  * @param sel selector of the argument
  * @param cols columns of the argument
  */
-function lookup_update(int opid, expr selR, expr colsR[], expr selP, expr colsP[]) {
+function lookup_update_provide(int opid, expr selP, expr colsP[]) {
     // verify if correct opid and cols
     check_lookup_opid_and_cols(opid, length(colsP), 1);
-    check_lookup_opid_and_cols(opid, length(colsR), 0);
 
     init_lookup_challenges();
 
     if (selP != 1) {
         selP * (1 - selP) === 0;
     }
+
+    // selected vector to simple column reduction
+    use air.std.lookup.`id${opid}`;
+    colsP_selected = lookup_prepare_cols(opid, selP, colsP);
+
+    use air.std.lookup;
+    gprod_provide = gprod_provide * lookid.colsP_selected;
+
+    // define constraints at the air level
+    on final air lookup_air();
+}
+function lookup_update_require(int opid, expr selR, expr colsR[]) {
+    // verify if correct opid and cols
+    check_lookup_opid_and_cols(opid, length(colsR), 0);
+
+    init_lookup_challenges();
+
     if (selR != 1) {
         selR * (1 - selR) === 0;
     }
 
     // selected vector to simple column reduction
     use air.std.lookup.`id${opid}`;
-    colsP_selected = lookup_prepare_cols(opid, selP, colsP);
-
     colsR_pre_selected = lookup_prepare_cols(opid, selR, colsR);
     colsR_selR = selR;
     colsR_selected = colsR_pre_selected + colsP_selected * (1 - colsR_selR)
 
-
     use air.std.lookup;
-    gprod_provide = gprod_provide * lookid.colsP_selected;
     gprod_require = gprod_require * lookid.colsR_selected;
 
     // define constraints at the air level
@@ -345,7 +385,7 @@ private function lookup_air() {
 
 // It checks wheter there is some multiset check without either provide or require
 private function check_lookup_was_completed() {
-    for (opid in air.std.lookup.opids) {
+    for (int opid in air.std.lookup.opids) {
         if (air.std.lookup.`id${opid}`.require == 0) {
             error(`Lookup #${opid} defined without require`);
         }

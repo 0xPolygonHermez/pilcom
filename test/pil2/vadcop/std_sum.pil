@@ -9,81 +9,81 @@ private function init_challenges() {
 }
 
 function multiset_require(int opid, expr sel, expr cols[]) {
-    arg_update(0, opid, sel, cols);
+    piop_update(0, opid, sel, cols);
 }
 
 function multiset_provide(int opid, expr sel, expr cols[]) {
-    arg_update(1, opid, sel, cols);
+    piop_update(1, opid, sel, cols);
 }
 
 function lookup_require(int opid, expr sel, expr cols[]) {
-    arg_update(0, opid, sel, cols);
+    piop_update(0, opid, sel, cols);
 }
 
 function lookup_provide(int opid, expr sel, expr cols[]) {
-    arg_update(1, opid, sel, cols);
+    piop_update(1, opid, sel, cols);
 }
 
 /**
- * Verifies the number of columns of same arg check (require, provide) is the same.
- * @param opid (unique) identifier of the arg check
- * @param _cols number of columns of the arg check
+ * Verifies the number of columns of same PIOP check (require, provide) is the same.
+ * @param opid (unique) identifier of the PIOP check
+ * @param cols_count number of columns of the PIOP check
  * @param provide 1 if provide, 0 if require
  */
 private function check_id_and_cols(int opid, int cols_count, int provide) {
 
     if (cols_count < 1) {
-        error(`The number of cols of arg #${opid} must be at least 1`);
+        error(`The number of columns of PIOP #${opid} must be at least 1`);
     }
 
-    namespace proof.std.args alias args {
+    namespace proof.std.piop alias piop {
         int opids[];
         expr gsum = 0;
     }
 
-    namespace subproof.std.args {
+    namespace subproof.std.piop {
         subproofval aggregate(sum) gsum_result;
     }
 
-    namespace air.std.args {
+    namespace air.std.piop {
         expr gsum_require_mul_count[];
         expr gsum_require[];
         expr gsum_provide_mul_count[];
         expr gsum_provide[];
     }
 
-    namespace proof.std.args.`id${opid}` alias argsid {
+    namespace proof.std.piop.`id${opid}` alias piopid {
         int cols;
         int provide;
         int require;
     }
 
-    if (argsid.cols == 0) {
+    if (piopid.cols == 0) {
         // first time called
-        argsid.cols = cols_count;
+        piopid.cols = cols_count;
         // add opid on a list to verify at final
-        args.opids[] = opid;
-    } else if (argsid.cols != cols_count) {
-        error(`The number of cols of arg #${opid} must be ${argsid.cols}`);
+        piop.opids[] = opid;
+    } else if (piopid.cols != cols_count) {
+        error(`The number of columns of PIOP #${opid} must be ${piopid.cols}`);
     }
 
     if (provide) {
-        if (argsid.provide > 0) {
-            error(`Arg #${opid} provide was called previously`);
+        if (piopid.provide > 0) {
+            error(`PIOP #${opid} provide was called previously`);
         }
-        ++argsid.provide;
+        ++piopid.provide;
     } else {
-        if (argsid.require > 0) {
-            error(`Arg #${opid} provide was called previously`);
+        if (piopid.require > 0) {
+            error(`PIOP #${opid} provide was called previously`);
         }
-        ++argsid.require;
+        ++piopid.require;
     }
 }
 
 /**
- * Given columns C₁,...,Cₙ, reduces the selected vector argument to a single column argument.
- * @param opid (unique) identifier of the argument
- * @param cols columns of the argument
+ * Given columns C₁,...,Cₙ, reduces the vector PIOP to a single column PIOP.
+ * @param opid (unique) identifier of the PIOP
+ * @param cols columns of the PIOP
  * @return [opid + C₁·α + C₂·α² + ... + Cₙ·αⁿ] + β
  */
 function compress_cols(int opid, expr cols[]): expr {
@@ -92,7 +92,7 @@ function compress_cols(int opid, expr cols[]): expr {
         cols_compressed = (cols_compressed + cols[icol]) * std_alpha;
     }
 
-    // the opid is added to avoid soundness issues between different arg checks
+    // the opid is added to avoid soundness issues between different PIOP checks
     cols_compressed = (cols_compressed + opid) + std_beta;
     return cols_compressed;
 }
@@ -100,11 +100,11 @@ function compress_cols(int opid, expr cols[]): expr {
 /**
  * Given columns C₀,...,Cₙ₋₁, and multiplicity counter M, it 1] defines the constraints at the air level, 2] updates the values at the subproof level, and 3] updates the constraints at the proof level.
  * @param provide boolean indicating if updating a provide or a require
- * @param opid (unique) identifier of the argument
- * @param mul_count multiplicity counter of the argument
- * @param cols columns of the argument
+ * @param opid (unique) identifier of the PIOP
+ * @param mul_count multiplicity counter of the PIOP
+ * @param cols columns of the PIOP
  */
-function arg_update(int provide, int opid, expr mul_count, expr cols[]) {
+function piop_update(int provide, int opid, expr mul_count, expr cols[]) {
     // verify if correct opid and cols
     check_id_and_cols(opid, length(cols), provide);
 
@@ -113,29 +113,30 @@ function arg_update(int provide, int opid, expr mul_count, expr cols[]) {
     // selected vector to simple column reduction
     expr cols_compressed = compress_cols(opid, cols);
 
+    use air.std.piop;
     if (provide) {
         // adding all sums of provide called in this air
-        // gsum_provide = gsum_provide + mul_count / cols_compressed;
-        gsum_provide_mul_count[args_provide] = mul_count;
-        gsum_provide[args_provide] = cols_compressed;
+        gsum_provide_mul_count[] = mul_count;
+        gsum_provide[] = cols_compressed;
     } else {
         // adding all sums of require called in this air
-        // gsum_require = gsum_require + mul_count / cols_compressed;
-        gsum_require_mul_count[args_require] = mul_count;
-        gsum_require[args_require] = cols_compressed;
+        gsum_require_mul_count[] = mul_count;
+        gsum_require[] = cols_compressed;
     }
 
     // 1] define constraints at the air level
-    on final air air_constraints();
+    on final air PIOP_air();
 
     // 2] update values at the subproof level
-    on final subproof subproof_update();
+    on final subproof PIOP_subproof();
 
     // 3] update constraints at the proof level
-    on final proof proof_constraints();
+    on final proof PIOP_proof();
 }
 
-private function air_constraints() {
+private function PIOP_air() {
+    use air.std.piop;
+
     col witness stage(3) gsum;
 
     //                                mt1       mt2       mt3       mf1       mf2       mf3            
@@ -173,27 +174,26 @@ private function air_constraints() {
     expr RHS = RHS1 - RHS2;
 
     (gsum - 'gsum * (1 - L1)) * LHS === RHS;
-    L1' * (gsum - gsum_result) === 0;
+    L1' * (gsum - subproof.std.piop.gsum_result) === 0;
 }
 
-private function subproof_update() {
-    proof_gsum = proof_gsum + gsum_result;
+private function PIOP_subproof() {
+    proof.std.piop.gsum = proof.std.piop.gsum + subproof.std.piop.gsum_result;
 }
 
-private function proof_constraints() {
+private function PIOP_proof() {
     check_was_completed();
 
-    proof_gsum === 0;
+    proof.std.piop.gsum === 0;
 }
 
 private function check_was_completed() {
-    for (int index = 0; index < length(args.opids); ++index) {
-        int opid = args.opids[index];
-        if (argsid.require == 0) {
-            error(`Arg #${opid} defined without require`);
+    for (int opid in proof.std.piop.opids) {
+        if (proof.std.piop.`id${opid}`.require == 0) {
+            error(`PIOP #${opid} defined without require`);
         }
-        if (argsid.provide == 0) {
-            error(`Arg #${opid} defined without provide`);
+        if (proof.std.piop.`id${opid}`.provide == 0) {
+            error(`PIOP #${opid} defined without provide`);
         }
     }
 }
