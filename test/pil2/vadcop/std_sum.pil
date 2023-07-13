@@ -124,6 +124,9 @@ function piop_update(int provide, int opid, expr mul_count, expr cols[]) {
         gsum_require[] = cols_compressed;
     }
 
+    // 0] look for repeated provide/require's and, if so, optimize
+    on final air PIOP_batch();
+
     // 1] define constraints at the air level
     on final air PIOP_air();
 
@@ -132,6 +135,35 @@ function piop_update(int provide, int opid, expr mul_count, expr cols[]) {
 
     // 3] update constraints at the proof level
     on final proof PIOP_proof();
+}
+
+// Can the following O(n²) algorithm be implemented faster?
+private function PIOP_batch() {
+    use air.std.piop;
+
+    int len = length(gsum_provide);
+
+    for (int i = 0; i < len; ++i) {
+        for (int j = 0; j < len; ++i) {
+            if (gsum_provide[i] = gsum_provide[j]) {
+                gsum_provide_mul_count[i] = gsum_provide_mul_count[i] + gsum_provide_mul_count[j];
+                gsum_provide_mul_count[j] = gsum_provide_mul_count[len-1];
+                gsum_provide_mul_count.pop();
+            }
+        }
+    }
+
+    len = length(gsum_require);
+
+    for (int i = 0; i < len; ++i) {
+        for (int j = 0; j < len; ++i) {
+            if (gsum_require[i] = gsum_require[j]) {
+                gsum_require_mul_count[i] = gsum_require_mul_count[i] + gsum_require_mul_count[j];
+                gsum_require_mul_count[j] = gsum_require_mul_count[len-1];
+                gsum_require_mul_count.pop();
+            }
+        }
+    }
 }
 
 private function PIOP_air() {

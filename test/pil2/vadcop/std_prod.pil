@@ -219,9 +219,9 @@ function lookup_require(int opid, expr sel, expr cols[]) {
 function lookup_provide(int opid, expr sel, expr cols[]) {
     use air.std.lookup.`id${opid}`;
 
-    if (require == 0) {
-        lookup_update_require(opid, selR, colsR);
+    if (require == 1) {
         lookup_update_provide(opid, sel, cols);
+        lookup_update_require(opid, selR, colsR);
     } else {
         lookup_update_provide(opid, sel, cols);
     }
@@ -326,7 +326,7 @@ function lookup_update_provide(int opid, expr selP, expr colsP[]) {
     colsP_selected = lookup_prepare_cols(opid, selP, colsP);
 
     use air.std.lookup;
-    gprod_provide = gprod_provide * lookid.colsP_selected;
+    gprod_provide = gprod_provide * air.std.lookup.`id${opid}`.colsP_selected;
 
     // define constraints at the air level
     on final air lookup_air();
@@ -415,9 +415,9 @@ private function init_coset_constants(int len) {
     }
 }
 
-// Two (incompatible) user interfaces
+// Two (incompatible??) user interfaces
 
-// 1]
+// 1] WIP
 function connection_init(int opid, expr cols[]) {
         // connection_update_require(opid, sel, cols);
 }
@@ -428,11 +428,26 @@ function connection_connect(int opid, expr cols[]) {
 
 // 2]
 function connection_require(int opid, expr cols[]) {
-        // connection_update_require(opid, sel, cols);
+    use air.std.connection.`id${opid}`;
+
+    colsR = cols;
+
+    if (provide == 1) {
+        connection_update_require(opid, cols);
+        connection_update_provide(opid, colsP);
+    } else {
+        connection_update_require(opid, cols);
+    }
 }
 
 function connection_provide(int opid, expr cols[]) {
-        // connection_update_provide(opid, sel, cols);
+    use air.std.connection.`id${opid}`;
+
+    if (require == 1) {
+        connection_update_provide(opid, cols);
+    } else {
+        colsP = cols;
+    }
 }
 
 /**
@@ -447,32 +462,25 @@ private function check_connection_opid_and_cols(int opid, int cols_count, int pr
         error(`The number of columns of connection #${opid} must be at least 1`);
     }
 
-    container proof.std.connection alias conn {
+    container air.std.connection alias conn {
         int opids[];
-        expr gprod = 1;
-    }
-
-    container subproof.std.connection {
-        subproofval aggregate(prod) prod_result;
-    }
-
-    container air.std.connection {
         expr gprod_require = 1;
         expr gprod_provide = 1;
-    }
-
-    // Move the following from here
-    col fixed IDEN = [1,omega,..*..,omega**(N-1)];
-    // Define SIDs[i] = k_i·X polynomials
-    expr SIDs[cols_count];
-    for (int icol = 0; icol < cols_count; ++icol) {
-        SIDs[icol] = std_ks[icol] * IDEN;
     }
 
     container proof.std.connection.`id${opid}` alias connid {
         int cols;
         int provide;
         int require;
+
+        expr colsR[];
+        int len_colsR;
+        expr colsP[];
+
+        expr SIDs[];
+
+        expr gprodR = 1;
+        expr gprodP = 1;
     }
 
     if (connid.cols == 0) {
@@ -504,44 +512,46 @@ private function check_connection_opid_and_cols(int opid, int cols_count, int pr
  * @param sel selector of the argument
  * @param cols columns of the argument
  */
-function connection_update_provide(int opid, expr selP, expr colsP[]) {
+function connection_update_provide(int opid, expr colsP[]) {
     // verify if correct opid and cols
     check_connection_opid_and_cols(opid, length(colsP), 1);
 
     init_connection_challenges();
 
-    if (selP != 1) {
-        selP * (1 - selP) === 0;
+    use proof.std.connection.`id${opid}`;
+    for (int icol = 0; icol < length(colsP); ++icol) {
+        gprodP = gprodP * (colsR[icol] + std_gamma*colsP[icol] + std_delta);
     }
 
-    // selected vector to simple column reduction
-    use air.std.connection.`id${opid}`;
-    colsP_selected = connection_prepare_cols(opid, selP, colsP);
-
     use air.std.connection;
-    gprod_provide = gprod_provide * lookid.colsP_selected;
+    gprod_provide = gprod_provide * proof.std.connection.`id${opid}`.gprodP;
 
     // define constraints at the air level
     on final air connection_air();
 }
-function connection_update_require(int opid, expr selR, expr colsR[]) {
+function connection_update_require(int opid, expr colsR[]) {
     // verify if correct opid and cols
-    check_connection_opid_and_cols(opid, length(colsR), 0);
+    check_connection_opid_and_cols(opid, length(colsR), 1);
 
     init_connection_challenges();
+    init_coset_constants(length(colsR));
 
-    if (selR != 1) {
-        selR * (1 - selR) === 0;
+    once col fixed IDEN = [1,omega,..*..,omega**(N-1)];
+
+    use proof.std.connection.`id${opid}`;
+    if (length(colsR) > len_colsR) {
+        // Define remaining SIDs[i] = k_i·X polynomials
+        for (int icol = len_colsR; icol < length(colsR); ++icol) {
+            SIDs[icol] = std_ks[icol] * IDEN;
+        }
     }
 
-    // selected vector to simple column reduction
-    use air.std.connection.`id${opid}`;
-    colsR_pre_selected = connection_prepare_cols(opid, selR, colsR);
-    colsR_selR = selR;
-    colsR_selected = colsR_pre_selected + colsP_selected * (1 - colsR_selR)
+    for (int icol = 0; icol < length(colsR); ++icol) {
+        gprodP = gprodP * (colsR[icol] + std_gamma*SIDs[icol] + std_delta);
+    }
 
     use air.std.connection;
-    gprod_require = gprod_require * lookid.colsR_selected;
+    gprod_require = gprod_require * proof.std.connection.`id${opid}`.gprodR;
 
     // define constraints at the air level
     on final air connection_air();
@@ -552,26 +562,17 @@ private function connection_air() {
 
     use air.std.connection;
 
-    @connection_check {h1: h1, h2: h2, colsT: gprod_provide, colsF: gprod_require, gprod};
-
-    // Define h1,h2 polynomials
-    col witness h1 stage(2);
-    col witness h2 stage(2);
-
     col witness stage(3) gprod;
 
-    //                                                (1 + gamma) * (f + delta) * (delta*(1 + gamma) + t + gamma*t')
-    //  gprod === ('gprod * (1 - L1) + L1) * -------------------------------------------------------------------------------
-    //                                          (delta*(1 + gamma) + h1 + gamma*h2) * (delta*(1 + gamma) + h2 + gamma*h1')
-
-    expr numerator = (1 + std_gamma) * (gprod_require + std_delta) * (std_delta * (1 + std_gamma) + gprod_provide + gamma * gprod_provide')
-    expr denominator = (std_delta * (1 + std_gamma) + h1 + gamma * h2) * (std_delta * (1 + std_gamma) + h2 + gamma * h1')
+    //                                          (f_0 + gamma·X + delta) · (f_1 + gamma·k_1·X + delta) · ... · (f_N + gamma·k_n·X + delta)
+    //  gprod' === ('gprod * (1 - L1) + L1) * -------------------------------------------------------------------------------------------
+    //                                          (f_0 + gamma·S_0 + delta) · (f_1 + gamma·S_1 + delta) · ... · (f_N + gamma·S_n + delta)
 
     col fixed L1 = [1,0...];
 
     expr previous_gprod = 'gprod * (1 - L1) + L1;  // L1 == 1 ? 1 : 'gprod
 
-    grod * denominator === previous_gprod * numerator;
+    grod * gprod_provide === previous_gprod * gprod_require;
 
     L1' * (gprod - 1) === 0;
 }
