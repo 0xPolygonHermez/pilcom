@@ -12,7 +12,7 @@
 col                                         { return 'COL'; }
 witness                                     { return 'WITNESS'; }
 fixed                                       { return 'FIXED'; }
-namespace                                   { return 'NAMESPACE'; }
+container                                   { return 'CONTAINER'; }
 declare                                     { return 'DECLARE'; }
 use                                         { return 'USE'; }
 alias                                       { return 'ALIAS'; }
@@ -60,7 +60,6 @@ return                                      { return 'RETURN' }
 first                                       { return 'FIRST' }
 last                                        { return 'LAST' }
 frame                                       { return 'FRAME' }
-transition                                  { return 'TRANSITION' }
 
 \.\.\+\.\.                                  { return 'DOTS_ARITH_SEQ' }
 \.\.\*\.\.                                  { return 'DOTS_GEOM_SEQ' }
@@ -209,7 +208,7 @@ lopcs
     ;
 
 top_level_block
-    /* : namespace_definition
+    /* : container_definition
         { $$ = $1 }
 */
     : subproof_definition
@@ -247,30 +246,25 @@ top_level_block
 
     ;
 
-$${chunk_divide(mem.inputA, A, mem.inputB, B);}
-${get_divisor_chunk(C)}
-${get_quocient_chunk(C)}
-
-
-no_closed_namespace_definition
-    : NAMESPACE namespace_id
+no_closed_container_definition
+    : CONTAINER name_reference
         {
-            $$ = {type: 'namespace', namespace: $4, monolithic: false, subproof: $2, statements: $6.statements };
+            $$ = {type: 'container', container: $4, monolithic: false, subproof: $2, statements: $6.statements };
         }
-    | NAMESPACE namespace_id ALIAS IDENTIFIER
+    | CONTAINER name_reference ALIAS IDENTIFIER
         {
-            $$ = {type: 'namespace', namespace: $4, monolithic: false, subproof: $2, statements: $6.statements };
+            $$ = {type: 'container', container: $4, monolithic: false, subproof: $2, statements: $6.statements };
         }
     ;
 
-closed_namespace_definition
-    : NAMESPACE namespace_id '{' declare_block '}'
+closed_container_definition
+    : CONTAINER name_reference '{' declare_block '}'
         {
-            $$ = {type: 'namespace', namespace: $4, monolithic: false, subproof: $2, statements: $6.statements };
+            $$ = {type: 'container', container: $4, monolithic: false, subproof: $2, statements: $6.statements };
         }
-    | NAMESPACE namespace_id ALIAS IDENTIFIER '{' declare_block '}'
+    | CONTAINER name_reference ALIAS IDENTIFIER '{' declare_block '}'
         {
-            $$ = {type: 'namespace', namespace: $4, monolithic: false, subproof: $2, statements: $6.statements };
+            $$ = {type: 'container', container: $4, monolithic: false, subproof: $2, statements: $6.statements };
         }
     ;
 
@@ -380,7 +374,7 @@ statement_closed
     | function_definition
         { $$ = $1 }
 
-    | closed_namespace_definition
+    | closed_container_definition
         { $$ = $1 }
 
     | '{' statement_block '}'
@@ -601,7 +595,7 @@ statement_no_closed
     | constant_definition
         { $$ = $1 }
 
-    | no_closed_namespace_definition
+    | no_closed_container_definition
     ;
 
 data_value
@@ -760,16 +754,16 @@ for_assignation
     : variable_assignment
         { $$ = $1 }
 
-    | INC pol_id
+    | INC name_id
         { $$ = { ...$2, type: 'variable_increment', pre: 1n, post: 0n } }
 
-    | DEC pol_id
+    | DEC name_id
         { $$ = { ...$2, type: 'variable_increment', pre: -1n, post: 0n } }
 
-    | pol_id INC
+    | name_id INC
         { $$ = { ...$1, type: 'variable_increment', pre: 0n, post: 1n } }
 
-    | pol_id DEC
+    | name_id DEC
         { $$ = { ...$1, type: 'variable_increment', pre: 0n, post: -1n } }
     ;
 
@@ -780,7 +774,7 @@ for_init
     | variable_assignment
         { $$ = $1 }
 
-    | pol_id
+    | name_id
         { $$ = $1 }
 
     | col_declaration
@@ -824,8 +818,8 @@ variable_declaration
     | FUNCTION variable_declaration_item '=' expression
         { $$ = { type: 'variable_declaration', vtype: 'function', items: [$2], init: [$4] } }
 
-    | NAMESPACE variable_declaration_item '=' expression
-        { $$ = { type: 'variable_declaration', vtype: 'namespace', items: [$2], init: [$4] } }
+    | CONTAINER variable_declaration_item '=' expression
+        { $$ = { type: 'variable_declaration', vtype: 'container', items: [$2], init: [$4] } }
 
     | INT '[' variable_declaration_list ']' '=' '[' expression_list ']'
         { $$ = { type: 'variable_declaration', vtype: 'int', items: $3.items, init: $7 } }
@@ -842,8 +836,8 @@ variable_declaration
     | T_STRING '[' variable_declaration_list ']' '=' '[' expression_list ']'
         { $$ = { type: 'variable_declaration', vtype: 'string', items: $3.items, init: $7 } }
 
-    | NAMESPACE '[' variable_declaration_list ']' '=' '[' expression_list ']'
-        { $$ = { type: 'variable_declaration', vtype: 'namespace', items: $3.items, init: $7 } }
+    | CONTAINER '[' variable_declaration_list ']' '=' '[' expression_list ']'
+        { $$ = { type: 'variable_declaration', vtype: 'container', items: $3.items, init: $7 } }
     ;
 
 variable_declaration_array
@@ -860,52 +854,12 @@ variable_declaration_array
         { $$ = $1; ++$$.dim; $$.lengths.push($3) }
     ;
 
-namespace_id
-    : defined_scopes '.' name_id_list
-
-    ;
-
-name_id_list
-    : name_id_list '.' IDENTIFIER
-
-    | name_id_list '.' TEMPLATE_STRING
-
-    | IDENTIFIER
-
-    | TEMPLATE_STRING
-    ;
-
-
 variable_declaration_item
-    : variable_declaration_ident %prec NO_STAGE
+    : name_reference %prec NO_STAGE
         { $$ = $1 }
 
-    | variable_declaration_ident variable_declaration_array
+    | name_reference variable_declaration_array
         { $$ = { ...$1, ...$2 } }
-    ;
-
-variable_declaration_ident
-    : REFERENCE
-        { $$ = { name: $1, reference: true } }
-
-    | REFERENCE '.' variable_declaration_ident_list
-
-    | IDENTIFIER
-
-    | IDENTIFIER '.' variable_declaration_ident_list
-
-    | defined_scopes '.' variable_declaration_ident_list
-    ;
-
-variable_declaration_ident_list
-    : variable_declaration_ident_list '.' IDENTIFIER
-
-    | variable_declaration_ident_list '.' TEMPLATE_STRING
-
-    | IDENTIFIER
-        { $$ = { name: $1 } }
-
-    | TEMPLATE_STRING
     ;
 
 variable_declaration_list
@@ -943,13 +897,13 @@ assign_operation
     ;
 
 left_variable_multiple_assignment_list
-    : left_variable_multiple_assignment_list ',' pol_id
+    : left_variable_multiple_assignment_list ',' name_id
         { $$ = $1; $$.names.push($1) }
 
     | left_variable_multiple_assignment_list ','
         { $$ = $1; $$.names.push({ type: 'ignore' }) }
 
-    | pol_id
+    | name_id
         { $$ = { names: [$1] } }
     ;
 
@@ -970,10 +924,10 @@ variable_multiple_assignment
     ;
 
 variable_assignment
-    : pol_id assign_operation expression %prec EMPTY
+    : name_id assign_operation expression %prec EMPTY
         { $$ = { type: 'assign', assign: $2.type, name: $1, value: $3 } }
 
-    | pol_id '=' sequence_definition
+    | name_id '=' sequence_definition
         { $$ = { type: 'assign', name: $1, value: $3 } }
     ;
 
@@ -1353,19 +1307,19 @@ expression
     | '-' expression %prec UMINUS
         { $$ = insert_expr($2, 'neg') }
 
-    | pol_id
+    | name_id
         { $$ = runtime_expr($1) }
 
-    | INC pol_id
+    | INC name_id
         { $$ = runtime_expr({...$2, inc: 'pre'}) }
 
-    | DEC pol_id
+    | DEC name_id
         { $$ = runtime_expr({...$2, dec: 'pre'}) }
 
-    | pol_id INC
+    | name_id INC
         { $$ = runtime_expr({...$1, inc: 'post'}) }
 
-    | pol_id DEC
+    | name_id DEC
         { $$ = runtime_expr({...$1, dec: 'post'}) }
 
     | NUMBER %prec EMPTY
@@ -1422,7 +1376,7 @@ casting
         { $$ = { ...$2, op: 'cast', cast: 'string', value: $4 } }
     ;
 
-pol_id
+name_id
     : name_optional_index "'" %prec LOWER_PREC
         { $$ = { ...$1, next:1 } }
 
@@ -1431,9 +1385,6 @@ pol_id
 
     | name_optional_index "'" '(' expression ')'
         { $$ = { ...$1, next:$4 } }
-
-    | name_optional_index "'" function_call
-        { $$ = { ...$1, next:runtime_expr($3)  } }
 
     | name_optional_index "'" POSITIONAL_PARAM
         { $$ = { ...$1, next: runtime_expr({position: $3, op: 'positional_param'}) } }
@@ -1446,9 +1397,6 @@ pol_id
 
     | '(' expression ')' "'" name_optional_index
         { $$ = { ...$5, prior:$2 } }
-
-    | function_call "'" name_optional_index
-        { $$ = { ...$3, prior:runtime_expr($1) } }
 
     | POSITIONAL_PARAM "'" name_optional_index
         { $$ = { ...$3, prior:runtime_expr({position: $1, op: 'positional_param'}) } }
@@ -1464,11 +1412,11 @@ name_optional_index
     | name_reference array_index
         { $$ = { ...$1, ...$2 } }
 
-    | REFERENCE
+ /*   | REFERENCE
         { $$ = { name: $1, reference: true, dim: 0 } }
 
     | REFERENCE type_array
-        { $$ = { name: $1, reference: true, ...$2 } }
+        { $$ = { name: $1, reference: true, ...$2 } }*/
     ;
 
 array_index
@@ -1482,10 +1430,25 @@ array_index
 
 name_reference
     : AIR '.' name_reference_right
+        { $$ = {...$3, name: 'air.' + $3.name } }
+
     | SUBPROOF '.' name_reference_right
+        { $$ = {...$3, name: 'subproof.' + $3.name } }
+
     | PROOF '.' name_reference_right
+        { $$ = {...$3, name: 'proof.' + $3.name } }
+
     | IDENTIFIER
+        { $$ = $1 }
+
     | IDENTIFIER '.' name_reference_right
+        { $$ = {...$3, name: 'proof.' + $3.name } }
+
+    | REFERENCE
+        { $$ = $1 }
+
+    | REFERENCE '.' name_reference_right
+        { $$ = {...$3, name: 'proof.' + $3.name } }
     ;
 
 name_reference_right
