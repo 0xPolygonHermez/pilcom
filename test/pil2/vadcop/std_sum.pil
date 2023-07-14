@@ -1,5 +1,3 @@
-// TODO: Optimization. Do the batching of multiple multiset/lookup checks to the same table
-
 private function init_challenges() {
     if (!defined(std_alpha)) {
         challenge stage(2) std_alpha;
@@ -68,14 +66,8 @@ private function check_id_and_cols(int opid, int cols_count, int provide) {
     }
 
     if (provide) {
-        if (piopid.provide > 0) {
-            error(`PIOP #${opid} provide was called previously`);
-        }
         ++piopid.provide;
     } else {
-        if (piopid.require > 0) {
-            error(`PIOP #${opid} provide was called previously`);
-        }
         ++piopid.require;
     }
 }
@@ -148,7 +140,7 @@ private function PIOP_batch() {
             if (gsum_provide[i] = gsum_provide[j]) {
                 gsum_provide_mul_count[i] = gsum_provide_mul_count[i] + gsum_provide_mul_count[j];
                 gsum_provide_mul_count[j] = gsum_provide_mul_count[len-1];
-                gsum_provide_mul_count.pop();
+                gsum_provide_mul_count.pop(); // QUESTION: Is array pop implemented?
             }
         }
     }

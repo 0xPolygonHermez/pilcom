@@ -76,14 +76,8 @@ private function check_multiset_opid_and_cols(int opid, int cols_count, int prov
     }
 
     if (provide) {
-        if (msid.provide > 0) {
-            error(`Multiset #${opid} provide was called previously`);
-        }
         ++msid.provide;
     } else {
-        if (msid.require > 0) {
-            error(`Multiset #${opid} provide was called previously`);
-        }
         ++msid.require;
     }
     
