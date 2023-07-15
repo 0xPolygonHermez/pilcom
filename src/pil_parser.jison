@@ -12,20 +12,21 @@
 col                                         { return 'COL'; }
 witness                                     { return 'WITNESS'; }
 fixed                                       { return 'FIXED'; }
-namespace                                   { return 'NAMESPACE'; }
+container                                   { return 'CONTAINER'; }
+declare                                     { return 'DECLARE'; }
+use                                         { return 'USE'; }
+alias                                       { return 'ALIAS'; }
 include                                     { return 'INCLUDE'; }
 in                                          { return 'IN'; }
 is                                          { return 'IS'; }
-public\s+table                              { return 'PUBLIC_TABLE'; }
+publictable                                 { return 'PUBLIC_TABLE'; }
 public                                      { return 'PUBLIC'; }
 constant                                    { return 'CONSTANT' }
-proof\s+value                               { return 'PROOF_VALUE' }
-subproof\s+value                            { return 'SUBPROOF_VALUE' }
+proofval                                    { return 'PROOF_VALUE' }
+subproofval                                 { return 'SUBPROOF_VALUE' }
 subproof                                    { return 'SUBPROOF' }
 air                                         { return 'AIR' }
 proof                                       { return 'PROOF' }
-scope                                       { return 'SCOPE' }
-persistent                                  { return 'PERSISTENT' }
 
 int                                         { return 'INT' }
 fe                                          { return 'FE' }
@@ -46,7 +47,6 @@ case                                        { return 'CASE' }
 default                                     { return 'DEFAULT' }
 
 when                                        { return 'WHEN' }
-// TODO: composable ??
 aggregate                                   { return 'AGGREGATE' }
 stage                                       { return 'STAGE' }
 
@@ -60,7 +60,6 @@ return                                      { return 'RETURN' }
 first                                       { return 'FIRST' }
 last                                        { return 'LAST' }
 frame                                       { return 'FRAME' }
-transition                                  { return 'TRANSITION' }
 
 \.\.\+\.\.                                  { return 'DOTS_ARITH_SEQ' }
 \.\.\*\.\.                                  { return 'DOTS_GEOM_SEQ' }
@@ -121,6 +120,7 @@ transition                                  { return 'TRANSITION' }
 
 /lex
 
+%right ALIAS '{'
 %left '}'
 %left LESS_CS
 %left CS
@@ -154,7 +154,6 @@ transition                                  { return 'TRANSITION' }
 %left "'"
 %left '.'
 %right INC DEC UMINUS UPLUS '!'
-%right TEMPLATE_STRING SCOPE
 
 %nonassoc '('
 
@@ -209,7 +208,7 @@ lopcs
     ;
 
 top_level_block
-    /* : namespace_definition
+    /* : container_definition
         { $$ = $1 }
 */
     : subproof_definition
@@ -247,10 +246,25 @@ top_level_block
 
     ;
 
-namespace_definition
-    : NAMESPACE IDENTIFIER '{' statement_block '}'
+no_closed_container_definition
+    : CONTAINER name_reference
         {
-            $$ = {type: 'namespace', namespace: $4, monolithic: false, subproof: $2, statements: $6.statements };
+            $$ = {type: 'container', container: $4, monolithic: false, subproof: $2, statements: $6.statements };
+        }
+    | CONTAINER name_reference ALIAS IDENTIFIER
+        {
+            $$ = {type: 'container', container: $4, monolithic: false, subproof: $2, statements: $6.statements };
+        }
+    ;
+
+closed_container_definition
+    : CONTAINER name_reference '{' declare_block '}'
+        {
+            $$ = {type: 'container', container: $4, monolithic: false, subproof: $2, statements: $6.statements };
+        }
+    | CONTAINER name_reference ALIAS IDENTIFIER '{' declare_block '}'
+        {
+            $$ = {type: 'container', container: $4, monolithic: false, subproof: $2, statements: $6.statements };
         }
     ;
 
@@ -318,6 +332,14 @@ statement_block
 
     ;
 
+declare_block
+    : declare_list
+        { $$ = $1; }
+
+    | %prec EMPTY
+
+    ;
+
 lcs
     : lcs CS
     | CS
@@ -352,29 +374,11 @@ statement_closed
     | function_definition
         { $$ = $1 }
 
-    | namespace_definition
+    | closed_container_definition
         { $$ = $1 }
 
     | '{' statement_block '}'
         { $$ = { type: 'scope_definition', ...$2 }; }
-
-    | SCOPE TEMPLATE_STRING '{' statement_block '}'
-        { $$ = { type: 'named_scope_definition', persistent: false, name: $2.value, ...$4 }; }
-
-    | SCOPE PERSISTENT defined_scopes TEMPLATE_STRING '{' statement_block '}'
-        { $$ = { type: 'named_scope_definition', persistent: $3, name: $4.value, ...$6 }; }
-    ;
-
-defined_scopes
-    : AIR
-        { $$ = $1 }
-
-    | SUBPROOF
-        { $$ = $1 }
-
-    | PROOF
-        { $$ = $1 }
-
     ;
 
 function
@@ -523,16 +527,35 @@ return_type
         { $$ = { type: $1.type, dim: $2.dim } }
     ;
 
-scope_reference
-    : defined_scopes
-        { $$ = { scope: $1 } }
+declare_list
+    : declare_list lcs declare_item
+    | declare_item
+    ;
 
-    | SCOPE TEMPLATE_STRING
-        { $$ = { scope: $2.value }}
+declare_item
+    : col_declaration
+        { $$ = $1 }
 
-    | SCOPE
-        { $$ = { scope: true }}
+    | challenge_declaration
+        { $$ = $1 }
 
+    | public_declaration
+        { $$ = $1 }
+
+    | public_table_declaration
+        { $$ = $1 }
+
+    | proof_value_declaration
+        { $$ = $1 }
+
+    | subproof_value_declaration
+        { $$ = $1 }
+
+    | constant_definition
+        { $$ = $1 }
+
+    | variable_declaration
+        { $$ = $1 }
     ;
 
 statement_no_closed
@@ -541,9 +564,6 @@ statement_no_closed
 
     | col_declaration
         { $$ = $1 }
-
-    | scope_reference col_declaration
-        { $$ = {...$1, ...$2} }
 
     | challenge_declaration
         { $$ = $1 }
@@ -574,6 +594,8 @@ statement_no_closed
 
     | constant_definition
         { $$ = $1 }
+
+    | no_closed_container_definition
     ;
 
 data_value
@@ -619,8 +641,9 @@ delayed_function_event
       { $$ = $1 }
     ;
 
-delayed_function_scope
-    : %empty
+defined_scopes
+    : AIR
+        { $$ = $1 }
 
     | PROOF
         { $$ = $1 }
@@ -632,7 +655,7 @@ delayed_function_scope
 
 
 delayed_function_call
-    : ON delayed_function_event delayed_function_scope name_optional_index '(' multiple_expression_list ')'
+    : ON delayed_function_event defined_scopes name_optional_index '(' multiple_expression_list ')'
         { $$ = { op: 'delayed_call', event: $2, scope: $3, function: $4, arguments: $6.values } }
     ;
 
@@ -641,13 +664,10 @@ codeblock_no_closed
     : variable_declaration
         { $$ = $1 }
 
-    | scope_reference variable_declaration
-        { $$ = {...$1, ...$2} }
-
     | variable_assignment
         { $$ = $1 }
 
-    | scope_reference variable_multiple_assignment
+    | variable_multiple_assignment
         { $$ = {...$1, ...$2} }
 
     | return_statement
@@ -658,18 +678,6 @@ codeblock_no_closed
 
     | BREAK
         { $$ = { type: 'break' } }
-
-    | CONTINUE TEMPLATE_STRING
-        { $$ = { type: 'continue', scope: $2.value } }
-
-    | BREAK TEMPLATE_STRING
-        { $$ = { type: 'break', scope: $2.value } }
-
-    | CONTINUE SCOPE
-        { $$ = { type: 'continue', scope: true } }
-
-    | BREAK SCOPE
-        { $$ = { type: 'break', scope: true } }
     ;
 
 in_expression
@@ -699,7 +707,7 @@ codeblock_closed
     | DO statement_no_closed WHILE '(' expression ')'
         { $$ = { type: 'do', condition: $5, statements: $2 } }
 
-    | ONCE scope_reference non_delimited_statement
+    | ONCE defined_scopes non_delimited_statement
         { $$ = { ...$2, type: 'once', statements: $3 } }
 
     | SWITCH '(' expression ')' case_body
@@ -746,16 +754,16 @@ for_assignation
     : variable_assignment
         { $$ = $1 }
 
-    | INC pol_id
+    | INC name_id
         { $$ = { ...$2, type: 'variable_increment', pre: 1n, post: 0n } }
 
-    | DEC pol_id
+    | DEC name_id
         { $$ = { ...$2, type: 'variable_increment', pre: -1n, post: 0n } }
 
-    | pol_id INC
+    | name_id INC
         { $$ = { ...$1, type: 'variable_increment', pre: 0n, post: 1n } }
 
-    | pol_id DEC
+    | name_id DEC
         { $$ = { ...$1, type: 'variable_increment', pre: 0n, post: -1n } }
     ;
 
@@ -766,7 +774,7 @@ for_init
     | variable_assignment
         { $$ = $1 }
 
-    | pol_id
+    | name_id
         { $$ = $1 }
 
     | col_declaration
@@ -810,6 +818,9 @@ variable_declaration
     | FUNCTION variable_declaration_item '=' expression
         { $$ = { type: 'variable_declaration', vtype: 'function', items: [$2], init: [$4] } }
 
+    | CONTAINER variable_declaration_item '=' expression
+        { $$ = { type: 'variable_declaration', vtype: 'container', items: [$2], init: [$4] } }
+
     | INT '[' variable_declaration_list ']' '=' '[' expression_list ']'
         { $$ = { type: 'variable_declaration', vtype: 'int', items: $3.items, init: $7 } }
 
@@ -824,6 +835,9 @@ variable_declaration
 
     | T_STRING '[' variable_declaration_list ']' '=' '[' expression_list ']'
         { $$ = { type: 'variable_declaration', vtype: 'string', items: $3.items, init: $7 } }
+
+    | CONTAINER '[' variable_declaration_list ']' '=' '[' expression_list ']'
+        { $$ = { type: 'variable_declaration', vtype: 'container', items: $3.items, init: $7 } }
     ;
 
 variable_declaration_array
@@ -841,19 +855,11 @@ variable_declaration_array
     ;
 
 variable_declaration_item
-    : variable_declaration_ident %prec NO_STAGE
+    : name_reference %prec NO_STAGE
         { $$ = $1 }
 
-    | variable_declaration_ident variable_declaration_array
+    | name_reference variable_declaration_array
         { $$ = { ...$1, ...$2 } }
-    ;
-
-variable_declaration_ident
-    : IDENTIFIER
-        { $$ = { name: $1 } }
-
-    | REFERENCE
-        { $$ = { name: $1, reference: true } }
     ;
 
 variable_declaration_list
@@ -891,13 +897,13 @@ assign_operation
     ;
 
 left_variable_multiple_assignment_list
-    : left_variable_multiple_assignment_list ',' pol_id
+    : left_variable_multiple_assignment_list ',' name_id
         { $$ = $1; $$.names.push($1) }
 
     | left_variable_multiple_assignment_list ','
         { $$ = $1; $$.names.push({ type: 'ignore' }) }
 
-    | pol_id
+    | name_id
         { $$ = { names: [$1] } }
     ;
 
@@ -918,10 +924,10 @@ variable_multiple_assignment
     ;
 
 variable_assignment
-    : pol_id assign_operation expression %prec EMPTY
+    : name_id assign_operation expression %prec EMPTY
         { $$ = { type: 'assign', assign: $2.type, name: $1, value: $3 } }
 
-    | pol_id '=' sequence_definition
+    | name_id '=' sequence_definition
         { $$ = { type: 'assign', name: $1, value: $3 } }
     ;
 
@@ -1301,19 +1307,19 @@ expression
     | '-' expression %prec UMINUS
         { $$ = insert_expr($2, 'neg') }
 
-    | pol_id
+    | name_id
         { $$ = runtime_expr($1) }
 
-    | INC pol_id
+    | INC name_id
         { $$ = runtime_expr({...$2, inc: 'pre'}) }
 
-    | DEC pol_id
+    | DEC name_id
         { $$ = runtime_expr({...$2, dec: 'pre'}) }
 
-    | pol_id INC
+    | name_id INC
         { $$ = runtime_expr({...$1, inc: 'post'}) }
 
-    | pol_id DEC
+    | name_id DEC
         { $$ = runtime_expr({...$1, dec: 'post'}) }
 
     | NUMBER %prec EMPTY
@@ -1370,7 +1376,7 @@ casting
         { $$ = { ...$2, op: 'cast', cast: 'string', value: $4 } }
     ;
 
-pol_id
+name_id
     : name_optional_index "'" %prec LOWER_PREC
         { $$ = { ...$1, next:1 } }
 
@@ -1379,9 +1385,6 @@ pol_id
 
     | name_optional_index "'" '(' expression ')'
         { $$ = { ...$1, next:$4 } }
-
-    | name_optional_index "'" function_call
-        { $$ = { ...$1, next:runtime_expr($3)  } }
 
     | name_optional_index "'" POSITIONAL_PARAM
         { $$ = { ...$1, next: runtime_expr({position: $3, op: 'positional_param'}) } }
@@ -1394,9 +1397,6 @@ pol_id
 
     | '(' expression ')' "'" name_optional_index
         { $$ = { ...$5, prior:$2 } }
-
-    | function_call "'" name_optional_index
-        { $$ = { ...$3, prior:runtime_expr($1) } }
 
     | POSITIONAL_PARAM "'" name_optional_index
         { $$ = { ...$3, prior:runtime_expr({position: $1, op: 'positional_param'}) } }
@@ -1412,11 +1412,11 @@ name_optional_index
     | name_reference array_index
         { $$ = { ...$1, ...$2 } }
 
-    | REFERENCE
+ /*   | REFERENCE
         { $$ = { name: $1, reference: true, dim: 0 } }
 
     | REFERENCE type_array
-        { $$ = { name: $1, reference: true, ...$2 } }
+        { $$ = { name: $1, reference: true, ...$2 } }*/
     ;
 
 array_index
@@ -1429,18 +1429,48 @@ array_index
 
 
 name_reference
-    : IDENTIFIER '.' IDENTIFIER
+    : AIR '.' name_reference_right
+        { $$ = {...$3, name: 'air.' + $3.name } }
+
+    | SUBPROOF '.' name_reference_right
+        { $$ = {...$3, name: 'subproof.' + $3.name } }
+
+    | PROOF '.' name_reference_right
+        { $$ = {...$3, name: 'proof.' + $3.name } }
+
+    | IDENTIFIER
+        { $$ = $1 }
+
+    | IDENTIFIER '.' name_reference_right
+        { $$ = {...$3, name: 'proof.' + $3.name } }
+
+    | REFERENCE
+        { $$ = $1 }
+
+    | REFERENCE '.' name_reference_right
+        { $$ = {...$3, name: 'proof.' + $3.name } }
+    ;
+
+name_reference_right
+    : name_reference_right '.' IDENTIFIER
         { $$ = { type: 'expr', op: 'reference', next: false, name: $1+'.'+$3 } }
 
-    | IDENTIFIER '::' IDENTIFIER '.' IDENTIFIER
-        { $$ = { type: 'expr', op: 'reference', next: false, name: $1+'::'+$3+'.'+$5 } }
+    | name_reference_right '.' TEMPLATE_STRING
+        { $$ = { type: 'expr', op: 'reference', next: false, name: $1+'.'+$3 } }
 
     | IDENTIFIER
         { $$ = { type: 'expr', op: 'reference', next: false, name: $1 } }
 
-    | IDENTIFIER '::' IDENTIFIER
+    | TEMPLATE_STRING
+        { $$ = { type: 'expr', op: 'reference', next: false, name: $1 } }
+
+/*    | IDENTIFIER '::' IDENTIFIER '.' IDENTIFIER
+        { $$ = { type: 'expr', op: 'reference', next: false, name: $1+'::'+$3+'.'+$5 } }*/
+
+
+/*    | IDENTIFIER '::' IDENTIFIER
         { $$ = { type: 'expr', op: 'reference', next: false, name: $1+'::'+$3 } }
 
     | '::' IDENTIFIER
-        { $$ = { type: 'expr', op: 'reference', next: false, name: '::'+$2 } }
+        { $$ = { type: 'expr', op: 'reference', next: false, name: '::'+$2 } }*/
     ;
