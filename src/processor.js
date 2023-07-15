@@ -577,6 +577,7 @@ module.exports = class Processor {
         }
 
         for (let index = 0; index < count; ++index) {
+            console.log(s.items[index]);
             const [name, lengths] = this.decodeNameAndLengths(s.items[index]);
             const sourceRef = s.debug ?? this.sourceRef;
             const scope = s.scope ?? false;

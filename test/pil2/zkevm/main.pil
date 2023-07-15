@@ -1,6 +1,6 @@
 // subair Main(2**23, 2**26, 2**28);
 
-// include "std.pil"
+include "std.pil"
 // include "global.pil";
 include "subairs.pil"
 include "rom.pil"
@@ -14,7 +14,7 @@ include "padding_kk.pil"
 include "mem.pil"
 include "example.pil"
 
-namespace Main:: {
+subproof Main(2**23) {
 
     col fixed L1 = [1,0...];
     col fixed L_LAST = [0...,1];
@@ -70,7 +70,7 @@ namespace Main:: {
     // OP intermediary calculations and checks
 
     col op[8];
-    for (i = 0; i < 8; ++i) {
+    for (int i = 0; i < 8; ++i) {
         expr ope = A[i] * inA +
                    B[i] * inB +
                    C[i] * inC +
@@ -108,8 +108,8 @@ namespace Main:: {
     //   ctxBase + [0x010000 - 0x000000]   2MiB      0        1   EVM Stack
     //   ctxBase + [0x020000 - 0x03FFFF]   4MiB      1        0   EVM Memory
 
-    col addrRel = ind*E0 + indRR*RR + offset;
-    col addr = useCTX*CTX*2**18 + isStack*2**16 + isStack*SP + isMem*2**17+ addrRel;
+    const expr addrRel = ind*E0 + indRR*RR + offset;
+    const expr addr = useCTX*CTX*2**18 + isStack*2**16 + isStack*SP + isMem*2**17+ addrRel;
 
     // isNeg
 
@@ -118,12 +118,12 @@ namespace Main:: {
 
     // RCX check zero
     col witness RCXInv;
-    col RCXIsZero = 1 - RCX*RCXInv;
+    const expr RCXIsZero = 1 - RCX*RCXInv;
     RCXIsZero * RCX === 0;
 
     // op0 check zero
     col witness op0Inv;
-    col op0IsZero = 1 - op0*op0Inv;
+    const expr op0IsZero = 1 - op0*op0Inv;
     op0IsZero * op0 === 0;
 
     // Calculate New State for registers
@@ -145,19 +145,19 @@ namespace Main:: {
     RR' === setRR * (op[0] - RR) + call * (zkPC + 1 - RR) + RR;
     GAS' === setGAS * (op[0] - GAS) + GAS;
 
-    col decRCX = repeat * (1 - RCXIsZero);
+    const expr decRCX = repeat * (1 - RCXIsZero);
     RCX' === setRCX * (op[0] - (RCX-decRCX)) + (RCX-decRCX);
 
     HASHPOS' === setHASHPOS * (op[0] - HASHPOS) + HASHPOS + (hashK + hashP)*D[0] + hashK1 + hashP1;
 
-    col doJMP = JMPN*isNeg + JMP + JMPC*carry + JMPZ*op0IsZero + _return + call;
-    col elseJMP = JMPN*(1-isNeg) + JMPC*(1-carry) + JMPZ*(1-op0IsZero);
+    const expr doJMP = JMPN*isNeg + JMP + JMPC*carry + JMPZ*op0IsZero + _return + call;
+    const expr elseJMP = JMPN*(1-isNeg) + JMPC*(1-carry) + JMPZ*(1-op0IsZero);
 
     // ROM/Zkasm constraint: useJmpAddr * return = 0
 
-    col finalJmpAddr = useJmpAddr * (jmpAddr - addr ) + _return * (RR - addr) + addr;
-    col nextNoJmpZkPC = zkPC + 1 - ((1-RCXIsZero)*repeat);
-    col finalElseAddr =  useElseAddr * (elseAddr - nextNoJmpZkPC) + nextNoJmpZkPC;
+    const expr finalJmpAddr = useJmpAddr * (jmpAddr - addr ) + _return * (RR - addr) + addr;
+    const expr nextNoJmpZkPC = zkPC + 1 - ((1-RCXIsZero)*repeat);
+    const expr finalElseAddr =  useElseAddr * (elseAddr - nextNoJmpZkPC) + nextNoJmpZkPC;
 
     // if elseAddr wasn't specified on zkasm, compiler put current address + 1
 

@@ -2,8 +2,16 @@
 // VADCOP support
 subair aggregate Main (2**25) {
 
-}
+    // optional namespace
+    namespace Mem {
 
+    }
+
+    // optional namespace
+    namespace Rom {
+
+    }
+}
 subair aggregate Arith(2**20,2**23,2**25) {
 
 }
@@ -11,27 +19,7 @@ subair aggregate Arith(2**20,2**23,2**25) {
 subair aggregate Binary(2**23,2**25) {
 
 }
-// ┌─────────────────────┐
-// │        PROOF        │
-// │                     │
-// │ ┌─────────────────┐ │
-// │ │    SUBPROOF     │ │
-// │ │  ┌───────────┐  │ │
-// │ │  │    AIR    │  │ │
-// │ │  │           │  │ │
-// │ │  └───────────┘  │ │
-// │ └─────────────────┘ │
-// └─────────────────────┘
-┌───────────────────┐
-│                   │
-│                   │
-│                   │
-│                   │
-└───────────────────┘
-┌───────────┐
-│           │
-│           │
-└───────────┘
+
 // subproof
 
 // -----------------------------------------------
@@ -40,8 +28,7 @@ subair aggregate Binary(2**23,2**25) {
 int number_without_limits;
 fe field_element;
 expr to_build_constraints;
-string for_development = "hello,constraint!!";
-string welcome = `hello, my name is ${name}`;  // template strings
+string for_development;
 
 // constants
 constant PIWEI = 3141592653589793238;
@@ -52,10 +39,6 @@ expr to_build_constraints[16];
 constant MY_NUMBERS[8] = [2,3,5,7,11,13,17,19];
 constant MATRIX[2][8] = [[1,3,5,7,9,11,13,15],
                          [2,4,6,8,10,12,14,18]];
-// dynamic arrays
-int id_list[];   // length(id_list) = 0
-id_list[] = 13;  // length(id_list) = 1
-id_list[] = 17;  // length(id_list) = 2
 
 // references
 int &currentvalue = myvalue;
@@ -65,6 +48,7 @@ fe &pos = current_pos;
 // Constructive language (other types)
 
 // col types
+col intermediate_col;
 col fixed fixed_col;
 col witness witness_col;
 
@@ -73,20 +57,19 @@ public batch_num;
 challenge gamma;
 
 // vadcop types
-proofval finalresult;
-subproofval aggregate(prod) grod;
-
-// public tables
-publictable aggregate(prod, agg_prog_func, MEMORY_ID) pt_memory[3][10];
+air value finalresult;
+subair value aggregate(mul) multiset;
 
 // arrays
-col fixed fixed_cols[10];
+col intermediate_col[10];
 col witness witness_col[i*2];
-col witness witness_matrix[i*2][i];
 
 // references
-col fixed &curfixed = fixed_cols[0];
-col fixed &curwitness = witness_matrix[0][0];
+col &current_col = intermediate_col;
+// col references could be reference to intermediate, fixed or witness
+col &current_witness_col = witness_col;
+col &current_fixed_col = fixed_col;
+col witness &last_witness_col = witness_col;
 
 // -----------------------------------------------
 // Constructive language (control)
@@ -97,14 +80,13 @@ col witness s, q[3][16];
 
 // Latch
 for (int i = 0; i<16; ++i) {
-   // [s,...q] eq [s,q[0],q[1],q[2]]
-   for(col &p in [x1,y1,x2,y2,x3,y3,s,...q]) {
+   for(col &p in [x1,y1,x2,y2,x3,y3,s,q[0],q[1],q[2]]) {
        p[i]' * (1 - CLK32) === p[i] * (1 - CLK32);
    }
 }
 
 col witness flags[4];
-for (col witness &flag in flags) {
+for (col &flag in flags) {
     flag * (1 - flag) === 0;
 }
 
@@ -194,27 +176,23 @@ jmpCondValue === condValue;
 // Conditional / Boundary constraints
 
 // Conditional constraints
-col fixed L1 = [1,0...];
-
-when first {
-    a === 0;
-    b === 0;
+when L1 {
+    a === a',
+    b === b'
 }
 
+for (integer index = 0; index < 16; ++index) {
+   when (1-L1) { a[index] === b[index] + (1 - c) } // when only contains constraints
+}
+
+// Boundary constraints (last,first)
 when last {
-    gprod === 1;
+    d * e === a
 }
 
-when frame {                // sizeof frame = 4
-    a'3 === a + a' + a'2;
-}
-
-when (1-L1) {
-    for (int index = 0; index < 16; ++index) {
-        a[index] === b[index] * (1 - c);
-    }
-}
-
+when not last { d * e === a }
+when first { d * e === a }
+when not first { d * e === a }
 
 // -----------------------------------------------
 // Constructive language (functions)
@@ -247,26 +225,26 @@ function next3(int a) : [int,int, int] { return [a+1,a+2,a+3]; }
 // -----------------------------------------------
 // Constructive language (deferred functions)
 
-// called each time that one air finish
-final air function on_air_final_was_called (){
+// called each time that one instance finish
+final function on_instance_final_was_called (){
 }
 
-// called each time that one subproof finish
-final subproof function on_subproof_final_was_called (){
+// called each time that one subair finish
+final subair function on_subair_final_was_called (){
 }
 
 // called at end
-final proof function on_proof_final_was_called (){
+final air function on_instance_final_was_called (){
 }
 
 function myfunc (expr &selector, expr cols[]) {
     // only if function was executed
-    // only one time by air
-    on final air air_finished_func(with_args);
-    // only one time by subproof
-    on final subproof subproof_finished_func(arg1, arg2);
+    // only one time by instance
+    on final instance_finished_func(with_args);
+    // only one time by subair
+    on final subair subair_finished_func(arg1, arg2);
     // only one time is called
-    on final proof final_func(with_args);
+    on final air final_func(with_args);
 }
 
 // private functions, only visible inside same source file
@@ -298,24 +276,23 @@ when (1-L1) {
     }
 }
 
-constant PT_MEM_COLS = 10;
-constant MAX_PT_MEM_ROWS = 32;
+constant MAX_PUBLIC_TABLE_ROWS = 32;
+constant PUBLIC_TABLE_COLS = 10;
 
-function col_agg_func ( publictable ptable, int id ) : expr {
-    expr cols_compressed = 0;
-    for (int icol = length(ptable) - 1; icol >= 0; --icol) {
-        cols_compressed = (cols_compressed + ptable[icol]) * std_alpha;
+function prodColyumns(rowElements) {
+    expression expr = 0;
+    for (int i=0; i<length(column; i++)) {
+        expr = (expr + rowElements[i])*alfa;
     }
-
-    // the id is added to avoid soundness issues between different multiset checks
-    cols_compressed = cols_compressed + id;
-
-    return cols_compressed + std_beta;
+    return expr;
 }
 
-publictable aggregate(prod, col_agg_func, MEMORY_ID) pt_memory[PT_MEM_COLS][MAX_PT_MEM_ROWS];
 
-memory * pt_memory === 1
+
+public table aggregate(prod, prodColumns) gprods[PUBLIC_TABLE_COLS][MAX_PUBLIC_TABLE_ROWS] ;
+
+memory * gprod === 1
+binary * gprod0[1] === 1;
 
 // -----------------------------------------------
 // Challenges access
@@ -493,110 +470,6 @@ function lookup_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
               colsT: colsT};
 }
 
-// -----------------------------------------------
-// Once
-
-once proof {
-    // this code was executed one time by proof
-}
-once proof call_one_time_by_proof();
-
-once subproof {
-    // this code was executed one time by subproof
-}
-once subproof call_one_time_by_subproof();
-
-once air {
-    // this code was executed one time by air
-}
-once air call_one_time_by_air();
-
-// -----------------------------------------------
-// Dynamic namespaces
-
-// namespace scopes: proof, subproof or air
-// alias is optional
-namespace subproof.std.`multiset${id}` alias ms {
-    // this namespace is create and init if not exists
-    // this namespace is "deleted" when subproof finish
-    int counter = 0;  // this counter is available inside this namespace
-}
-
-++ms.counter;
-
-// alias and use only takes effect until the current scope is closed (or sourcefile was closed)
-use subproof.std.`multiset${id}`;
-
-++counter;
-
-// namespace is a type to reference one namespace
-namespace ns = subproof.std.`multiset${id}`;
-
-++ns.counter;
-
-
-// -----------------------------------------------
-// Multiset (permutation check)
-
-// function multiset_require(int opid, expr sel, expr cols[])
-// function multiset_require(int opid, expr cols[])
-// function multiset_provide(int opid, expr sel, expr cols[])
-// function multiset_provide(int opid, expr cols[])
-
-include "mem_align.pil"
-
-subproof Main(2**23) {
-
-    multiset_require(MEM_ALIGN_ID, memAlignWR, [ 1, 0, ...A, ...B, ...op, C[0], ...D, ...E]);
-}
-
-// mem_align.pil
-
-constant MEM_ALIGN_ID = 17;
-subproof MemAlign(2**16, 2**23) {
-
-    multiset_provide(MEM_ALIGN_ID, resultWr256, [ wr256, wr8, ...m[0], ...m[1], ...v, offset, ...w[0], ...w[1]]);
-}
-
-// -----------------------------------------------
-// Lookup
-
-// function lookup_require(int opid, expr sel, expr cols[])
-// function lookup_require(int opid, expr cols[])
-// function lookup_provide(int opid, expr sel, expr cols[])
-// function lookup_provide(int opid, expr cols[])
-
-constant BINARY_OPTABLE_ID = 180;
-
-subproof Binary(2**23, 2**25) {
-
-    lookup_require(BINARY_OPTABLE_ID, [ 0, opcode, freeInA[0], freeInB[0], cIn, 0, freeInC[0], cOut]);
-    lookup_provide(BINARY_OPTABLE_ID, [P_LAST, P_OPCODE, BYTE_2A, BYTE, P_CIN, P_USE_CARRY, P_C, P_COUT]);
-}
-
-
-
-
-namespace a = subproof.std.`multiset${id}`;
-
-namespace subproof.`multiset${id}` {
-    col
-    col fixed L1;
-    int pepe;
-}
-
-namespace a {
-
-}
-subproof.`xxx${id}`.a;
-
-expr subproof.linearcheck_a
-
-scope o = subproof.`xxx${id}`;
-
-expr &a = subproof.`xxx${id}`
-
-ambit
 // -----------------------------------------------
 // Lookup
 

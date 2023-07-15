@@ -1,6 +1,9 @@
-include "padding_kkbit.pil";
 
-namespace PaddingKK:: {
+
+subproof PaddingKK:: {
+
+    include "padding_kkbit.pil"
+    include "keccakf.pil"
 
     col fixed OFFSET = [0..31]...;
     // col fixed BYTE_FACTOR;

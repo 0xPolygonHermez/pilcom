@@ -1,11 +1,15 @@
-namespace air.Rom alias Rom {
-    int counter = 0;
+namespace Main::Rom {
+
+    // File generated with zkasm version xxx with options xxxxx rom version
+
     col fixed CONSTF[8];
-    col fixed IN_A, IN_B, IN_C, IN_ROTL_C, IN_D, IN_E, IN_SR, IN_FREE, IN_CTX, IN_SP, IN_PC, IN_GAS, IN_HASHPOS, IN_STEP, IN_RR, IN_RCX};
+
+    col fixed IN_A, IN_B, IN_C, IN_ROTL_C, IN_D, IN_E, IN_SR, IN_FREE, IN_CTX, IN_SP, IN_PC, IN_GAS, IN_HASHPOS, IN_STEP, IN_RR, IN_RCX;
     col fixed IN_CNT_ARITH, IN_CNT_BINARY, IN_CNT_KECCAK_F, IN_CNT_MEM_ALIGN, IN_CNT_PADDING_PG, IN_CNT_POSEIDON_G;
     col fixed INC_STACK;
     col fixed BIN_OP;
     col fixed JMP_ADDR, ELSE_ADDR;
     col fixed LINE;
     col fixed OPERATIONS;
+
 }

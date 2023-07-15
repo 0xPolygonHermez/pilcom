@@ -1,3 +1,4 @@
+package pilout;
 syntax = "proto3";
 package pilout;
 
@@ -12,7 +13,7 @@ message PilOut {
     repeated GlobalExpression expressions = 8;
     repeated GlobalConstraint constraints = 9;  // Constraints that apply only to signals
     repeated Reference references = 10;
-    repeated FrontEndData frontEndDatas = 11;
+    repeated Hint hints = 11;
 }
 
 message Subproof {
@@ -277,7 +278,6 @@ message Reference {
     optional uint32 subproofId = 2;
     optional uint32 airId = 3;
     ReferenceType type = 4;
-    uint32 id = 5;
     uint32 dim = 6;
     repeated uint32 lengths = 7;
     optional string debugLine = 8;
@@ -286,29 +286,29 @@ message Reference {
 // FRONT-END (is this hints?)
 // ------------------------------------------------------------------------------------------------
 
-enum FrontEndFieldType {
+enum HintFieldType {
     STRING = 0;
     OPERAND = 1;
     ARRAY = 2;
 }
 
-message FrontEndField {
-    FrontEndFieldType frontEndFieldType = 1;
+message HintField {
+    HintFieldType hintFieldType = 1;
     optional string name = 2;
     oneof value {
         string stringValue = 3;
         Operand operand = 4;
-        FrontEndFieldArray frontEndFields = 5;
+        HintFieldArray hintFields = 5;
     }
 }
 
-message FrontEndFieldArray {
-    repeated FrontEndField frontEndFields = 1;
+message HintFieldArray {
+    repeated HintField hintFields = 1;
 }
 
-message FrontEndData {
+message Hint {
     string name = 1;
-    repeated FrontEndField FrontEndFields = 2;
+    repeated HintField hintFields = 2;
     optional uint32 subproofId = 3;
     optional uint32 airId = 4;
 }

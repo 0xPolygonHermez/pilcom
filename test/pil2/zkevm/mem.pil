@@ -1,34 +1,27 @@
-include "global.pil";
-
-namespace Main::Mem {
+subproof Mem(2**23) {
 
     col fixed STEP = [0..N-1];
     col fixed L_LAST = [0...,1];
-    col INCS = STEP + 1;
-    col ISNOTLAST = (1 - L_LAST);
-
     col witness addr;
     col witness step;
     col witness mOp, mWr;
     col witness val[8];
     col witness lastAccess; // 1 if its the last access of a given address
+    const expr ISNOTLAST = (1 - L_LAST);
+    const expr isWrite = mOp' * mWr';
+    const expr rdSame = (1-isWrite) * (1-lastAccess);
+    const expr rdDifferent = (1-isWrite) * lastAccess;
 
     // The list is sorted by [addr, step]
 
     lastAccess * (lastAccess - 1) === 0;
-    lookup_check(ISNOTLAST,
-                 [ lastAccess*(  addr' - addr - (step'-step) ) + (step'-step) ],
-                 INCS);
+    range_check(ISNOTLAST * (lastAccess * ( addr' - addr - (step'-step) ) + (step'-step) - 1) + 1, 1, N);
     (1 - lastAccess) * (addr' - addr) === 0;
 
     mOp * (mOp -1) === 0;
     mWr * (mWr -1) === 0;
     // mWr could be 1 only if mOp is 1
     (1 - mOp) * mWr === 0;
-
-    col isWrite = mOp' * mWr';
-    col rdSame = (1-isWrite) * (1-lastAccess);
-    col rdDifferent = (1-isWrite) * lastAccess;
 
     // lastAccess has to be 1 in the last evaluation. This is necessary to
     // validate [rdDifferent * (val[0]') = 0;] correctly (in a cyclic way)
