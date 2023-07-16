@@ -1,9 +1,8 @@
-package pilout;
 syntax = "proto3";
 package pilout;
 
 message PilOut {
-    string name = 1;
+    optional string name = 1;
     bytes baseField = 2;
     repeated Subproof subproofs = 3;             // modulus of the base filed
     repeated uint32 numChallenges = 4;          // number of challenges per stage
@@ -12,8 +11,8 @@ message PilOut {
     repeated PublicTable publicTables = 7;
     repeated GlobalExpression expressions = 8;
     repeated GlobalConstraint constraints = 9;  // Constraints that apply only to signals
-    repeated Reference references = 10;
-    repeated Hint hints = 11;
+    repeated Hint hints = 10;
+    repeated Symbol symbols = 11;
 }
 
 message Subproof {
@@ -123,8 +122,7 @@ message GlobalOperand {
     }
 }
 
-// BASIC AIR
-// ------------------------------------------------------------------------------------------------
+// ================ BasicAir ================
 
 message BasicAir {
     optional string name = 1;
@@ -258,10 +256,9 @@ message Expression {
     }
 }
 
-// REFERENCES
-// ------------------------------------------------------------------------------------------------
+// ================ Symbols ================
 
-enum ReferenceType {
+enum SymbolType {
     IM_COL = 0;
     FIXED_COL = 1;
     PERIODIC_COL = 2;
@@ -273,18 +270,18 @@ enum ReferenceType {
     CHALLENGE = 8;
 }
 
-message Reference {
+message Symbol {
     string name = 1;
     optional uint32 subproofId = 2;
     optional uint32 airId = 3;
-    ReferenceType type = 4;
+    SymbolType type = 4;
+    uint32 id = 5;
     uint32 dim = 6;
     repeated uint32 lengths = 7;
     optional string debugLine = 8;
 }
 
-// FRONT-END (is this hints?)
-// ------------------------------------------------------------------------------------------------
+// ================ Hints ================
 
 enum HintFieldType {
     STRING = 0;

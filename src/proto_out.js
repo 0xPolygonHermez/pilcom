@@ -69,7 +69,7 @@ module.exports = class ProtoOut {
         this.PublicTable = this.root.lookupType('PublicTable');
         this.GlobalExpression = this.root.lookupType('GlobalExpression');
         this.GlobalConstraint = this.root.lookupType('GlobalConstraint');
-        this.Reference = this.root.lookupType('Reference');
+        this.Symbol = this.root.lookupType('Symbol');
         this.GlobalOperand = this.root.lookupType('GlobalOperand');
         this.GlobalExpression_Add = this.root.lookupType('GlobalExpression.Add');
         this.GlobalExpression_Sub = this.root.lookupType('GlobalExpression.Sub');
@@ -107,9 +107,9 @@ module.exports = class ProtoOut {
 
         // FrontEndField not used
 
-        this.FrontEndField = this.root.lookupType('FrontEndField');
-        this.FrontEndFieldArray = this.root.lookupType('FrontEndFieldArray');
-        this.FrontEndData = this.root.lookupType('FrontEndData');
+        this.HintField = this.root.lookupType('HintField');
+        this.HintFieldArray = this.root.lookupType('HintFieldArray');
+        this.Hint = this.root.lookupType('Hint');
     }
     setupPilOut(name) {
         this.pilOut = {
