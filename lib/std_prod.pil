@@ -1,0 +1,162 @@
+function init_challenges(int extra) {
+    once {
+        global challenge std_alpha stage(2);
+        global challenge std_beta stage(2);
+        global challenge std_gamma stage(3);
+    }
+    if (extra) {
+        once global challenge std_delta stage(3);
+    }
+}
+
+function init_coset_constants(int len) {
+    global std_ks[len];
+
+    for (int i = 0; i < len; ++i) {
+        std_ks[i] = global constant k[i];
+    }
+}
+
+/**
+ * Given two multisets A and B, check whether A is equal to B.
+ * @param selF selector to decide which elements of colsF are included in multiset A
+ * @param colsF columns to be included in multiset A
+ * @param selT selector to decide which elements of colsT are included in multiset B
+ * @param colsT columns to be included in multiset B
+ * @return Constraints to be satisfied by A and B to ensure the multiset check
+ */
+function multiset_check(expr selF, expr colsF[], expr selT, expr colsT[]) {
+    // TODO: use specific name, not match with other challenge
+    init_challenges(0);
+    if (length(colsF) != length(colsT)) {
+        error(`colsF and colsT must be same dimensions`);
+    }
+
+    // TODO: optimize to put only once this constraint if witness col, if cols are fixed
+    // check on compilation time, constraint not needed.
+
+    // TODO: verify if selF or selT is constant value 1 or 0, if 1 no need these constraints
+    selF * (1 - selF) === 0;
+    selT * (1 - selT) === 0;
+
+    col fixed L1 = [1,0...]; // compiler optimize and only exists one L1
+
+    // global is visible inside function vs static
+    expr colsF_compressed = 0;
+    expr colsT_compressed = 0;
+    for (int icol = length(colsF) - 1; icol > 0; --icol) {
+        colsF_compressed = (colsF_compressed + colsF[icol]) * std_alpha;
+        colsT_compressed = (colsT_compressed + colsT[icol]) * std_alpha;
+    }
+    colsF_compressed = (colsF_compressed + colsF[0]);
+    colsT_compressed = (colsT_compressed + colsT[0]);
+
+    expr colsF_selected = selF * (colsF_compressed - std_beta) + std_beta;
+    expr colsT_selected = selT * (colsT_compressed - std_beta) + std_beta;
+
+    // TODO: allow use defined constants as stage id.
+    col witness gprod stage(3);
+
+    //                     (colsF_selected + std_gamma)
+    //  gprod' === gprod * ----------------------------
+    //                     (colsT_selected + std_gamma)
+
+    L1 * (gprod - 1) === 0;
+    gprod' * (colsT_selected + std_gamma) === gprod * (colsF_selected + std_gamma);
+}
+
+/**
+ * Given two multisets A and B, check whether A is a subset of B (viewed as sets).
+ * @param selF selector to decide which elements of colsF are included in multiset A
+ * @param colsF columns to be included in multiset A
+ * @param selT selector to decide which elements of colsT are included in multiset B
+ * @param colsT columns to be included in multiset B
+ * @return Constraints to be satisfied by A and B to ensure the lookup check
+ */
+function lookup_check(col selF, expr colsF[], col selT, expr colsT[]) {
+    init_challenges(1);
+    if (length(colsF) != length(colsT)) {
+        error(`colsF and colsT must be same dimensions`);
+    }
+
+    // TODO: optimize to put only once this constraint if witness col, if cols are fixed
+    // check on compilation time, constraint not needed.
+    selF * (1 - selF) === 0;
+    selT * (1 - selT) === 0;
+
+    col fixed L1 = [1,0...]; // compiler optimize and only exists one L1
+
+    // global is visible inside function vs static
+    expr colsF_compressed = 0;
+    expr colsT_compressed = 0;
+    for (int icol = length(colsF) - 1; icol > 0; --icol) {
+        colsF_compressed = (colsF_compressed + colsF[icol]) * std_alpha;
+        colsT_compressed = (colsT_compressed + colsT[icol]) * std_alpha;
+    }
+    colsF_compressed = (colsF_compressed + colsF[0]);
+    colsT_compressed = (colsT_compressed + colsT[0]);
+
+    expr colsT_selected = selT * (colsT_compressed - std_beta) + std_beta;
+    expr colsF_selected = selF * (colsF_compressed - colsT_selected) + colsT_selected;
+
+    // @lookup_check {h1:h1, h2:h2, colsT: colsT_selected, colsF: colsF_selected, gprod: gprod };
+
+    @lookup_check {h1, h2, colsT: colsT_selected, colsF: colsF_selected, gprod};
+
+    // Define h1,h2 polynomials
+    col witness h1 stage(2);
+    col witness h2 stage(2);
+
+    // TODO: allow use defined constants as stage id.
+    col witness gprod stage(3);
+
+    //                              (1 + gamma) * (f + delta) * (delta*(1 + gamma) + t + gamma*t')
+    //  gprod' === gprod * ------------------------------------------------------------------------------------
+    //                       (delta*(1 + gamma) + h1 + gamma*h2) * (delta*(1 + gamma) + h2 + gamma*h1')
+
+    L1 * (gprod - 1) === 0;
+    gprod' * (std_delta*(1 + std_gamma) + h1 + std_gamma*h2) * (std_delta*(1 + std_gamma) + h2 + std_gamma*h1') === gprod * (1 + std_gamma) * (colsF_selected + std_delta) * (std_delta*(1 + std_gamma) + colsT_selected + std_gamma*colsT_selected');
+}
+
+/**
+ * Given multisets A1,...,An and B1,...,Bn, check whether A1,...,An does not vary 
+ * after applying the permutation B1,...,Bn to itself.
+ * @param cols columns subject to the permutation
+ * @param Sperms columns defining the permutation
+ * @return Constraints to be satisfied by A and B to ensure the connection check
+ */
+function connection_check(expr cols[], expr Sperms[]) {
+    constant len = length(cols);
+
+    init_challenges(1);
+    init_coset_constants(len);
+
+    if (len != length(Sperms)) {
+        error(`cols and Sperms must be same dimensions`);
+    }
+
+    col fixed L1 = [1,0...];
+    col fixed IDEN = [1,omega,..*..,omega**(N-1)];
+
+    col witness gprod stage(3);
+
+    // Define SIDs[i] = k_i·X polynomials
+    expr SIDs[len];
+    for (int icol = 0; icol < len; ++icol) {
+        SIDs[icol] = std_ks[icol] * IDEN;
+    }
+
+    //                      (f_0 + gamma·X + delta) · (f_1 + gamma·k_1·X + delta) · ... · (f_N + gamma·k_n·X + delta)
+    //  gprod' === gprod * -------------------------------------------------------------------------------------------
+    //                      (f_0 + gamma·S_0 + delta) · (f_1 + gamma·S_1 + delta) · ... · (f_N + gamma·S_n + delta)
+
+    expr numerator = 1;
+    expr denominator = 1;
+    for (int icol = 0; icol < len; ++icol) {
+        numerator = numerator * (cols[icol] + std_gamma*SIDs[icol] + std_delta);
+        denominator = denominator * (cols[icol] + std_gamma*Sperms[icol] + std_delta);
+    }
+
+    L1 * (gprod - 1) === 0;
+    gprod' * denominator === gprod * numerator;
+}
