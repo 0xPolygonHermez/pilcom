@@ -6,11 +6,9 @@
 // EQ5: x1 * x2 - y1 * y2 - x3  + (q0 * p2)                     x3 ┐
 // EQ6: y1 * x2 + x1 * y2 - y3 + (q1 * p2)                      y3 ┘ fp2 multiplication (as imaginary numbers => a + bi)
 
-// include "std.pil";
+include "std.pil";
 
-// subair Arith (2**23, 2**26, 2**28);
-
-namespace Arith:: {
+subproof Arith (2**21, 2**23, 2**25) {
 
     constant CHUNKS = 16;
     constant N_CARRIES = 3;
@@ -35,14 +33,14 @@ namespace Arith:: {
 
 //    for (col &resultEq in resultEq) resultEq * (1 - resultEq) === 0;
 
-    for (col &p[] in [x1,x2,x3,y1,y2,y3,s,...q]) {
-        for (col &p in p) p' * (1 - 'CLK) === p * (1 - 'CLK);
+    for (col witness &p[] in [x1,x2,x3,y1,y2,y3,s,...q]) {
+        for (col witness &p in p) p' * (1 - 'CLK) === p * (1 - 'CLK);
     }
 
     expr value  = 0;
     int doRangeCheck = 0;
-    for (col &p in [x1,x2,x3,y1,y2,y3,s,...q]) {
-        for (col &p in p) value = value + p * CLK'(secondLoop * 16 + index(p));
+    for (col witness &p in [x1,x2,x3,y1,y2,y3,s,...q]) {
+        for (col witness &p in p) value = value + p * CLK'(secondLoop * 16 + index(p));
 
         if (doRangeCheck) {
             range_check(value, 0, 2**16-1);
@@ -79,7 +77,7 @@ namespace Arith:: {
 
     // EQ0: A(x1) * B(y1) + C(x2) = D (y2) * 2 ** 256 + op (y3) =>  x1 * y1 - x2 - y2 * 2**256 - y3
 
-    col eq[5][CLKS];
+    expr eq[5][CLKS];
 
     for (i = 0; i < CHUNKS; ++i) {
         expr etmp[2];
@@ -175,7 +173,7 @@ namespace Arith:: {
         eq[6][i+16] = etmp[1];
     }
 
-    col eqcl[N_EQUATIONS];
+    expr eqcl[N_EQUATIONS];
     for (i = 0; i < N_EQUATIONS; ++i) {
         expr tmp;
         for (j = 0; j < CYCLE; ++j) tmp += eq[i][j] * CLK'(j);
@@ -183,13 +181,13 @@ namespace Arith:: {
     }
 
     col witness selEq[4];
-    for (col &selEq in selEq) {
+    for (col witness &selEq in selEq) {
         selEq' * (1 - 'CLK) === selEq * (1 - 'CLK);
         selEq * (1 - selEq) === 0;
     }
 
     col witness carry[N_CARRIES];
-    for (col &carry in carry)  {
+    for (col witness &carry in carry)  {
         carry * CLK === 0;
         range_check(carry, 0, 2**22-1);
     }

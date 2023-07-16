@@ -10,6 +10,7 @@ const constraints = {
 
 const verifyNextConstraint = function (sconstraint, rconstraint) {
 
+    console.log(constraints.processor.constraints);
     let c = constraints.it.next().value;
     const expr = constraints.processor.constraints.getExpr(c.exprId);
     const _sconstraint = expr.toString({hideClass: true});

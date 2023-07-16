@@ -2,12 +2,12 @@
 include "std.pil"
 include "arith.pil"
 
-subair aggregate Main (2**21, 2**23, 2**25) {
+subproof aggregate Main (2**21, 2**23, 2**25) {
 
     col witness use_arith;
     col witness a[2],b[2],c[2],d[2];
 
     use_arith * (1 - use_arith) === 0;
 
-    multiset_requires(ARITH_ID, use_arith, [...a,...b,...c,...d]);
+    multiset_require(ARITH_ID, use_arith, [...a,...b,...c,...d]);
 }

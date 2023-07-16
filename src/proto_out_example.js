@@ -14,7 +14,8 @@ const Long = require('long');
 
 const MAX_CHALLENGE = 200;
 const MAX_STAGE = 20;
-const MAX_PROVER_VALUES = 200;
+const MAX_PROOF_VALUES = 32;
+const MAX_SUBPROOF_VALUES = 32;
 const MAX_PERIODIC_COLS = 60;
 const MAX_PERIODIC_ROWS = 256;
 const MAX_ROWS = 2 ** 28;
@@ -35,10 +36,10 @@ module.exports = class ProtoOut {
         /* let data = this.generateBasicAir('myFirstAir', 2**10, MAX_STAGE, MAX_PERIODIC_COLS, MAX_FIXED_COLS, 670, 12000, 630);
         let len = data.length;
         data = this.generateBasicAir('myFirstAir', 2**10 * 4, MAX_STAGE, MAX_PERIODIC_COLS, MAX_FIXED_COLS, 670, 12000, 630);*/
-        let data = this.generatePilOut('myFirstAir', 2**10, 8, MAX_PERIODIC_COLS, MAX_FIXED_COLS, 700, 12000, 700);
+        let data = this.generatePilOut('myFirstAir', [2**10, 2**12], 8, MAX_PERIODIC_COLS, MAX_FIXED_COLS, 700, 12000, 700);
         let len = data.length;
 
-        data = this.generatePilOut('myFirstAir', 2**10 * 4, 8, MAX_PERIODIC_COLS, MAX_FIXED_COLS, 700, 12000, 700);
+        data = this.generatePilOut('myFirstAir', [2**10 * 4, 2**12*4], 8, MAX_PERIODIC_COLS, MAX_FIXED_COLS, 700, 12000, 700);
         let len4 = data.length;
 
         console.log(Math.ceil((len4 - len)/3));
@@ -69,11 +70,12 @@ module.exports = class ProtoOut {
     buildTypes() {
         this.PilOut = this.root.lookupType('PilOut');
         this.BaseFieldElement = this.root.lookupType('BaseFieldElement');
+        this.Subproof = this.root.lookupType('Subproof');
         this.BasicAir = this.root.lookupType('BasicAir');
         this.PublicTable = this.root.lookupType('PublicTable');
         this.GlobalExpression = this.root.lookupType('GlobalExpression');
         this.GlobalConstraint = this.root.lookupType('GlobalConstraint');
-        this.Reference = this.root.lookupType('Reference');
+        this.Symbol = this.root.lookupType('Symbol');
         this.GlobalOperand = this.root.lookupType('GlobalOperand');
         this.GlobalExpression_Add = this.root.lookupType('GlobalExpression.Add');
         this.GlobalExpression_Sub = this.root.lookupType('GlobalExpression.Sub');
@@ -81,9 +83,11 @@ module.exports = class ProtoOut {
         this.GlobalExpression_Neg = this.root.lookupType('GlobalExpression.Neg');
         this.GlobalOperand_Constant = this.root.lookupType('GlobalOperand.Constant');
         this.GlobalOperand_Challenge = this.root.lookupType('GlobalOperand.Challenge');
-        this.GlobalOperand_ProverValue = this.root.lookupType('GlobalOperand.ProverValue');
+        this.GlobalOperand_ProofValue = this.root.lookupType('GlobalOperand.ProofValue');
+        this.GlobalOperand_SubproofValue = this.root.lookupType('GlobalOperand.SubproofValue');
         this.GlobalOperand_PublicValue = this.root.lookupType('GlobalOperand.PublicValue');
-        this.GlobalOperand_PublicTableValue = this.root.lookupType('GlobalOperand.PublicTableValue');
+        this.GlobalOperand_PublicTableAggregatedValue = this.root.lookupType('GlobalOperand.PublicTableAggregatedValue');
+        this.GlobalOperand_PublicTableColumn = this.root.lookupType('GlobalOperand.PublicTableColumn');
         this.GlobalOperand_Expression = this.root.lookupType('GlobalOperand.Expression');
         this.PeriodicCol = this.root.lookupType('PeriodicCol');
         this.FixedCol = this.root.lookupType('FixedCol');
@@ -96,7 +100,8 @@ module.exports = class ProtoOut {
         this.Constraint_EveryFrame = this.root.lookupType('Constraint.EveryFrame');
         this.Operand_Constant = this.root.lookupType('Operand.Constant');
         this.Operand_Challenge = this.root.lookupType('Operand.Challenge');
-        this.Operand_ProverValue = this.root.lookupType('Operand.ProverValue');
+        this.Operand_ProofValue = this.root.lookupType('Operand.ProofValue');
+        this.Operand_SubproofValue = this.root.lookupType('Operand.SubproofValue');
         this.Operand_PublicValue = this.root.lookupType('Operand.PublicValue');
         this.Operand_PeriodicCol = this.root.lookupType('Operand.PeriodicCol');
         this.Operand_FixedCol = this.root.lookupType('Operand.FixedCol');
@@ -106,49 +111,49 @@ module.exports = class ProtoOut {
         this.Expression_Mul = this.root.lookupType('Expression.Mul');
         this.Expression_Neg = this.root.lookupType('Expression.Neg');
 
-        // FrontEndField not used
 
-        this.FrontEndField = this.root.lookupType('FrontEndField');
-        this.FrontEndFieldArray = this.root.lookupType('FrontEndFieldArray');
-        this.FronEndData = this.root.lookupType('FronEndData');
+        this.HintEndField = this.root.lookupType('HintField');
+        this.HintFieldArray = this.root.lookupType('HintFieldArray');
+        this.Hint = this.root.lookupType('Hint');
     }
     testReflectionMode() {
         let basicAir = new this.BasicAir.create();
         console.log(basicAir);
     }
-    generatePilOut(name, rows, airs, periodicCols, fixedCols, witnessCols, expressions, constraints) {
-        const references = periodicCols + fixedCols + witnessCols;
+    generatePilOut(name, rows, subproofs, periodicCols, fixedCols, witnessCols, expressions, constraints) {
+        const symbols = periodicCols + fixedCols + witnessCols;
         let payload = {
             name,
             baseField: this.bint2buf(0xFFFFFFFF00000001n),
-            airs: [],
+            subproofs: [],
             numChallenges: new Array(MAX_STAGE).fill(MAX_CHALLENGE),
-            numProverValues: MAX_PROVER_VALUES,
+            numProofValues: MAX_PROOF_VALUES  * MAX_STAGE,
+            numSubroofValues: MAX_SUBPROOF_VALUES * MAX_STAGE,
             numPublicValues: MAX_PUBLICS,
             expressions: this.generateGlobalExpressions(GLOBAL_EXPRESSIONS, MAX_STAGE),
             constraints: this.generateGlobalConstraints(GLOBAL_CONSTRAINTS),
-            references: this.generateReferences(references)
+            symbols: this.generateSymbols(symbols)
         };
         if (!Array.isArray(rows)) {
             rows = [rows];
         }
-        const totalAirs = airs * rows.length;
-        const airPeriodicCols = Math.floor(periodicCols / airs);
-        const airFixedCols = Math.floor(fixedCols / airs);
-        const airWitnessCols = Math.floor(witnessCols / airs);
-        const airExpressions = Math.floor(expressions / airs);
-        const airConstraints = Math.floor(constraints / airs);
-        for (let index = 0; index < totalAirs; ++index) {
-            console.log(`generating air ${index+1}/${totalAirs} .......`);
-            payload.airs.push(this.generateBasicAir(name, rows[index % rows.length], MAX_STAGE, airPeriodicCols, airFixedCols, airWitnessCols, airExpressions, airConstraints));
-        }
-        for (let i = 0; i < totalAirs; ++i) {
-            for (let j = 0; j < totalAirs; ++j) {
-                if (i === j) continue;
-                if (payload.airs[i] === payload.airs[j]) {
-                    console.log(['EQUALS', i, j]);
-                }
+        const totalAirs = subproofs * rows.length;
+        const airPeriodicCols = Math.floor(periodicCols / totalAirs);
+        const airFixedCols = Math.floor(fixedCols / totalAirs);
+        const airWitnessCols = Math.floor(witnessCols / totalAirs);
+        const airExpressions = Math.floor(expressions / totalAirs);
+        const airConstraints = Math.floor(constraints / totalAirs);
+        for (let isubproof = 0; isubproof < subproofs; ++isubproof) {
+            let airs = [];
+            for (let irow = 0; irow < rows.length; ++irow) {
+                console.log(`generating subproof ${isubproof+1}.${irow} .......`);
+                airs.push(this.generateBasicAir(name, rows.length, MAX_STAGE, airPeriodicCols, airFixedCols, airWitnessCols, airExpressions, airConstraints));
             }
+            payload.subproofs.push({
+                aggregate: true,
+                subproofValues: new Array(MAX_STAGE).fill(MAX_SUBPROOF_VALUES),
+                airs
+            })
         }
 
         let message = this.PilOut.fromObject(payload);
@@ -177,7 +182,7 @@ module.exports = class ProtoOut {
         */
         return payload;
     }
-    generateReferences(references, totalAirs) {
+    generateSymbols(symbols, totalAirs) {
         if (this.references === false) {
             return [];
         }
@@ -233,7 +238,8 @@ module.exports = class ProtoOut {
         let percent = Math.floor(expressions / 100);
         let constantOps = 5 * percent;
         let challengeOps = 5 * percent;
-        let proverOps = 5 * percent;
+        let proofOps = 2 * percent;
+        let subproofOps = 3 * percent;
         let publicOps = 5 * percent;
         let periodicColsOps = 5 * percent;
         let fixedColOps = 10 * percent;
@@ -255,10 +261,15 @@ module.exports = class ProtoOut {
                           rhs: { challenge: {stage: this.random(1, stages), idx: this.random(0, MAX_CHALLENGE)}}};
                 --challengeOps;
             }
-            else if (proverOps > 0) {
-                values = {lhs: { proverValue: { idx: this.random(0, MAX_PROVER_VALUES)}},
-                          rhs: { proverValue: { idx: this.random(0, MAX_PROVER_VALUES)}}};
-                --proverOps;
+            else if (proofOps > 0) {
+                values = {lhs: { proofValue: { idx: this.random(0, MAX_PROOF_VALUES)}},
+                          rhs: { proofValue: { idx: this.random(0, MAX_PROOF_VALUES)}}};
+                --proofOps;
+            }
+            else if (subproofOps > 0) {
+                values = {lhs: { subproofValue: { idx: this.random(0, MAX_SUBPROOF_VALUES)}},
+                          rhs: { subproofValue: { idx: this.random(0, MAX_SUBPROOF_VALUES)}}};
+                --subproofOps;
             }
             else if (publicOps > 0) {
                 values = {lhs: { publicValue: {idx: this.random(0, MAX_PUBLICS)}},
@@ -307,7 +318,8 @@ module.exports = class ProtoOut {
         let percent = Math.floor(expressions / 100);
         let constantOps = 5 * percent;
         let challengeOps = 10 * percent;
-        let proverOps = 10 * percent;
+        let subproofOps = 2 * percent;
+        let proofOps = 8 * percent;
         let publicOps = 10 * percent;
         // let expressionOps = totalOps - ....
         let addOps = 40 * percent;
@@ -326,10 +338,15 @@ module.exports = class ProtoOut {
                           rhs: { challenge: {stage: this.random(1, stages), idx: this.random(0, MAX_CHALLENGE)}}};
                 --challengeOps;
             }
-            else if (proverOps > 0) {
-                values = {lhs: { proverValue: { idx: this.random(0, MAX_PROVER_VALUES)}},
-                          rhs: { proverValue: { idx: this.random(0, MAX_PROVER_VALUES)}}};
-                --proverOps;
+            else if (proofOps > 0) {
+                values = {lhs: { proofValue: { idx: this.random(0, MAX_PROOF_VALUES)}},
+                          rhs: { proofValue: { idx: this.random(0, MAX_PROOF_VALUES)}}};
+                --proofOps;
+            }
+            else if (subproofOps > 0) {
+                values = {lhs: { subproofValue: { idx: this.random(0, MAX_SUBPROOF_VALUES)}},
+                          rhs: { subproofValue: { idx: this.random(0, MAX_SUBPROOF_VALUES)}}};
+                --subproofOps;
             }
             else if (publicOps > 0) {
                 values = {lhs: { publicValue: {idx: this.random(0, MAX_PUBLICS)}},

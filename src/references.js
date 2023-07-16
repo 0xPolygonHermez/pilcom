@@ -122,7 +122,7 @@ module.exports = class References {
         // TODO: inside function ??
         // TODO: col reference
         // return ['im', 'witness', 'fixed', 'public', 'prover', 'challenge'].includes(type) === false;
-        return ['public', 'prover', 'challenge','subair'].includes(type) === false;
+        return ['public', 'prover', 'challenge','subproof'].includes(type) === false;
     }
 
     get (name, indexes = []) {

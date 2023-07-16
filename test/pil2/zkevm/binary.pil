@@ -10,9 +10,9 @@
 // OR    (OP:6)
 // XOR   (OP:7)
 
-// include "std.pil";
+include "std.pil";
 
-namespace Binary:: {
+subproof aggregate Binary(2**21, 2**23, 2**25) {
 
     constant OP_C = 256*256*4;                        // 2 CarryIn + 2 LastByte = 4 (OC = OPERATION CYCLE)
     constant LAST_C = 256*256*2;                      // 2 CarryIn
@@ -52,26 +52,24 @@ namespace Binary:: {
 
     cIn' === cOut * ( 1 - RESET' );
 
-    lookup([ 0, opcode, freeInA[0], freeInB[0], cIn, 0, freeInC[0], cMiddle],
-           [P_LAST, P_OPCODE, BYTE_2A, BYTE, P_CIN, P_USE_CARRY, P_C, P_COUT]);
-
-    lookup([resultValidRange' + resultBinOp', opcode, freeInA[1], freeInB[1], cMiddle, useCarry ,freeInC[1], cOut],
-           [P_LAST, P_OPCODE, BYTE_2A, BYTE, P_CIN, P_USE_CARRY, P_C, P_COUT]);
+    lookup_require([ 0, opcode, freeInA[0], freeInB[0], cIn, 0, freeInC[0], cMiddle],
+    lookup_require([resultValidRange' + resultBinOp', opcode, freeInA[1], freeInB[1], cMiddle, useCarry ,freeInC[1], cOut]);
+    lookup_provide([P_LAST, P_OPCODE, BYTE_2A, BYTE, P_CIN, P_USE_CARRY, P_C, P_COUT]);
 
 
-    for (i = 0; i < 8; ++i) {
+    for (int i = 0; i < 8; ++i) {
         a[i]' === a[i] * (1 - RESET) + freeInA[0] * FACTOR'(i*2) + 256 * freeInA[1] * FACTOR'(i*2);
         b[i]' === b[i] * (1 - RESET) + freeInB[0] * FACTOR'(i*2) + 256 * freeInB[1] * FACTOR'(i*2);
         if (i == 0 || i == 7) continue;
         c[i]' === c[i] * (1 - RESET) + freeInC[0] * FACTOR'(i*2) + 256 * freeInC[1] * FACTOR'(i*2);
     }
 
-    for (i in [0,7]) {
+    for (int in [0,7]) {
         expr tmp = c[i] * (1 - RESET) + freeInC[0] * FACTOR'(i) + 256 * freeInC[1] * FACTOR'(i);
         c[i]' === i ? (1 - useCarry) * tmp : useCarry * (cOut - tmp ) + tmp;
     }
 
-    for (i = 0; i < OP_C; ++i) {
+    for (int i = 0; i < OP_C; ++i) {
         fe [a, b, cin, plast, c, cout, op] = [P_A[i], P_B[i], P_CIN[i], P_LAST[i], 0, 0, P_OPCODE[i]];
 
         switch (op) {

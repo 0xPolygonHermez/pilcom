@@ -16,7 +16,6 @@ const fs = require('fs');
 
 const MAX_CHALLENGE = 200;
 const MAX_STAGE = 20;
-const MAX_PROVER_VALUES = 200;
 const MAX_PERIODIC_COLS = 60;
 const MAX_PERIODIC_ROWS = 256;
 const MAX_ROWS = 2 ** 28;
@@ -65,11 +64,12 @@ module.exports = class ProtoOut {
     buildTypes() {
         this.PilOut = this.root.lookupType('PilOut');
         this.BaseFieldElement = this.root.lookupType('BaseFieldElement');
+        this.Subproof = this.root.lookupType('Subproof');
         this.BasicAir = this.root.lookupType('BasicAir');
         this.PublicTable = this.root.lookupType('PublicTable');
         this.GlobalExpression = this.root.lookupType('GlobalExpression');
         this.GlobalConstraint = this.root.lookupType('GlobalConstraint');
-        this.Reference = this.root.lookupType('Reference');
+        this.Symbol = this.root.lookupType('Symbol');
         this.GlobalOperand = this.root.lookupType('GlobalOperand');
         this.GlobalExpression_Add = this.root.lookupType('GlobalExpression.Add');
         this.GlobalExpression_Sub = this.root.lookupType('GlobalExpression.Sub');
@@ -77,7 +77,8 @@ module.exports = class ProtoOut {
         this.GlobalExpression_Neg = this.root.lookupType('GlobalExpression.Neg');
         this.GlobalOperand_Constant = this.root.lookupType('GlobalOperand.Constant');
         this.GlobalOperand_Challenge = this.root.lookupType('GlobalOperand.Challenge');
-        this.GlobalOperand_ProverValue = this.root.lookupType('GlobalOperand.ProverValue');
+        this.GlobalOperand_SubproofValue = this.root.lookupType('GlobalOperand.SubproofValue');
+        this.GlobalOperand_ProofValue = this.root.lookupType('GlobalOperand.ProofValue');
         this.GlobalOperand_PublicValue = this.root.lookupType('GlobalOperand.PublicValue');
         this.GlobalOperand_PublicTableAggregateValue = this.root.lookupType('GlobalOperand.PublicTableAggregatedValue');
         this.GlobalOperand_PublicTableColumn = this.root.lookupType('GlobalOperand.PublicTableColumn');
@@ -93,7 +94,8 @@ module.exports = class ProtoOut {
         this.Constraint_EveryFrame = this.root.lookupType('Constraint.EveryFrame');
         this.Operand_Constant = this.root.lookupType('Operand.Constant');
         this.Operand_Challenge = this.root.lookupType('Operand.Challenge');
-        this.Operand_ProverValue = this.root.lookupType('Operand.ProverValue');
+        this.Operand_SubproofValue = this.root.lookupType('Operand.SubproofValue');
+        this.Operand_ProofValue = this.root.lookupType('Operand.ProofValue');
         this.Operand_PublicValue = this.root.lookupType('Operand.PublicValue');
         this.Operand_PeriodicCol = this.root.lookupType('Operand.PeriodicCol');
         this.Operand_FixedCol = this.root.lookupType('Operand.FixedCol');
@@ -105,9 +107,9 @@ module.exports = class ProtoOut {
 
         // FrontEndField not used
 
-        this.FrontEndField = this.root.lookupType('FrontEndField');
-        this.FrontEndFieldArray = this.root.lookupType('FrontEndFieldArray');
-        this.FronEndData = this.root.lookupType('FronEndData');
+        this.HintField = this.root.lookupType('HintField');
+        this.HintFieldArray = this.root.lookupType('HintFieldArray');
+        this.Hint = this.root.lookupType('Hint');
     }
     setupPilOut(name) {
         this.pilOut = {

@@ -1,24 +1,21 @@
-subair Functions(2**23);
+subproof Functions(2**23) {
 
-
-function sum(int a, int b) : int {
-    return a + b;
-}
-
-function fact(int k): int {
-    if (k < 2) {
-        return 1;
+    function sum(int a, int b) : int {
+        return a + b;
     }
-    return k * fact(k - 1);
-}
 
-function procedure(int value) {
-    col witness p1;
+    function fact(int k): int {
+        if (k < 2) {
+            return 1;
+        }
+        return k * fact(k - 1);
+    }
 
-    p1 === value;
-}
+    function procedure(int value) {
+        col witness p1;
 
-namespace Functions:: {
+        p1 === value;
+    }
 
     col witness c1,vec[10];
 

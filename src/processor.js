@@ -7,7 +7,7 @@ const References = require("./references.js");
 const Indexable = require("./indexable.js");
 const Ids = require("./ids.js");
 const Constraints = require("./constraints.js");
-const Subairs = require("./subairs.js");
+const Subproofs = require("./subproofs.js");
 const Variables = require("./variables.js");
 const Sequence = require("./sequence.js");
 const List = require("./list.js");
@@ -24,6 +24,7 @@ const fs = require('fs');
 
 module.exports = class Processor {
     constructor (Fr, parent, references, expressions) {
+        this.compiler = parent;
         this.trace = false;
         this.Fr = Fr;
         this.context = new Context(this.Fr);
@@ -67,7 +68,7 @@ module.exports = class Processor {
         this.functions = new Indexable(Fr, 'function');
         this.references.register('function', this.functions);
 
-        this.subairs = new Subairs(Fr);
+        this.subproofs = new Subproofs(Fr);
 
         this.expressions = new Expressions(Fr, this, this.references, this.publics, this.constants);
         this.globalExpressions = new Expressions(Fr, this, this.references, this.publics, this.constants);
@@ -102,6 +103,7 @@ module.exports = class Processor {
     }
     startExecution(statements) {
         this.references.declare('N', 'int', [], { global: true, sourceRef: this.sourceRef });
+        console.log(statements);
         this.execute(statements);
     }
     generateOut()
@@ -114,7 +116,7 @@ module.exports = class Processor {
 
         let proto = new ProtoOut(this.Fr);
         proto.setupPilOut('myFirstPil', this.publics);
-        proto.setAir('myFirstAir', this.rows);
+        proto.setProof('myFirstProof', this.rows);
         proto.setFixedCols(this.fixeds);
         proto.setPeriodicCols(this.fixeds);
         proto.setConstraints(this.constraints, packed);
@@ -179,8 +181,8 @@ module.exports = class Processor {
         }
         return res;
     }
-    execAir(st) {
-        this.scope.pushInstanceType('air');
+    execProof(st) {
+        this.scope.pushInstanceType('proof');
         this.execute(st.statements);
         this.scope.popInstanceType();
     }
@@ -247,6 +249,13 @@ module.exports = class Processor {
         }
     }
     execScopeDefinition(s) {
+        this.scope.push();
+        const result = this.execute(s.statements, `SCOPE ${this.sourceRef}`);
+        this.scope.pop();
+        return result;
+    }
+    execNamedScopeDefinition(s) {
+        console.log(s);
         this.scope.push();
         const result = this.execute(s.statements, `SCOPE ${this.sourceRef}`);
         this.scope.pop();
@@ -335,7 +344,6 @@ module.exports = class Processor {
         }
     }
     execForInExpression(s) {
-        // console.log(s);
         // s.list.expr.dump();
         let it = new Iterator(s.list);
         this.scope.push();
@@ -400,14 +408,14 @@ module.exports = class Processor {
         return this.expressions.eval(expr);
     }
     execNamespace(s) {
-        const subair = s.subair ?? false;
+        const subproof = s.subproof ?? false;
         const namespace = s.namespace;
-        if (subair !== false && !this.subairs.isDefined(subair)) {
-            this.error(s, `subair ${s.subair} hasn't been defined`);
+        if (subproof !== false && !this.subproofs.isDefined(subproof)) {
+            this.error(s, `subproof ${s.subproof} hasn't been defined`);
         }
 
-        // TODO: verify if namespace just was declared in this case subair must be the same
-        this.context.push(namespace, subair);
+        // TODO: verify if namespace just was declared in this case subproof must be the same
+        this.context.push(namespace, subproof);
         this.scope.push();
         this.execute(s.statements, `NAMESPACE ${namespace}`);
         this.scope.pop(['witness', 'fixed', 'im']);
@@ -421,10 +429,10 @@ module.exports = class Processor {
         }
         return values;
     }
-    execSubairDefinition(s) {
-        const subair = s.name ?? false;
-        if (subair === false) {
-            this.error(s, `subair not defined correctly`);
+    execSubproofDefinition(s) {
+        const subproof = s.name ?? false;
+        if (subproof === false) {
+            this.error(s, `subproof not defined correctly`);
         }
         let rows = this.evalExpressionList(s.rows);
         this.rows = rows[0];
@@ -432,11 +440,12 @@ module.exports = class Processor {
         this.references.set('N', [], this.rows);
 
         // TO-DO: eval expressions;
-        const subairInfo = {
+        const subproofInfo = {
             sourceRef: this.sourceRef,
             rows
         };
-        this.subairs.define(subair, subairInfo, `subair ${subair} has been defined previously on ${subairInfo.sourceRef}`);
+        this.subproofs.define(subproof, subproofInfo, `subproof ${subproof} has been defined previously on ${subproofInfo.sourceRef}`);
+        this.execute(s.statements);
     }
     execWitnessColDeclaration(s) {
         this.colDeclaration(s, 'witness');
@@ -568,10 +577,11 @@ module.exports = class Processor {
         }
 
         for (let index = 0; index < count; ++index) {
+            console.log(s.items[index]);
             const [name, lengths] = this.decodeNameAndLengths(s.items[index]);
             const sourceRef = s.debug ?? this.sourceRef;
-            const global = s.global ?? false;
-            this.references.declare(name, s.vtype, lengths, { global, sourceRef });
+            const scope = s.scope ?? false;
+            this.references.declare(name, s.vtype, lengths, { scope, sourceRef });
             let initValue = null;
             if (init) {
                 if (s.vtype === 'expr') {
@@ -587,10 +597,10 @@ module.exports = class Processor {
         }
     }
     execConstantDefinition(s) {
+        console.log(s.value.stack[0].operands[0]);
         if (s.sequence) {
             const lengths = this.decodeLengths(s);
             this.references.declare(s.name, 'constant', lengths, { sourceRef: this.sourceRef });
-
             const def = this.references.getDefinition(s.name);
             // TODO: SEQUENCE_ARRAY_LENGTHS
             const seq = new Sequence(this, s.sequence);
@@ -609,6 +619,23 @@ module.exports = class Processor {
             const value = this.getExprNumber(s.value, s, `constant ${s.name} definition`);
             this.references.set(s.name, [], value);
         }
+    }
+    evaluateTemplate(template) {
+        const regex = /\${[^}]*}/gm;
+        let m;
+        let tags = [];
+        let lindex = 0;
+        while ((m = regex.exec(template)) !== null) {
+            if (m.index === regex.lastIndex) {
+                regex.lastIndex++;
+            }
+            tags.push({pre: m.input.substring(lindex, m.index), expr: m[0].substring(2,m[0].length-1)});
+            lindex = m.index + m[0].length;
+        }
+        const lastS = template.substring(lindex);
+        const codeTags = tags.map((x, index) => 'constant ____'+index+' = '+x.expr+";").join("\n");
+        const compiledTags = this.compiler.parseExpression(codeTags);
+        return compiledTags.map((e, index) => tags[index].pre + this.e2value(e.value)).join('')+lastS;
     }
     evaluateExpression(e){
         // TODO

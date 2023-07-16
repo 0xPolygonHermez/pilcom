@@ -1,7 +1,6 @@
 include "poseidong.pil";
 
-namespace Storage:: {
-
+subproof Storage(2**23) {
     col fixed L1 = [1,0...];
     col witness freeIn[4];
 
@@ -56,12 +55,14 @@ namespace Storage:: {
     col witness address;
 
     col witness incCounter;
+    expr op[4];
+}
+
     incCounter' === incCounter*(1 - latchSet - latchGet - L1) + iHash;
 
     // We assume hash and latch never goes together
     // We assume first instruction is not a latch nor a hash.
 
-    col op[4];
     for (int i = 0; i < 4; ++i) {
         op[i] = inOldRoot * oldRoot[i] +
                 inNewRoot * newRoot[i] +

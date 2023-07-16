@@ -3,7 +3,7 @@ module.exports = class Scope {
         this.Fr = Fr;
         this.deep = 0;
         this.shadows = [{}];
-        this.instanceType = 'instance';
+        this.instanceType = 'air';
         this.stackInstanceTypes = [];
     }
     setReferences(references) {

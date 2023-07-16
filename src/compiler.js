@@ -145,6 +145,10 @@ console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1
         }
         return sts;
     }
+    parseExpression(expression) {
+        const parser = this.instanceParser(expression, "template expression");
+        return parser.parse(expression);
+    }
     async loadInclude(s) {
 
         const includeFile = this.asString(s.file);

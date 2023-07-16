@@ -1,4 +1,4 @@
-subair Byte4(2**16) {
+subproof Byte4(2**16) {
 
     constant BYTE4_ID = 1;
 
@@ -22,5 +22,5 @@ subair Byte4(2**16) {
     }
     byteFromBits === byteIn;
 
-    multiset_provides(BYTE4_ID, result, [out]);
+    multiset_provide(BYTE4_ID, result, [out]);
 }

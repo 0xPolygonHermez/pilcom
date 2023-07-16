@@ -13,9 +13,9 @@ const verifyNextConstraint = function (sconstraint, rconstraint) {
     let c = constraints.it.next().value;
     const expr = constraints.processor.constraints.getExpr(c.exprId);
     const _sconstraint = expr.toString({hideClass: true});
-    assert.equal(_sconstraint, sconstraint);
     const _rconstraint = expr.toString({hideClass: true, hideLabel: true});
     assert.equal(_rconstraint, rconstraint);
+    assert.equal(_sconstraint, sconstraint);
 }
 
 describe("Functions", async function () {
