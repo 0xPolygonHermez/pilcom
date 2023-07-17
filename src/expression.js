@@ -620,8 +620,14 @@ module.exports = class Expression {
     }*/
     dump(title) {
         // console.trace();
+        let caller = '';
+        try {
+            throw new Error();
+        } catch (e) {
+            caller = e.stack.split('\n')[2].trim().substring(3);
+        }
         title = title ? `(${title}) `:'';
-        console.log(`\x1B[38;5;214m|==========> DUMP ${title}<==========|\x1B[0m`);
+        console.log(`\x1B[38;5;214m|==========> DUMP ${title}${caller} <==========|\x1B[0m`);
         for (let index = this.stack.length-1; index >=0; --index) {
             const st = this.stack[index];
             let info =`\x1B[38;5;214m#${index} ${st.op}`;

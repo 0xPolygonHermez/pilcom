@@ -56,7 +56,9 @@ module.exports = class References {
     }
 
     declare (name, type, lengths = [], data = null) {
-        console.log(`DECLARE_REFERENCE ${name} ${type} []${lengths.length} #${this.scope.deep}`, data);
+        if (this.context.config.debug.declare) {
+            console.log(`DECLARE_REFERENCE ${name} ${type} []${lengths.length} #${this.scope.deep}`, data);
+        }
         assert(typeof name === 'string');
         assert(!name.includes('::object'));
         assert(!name.includes('.object'));

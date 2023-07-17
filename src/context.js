@@ -9,6 +9,7 @@ module.exports = class Context {
         this.namespace = '';
         this.subproof = false;
         this.stack = [];
+        this.config = {debug: {}};
     }
 
     setNamespace(namespace, subproof) {

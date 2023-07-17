@@ -21,6 +21,7 @@ const Iterator = require("./iterator.js");
 const Context = require("./context.js");
 const {FlowAbortCmd, BreakCmd, ContinueCmd, ReturnCmd} = require("./flow_cmd.js")
 const fs = require('fs');
+const { log2, getKs, getRoots } = require("./utils.js");
 
 module.exports = class Processor {
     constructor (Fr, parent, references, expressions) {
@@ -92,7 +93,9 @@ module.exports = class Processor {
         this.builtIn = {};
         for (const filename of filenames) {
             if (!filename.endsWith('.js')) continue;
-            console.log(`Loading builtin ${filename}.....`);
+            if (this.context.config.debug.builtInLoad) {
+                console.log(`Loading builtin ${filename}.....`);
+            }
             const builtInCls = require(__dirname + '/builtin/'+ filename);
             const builtInObj = new builtInCls(this);
             this.builtIn[builtInObj.name] = builtInObj;
@@ -102,8 +105,18 @@ module.exports = class Processor {
         return this.functionDeep > 0;
     }
     startExecution(statements) {
+        let bits = 0;
+        while (bits < 530) {
+            ++bits;
+            let value = 2n ** BigInt(bits);
+            // console.log([value, bits, this.log2(value)]);
+            assert(bits === this.log2(value));
+            assert((bits-1) === this.log2(value-1n));
+            assert(bits === this.log2(value+1n));
+            // if (value > 0n) console.log([value-1n, bits, this.log2(value-1n)]);
+        }
         this.references.declare('N', 'int', [], { global: true, sourceRef: this.sourceRef });
-        console.log(statements);
+        this.references.declare('BITS', 'int', [], { global: true, sourceRef: this.sourceRef });
         this.execute(statements);
     }
     generateOut()
@@ -429,15 +442,43 @@ module.exports = class Processor {
         }
         return values;
     }
+    log2_32bits(value) {
+            return (  (( value & 0xFFFF0000 ) !== 0 ? ( value &= 0xFFFF0000, 16 ) :0 )
+                    | (( value & 0xFF00FF00 ) !== 0 ? ( value &= 0xFF00FF00, 8  ) :0 )
+                    | (( value & 0xF0F0F0F0 ) !== 0 ? ( value &= 0xF0F0F0F0, 4  ) :0 )
+                    | (( value & 0xCCCCCCCC ) !== 0 ? ( value &= 0xCCCCCCCC, 2  ) :0 )
+                    | (( value & 0xAAAAAAAA ) !== 0 ? 1: 0 ) );
+    }
+    log2(value) {
+        let base = 0;
+        value = BigInt(value);
+        while (value > 0xFFFFFFFFn) {
+            base += 32;
+            value = value >> 32n;
+        }
+
+        return base + this.log2_32bits(Number(value));
+    }
+    checkRows(rows) {
+        for (const row of rows) {
+            if (2n ** BigInt(this.log2(row)) === row) continue;
+            throw new Error(`Invalid row ${row}. Rows must be a power of 2`);
+        }
+    }
     execSubproofDefinition(s) {
         const subproof = s.name ?? false;
         if (subproof === false) {
             this.error(s, `subproof not defined correctly`);
         }
         let rows = this.evalExpressionList(s.rows);
+        this.checkRows(rows);
+
+
         this.rows = rows[0];
 
+        // TO-DO loop with different rows
         this.references.set('N', [], this.rows);
+        this.references.set('BITS', [], BigInt(this.log2(this.rows)));
 
         // TO-DO: eval expressions;
         const subproofInfo = {
@@ -577,7 +618,7 @@ module.exports = class Processor {
         }
 
         for (let index = 0; index < count; ++index) {
-            console.log(s.items[index]);
+            // console.log(s.items[index]);
             const [name, lengths] = this.decodeNameAndLengths(s.items[index]);
             const sourceRef = s.debug ?? this.sourceRef;
             const scope = s.scope ?? false;
@@ -597,7 +638,6 @@ module.exports = class Processor {
         }
     }
     execConstantDefinition(s) {
-        console.log(s.value.stack[0].operands[0]);
         if (s.sequence) {
             const lengths = this.decodeLengths(s);
             this.references.declare(s.name, 'constant', lengths, { sourceRef: this.sourceRef });
