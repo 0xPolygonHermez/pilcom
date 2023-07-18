@@ -42,7 +42,9 @@ module.exports = class Context {
         if (!Array.isArray(names) || names.length !== 1) {
             return names;
         }
-        return [names[0], this.getFullName(names[0])];
+        name = names[0];
+        const fullName = this.getFullName(name);
+        return name === fullName ? [name]:[name, fullName];
     }
     decodeName(name) {
         const regex = /((?<subproof>\w*)::)?((?<namespace>\w*)\.)?(?<name>\w+)/gm;

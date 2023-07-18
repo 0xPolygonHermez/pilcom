@@ -34,6 +34,18 @@ module.exports = class References {
             instance
         }
     }
+    clearType(type) {
+        const typeInfo = this.types[type];
+        if (typeof typeInfo === 'undefined') {
+            throw new Error(`type ${type} not registered`);
+        }
+        typeInfo.instance.clear();
+        // TODO: remove references
+        for (const name in this.definitions) {
+            if (this.definitions[name].type !== type) continue;
+            delete this.definitions[name];
+        }
+    }
     isReferencedType(type) {
         return type.at(0) === '&'
     }
@@ -54,45 +66,81 @@ module.exports = class References {
         }
         return tdata;
     }
-
-    declare (name, type, lengths = [], data = null) {
-        if (this.context.config.debug.declare) {
-            console.log(`DECLARE_REFERENCE ${name} ${type} []${lengths.length} #${this.scope.deep}`, data);
+    decodeName (name) {
+        const parts = name.split('.');
+        let scope = false;
+        if (parts.length === 1) {
+            return {scope, name};
         }
+        const isProofScope = parts[0] === 'proof';
+        const isSubproofScope = parts[0] === 'subproof';
+        const isAirScope = parts[0] === 'air';
+        const absoluteScope = isProofScope || isSubproofScope || isAirScope;
+
+        if (absoluteScope) {
+            return {scope: parts[0], static: true, name: parts.slice(1).join('.')};
+        }
+        return {scope, name};
+    }
+    getArrayAndSize(lengths) {
+        if (lengths && lengths.length) {
+            array = new MultiArray(lengths);
+            return [array, array.size];
+        }
+        return [false, 1];
+    }
+    declare (name, type, lengths = [], data = null, initValue = null) {
         assert(typeof name === 'string');
         assert(!name.includes('::object'));
         assert(!name.includes('.object'));
-        let size, array;
-        if (lengths && lengths.length) {
-            array = new MultiArray(lengths);
-            size = array.size;
+
+        const nameInfo = this.decodeName(name);
+        console.log(`DECLARE_REFERENCE ${name} ==> ${nameInfo.name} ${type} []${lengths.length} scope:${nameInfo.scope} #${this.scope.deep}`, data);
+
+        let [array, size] = this.getArrayAndSize(lengths);
+
+        const def = this.definitions[nameInfo.name];
+        let scopeId;
+
+        if (nameInfo.static) {
+            // only created and init once
+            if (def) {
+                if (!def.static) {
+                    throw new Error(`Static reference ${name} has been defined on non-static scope`);
+                }
+                // nothing to do (important: static scope)
+                return def.locator;
+            }
+            scopeId = this.scope.declare(nameInfo.name, type, false, nameInfo.scope);
         } else {
-            array = false;
-            size = 1;
+            scopeId = (this.hasScope(type) && !global) ? this.scope.declare(nameInfo.name, type, def ?? false, scope) : 0;
+
+            // scope(name, def) => exception !!!
+            //                  => scopeId;
+            if (typeof def !== 'undefined' && def.scopeId === scopeId) {
+                console.log(def);
+                throw new Error(`${name} was defined previously on ${def.data.sourceRef}`)
+            }
         }
 
-        const def = this.definitions[name];
-        const global = data && data.global;
-        const scopeId = (this.hasScope(type) && !global) ? this.scope.declare(name, type, def ?? false) : 0;
-        // scope(name, def) => exception !!!
-        //                  => scopeId;
-        if (typeof def !== 'undefined' && def.scopeId === scopeId) {
-            console.log(def);
-            throw new Error(`${name} was defined previously on ${def.data.sourceRef}`)
-        }
-
+        // When reference is reference to other reference, caller put & before type name (ex: &int)
         const reference = this.isReferencedType(type);
 
         const tdata = reference ? {} : this._getRegisteredType(type);
-        const id = reference ? null : tdata.instance.reserve(size, name, array, data);
-        this.definitions[name] = {
+        const id = reference ? null : tdata.instance.reserve(size, nameInfo.name, array, data);
+        this.definitions[nameInfo.name] = {
             type,
             array,
             reference,
             referencedType: reference ? type.substring(1) : false,       // to define valid referenced type
             locator: id,
             scope: scopeId,
+            static: nameInfo.static ?? false,
             data
+        }
+        if (initValue !== null) {
+            debugger;
+            this.set(nameInfo.name, [], initValue);
         }
         return id;
     }
@@ -193,8 +241,16 @@ module.exports = class References {
     }
     getDefinition(name) {
         // debugger;
-        let names = this.context.getNames(name);
+        const nameInfo = this.decodeName(Array.isArray(name) ? name[0]:name);
+        let names;
+        if (nameInfo.scope !== false) {
+            names = [nameInfo.name];
+        } else {
+            names = this.context.getNames(name);
+        }
         let def;
+
+        // TODO:
         for (const name of names) {
             def = this.definitions[name];
             if (typeof def !== 'undefined') break;

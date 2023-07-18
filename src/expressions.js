@@ -104,6 +104,7 @@ module.exports = class Expressions {
         EXIT_HERE;
     }
     evalRuntime(operand, expr, deeply) {
+        // TODO: if not runtime evaluable return null or
         const op = operand.op;
         switch (op) {
             case 'string': return this._evalString(operand);
@@ -187,9 +188,15 @@ module.exports = class Expressions {
             case 'int':
                 res = (typeof ref.value === 'number' ? BigInt(ref.value) : ref.value);
                 break;
+            case 'string':
+                res = (typeof ref.value === 'string' ? ref.value : '');
+                break;
             case 'expr':
                 if (ref.value instanceof Expression) {
-                    res = ref.value.instance();
+                    res = ref.value.eval();
+                    if (res instanceof Expression) {
+                        res = res.instance();
+                    }
                 } else {
                     res = ref;
                 }
@@ -273,10 +280,21 @@ module.exports = class Expressions {
         return Number(res);
     }
     e2types(e, s, title, types, toBigInt = true) {
+        // TODO: review specify PRE/POST on expression conversion ==> refactorize !!!
         let res = e;
         if (res instanceof Expression) {
             res = e.eval();
+            if (res instanceof Expression) {
+                e.dump();
+                debugger;
+                res = e.eval();
+            }
         }
+        if (typeof res.value !== 'undefined') {
+            // REVIEW, why eval return { type: 'expr', value: 6n, id: 0, next: 0, __next: 0 }  !!!
+            res = res.value;
+        }
+        // console.log(res);
         // const res = e.expr && e.expr instanceof Expression ? e.expr.eval() : e;
         return this.getValueTypes(res, s, title, types, toBigInt);
     }
@@ -285,6 +303,7 @@ module.exports = class Expressions {
         if (types.includes(etype)) {
             return toBigInt && etype === 'number' ? BigInt(e) : e;
         }
+        console.log(e);
         console.log(etype);
         this.error(s, (title ? ' ':'') + `is not constant expression (${etype}) (2)`);
     }

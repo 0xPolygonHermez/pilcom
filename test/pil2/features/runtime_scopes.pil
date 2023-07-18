@@ -1,0 +1,21 @@
+subproof Runtime1(2**18,2**20) {
+    expr subproof.counter = 5;
+
+    println(__SUBPROOF__, BITS, counter);
+    // ++counter;
+    counter = counter + 1;
+//    println(__SUBPROOF__, BITS, subproof.counter);
+    col witness a;
+    a === 0;
+}
+
+subproof Runtime2(2**21, 2**23) {
+    // int subproof.counter = 0;
+    int subproof.counter;
+    println(__SUBPROOF__, BITS, counter);
+//    println(__SUBPROOF__, BITS, subproof.counter);
+    counter = 10;
+    col witness b;
+    b === 0;
+}
+

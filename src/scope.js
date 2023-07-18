@@ -3,8 +3,23 @@ module.exports = class Scope {
         this.Fr = Fr;
         this.deep = 0;
         this.shadows = [{}];
+        this.labels = {};
         this.instanceType = 'air';
         this.stackInstanceTypes = [];
+    }
+    mark(label) {
+        this.labels[label] = this.deep;
+    }
+    getScopeId(label = false) {
+        return label === false ? this.deep : (this.labels[label] ?? false);
+    }
+    purgeLabels() {
+        for (const label in this.labels) {
+            if (this.labels[label] > this.deep) {
+                console.log(`PURGE SCOPE LABEL ${label}`);
+                delete this.labels[label];
+            }
+        }
     }
     setReferences(references) {
         this.references = references;
@@ -30,9 +45,17 @@ module.exports = class Scope {
         console.log(`DEFINE VAR ${name} ${value.value}`);
         this.references.set(name, { type: 'var', value: value.value, scope: this.deep });
     }*/
-    declare (name, type, ref) {
-        this.shadows[this.deep][name] = {type, ref};
-        return this.deep;
+    declare (name, type, ref, scope = false) {
+        if (scope === false) scope = this.deep;
+        else if (typeof scope === 'string') {
+            const lscope = this.labels[scope];
+            if (typeof lscope === 'undefined') {
+                throw new Error(`Scope ${scope} not found`);
+            }
+            scope = lscope;
+        }
+        this.shadows[scope][name] = {type, ref};
+        return scope;
     }
 /*    __set(name, value) {
         if (!this.isDefined(name)) {
@@ -64,12 +87,17 @@ module.exports = class Scope {
         }
         this.shadows[this.deep] = {};
         --this.deep;
+        this.purgeLabels();
         // console.log(`POP ${this.deep}`)
     }
-    push() {
+    push(label = false) {
         ++this.deep;
         // console.log(`PUSH ${this.deep}`)
         this.shadows[this.deep] = {};
+        if (label !== false) {
+            this.mark(label);
+        }
+        return this.deep;
     }
 
     pushInstanceType(type) {

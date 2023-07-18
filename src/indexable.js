@@ -9,6 +9,10 @@ module.exports = class Indexable {
         this.labelRanges = new LabelRanges();
     }
 
+    clear() {
+        this.values = [];
+        this.lableRanges = new LabelRanges();
+    }
     getType(id) {
         return this.rtype;
     }

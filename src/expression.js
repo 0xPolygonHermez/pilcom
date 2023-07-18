@@ -295,9 +295,9 @@ module.exports = class Expression {
 
         } else if (op.type === OP_RUNTIME ) {
             const res = this.evaluateRuntime(op, deeply);
-            if (!(res instanceof Expression)) {
+            // BUG: if type was an expression not apply value !!
+            // if (!(res instanceof Expression)) {
                 op.__value = res;
-            }
         }
     }
     evaluateRuntime(op, deeply = false) {
@@ -828,5 +828,12 @@ module.exports = class Expression {
             default:
                 throw new Error(`Invalid reference type ${type} to pack`);
         }
+    }
+    resolve() {
+        const res = this.eval();
+        if (res instanceof Expression) {
+            return res.instance();
+        }
+        return res;
     }
 }

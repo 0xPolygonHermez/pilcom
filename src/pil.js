@@ -30,7 +30,7 @@ async function run() {
     }
 
     const fullFileName = path.resolve(process.cwd(), inputFile);
-    const fileName = path.basename(fullFileName, ".zkasm");
+    const fileName = path.basename(fullFileName, ".pil");
 
     const outputFile = typeof(argv.output) === "string" ?  argv.output : fileName + ".json";
     const config = typeof(argv.config) === "string" ? JSON.parse(fs.readFileSync(argv.config.trim())) : {};

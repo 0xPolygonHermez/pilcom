@@ -6,7 +6,12 @@ module.exports = class Println extends Function {
     mapArguments(s) {
         let texts = [];
         for (const arg of s.arguments) {
-            texts.push(typeof arg === 'string' ? arg : this.expressions.e2value(arg));
+            if (typeof arg === 'string') {
+                texts.push(arg);
+                continue;
+            }
+            const value = this.expressions.e2value(arg);
+            texts.push(value);
         }
         return texts;
     }

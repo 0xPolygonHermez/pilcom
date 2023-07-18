@@ -31,12 +31,19 @@ module.exports = class Processor {
         this.context = new Context(this.Fr);
         this.scope = new Scope(this.Fr);
         this.references = new References(Fr, this.context, this.scope);
+        this.scope.mark('proof');
+
+        this.airId = 0;
+        this.subproofId = 0;
 
         this.ints = new Variables(Fr, 'int');
         this.references.register('int', this.ints);
 
         this.fes = new Variables(Fr, 'fe');
         this.references.register('fe', this.fes);
+
+        this.strings = new Variables(Fr, 'string');
+        this.references.register('string', this.strings);
 
         this.vexprs = new Variables(Fr, 'expr');
         this.references.register('expr', this.vexprs);
@@ -115,8 +122,10 @@ module.exports = class Processor {
             assert(bits === this.log2(value+1n));
             // if (value > 0n) console.log([value-1n, bits, this.log2(value-1n)]);
         }
+        // TODO: use a constant
         this.references.declare('N', 'int', [], { global: true, sourceRef: this.sourceRef });
         this.references.declare('BITS', 'int', [], { global: true, sourceRef: this.sourceRef });
+        this.references.declare('__SUBPROOF__', 'string', [], { global: true, sourceRef: this.sourceRef });
         this.execute(statements);
     }
     generateOut()
@@ -478,28 +487,42 @@ module.exports = class Processor {
 
 
 
-        let rows = this.evalExpressionList(s.rows);
-        this.checkRows(rows);
-
-
-        this.rows = rows[0];
-
-        // TO-DO loop with different rows
-        this.references.set('N', [], this.rows);
-        this.references.set('BITS', [], BigInt(this.log2(this.rows)));
+        let subProofRows = this.evalExpressionList(s.rows);
+        this.checkRows(subProofRows);
 
         // TO-DO: eval expressions;
         const subproofInfo = {
             sourceRef: this.sourceRef,
-            rows
+            rows: subProofRows
         };
         this.subproofs.define(subproof, subproofInfo, `subproof ${subproof} has been defined previously on ${subproofInfo.sourceRef}`);
+        this.scope.push('subproof');
+        for (const airRows of subProofRows) {
+            this.rows = airRows;
 
-        this.context.push(false, subproof);
-        this.scope.push();
-        this.execute(s.statements, `SUBPROOF ${subproof}`);
-        this.scope.pop(['witness', 'fixed', 'im']);
-        this.context.pop();
+            // TO-DO loop with different rows
+            this.references.set('N', [], this.rows);
+            this.references.set('BITS', [], BigInt(this.log2(this.rows)));
+            this.references.set('__SUBPROOF__', [], s.name);
+
+            this.context.push(false, subproof);
+            this.scope.push('air');
+            this.execute(s.statements, `SUBPROOF ${subproof}`);
+            this.scope.pop(['witness', 'fixed', 'im']);
+            this.context.pop();
+            this.clearAirScope();
+            ++this.airId;
+        }
+        this.scope.pop();
+        this.clearSubproofScope();
+        ++this.subproofId;
+    }
+    clearAirScope() {
+        this.references.clearType('fixed');
+        this.references.clearType('witness');
+    }
+    clearSubproofScope() {
+
     }
     execWitnessColDeclaration(s) {
         this.colDeclaration(s, 'witness');
@@ -606,24 +629,20 @@ module.exports = class Processor {
         console.log(`Ignore once section because it has already executed ${s.debug}`);
     }
     execConstraint(s) {
-        if (this.sourceRef === 'functions_cols.pil:8') {
-            s.left.dump(this.sourceRef);
-            s.right.dump(this.sourceRef);
-            debugger;
-        }
         const id = this.constraints.define(s.left.instance(true), s.right.instance(true),false,this.sourceRef);
         const expr = this.constraints.getExpr(id);
         console.log(`\x1B[1;36;44mCONSTRAINT      > ${expr.toString({hideClass:true, hideLabel:false})} === 0 (${this.sourceRef})\x1B[0m`);
         console.log(`\x1B[1;36;44mCONSTRAINT (RAW)> ${expr.toString({hideClass:true, hideLabel:true})} === 0 (${this.sourceRef})\x1B[0m`);
     }
     execVariableIncrement(s) {
+        // REVIEW used only inside loop (increment) in other cases was an expression
         const name = s.name;
         const value = this.references.get(name, []);
-        // console.log(`VAR ${name} = ${value}`);
         this.references.set(name, [], value + s.pre + s.post);
     }
     execVariableDeclaration(s) {
         const init = typeof s.init !== 'undefined';
+//         console.log(s);
         const count = s.items.length;
 
         if (init && s.init.length !== count) {
@@ -635,7 +654,6 @@ module.exports = class Processor {
             const [name, lengths] = this.decodeNameAndLengths(s.items[index]);
             const sourceRef = s.debug ?? this.sourceRef;
             const scope = s.scope ?? false;
-            this.references.declare(name, s.vtype, lengths, { scope, sourceRef });
             let initValue = null;
             if (init) {
                 if (s.vtype === 'expr') {
@@ -647,7 +665,8 @@ module.exports = class Processor {
                     initValue = this.expressions.e2value(s.init[index]);
                 }
             }
-            if (initValue !== null) this.references.set(name, [], initValue);
+            this.references.declare(name, s.vtype, lengths, { scope, sourceRef }, initValue);
+            // if (initValue !== null) this.references.set(name, [], initValue);
         }
     }
     execConstantDefinition(s) {
