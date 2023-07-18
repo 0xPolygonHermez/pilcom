@@ -141,7 +141,7 @@ module.exports = class References {
     }
     getTypeR(name, indexes, options) {
         const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        return [instance.getType(info.locator + info.offset), info.reference];
+        return [instance.getType(info.locator + info.offset), info.reference, info.array ?? false];
     }
     getTypedValue (name, indexes, options) {
         indexes = indexes ?? [];

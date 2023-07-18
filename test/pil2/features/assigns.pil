@@ -7,6 +7,8 @@ subproof Assigns(2**23) {
     col witness q[3][N_MAX];
 
     int bc = 4;
+    int valA[5];
+    int valB[5];
     println(bc);
 
     function suma(int a, int b): int {
@@ -100,6 +102,48 @@ subproof Assigns(2**23) {
 
     assert_eq(suma(10, 12), 22);
     assert_eq(suma(i, aux), 19);
+
+    for (int i = 0; i < length(valA); ++i) {
+        valA[i] = (i+1)*10+i;
+        println(valA[i]);
+        assert(valA[i] == (i+1)*10+i);
+        assert_eq(valA[i], (i+1)*10+i);
+    }
+    for (int i = 0; i < length(valB); ++i) {
+        println(valB[i]);
+        assert(valB[i] == 0);
+        assert_eq(valB[i], 0);
+    }
+
+    // array assignation (copy)
+    valB = valA;
+    for (int i = 0; i < length(valB); ++i) {
+        println(valB[i]);
+        assert(valB[i] == (i+1)*10+i);
+        assert_eq(valB[i], (i+1)*10+i);
+    }
+
+
+    int matA[3][5];
+    for (int i = 0; i < length(matA); ++i) {
+        for (int j = 0; j < length(matA[i]); ++j) {
+            matA[i][j] = 1000000 + i*1000+j;
+            println(`matA[${i}][${j}] = ${matA[i][j]}`);
+            assert(matA[i][j] == 1000000 + i*1000+j);
+            assert_eq(matA[i][j], 1000000 + i*1000+j);
+        }
+    }
+    int matB[3][5];
+    // matrix assignation (copy)
+    matB = matA;
+    for (int i = 0; i < length(matA); ++i) {
+        for (int j = 0; j < length(matA[i]); ++j) {
+            // matA[i][j] = 1000000 + i*1000+j;
+            println(`matB[${i}][${j}] = ${matB[i][j]}`);
+            assert(matB[i][j] == 1000000 + i*1000+j);
+            assert_eq(matB[i][j], 1000000 + i*1000+j);
+        }
+    }
 
     println("Done!!");
 }

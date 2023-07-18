@@ -126,7 +126,25 @@ module.exports = class Expression {
     isAlone () {
         return this.stack.length === 1 && this.stack[0].op === false;
     }
-
+    pushAloneIndex(index) {
+        assert(this.isAlone());
+        let operand = this.getAloneOperand();
+        if (typeof operand.indexes === 'undefined') {
+            operand.indexes = [];
+            operand.__indexes = [];
+            operand.dim = 0;
+        }
+        operand.indexes.push(index);
+        operand.__indexes.push(index);
+        ++operand.dim;
+    }
+    popAloneIndex() {
+        assert(this.isAlone());
+        let operand = this.getAloneOperand();
+        --operand.dim;
+        operand.indexes.pop();
+        return operand.__indexes.pop();
+    }
     getAloneOperand () {
         return this.stack[0].operands[0];
     }
@@ -251,6 +269,17 @@ module.exports = class Expression {
         this.stack.push(elem);
         return this;
     }
+    evaluateAloneReference() {
+        assert(this.isAlone());
+        let operand = this.getAloneOperand();
+        if (operand.type === OP_RUNTIME || operand.op === 'reference') {
+            const res = this.evaluateRuntime(operand, true);
+            if (!(res instanceof Expression)) {
+                operand.__value = res;
+            }
+        }
+        return operand.__value;
+    }
     evaluateOperandValue(op, pos, deeply) {
         if (deeply) {
             if (op.type === OP_STACK) {
@@ -265,14 +294,14 @@ module.exports = class Expression {
             op.__value = new NonRuntimeEvaluable();
 
         } else if (op.type === OP_RUNTIME ) {
-            const res = this.evaluateRuntime(op);
+            const res = this.evaluateRuntime(op, deeply);
             if (!(res instanceof Expression)) {
                 op.__value = res;
             }
         }
     }
-    evaluateRuntime(op) {
-        let res = Expression.parent.evalRuntime(op, this);
+    evaluateRuntime(op, deeply = false) {
+        let res = Expression.parent.evalRuntime(op, this, deeply);
         return res;
     }
     instanceValues() {
@@ -339,16 +368,18 @@ module.exports = class Expression {
         }
         return dup;
     }
-    eval() {
-        this.evaluateOperands();
+    eval(deeply = false) {
+        if (this.stack[0] && this.stack[0].op === false) {
+            delete this.stack[0].operands[0].__value;
+        }
+        this.evaluateOperands(deeply);
         this.evaluateStackPosValue(this.stack.length-1);
-        return this.stack[this.stack.length-1].__value;
+        return this.stack[this.stack.length-1].__value ?? this;
     }
     evaluateStackPosValue(pos) {
         const st = this.stack[pos];
 
         this.evaluateStackPosOperands(pos, true);
-
 
         delete st.__value;
         const res = this.calculate(st);
@@ -539,9 +570,9 @@ module.exports = class Expression {
         }
         return stackLen > this.stack.length;
     }
-    evaluateOperands() {
+    evaluateOperands(deeply = false) {
         for (let index = 0; index < this.stack.length; ++index) {
-            this.evaluateStackPosOperands(index, false);
+            this.evaluateStackPosOperands(index, deeply);
         }
     }
     evaluateStackPosOperands(pos, deeply) {

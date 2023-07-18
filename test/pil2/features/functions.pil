@@ -28,13 +28,13 @@ subproof Functions(2**23) {
     c1 === res;
 
     c1 === vec[sum(2, 3)];
-    c1 === sum(3,5)'vec[sum(2, 3)];
-    c1 === vec[sum(8, -3)]'sum(6,4);
+    c1 === (sum(3,5))'vec[sum(2, 3)];
+    c1 === vec[sum(8, -3)]'(sum(6,4));
 
     c1 === fact(8);
     c1 === vec[fact(3)];
-    c1 === c1'fact(5);
-    c1 === fact(4)'c1;
+    c1 === c1'(fact(5));
+    c1 === (fact(4))'c1;
 
     procedure(100);
     procedure(314);

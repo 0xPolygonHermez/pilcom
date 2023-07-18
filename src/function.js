@@ -28,6 +28,8 @@ module.exports = class Function {
         }
     }
     mapArguments(s) {
+        // TODO: class o class-by-type to convert, cast, copy... between types
+
         /*
         for (const arg of s.arguments) {
             console.log(arg);
@@ -55,29 +57,34 @@ module.exports = class Function {
                 }
                 const dim = ref.array ? ref.array.dim : 0;
                 if (dim !== argDim) {
+                    console.log(type);
+                    console.log(ref);
+                    console.log(argDim);
+                    console.log(s.arguments[iarg].getAloneOperand());
                     throw new Error(`Invalid array on ${this.parent.sourceRef}`);
                 }
                 this.parent.declareReference(name, type, ref.array ? ref.array.lengths : []);
                 this.parent.references.setReference(name, ref);
             } else if (arg.type === 'int' || arg.type === 'fe') {
-                /*
-                console.log(`${this.name}.MAP-INT/FE`, iarg);
-                console.log(s.arguments[iarg]);
-                if (s.arguments[iarg] instanceof Expression) {
-                    console.log(s.arguments[iarg].stack[0].operands);
-                    s.arguments[iarg].dump();
+                if (argDim) {
+                    s.arguments[iarg].eval();
+                    const ref = s.arguments[iarg].getReference();
+                    console.log(ref);
+                    console.log(ref.name);
+                    const def = this.references.getDefinition(ref.name);
+                    const dup = def.array.applyIndex(def, ref.__indexes ?? []);
+
+                    if (dup.array.dim !== argDim) {
+                        console.log(dup.array.dim, argDim);
+                        throw new Error(`Invalid array on ${this.parent.sourceRef}`);
+                    }
+
+                    this.parent.declareReference(name, type, dup.array ? dup.array.lengths: [], {});
+                } else {
+                    const value = this.parent.expressions.eval(s.arguments[iarg]);
+                    // TODO: review? no referece?
+                    this.parent.declareReference(name, type, value.array ? value.array.lengths: [], {}, value);
                 }
-                */
-                const value = this.parent.expressions.eval(s.arguments[iarg]);
-                if (arg.type === 'col') {
-                    type = value.type;
-                }
-                const dim = value.array ? value.array.dim : 0;
-                if (dim !== argDim) {
-                    throw new Error(`Invalid array on ${this.parent.sourceRef}`);
-                }
-                // TODO: review? no referece?
-                this.parent.declareReference(name, type, value.array ? value.array.lengths: [], {}, value);
             } else {
                 // console.log(`MAP-${arg.type}`);
                 // TODO: type conversion, mapping in other class

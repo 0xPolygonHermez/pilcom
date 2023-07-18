@@ -1,28 +1,30 @@
-subair Functions(2**23);
+subproof Functions(2**23) {
 
-function f1 (col &p1) {
-    p1 === 314;
-}
-
-function inc (int &k) {
-    k = k + 1;
-}
-
-function dup_v (int &k[]) {
-    for (int i = 0; i < length(k); ++i) {
-        k[i] = k[i] * 2;
+    function inc (int &k) {
+        k = k + 1;
     }
-}
 
-function dup_m (int &k[][]) {
-    for (int i = 0; i < length(k); ++i) {
-        for (int j = 0; j < length(k[i]); ++j) {
-            k[i][j] = k[i][j] * 2;
+    function sum_v (int v[]):int {
+        int total = 0;
+        for (int i = 0; i < length(v); ++i) {
+            total = total + v[i];
+        }
+        return total;
+    }
+
+    function dup_v (int &k[]) {
+        for (int i = 0; i < length(k); ++i) {
+            k[i] = k[i] * 2;
         }
     }
-}
 
-namespace Functions:: {
+    function dup_m (int &k[][]) {
+        for (int i = 0; i < length(k); ++i) {
+            for (int j = 0; j < length(k[i]); ++j) {
+                k[i][j] = k[i][j] * 2;
+            }
+        }
+    }
 
     col witness c1,c2,vec[10];
     int values[5];
@@ -38,7 +40,6 @@ namespace Functions:: {
         }
     }
 
-    // f1(c1);
     int x = 10;
 
     c1 === x;
@@ -69,6 +70,9 @@ namespace Functions:: {
     x = 1;
     c1 === c2 * x;
     c1 === x * c2;
+
+    println(sum_v(matrix[1]));
+    println(sum_v(values));
 
     dup_v(values);
 

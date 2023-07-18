@@ -10,6 +10,8 @@ module.exports = class Context {
         this.subproof = false;
         this.stack = [];
         this.config = {debug: {}};
+        this.sourceRef = '';
+        this.uses = [];
     }
 
     setNamespace(namespace, subproof) {
@@ -23,6 +25,12 @@ module.exports = class Context {
     }
     getNamespace() {
         return this.namespace;
+    }
+    addUses(scope) {
+        this.uses.push(scope);
+    }
+    clearUses() {
+        this.uses = [];
     }
     getNames(name) {
         if (typeof name.name !== 'undefined') {
@@ -54,18 +62,12 @@ module.exports = class Context {
             console.log(name);
             throw new Error(`getFullName invalid argument`);
         }
-        const parts = this.decodeName(name);
-        const [_subproof, _namespace, _name] = [parts[0] ?? this.subproof, parts[1] ?? this.namespace, parts[2]];
 
-        let fullname = '';
-        if (_subproof !== '') {
-            fullname += _subproof + '::';
+        const parts = name.split('.');
+        if (parts.length === 1 && this.subproof !== false && this.subproof !== '') {
+            name = this.subproof + '.' + name;
         }
-        if (_namespace !== '') {
-            fullname = _namespace + '.';
-        }
-        fullname += _name;
-        return fullname;
+        return name;
     }
     push(namespace, subproof) {
         this.stack.push([this.subproof, this.namespace]);

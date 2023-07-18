@@ -171,6 +171,7 @@ module.exports = class Processor {
         this.traceLog(`[TRACE] #${__executeStatementCounter} ${st.debug ?? ''} (DEEP:${this.scope.deep})`, '38;5;75');
 
         this.sourceRef = st.debug ?? '';
+        this.context.sourceRef = this.sourceRef
 
         if (typeof st.type === 'undefined') {
             console.log(st);
@@ -470,6 +471,13 @@ module.exports = class Processor {
         if (subproof === false) {
             this.error(s, `subproof not defined correctly`);
         }
+
+
+
+        // TODO: verify if namespace just was declared in this case subproof must be the same
+
+
+
         let rows = this.evalExpressionList(s.rows);
         this.checkRows(rows);
 
@@ -486,7 +494,12 @@ module.exports = class Processor {
             rows
         };
         this.subproofs.define(subproof, subproofInfo, `subproof ${subproof} has been defined previously on ${subproofInfo.sourceRef}`);
-        this.execute(s.statements);
+
+        this.context.push(false, subproof);
+        this.scope.push();
+        this.execute(s.statements, `SUBPROOF ${subproof}`);
+        this.scope.pop(['witness', 'fixed', 'im']);
+        this.context.pop();
     }
     execWitnessColDeclaration(s) {
         this.colDeclaration(s, 'witness');

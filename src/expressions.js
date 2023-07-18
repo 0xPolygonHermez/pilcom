@@ -1,5 +1,4 @@
 const util = require('util');
-const Router = require('./router.js');
 const LabelRanges = require('./label_ranges.js');
 const Expression = require('./expression.js');
 module.exports = class Expressions {
@@ -12,7 +11,6 @@ module.exports = class Expressions {
         this.constants = constants;
         this.parent = parent;
         this.context = parent.context;
-        this.router = new Router(this, 'op', {defaultPrefix: '_eval', multiParams: true});
         this.labelRanges = new LabelRanges();
         Expression.setParent(this);
     }
@@ -105,8 +103,16 @@ module.exports = class Expressions {
         console.log(operand);
         EXIT_HERE;
     }
-    evalRuntime(e) {
-        return this.router.go([e, this.Fr]);
+    evalRuntime(operand, expr, deeply) {
+        const op = operand.op;
+        switch (op) {
+            case 'string': return this._evalString(operand);
+            case 'number': return this._evalNumber(operand);
+            case 'call': return this._evalCall(operand);
+            case 'idref': return this._evalIdref(operand);
+            case 'reference': return this._evalReference(operand, expr, deeply);
+        }
+        throw new Error(`Invalid runtime operation ${op}`);
     }
     _evalString(e) {
         if (e.template) return this.parent.evaluateTemplate(e.value);
@@ -195,8 +201,8 @@ module.exports = class Expressions {
         }
         return res;
     }
-    _evalReference(e) {
-        return this.evalReferenceValue(this.resolveReference(e));
+    _evalReference(operand, expr, deeply) {
+        return this.evalReferenceValue(this.resolveReference(operand, deeply));
     }
     evaluateValues(e, valuesCount, fr) {
         // TODO: check valuesCount
@@ -227,28 +233,30 @@ module.exports = class Expressions {
         }
         return this.references.getLabel(type, id, options);
     }
-    resolveReference(e) {
-        const names = this.context.getNames(e.name);
+    resolveReference(operand, deeply = false) {
+        const names = this.context.getNames(operand.name);
 
         let options = {};
-        if (e.inc === 'pre') {
-            options.preDelta = 1n;
-        }
-        if (e.inc === 'post') {
-            options.postDelta = 1n;
-        }
-        if (e.dec === 'pre') {
-            options.preDelta = -1n;
+        if (!deeply) {
+            if (operand.inc === 'pre') {
+                options.preDelta = 1n;
+            }
+            if (operand.inc === 'post') {
+                options.postDelta = 1n;
+            }
+            if (operand.dec === 'pre') {
+                options.preDelta = -1n;
 
+            }
+            if (operand.dec === 'post') {
+                options.postDelta = -1n;
+            }
         }
-        if (e.dec === 'post') {
-            options.postDelta = -1n;
-        }
-        let res = this.references.getTypedValue(names, e.__indexes, options);
-        if (typeof e.__next !== 'undefined') {
-            res.__next = res.next = e.__next;
-        } else if (e.next || e.prior) {
-            console.log(e);
+        let res = this.references.getTypedValue(names, operand.__indexes, options);
+        if (typeof operand.__next !== 'undefined') {
+            res.__next = res.next = operand.__next;
+        } else if (operand.next || operand.prior) {
+            console.log(operand);
             throw new Error(`INTERNAL: next and prior must be previouly evaluated`);
         }
         return res;
@@ -270,12 +278,18 @@ module.exports = class Expressions {
             res = e.eval();
         }
         // const res = e.expr && e.expr instanceof Expression ? e.expr.eval() : e;
-        const restype = typeof res;
-        if (types.includes(restype)) {
-            return toBigInt && restype === 'number' ? BigInt(res) : res;
+        return this.getValueTypes(res, s, title, types, toBigInt);
+    }
+    getValueTypes(e, s, title, types, toBigInt = true) {
+        const etype = typeof e;
+        if (types.includes(etype)) {
+            return toBigInt && etype === 'number' ? BigInt(e) : e;
         }
-
-        this.error(s, (title ? ' ':'') + `is not constant expression (${restype}) (2)`);
+        console.log(etype);
+        this.error(s, (title ? ' ':'') + `is not constant expression (${etype}) (2)`);
+    }
+    getValue(e, s, title = '') {
+        return this.getValueTypes(e, s, title, ['number','bigint','string']);
     }
     e2value(e, s, title = '') {
         return this.e2types(e, s, title, ['number','bigint','string']);
