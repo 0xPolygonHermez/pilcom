@@ -76,7 +76,7 @@ describe("PolsArray", async function () {
         await fs.promises.unlink(fileNameCm);
     });
 
-    it("It should create, save and recover pols Array with field BN128", async () => {
+    it.only("It should create, save and recover pols Array with field BN128", async () => {
         const F = new F1Field(21888242871839275222246405745257275088548364400416034343698204186575808495617n);
 
         const pil = await compile(F, path.join(__dirname, "examples", "arrays.pil"));

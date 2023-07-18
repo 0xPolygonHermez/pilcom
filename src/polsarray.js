@@ -195,7 +195,6 @@ class PolsArray {
         const buff = new Uint8Array((Math.min(totalSize, MaxBuffSize)));
 
 	    const promises = [];
-
         
         let p=0;
         let n;
@@ -224,26 +223,48 @@ class PolsArray {
         await fd.close();
     }
 
+    async writeBuffer(fd, values, pos, Fr) {
+        const n8r = this.F.n8;
+        const buff = new Uint8Array(values.length*n8r);
+
+        for(let k = 0; k < values.length; ++k) {
+            buff.set(Fr.e(values[k]), k*n8r);
+        }
+
+        await fd.write(buff, pos);
+    }
 
     async saveToFileFr(fileName, Fr) {
         if(Fr.p !== this.F.p) throw new Error("Curve Prime doesn't match");
-        const fd = await fastFile.createOverride(fileName);
+        const fd =await fastFile.createOverride(fileName);
 
         const n8r = this.F.n8;
-
+        
+        const promises = [];
+	    const MaxBuffSize = 1024*1024; 
         const totalSize = this.$$nPols*this.$$n*n8r;
-        const buff = new Uint8Array(totalSize);
-        let p=0;
+        let values = [];
+        const maxSize = Math.min(totalSize, MaxBuffSize);
+        let n=0;
         for (let i=0; i<this.$$n; i++) {
             for (let j=0; j<this.$$nPols; j++) {
-                if(p%1048576 == 0) console.log(`saving ${fileName}.. ${p/1024/1024} of ${totalSize/1024/1024}`);
-                const element = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
-                buff.set(Fr.e(element), p);
-                p += n8r;
+                if((values.length * n8r)%MaxBuffSize == 0) console.log(`saving ${fileName}.. ${n/1024/1024} of ${totalSize/1024/1024}`);
+                const v = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
+                values.push(v);
+
+                if(values.length === (maxSize / n8r)) {
+                    promises.push(this.writeBuffer(fd, values, n, Fr));
+                    n += maxSize;
+                    values = [];
+                }
             }
         }
 
-        await fd.write(buff);
+        if(values.length > 0) {
+            promises.push(this.writeBuffer(fd, values, n, Fr));
+        }
+
+        await Promise.all(promises);
 
         await fd.close();
     }
