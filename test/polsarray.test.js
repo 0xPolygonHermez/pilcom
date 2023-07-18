@@ -1,5 +1,5 @@
 const chai = require("chai");
-const { F1Field } = require("ffjavascript");
+const { F1Field, getCurveFromName } = require("ffjavascript");
 const fs = require("fs");
 const path = require("path");
 const assert = chai.assert;
@@ -9,6 +9,16 @@ const { compile, newConstantPolsArray, newCommitPolsArray } = require("..");
 
 describe("PolsArray", async function () {
     this.timeout(10000000);
+
+    let curve;
+
+    before(async () => {
+        curve = await getCurveFromName("bn128");
+    })
+
+    after(async () => {
+        await curve.terminate();
+    });
 
     it("It should create, save and recover pols Array with field goldilocks", async () => {
         const F = new F1Field(0xffffffff00000001n);
@@ -90,13 +100,13 @@ describe("PolsArray", async function () {
 
         fileNameConst = await tmp.tmpName();
         fileNameCm = await tmp.tmpName();
-        await constPols.saveToFile(fileNameConst);
-        await cmPols.saveToFile(fileNameCm);
+        await constPols.saveToFileFr(fileNameConst, curve.Fr);
+        await cmPols.saveToFileFr(fileNameCm, curve.Fr);
 
         const constPols2 = newConstantPolsArray(pil, F);
         const cmPols2 = newCommitPolsArray(pil, F);
-        await constPols2.loadFromFile(fileNameConst);
-        await cmPols2.loadFromFile(fileNameCm);
+        await constPols2.loadFromFileFr(fileNameConst, curve.Fr);
+        await cmPols2.loadFromFileFr(fileNameCm, curve.Fr);
 
         assert.equal(constPols.$$n, constPols2.$$n);
         assert.equal(constPols.$$nPols, constPols2.$$nPols);

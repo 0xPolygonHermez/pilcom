@@ -1,5 +1,6 @@
 const { F1Field, BigBuffer: BigBufferFr } = require("ffjavascript");
 const fs= require("fs");
+const fastFile = require("fastfile");
 const { BigBuffer } = require("./bigbuffer");
 const { getRoots } = require("./utils");
 
@@ -184,34 +185,26 @@ class PolsArray {
         return buff;
     }
 
-    async loadFromFileFr(fileName) {
+    async loadFromFileFr(fileName, Fr) {
 
-        const fd =await fs.promises.open(fileName, "r");
+        if(Fr.p !== this.F.p) throw new Error("Curve Prime doesn't match");
+        const fd = await fastFile.readExisting(fileName);
 
-        const MaxBuffSize = 1024*1024*256;  //  256Mb
         const totalSize = this.$$nPols*this.$$n*this.F.n8;
-        const buff = new Uint8Array((Math.min(totalSize, MaxBuffSize)));
+        const buff = new Uint8Array(totalSize);
+        
+        const f = await fd.read(totalSize);
+        buff.set(f, 0);
 
         let i=0;
         let j=0;
-        let p=0;
-        let n;
-        for (let k=0; k<totalSize; k+= n) {
-            console.log(`loading ${fileName}.. ${k/1024/1024/8} of ${totalSize/1024/1024/8}` );
-            n = Math.min(buff.length, totalSize-k);
-            const res = await fd.read({buffer: buff, offset: 0, position: p, length: n});
-            if (n != res.bytesRead) {
-                console.log(`n: ${n} bytesRead: ${res.bytesRead} div: ${res.bytesRead}`);
-                return;
-            }
-            n = res.bytesRead;
-            p += n;
-            for (let l=0; l<n; l+=this.F.n8) {
-                this.$$array[i++][j] = this.F.fromRprLE(buff, l);
-                if (i==this.$$nPols) {
-                    i=0;
-                    j++;
-                }
+
+        for (let p=0; p<totalSize; p+=this.F.n8) {
+            if(p%1048576 == 0) console.log(`loading ${fileName}.. ${p/1024/1024} of ${totalSize/1024/1024}`);
+            this.$$array[i++][j] = BigInt(Fr.toString(buff.slice(p, p+this.F.n8)));
+            if (i==this.$$nPols) {
+                i=0;
+                j++;
             }
         }
 
@@ -219,47 +212,47 @@ class PolsArray {
 
     }
 
-    async saveToFileFr(fileName) {
 
-        const fd =await fs.promises.open(fileName, "w+");
+    async saveToFileFr(fileName, Fr) {
+        if(Fr.p !== this.F.p) throw new Error("Curve Prime doesn't match");
+        const fd = await fastFile.createOverride(fileName);
 
-        const MaxBuffSize = 1024*1024*256;  //  256Mb
-        const totalSize = this.$$nPols*this.$$n*this.F.n8;
-        const buff = new Uint8Array(Math.min(totalSize, MaxBuffSize));
+        const n8r = this.F.n8;
+
+        const totalSize = this.$$nPols*this.$$n*n8r;
+        const buff = new Uint8Array(totalSize);
         let p=0;
         for (let i=0; i<this.$$n; i++) {
             for (let j=0; j<this.$$nPols; j++) {
+                if(p%1048576 == 0) console.log(`saving ${fileName}.. ${p/1024/1024} of ${totalSize/1024/1024}`);
                 const element = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
-                this.F.toRprLE(buff, p, element);
-                p += this.F.n8;
-
-                if(p == buff.length) {
-                    await fd.write(buff);
-                    p=0;
-                }
+                buff.set(Fr.e(element), p);
+                p += n8r;
             }
         }
 
-	    if (p) {
-            const buff8 = new Uint8Array(buff.buffer, 0, p);
-            await fd.write(buff8);
-        }
+        await fd.write(buff);
 
         await fd.close();
     }
 
-    writeToBigBufferFr(buff, Fr) {
+    async writeToBigBufferFr(buff, Fr) {
+        if(Fr.p !== this.F.p) throw new Error("Curve Prime doesn't match");
+
+        const n8r = this.F.n8;
+
         if (typeof buff == "undefined") {
-            buff = new BigBufferFr(this.$$n*this.$$nPols*this.F.n8); 
+            buff = new BigBufferFr(this.$$n*this.$$nPols*n8r); 
         }
         let p=0;
         for (let i=0; i<this.$$n; i++) {
             for (let j=0; j<this.$$nPols; j++) {
                 const value = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
                 buff.set(Fr.e(value), p);
-                p += this.F.n8;
+                p += n8r;
             }
         }
+
         return buff;
     }
 }
