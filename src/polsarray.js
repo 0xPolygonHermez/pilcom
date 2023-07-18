@@ -190,26 +190,38 @@ class PolsArray {
         if(Fr.p !== this.F.p) throw new Error("Curve Prime doesn't match");
         const fd = await fastFile.readExisting(fileName);
 
+        const MaxBuffSize = 1024*1024; 
         const totalSize = this.$$nPols*this.$$n*this.F.n8;
-        const buff = new Uint8Array(totalSize);
+        const buff = new Uint8Array((Math.min(totalSize, MaxBuffSize)));
+
+	    const promises = [];
+
         
-        const f = await fd.read(totalSize);
-        buff.set(f, 0);
+        let p=0;
+        let n;
+        for (let k=0; k<totalSize; k+= n) {
+            console.log(`loading ${fileName}.. ${k/1024/1024} of ${totalSize/1024/1024}` );
+            n = Math.min(buff.length, totalSize-k);
+            promises.push(fd.read(n, p));
+            p += n;
+        }
+
+        const res = await Promise.all(promises);
 
         let i=0;
         let j=0;
-
-        for (let p=0; p<totalSize; p+=this.F.n8) {
-            if(p%1048576 == 0) console.log(`loading ${fileName}.. ${p/1024/1024} of ${totalSize/1024/1024}`);
-            this.$$array[i++][j] = BigInt(Fr.toString(buff.slice(p, p+this.F.n8)));
-            if (i==this.$$nPols) {
-                i=0;
-                j++;
-            }
+        for (let l=0; l<res.length; l+=1) {
+            const buff = res[l];
+            for(let k = 0; k < buff.length; k += this.F.n8) {
+                this.$$array[i++][j] = BigInt(Fr.toString(buff.slice(k, k+this.F.n8)));
+                if (i==this.$$nPols) {
+                    i=0;
+                    j++;
+                }
+            }    
         }
 
         await fd.close();
-
     }
 
 
