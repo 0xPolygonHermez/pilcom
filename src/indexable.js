@@ -7,6 +7,7 @@ module.exports = class Indexable {
         this.type = type;
         this.rtype = rtype ?? type;
         this.labelRanges = new LabelRanges();
+        this.debug = false;
     }
 
     clear() {
@@ -24,6 +25,9 @@ module.exports = class Indexable {
         for (let index = 0; index < count; ++index) {
             const absoluteIndex = index + id;
             this.values[absoluteIndex] = this.getEmptyValue(absoluteIndex);
+            if (this.debug) {
+                console.log(`INIT ${this.constructor.name}.${this.type} @${absoluteIndex} (${id}+${index}) ${this.values[absoluteIndex]} LABEL:${label}`);
+            }
         }
         if (label) {
             this.labelRanges.define(label, id, multiarray);
@@ -32,7 +36,11 @@ module.exports = class Indexable {
     }
 
     get(id) {
-        return this.values[id] ?? this.undefined;
+        const res = this.values[id] ?? this.undefined;
+        if (this.debug) {
+            console.log(`GET ${this.constructor.name}.${this.type} @${id} ${res}`);
+        }
+        return res;
     }
 
     getLabel(id, options) {
@@ -40,7 +48,7 @@ module.exports = class Indexable {
     }
 
     getTypedValue(id) {
-        const res = { type: this.rtype, value: this.values[id] };
+        const res = { type: this.rtype, value: this.get(id) };
         return res;
     }
 
@@ -57,6 +65,9 @@ module.exports = class Indexable {
 
     set(id, value) {
         this.values[id] = value;
+        if (this.debug) {
+            console.log(`SET ${this.constructor.name}.${this.type} @${id} ${value}`);
+        }
     }
 
     unset(id) {

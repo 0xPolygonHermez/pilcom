@@ -3,6 +3,7 @@ module.exports = class Scope {
         this.Fr = Fr;
         this.deep = 0;
         this.shadows = [{}];
+        this.properties = [{}];
         this.labels = {};
         this.instanceType = 'air';
         this.stackInstanceTypes = [];
@@ -16,7 +17,7 @@ module.exports = class Scope {
     purgeLabels() {
         for (const label in this.labels) {
             if (this.labels[label] > this.deep) {
-                console.log(`PURGE SCOPE LABEL ${label}`);
+                // console.log(`PURGE SCOPE LABEL ${label}`);
                 delete this.labels[label];
             }
         }
@@ -24,28 +25,21 @@ module.exports = class Scope {
     setReferences(references) {
         this.references = references;
     }
-/*    get(name) {
-        if (this.references.isDefined(name)) {
-            return this.references.get(name).value;
+    addToScopeProperty(property, value) {
+        if (typeof this.properties[this.deep][property] === 'undefined') {
+            this.properties[this.deep][property] = [value];
+            return;
         }
-        return null;
+        this.properties[this.deep][property].push(value);
     }
-
-    isDefined(name) {
-        return this.references.isDefined(name);
+    setScopeProperty(property, value) {
+        this.properties[this.deep][property] = value;
     }
-
-    define(name, value) {
-        const previous = this.isDefined(name) ? this.references.get(name) : false;
-        if (previous !== false && previous.scope == this.deep) {
-            throw new Error(`${name} already defined on this scope ....`);
-        }
-        this.shadows[this.deep][name] = previous;
-        // shadowing
-        console.log(`DEFINE VAR ${name} ${value.value}`);
-        this.references.set(name, { type: 'var', value: value.value, scope: this.deep });
-    }*/
+    getScopeProperty(property, defaultValue = []) {
+        return this.properties[this.deep][property] ?? defaultValue;
+    }
     declare (name, type, ref, scope = false) {
+        // console.log(`[SCOPE] DECLARE ${name} scope:${scope} deep:${this.deep}`);
         if (scope === false) scope = this.deep;
         else if (typeof scope === 'string') {
             const lscope = this.labels[scope];
@@ -57,15 +51,6 @@ module.exports = class Scope {
         this.shadows[scope][name] = {type, ref};
         return scope;
     }
-/*    __set(name, value) {
-        if (!this.isDefined(name)) {
-            throw new Error(`${name} not defined on this scope ....`);
-        }
-        let ref = this.references.get(name);
-        ref.value = value;
-        console.log(`SET VAR ${name} ${value}`);
-        this.references.set(name, ref);
-    }*/
     pop (excludeTypes = []) {
         if (this.deep < 1) {
             throw new Error('Out of scope');
@@ -73,7 +58,9 @@ module.exports = class Scope {
         const shadows = this.shadows[this.deep];
         for (const name in shadows) {
             const exclude = excludeTypes.includes(shadows[name].type);
-            if (exclude) console.log(`Excluding from this scope (${name})....`);
+            // if (exclude) console.log(`Excluding from this scope (${name})....`);
+            // console.log(`POP ${name}`);
+            // console.log(shadows[name]);
             if (shadows[name].ref === false) {
                 if (!exclude) this.references.unset(name);
             } else {
@@ -82,10 +69,14 @@ module.exports = class Scope {
                 if (exclude) {
                     throw new Error(`Excluded type ${shadows[name].type} has shadow reference called ${name}`);
                 }
-                this.references.set(name, shadows[name].ref);
+                this.references.restore(name, shadows[name].ref);
             }
         }
         this.shadows[this.deep] = {};
+        for (const property in this.properties[this.deep]) {
+            this.references.unsetProperty(property, this.properties[this.deep][property]);
+        }
+        this.properties[this.deep] = {};
         --this.deep;
         this.purgeLabels();
         // console.log(`POP ${this.deep}`)
@@ -94,6 +85,7 @@ module.exports = class Scope {
         ++this.deep;
         // console.log(`PUSH ${this.deep}`)
         this.shadows[this.deep] = {};
+        this.properties[this.deep] = {};
         if (label !== false) {
             this.mark(label);
         }
@@ -102,10 +94,12 @@ module.exports = class Scope {
 
     pushInstanceType(type) {
         this.stackInstanceTypes.push(this.instanceType);
+        this.push(type);
         this.instanceType = type;
     }
     popInstanceType() {
         this.instanceType = this.stackInstanceTypes.pop();
+        this.pop();
         return this.instanceType;
     }
     *[Symbol.iterator]() {

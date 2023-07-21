@@ -9,7 +9,10 @@ module.exports = class AssertEq extends Function {
         }
         const arg0 = this.expressions.e2value(s.arguments[0]);
         const arg1 = this.expressions.e2value(s.arguments[1]);
-        return arg0 === arg1 ? 1n:0n;
+        if (arg0 !== arg1) {
+            throw new Error(`Assert fails (${arg0} === ${arg1}) on ${this.parent.sourceRef}`);
+        }
+        return 0n;
     }
     exec(s, mapInfo) {
         return mapInfo;

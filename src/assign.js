@@ -71,10 +71,8 @@ module.exports = class Assign {
         if (typeof v === 'number' || typeof v === 'bigint') {
             return this.references.set(name, indexes, v);
         }
-        console.log(v);
     }
     assignTypeExpr(name, indexes, value, type) {
-        console.log(value);
         const v = value instanceof Expression ? value.resolve() : value;
         return this.references.set(name, indexes, v);
     }

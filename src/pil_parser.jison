@@ -247,20 +247,25 @@ top_level_block
 
     ;
 
+use_directive
+    : USE name_reference
+        { $$ = { type: 'use', name: $2.name } }
+    ;
+
 no_closed_container_definition
     : CONTAINER name_reference
-        { $$ = { type: 'container', container: $2.name, alias: false, statements: false } }
+        { $$ = { type: 'container', name: $2.name, alias: false, statements: false } }
 
     | CONTAINER name_reference ALIAS IDENTIFIER
-        { $$ = { type: 'container', container: $2.name, alias: $4, statements: false } }
+        { $$ = { type: 'container', name: $2.name, alias: $4, statements: false } }
     ;
 
 closed_container_definition
     : CONTAINER name_reference '{' declare_block '}'
-        { $$ = { type: 'container', container: $2.name, alias: false, statements: $4.statements } }
+        { $$ = { type: 'container', name: $2.name, alias: false, statements: $4.statements } }
 
     | CONTAINER name_reference ALIAS IDENTIFIER '{' declare_block '}'
-        { $$ = { type: 'container', container: $2.name, alias: $4, statements: $6.statements } }
+        { $$ = { type: 'container', name: $2.name, alias: $4, statements: $6.statements } }
     ;
 
 proof_definition
@@ -328,6 +333,9 @@ statement_block
 
 declare_block
     : declare_list
+        { $$ = $1; }
+
+    | declare_list lcs
         { $$ = $1; }
 
     | %prec EMPTY
@@ -518,7 +526,10 @@ return_type
 
 declare_list
     : declare_list lcs declare_item
+        { $$ = $1; $$.statements.push($3); }
+
     | declare_item
+        { $$ = { statements: [$1] } }
     ;
 
 declare_item
@@ -585,7 +596,12 @@ statement_no_closed
         { $$ = $1 }
 
     | no_closed_container_definition
+        { $$ = $1 }
+
+    | use_directive
+        { $$ = $1 }
     ;
+
 
 data_value
     : expression

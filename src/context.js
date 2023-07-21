@@ -4,8 +4,9 @@ const Expressions = require("./expressions.js");
 const Router = require("./router.js");
 
 module.exports = class Context {
-    constructor (Fr) {
+    constructor (Fr, processor) {
         this.Fr = Fr;
+        this.processor = processor;
         this.namespace = '';
         this.subproof = false;
         this.stack = [];
@@ -38,7 +39,13 @@ module.exports = class Context {
             throw new Error('Invalid name used on getNames');
         }
 
-        let names = typeof name === 'string' ? [name]:name;
+        let names = name;
+        if (typeof name === 'string') {
+            if (name.includes('${')) {
+                name = this.processor.evaluateTemplate(name);
+            }
+            names = [name];
+        }
         if (!Array.isArray(names) || names.length !== 1) {
             return names;
         }

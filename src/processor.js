@@ -28,7 +28,7 @@ module.exports = class Processor {
         this.compiler = parent;
         this.trace = false;
         this.Fr = Fr;
-        this.context = new Context(this.Fr);
+        this.context = new Context(this.Fr, this);
         this.scope = new Scope(this.Fr);
         this.references = new References(Fr, this.context, this.scope);
         this.scope.mark('proof');
@@ -181,6 +181,7 @@ module.exports = class Processor {
 
         this.sourceRef = st.debug ?? '';
         this.context.sourceRef = this.sourceRef
+        // console.log(`SOURCE ${this.sourceRef}`);
 
         if (typeof st.type === 'undefined') {
             console.log(st);
@@ -271,14 +272,26 @@ module.exports = class Processor {
             if (res === false) break;
         }
     }
+    execUse(s) {
+        const name = this.expandTemplates(s.name);
+        this.references.addUse(name);
+    }
+    execContainer(s) {
+        const name = this.expandTemplates(s.name);
+        if (this.references.createContainer(name, s.alias)) {
+            const result = this.execute(s.statements, `SCOPE ${this.sourceRef}`);
+            this.references.closeContainer();
+        }
+    }
+    // TODO: remove - obsolete
     execScopeDefinition(s) {
         this.scope.push();
         const result = this.execute(s.statements, `SCOPE ${this.sourceRef}`);
         this.scope.pop();
         return result;
     }
+    // TODO: remove - obsolete
     execNamedScopeDefinition(s) {
-        console.log(s);
         this.scope.push();
         const result = this.execute(s.statements, `SCOPE ${this.sourceRef}`);
         this.scope.pop();
@@ -298,12 +311,6 @@ module.exports = class Processor {
             this.execute(s.increment);
         }
         this.scope.pop();
-/*
-        while (this.expressions.e2value(s.condition)) {
-            this.scope.push();
-            this.parent.parseStatments(s.statments);
-            this.scope.pop();
-        }*/
         return result;
     }
     execForIn(s) {
@@ -692,6 +699,13 @@ module.exports = class Processor {
             this.references.set(s.name, [], value);
         }
     }
+    expandTemplates(text) {
+        if (!text.includes('${')) {
+            return text;
+        }
+        return this.evaluateTemplate(text);
+    }
+
     evaluateTemplate(template) {
         const regex = /\${[^}]*}/gm;
         let m;

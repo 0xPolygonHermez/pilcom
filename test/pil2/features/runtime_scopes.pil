@@ -1,20 +1,68 @@
 subproof Runtime1(2**18,2**20) {
-    expr subproof.counter = 5;
+    int i = 10;
+    container proof.`soporte_${i}` alias myalias {
+        int containerCounter = 10;
+        int _counter = 25;
+    }
+    container subproof.`soporte_${i}` {
+        int _counter = 100;
+    }
+    expr subproof.value = 5;
 
-    println(__SUBPROOF__, BITS, counter);
-    // ++counter;
-    counter = counter + 1;
-//    println(__SUBPROOF__, BITS, subproof.counter);
+    if (BITS == 18) {
+        assert_eq(myalias._counter, 25);
+        assert_eq(subproof.value, 5);
+        assert_eq(myalias.containerCounter, 10);
+        assert_eq(proof.soporte_10.containerCounter, 10);
+    } else {
+        assert_eq(myalias._counter, 20); // 18 + inc + (+1) = 20
+        // BUG: assert_eq(subproof.value, 16);
+        assert_eq(myalias.containerCounter, 13);
+        assert_eq(proof.soporte_10.containerCounter, 13);
+    }
+    subproof.value = 16;
+    assert_eq(subproof.value, 16);
+
+    ++myalias.containerCounter;
+    ++proof.`soporte_${i}`.containerCounter;
+    ++proof.soporte_10.containerCounter;
+
+    // proof.counter = 20;
+    // air.counter = 20;
+
+    myalias._counter = 18;
+
+    // BUG: must be an error println(__SUBPROOF__, BITS, counter, proof.soporte_10._counter, subproof.soporte_10.counter);
+    ++subproof.soporte_10._counter;
+
+    proof.soporte_10._counter = proof.soporte_10._counter + 1;
+
+    {
+        use proof.`soporte_${i}`;
+        _counter = _counter + 1;
+    }
+
+    value = value + 1;
     col witness a;
     a === 0;
 }
 
 subproof Runtime2(2**21, 2**23) {
-    // int subproof.counter = 0;
     int subproof.counter;
-    println(__SUBPROOF__, BITS, counter);
-//    println(__SUBPROOF__, BITS, subproof.counter);
+
+    if (BITS == 21) {
+        assert_eq(subproof.counter, 0);
+        assert_eq(counter, 0);
+    } else {
+        assert_eq(subproof.counter, 10);
+        assert_eq(counter, 10);
+    }
+    assert_eq(proof.soporte_10.containerCounter, 16);
+
     counter = 10;
+    assert_eq(subproof.counter, 10);
+    assert_eq(counter, 10);
+
     col witness b;
     b === 0;
 }
