@@ -365,11 +365,9 @@ module.exports = class Expression {
         const top = dup.stack.length-1;
         dup.evaluateStackPosValue(top);
         dup.instanceValues();
-        console.log(`\x1B[30;94mResult: ${dup}\x1B[0m`);
         if (simplify) {
             dup.simplify();
         }
-        console.log(`\x1B[30;45mResult: ${dup}\x1B[0m`);
         return dup;
     }
     eval(deeply = false) {
@@ -435,18 +433,10 @@ module.exports = class Expression {
                 // assert(ope.__value instanceof Expression === false);
                 if (ope.type !== OP_RUNTIME) continue;
                 if (ope.__value instanceof Expression) {
-                    console.log(this.toString());
-                    console.log(ope.__value.toString());
-                    console.log(`\x1B[30;42m__value: ${ope.__value}\x1B[0m`);
-                    console.log(`\x1B[30;42mTo: ${this}\x1B[0m`);
                     ope.type = OP_STACK;
                     const exprToInsert = ope.__value.instance();
-                    console.log(`\x1B[30;42mexprToInsert: ${exprToInsert}\x1B[0m`);
                     if (ope.__next) exprToInsert.next(ope.__next);
-
                     ope.offset = this.insertStack(exprToInsert, pos);
-                    console.log(`\x1B[30;42mResult: ${this}\x1B[0m`);
-                    this.dump();
                     next = false;
                     break;
                 }
@@ -465,7 +455,6 @@ module.exports = class Expression {
             }
             if (next) ++pos;
         }
-        console.log(`\x1B[30;43mRESULT: ${this}\x1B[0m`);
     }
     simplify() {
         let loop = 0;
@@ -474,10 +463,7 @@ module.exports = class Expression {
             for (const st of this.stack) {
                 updated = this.simplifyOperation(st) || updated;
             }
-            console.log(`\x1B[30;43mSIMPLY-1: ${this}\x1B[0m`);
             this.compactStack();
-            console.log(`\x1B[30;43mSIMPLY-2: ${this}\x1B[0m`);
-            this.dump();
             if (!updated) break;
         }
     }
@@ -578,9 +564,7 @@ module.exports = class Expression {
 
     // this method compact stack positions with one element where operation
     // was false, replace reference of this stack operation by directly value
-    // BUG DETECTED
     compactStack() {
-        this.dump();
         let translate = [];
         let stackPos = 0;
         let stackLen = this.stack.length;
@@ -588,36 +572,41 @@ module.exports = class Expression {
             const st = this.stack[istack];
             if (st.op === false) {
                 const ope = st.operands[0];
+                // two situations, for alone stack reference, use its reference and it must
+                // be purged
                 translate[istack] = ope.type === OP_STACK ? [true, translate[istack - ope.offset][1]] : [true, istack];
                 continue;
             }
 
             translate[istack] = [false, stackPos++];
 
+            // foreach operand if it's a stack reference, must be replaced by
+            // new reference or by copy of reference if it was alone (no operation)
             for (let iope = 0; iope < st.operands.length; ++iope) {
                 if (st.operands[iope].type !== OP_STACK) continue;
                 const absolutePos = istack - st.operands[iope].offset;
-                const [replace, newAbsolutePos] = translate[absolutePos];
+                const [purge, newAbsolutePos] = translate[absolutePos];
                 assert(absolutePos < istack);
-                console.log(newAbsolutePos);
-                if (replace && this.stack[newAbsolutePos].op === false) {
+                if (purge && this.stack[newAbsolutePos].op === false) {
+                    // if purge and referenced position was alone, it is copied (duplicated)
                     this.stack[istack].operands[iope] = cloneDeep(this.stack[newAbsolutePos].operands[0]);
                 } else {
                     // stackPos - 1 is new really istack after clear simplified stack positions
+                    // calculate relative position (offset)
                     const newOffset = (stackPos - 1) - newAbsolutePos;
-                    console.log([newOffset, istack,stackPos, newAbsolutePos]);
                     assert(newOffset > 0);
                     this.stack[istack].operands[iope].offset = newOffset;
                 }
             }
         }
-        for (let istack = 0; istack < stackLen; ++istack) {
-            console.log(`#${istack} => ${translate[istack]}`);
-        }
+        // DEBUG: translate.forEach((value, index) => console.log(`#${index} => ${value}`));
+
+        // move stackpositions to definitive positions, from end to begin to avoid
+        // overwriting, updating last position used to remove rest of stack positions
         let lastPosUsed = false;
         for (let istack = 0; istack < stackLen; ++istack) {
-            const [replace, absoluteNewPos] = translate[istack];
-            if (replace) continue;
+            const [purge, absoluteNewPos] = translate[istack];
+            if (purge) continue;
 
             this.stack[absoluteNewPos] = this.stack[istack];
             lastPosUsed = absoluteNewPos;
@@ -625,6 +614,8 @@ module.exports = class Expression {
         if (lastPosUsed !== false) {
             this.stack.splice(lastPosUsed + 1);
         }
+
+        // return if expression was updated
         return stackLen > this.stack.length;
     }
     evaluateOperands(deeply = false) {

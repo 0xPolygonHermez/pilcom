@@ -77,10 +77,7 @@ module.exports = class Assign {
             this.references.set(name, indexes, value);
             return;
         }
-        value.dump();
-        console.log(value.toString());
         value = value.instance(true);
-        value.dump();
         console.log(value.toString());
         this.references.set(name, indexes, value);
         return
