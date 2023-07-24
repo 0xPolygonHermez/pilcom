@@ -1,6 +1,7 @@
 const util = require('util');
 const LabelRanges = require('./label_ranges.js');
 const Expression = require('./expression.js');
+const NonRuntimeEvaluable = require('./non_runtime_evaluable.js');
 module.exports = class Expressions {
 
     constructor (Fr, parent, references, publics, constants) {
@@ -195,7 +196,9 @@ module.exports = class Expressions {
                 if (ref.value instanceof Expression) {
                     res = ref.value.eval();
                     if (res instanceof Expression) {
-                        res = res.instance();
+                        res = res.instance(true);
+                    } else if (res instanceof NonRuntimeEvaluable) {
+                        res = ref.value.instance(true);
                     }
                 } else {
                     res = ref;

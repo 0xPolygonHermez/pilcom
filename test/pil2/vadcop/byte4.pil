@@ -17,8 +17,7 @@ subproof Byte4(2**16) {
 
     expr byteFromBits;
     for (int i = 0; i < 8; ++i) {
-        expr tmp = bits[i] * 2**i;
-        byteFromBits = byteFromBits + tmp;
+        byteFromBits = byteFromBits + bits[i] * 2**i;
         bits[i] * (1 - bits[i]) === 0;
     }
     byteFromBits === byteIn;

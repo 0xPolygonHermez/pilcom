@@ -220,7 +220,6 @@ module.exports = class References {
         }
 
         if (initValue !== null) {
-            debugger;
             this.set(nameInfo.name, [], initValue);
         }
         return id;

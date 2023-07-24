@@ -73,7 +73,16 @@ module.exports = class Assign {
         }
     }
     assignTypeExpr(name, indexes, value, type) {
-        const v = value instanceof Expression ? value.resolve() : value;
-        return this.references.set(name, indexes, v);
+        if (!(value instanceof Expression)) {
+            this.references.set(name, indexes, value);
+            return;
+        }
+        value.dump();
+        console.log(value.toString());
+        value = value.instance(true);
+        value.dump();
+        console.log(value.toString());
+        this.references.set(name, indexes, value);
+        return
     }
 }
