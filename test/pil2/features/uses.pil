@@ -1,0 +1,113 @@
+subproof Uses(2**23) {
+
+    container subproof.usesA {
+        int value = 10;
+        int valueA = 11;
+        int valueAB = 12;
+        int valueAC = 13;
+    }
+    container subproof.usesB {
+        int value = 20;
+        int valueB = 21;
+        int valueAB = 22;
+        int valueBC = 23;
+    }
+    container subproof.usesC {
+        int value = 30;
+        int valueC = 31;
+        int valueAB = 32;
+        int valueBC = 33;
+    }
+
+    {
+        use subproof.usesA;
+
+        assert_eq(value, 10);
+        assert_eq(valueA, 11);
+        assert_eq(valueAB, 12);
+        assert_eq(valueAC, 13);
+
+        use subproof.usesB;
+
+        assert_eq(value, 20);
+        assert_eq(valueA, 11);
+        assert_eq(valueAB, 22);
+        assert_eq(valueAC, 13);
+        assert_eq(valueB, 21);
+        assert_eq(valueBC, 23);
+
+        use subproof.usesC;
+
+        assert_eq(value, 30);
+        assert_eq(valueA, 11);
+        assert_eq(valueAB, 32);
+        assert_eq(valueAC, 13);
+        assert_eq(valueB, 21);
+        assert_eq(valueBC, 33);
+        assert_eq(valueC, 31);
+
+        use subproof.usesB;
+
+        assert_eq(value, 20);
+        assert_eq(valueA, 11);
+        assert_eq(valueAB, 22);
+        assert_eq(valueAC, 13);
+        assert_eq(valueB, 21);
+        assert_eq(valueBC, 23);
+    }
+    {
+        use subproof.usesA;
+        use subproof.usesB;
+        use subproof.usesC;
+
+        assert_eq(value, 30);
+        assert_eq(valueA, 11);
+        assert_eq(valueAB, 32);
+        assert_eq(valueAC, 13);
+        assert_eq(valueB, 21);
+        assert_eq(valueBC, 33);
+        assert_eq(valueC, 31);
+
+        {
+            use subproof.usesB;
+
+            assert_eq(value, 20);
+            assert_eq(valueA, 11);
+            assert_eq(valueAB, 22);
+            assert_eq(valueAC, 13);
+            assert_eq(valueB, 21);
+            assert_eq(valueBC, 23);
+            assert_eq(valueC, 31);
+
+            {
+                use subproof.usesA;
+                assert_eq(value, 10);
+                assert_eq(valueA, 11);
+                assert_eq(valueAB, 12);
+                assert_eq(valueAC, 13);
+                assert_eq(valueB, 21);
+                assert_eq(valueBC, 23);
+                assert_eq(valueC, 31);
+            }
+
+            assert_eq(value, 20);
+            assert_eq(valueA, 11);
+            assert_eq(valueAB, 22);
+            assert_eq(valueAC, 13);
+            assert_eq(valueB, 21);
+            assert_eq(valueBC, 23);
+            assert_eq(valueC, 31);
+
+        }
+
+        assert_eq(value, 30);
+        assert_eq(valueA, 11);
+        assert_eq(valueAB, 32);
+        assert_eq(valueAC, 13);
+        assert_eq(valueB, 21);
+        assert_eq(valueBC, 33);
+        assert_eq(valueC, 31);
+
+        println(defined(value));
+    }
+}

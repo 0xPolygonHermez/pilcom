@@ -341,6 +341,7 @@ module.exports = class Expression {
                 }
                 console.log(value);
                 console.log(se.operands[index]);
+//                value.dump();
                 throw new Error('Invalid value');
             }
         }
@@ -418,13 +419,19 @@ module.exports = class Expression {
             if (e.type === 'witness' && e.type === 'fixed') return false;
         }
     }
+    // this method instance the expression references to include them inside
+    // TODO: view how these affects to optimization.
     instanceExpressions() {
         let pos = 0;
         while (pos < this.stack.length) {
             let next = true;
             for (let ope of this.stack[pos].operands) {
-                assert(ope.__value instanceof Expression === false);
+                // assert(ope.__value instanceof Expression === false);
                 if (ope.type !== OP_RUNTIME || typeof ope.__value !== 'undefined') continue;
+                if (ope.__value instanceof Expression) {
+                    delete ope.__value;
+                }
+
                 // TODO: twice evaluations, be carefull double increment evaluations,etc..
                 const res = this.evaluateRuntime(ope);
                 if (res instanceof Expression) {
@@ -832,7 +839,7 @@ module.exports = class Expression {
     resolve() {
         const res = this.eval();
         if (res instanceof Expression) {
-            return res.instance();
+            return res.instance(true);
         }
         return res;
     }

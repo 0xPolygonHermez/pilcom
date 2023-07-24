@@ -33,7 +33,7 @@ function multiset(int provides, int id, expr sel, expr cols[]) {
         multiset_gprod_requires = multiset_gprod_requires * cols_selected;
     }
 
-    on final multiset_air_constraints();
+    on final air multiset_air_constraints();
     on final subproof multiset_subproof_constraints();
     on final proof multiset_proof_constraints();
 }
@@ -41,7 +41,7 @@ function multiset(int provides, int id, expr sel, expr cols[]) {
 // aggregate tables
 // public table aggregate(prod, aggregate_function, MEMORY) pt_memory[3][10];
 
-function aggregate_function ( public table tb, int id ) : expr {
+function aggregate_function ( publictable tb, int id ) : expr {
     // verify if correct id and cols
     check_multiset_id_and_cols(id, length(cols), provides);
 

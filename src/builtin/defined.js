@@ -12,6 +12,7 @@ module.exports = class Defined extends Function {
         const arg0 = s.arguments[0];
         if (arg0 && arg0.isReference()) {
             const ref = arg0.getReference();
+            // console.log(ref);
             return this.references.isDefined(ref.name, ref.__indexes) ? 1n : 0n;
         }
         return 0n;

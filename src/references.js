@@ -226,6 +226,9 @@ module.exports = class References {
         return id;
     }
     isDefined(name, indexes = []) {
+        let def = this.getDefinition(name, false);
+        let found = Boolean(def);
+        /*
         const names = this.context.getNames(name);
         let found = false;
         let def;
@@ -236,10 +239,13 @@ module.exports = class References {
                 break;
             }
         }
+
+        console.log(def);
+        console.log(this.visibilityScope);
         if (def.scopeId && def.type !== 'constant' && def.scopeId < this.visibilityScope) {
             return false;
         }
-
+*/
         if (found !== false) {
             if (Array.isArray(indexes) && indexes.length > 0) {
                 return def.array ? def.array.isValidIndexes(indexes) : false;
@@ -333,6 +339,9 @@ module.exports = class References {
         const container = subnames.length > 1 ? subnames.slice(0, -1).join('.') : false;
         const lname = subnames[subnames.length - 1];
 
+        if (name === 'air.gw1') {
+            console.log({subnames, container, lname});
+        }
         let def = false;
 
         if (this.currentContainer !== false && !container) {
@@ -341,32 +350,46 @@ module.exports = class References {
         if (!def && container) {
             if (['proof', 'subproof', 'air'].includes(container)) {
                 const scopeId = this.scope.getScopeId(container);
+                if (name === 'air.gw1') {
+                    console.log(scopeId);
+                }
                 if (scopeId === false) {
                     throw new Error(`not found scope ${container}`);
                 }
                 def = this.definitions[lname];
+                if (name === 'air.gw1') {
+                    console.log(def);
+                }
                 if (def && def.scopeId !== scopeId) {
                     throw new Error(`Not match declaration scope and accessing scope (${container}) of ${name}`);
                 }
             }
-            if (this.containers[container]) {
+            if (!def && this.containers[container]) {
                 def = this.containers[container].definitions[lname];
             }
         }
         if (!def) {
             def = this.definitions[name];
         }
-        const uses = this.scope.getScopeProperty('uses') ?? [];
-        let iuse = uses.length;
+        let iuse = this.uses.length;
         while (!def && iuse > 0) {
             --iuse;
-            def = this.containers[uses[iuse]].definitions[name];
+            def = this.containers[this.uses[iuse]].definitions[name];
+        }
+        if (name === 'air.gw1') {
+            console.log(def);
         }
         return def;
     }
-    getDefinition(name) {
+    isVisible(def) {
+        return !def.scopeId || def.type === 'constant' || def.scopeId >= this.visibilityScope; // || def.scopeId <= this.scope.getScopeId('air');
+    }
+    getDefinition(name, defaultValue) {
         // debugger;
         const nameInfo = this.decodeName(Array.isArray(name) ? name[0]:name);
+        if (name === 'air.gw1') {
+            console.log(nameInfo);
+        }
         let names;
         if (nameInfo.scope !== false) {
             names = [Array.isArray(name) ? name[0]:name];
@@ -383,17 +406,29 @@ module.exports = class References {
         // console.log(`getDefinition(${name}) on ${this.context.sourceRef} = [${names.join(', ')}]`);
         let def;
 
+        if (name === 'air.gw1') {
+            console.log(names);
+        }
         for (const name of names) {
+
             def = this.searchDefinition(name);
             if (typeof def !== 'undefined') break;
         }
         if (typeof def === 'undefined') {
+            if (typeof defaultValue !== 'undefined') return defaultValue;
             throw new Error(`Reference ${names.join(',')} not found`);
         }
 
+        if (name === 'air.gw1') {
+            console.log(def.scopeId, this.scope.getScopeId('air'));
+        }
         // constants are visible inside functions
-        if (def.scopeId && def.type !== 'constant' && def.scopeId < this.visibilityScope) {
+        if (this.isVisible(def) === false) {
+            if (typeof defaultValue !== 'undefined') return defaultValue;
             throw new Error(`Reference ${names.join(',')} not visible from current scope`);
+        }
+        if (name === 'air.gw1') {
+            console.log(def);
         }
         return def;
     }

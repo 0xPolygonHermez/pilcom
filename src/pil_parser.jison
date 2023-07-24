@@ -1112,6 +1112,12 @@ col_declaration_ident
 
     | TEMPLATE_STRING
         { $$ = { name: $1, template: true } }
+
+    | AIR '.' IDENTIFIER
+        { $$ = { name: 'air.'+$3 } }
+
+    | AIR '.' TEMPLATE_STRING
+        { $$ = { name: 'air.'+$3, template: true } }
     ;
 
 col_declaration_list

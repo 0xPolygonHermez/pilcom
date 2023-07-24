@@ -1,19 +1,20 @@
 function init_challenges(int extra) {
-    once {
-        global challenge std_alpha stage(2);
-        global challenge std_beta stage(2);
-        global challenge std_gamma stage(3);
+    once proof {
+        challenge stage(2) std_alpha;
+        challenge stage(2) std_beta;
+        challenge stage(3) std_gamma;
     }
     if (extra) {
-        once global challenge std_delta stage(3);
+        once proof challenge stage(3) std_delta;
     }
 }
 
 function init_coset_constants(int len) {
-    global std_ks[len];
+    const int std_ks[len];
+    // int std_ks[len];
 
     for (int i = 0; i < len; ++i) {
-        std_ks[i] = global constant k[i];
+        // std_ks[i] = constant k[i];
     }
 }
 
@@ -48,7 +49,7 @@ function multiset_check(expr selF, expr colsF[], expr selT, expr colsT[]) {
     expr colsF_selected = selF * (colsF_compressed - std_beta) + std_beta;
     expr colsT_selected = selT * (colsT_compressed - std_beta) + std_beta;
 
-    col witness gsum stage(3);
+    col witness stage(3) gsum;
 
     //                                   1                              1
     //  gsum' === gsum +  ---------------------------- - ----------------------------
@@ -66,7 +67,7 @@ function multiset_check(expr selF, expr colsF[], expr selT, expr colsT[]) {
  * @param colsT columns to be included in multiset B
  * @return Constraints to be satisfied by A and B to ensure the lookup check
  */
-function lookup_check(col selF, expr colsF[], col selT, expr colsT[]) {
+function lookup_check(expr selF, expr colsF[], expr selT, expr colsT[]) {
     init_challenges(1);
     if (length(colsF) != length(colsT)) {
         error(`colsF and colsT must be same dimensions`);
@@ -94,9 +95,9 @@ function lookup_check(col selF, expr colsF[], col selT, expr colsT[]) {
     // m_i = ----------------------------------------------
     //       |j ∈ [N]: colsT_selected_j = colsT_selected_i|
     @lookup_check {m: m, colsT: colsT_selected, colsF: colsF_selected, gsum: gsum };
-    col witness m stage(2);
+    col witness stage(2) m;
 
-    col witness gsum stage(3);
+    col witness stage(3) gsum;
 
     //                                   m                              1
     //  gsum' === gsum +  ---------------------------- - ----------------------------
@@ -107,14 +108,14 @@ function lookup_check(col selF, expr colsF[], col selT, expr colsT[]) {
 }
 
 /**
- * Given multisets A1,...,An and B1,...,Bn, check whether A1,...,An does not vary 
+ * Given multisets A1,...,An and B1,...,Bn, check whether A1,...,An does not vary
  * after applying the permutation B1,...,Bn to itself.
  * @param cols columns subject to the permutation
  * @param Sperms columns defining the permutation
  * @return Constraints to be satisfied by A and B to ensure the connection check
  */
 function connection_check(expr cols[], expr Sperms[]) {
-    constant len = length(cols);
+    const int len  = length(cols);
 
     init_challenges(1);
     init_coset_constants(len);
@@ -124,9 +125,9 @@ function connection_check(expr cols[], expr Sperms[]) {
     }
 
     col fixed L1 = [1,0...];
-    col fixed IDEN = [1,omega,..*..,omega**(N-1)];
+    col fixed IDEN = [1,omega..*..omega**(N-1)];
 
-    col witness gsum stage(3);
+    col witness stage(3) gsum;
 
     // Define SIDs[i] = k_i·X polynomials
     expr SIDs[len];
@@ -136,7 +137,7 @@ function connection_check(expr cols[], expr Sperms[]) {
 
     //                                               1                                                               1
     //  gsum' === gsum +  ----------------------------------------------------------- - -----------------------------------------------------------
-    //                    (f_0 + gamma·X + delta) · ... · (f_N + gamma·k_2·X + delta)   (f_0 + gamma·S_0 + delta) · ... · (f_N + gamma·S_n + delta)                 
+    //                    (f_0 + gamma·X + delta) · ... · (f_N + gamma·k_2·X + delta)   (f_0 + gamma·S_0 + delta) · ... · (f_N + gamma·S_n + delta)
 
     expr first_summand = 1;
     expr second_summand = 1;
