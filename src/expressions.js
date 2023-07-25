@@ -172,6 +172,8 @@ module.exports = class Expressions {
                 break;
             case 'witness':
             case 'public':
+            case 'proofvalue':
+            case 'subproofvalue':
                 res = ref;
                 break;
             case 'im':
@@ -308,6 +310,7 @@ module.exports = class Expressions {
         }
         console.log(e);
         console.log(etype);
+        console.log(e.toString());
         this.error(s, (title ? ' ':'') + `is not constant expression (${etype}) (2)`);
     }
     getValue(e, s, title = '') {

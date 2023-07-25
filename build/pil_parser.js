@@ -121,7 +121,7 @@ break;
 case 24: case 40:
  this.$ = $$[$0-1]; 
 break;
-case 26: case 120: case 151: case 315:
+case 26: case 120: case 141: case 151: case 315:
  this.$ = $$[$0-1] 
 break;
 case 28:
@@ -333,9 +333,6 @@ case 138:
 break;
 case 139:
  this.$ = { type: 'break' } 
-break;
-case 141:
- this.$ = { ...$$[$0-2], ...$$[$0] } 
 break;
 case 142:
  this.$ = { type: 'for', init: $$[$0-6], condition: $$[$0-4], increment: $$[$0-2].statements, statements: $$[$0] } 

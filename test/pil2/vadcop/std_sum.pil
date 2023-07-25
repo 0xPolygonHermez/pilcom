@@ -1,7 +1,8 @@
 private function init_challenges() {
     if (!defined(std_alpha)) {
         challenge stage(2) std_alpha;
-    } else if (!defined(std_beta)) {
+    }
+    if (!defined(std_beta)) {
         challenge stage(2) std_beta;
     }
 }
@@ -35,7 +36,9 @@ private function check_id_and_cols(int opid, int cols_count, int provide) {
     }
 
     container proof.std.piop alias piop {
-        int opids[];
+        // FIX: dynamic arrays not ready
+        int opids_count = 0;
+        int opids[100];
         expr gsum = 0;
     }
 
@@ -44,23 +47,27 @@ private function check_id_and_cols(int opid, int cols_count, int provide) {
     }
 
     container air.std.piop {
-        expr gsum_require_mul_count[];
-        expr gsum_require[];
-        expr gsum_provide_mul_count[];
-        expr gsum_provide[];
+        // FIX: dynamic arrays not ready
+        int gsum_require_count = 0;
+        expr gsum_require_mul_count[100];
+        expr gsum_require[100];
+        int gsum_provide_count = 0;
+        expr gsum_provide_mul_count[100];
+        expr gsum_provide[100];
     }
 
     container proof.std.piop.`id${opid}` alias piopid {
         int cols;
-        int provide;
-        int require;
+        int provide = 0;
+        int require = 0;
     }
 
     if (piopid.cols == 0) {
         // first time called
         piopid.cols = cols_count;
         // add opid on a list to verify at final
-        piop.opids[] = opid;
+        piop.opids[piop.opids_count] = opid;
+        ++piop.opids_count;
     } else if (piopid.cols != cols_count) {
         error(`The number of columns of PIOP #${opid} must be ${piopid.cols}`);
     }
@@ -108,12 +115,13 @@ function piop_update(int provide, int opid, expr mul_count, expr cols[]) {
     use air.std.piop;
     if (provide) {
         // adding all sums of provide called in this air
-        gsum_provide_mul_count[] = mul_count;
-        gsum_provide[] = cols_compressed;
+        gsum_provide_mul_count[gsum_provide_count] = mul_count;
+        gsum_provide[gsum_provide_count] = cols_compressed;
+        ++gsum_provide_count;
     } else {
         // adding all sums of require called in this air
-        gsum_require_mul_count[] = mul_count;
-        gsum_require[] = cols_compressed;
+        gsum_require_mul_count[gsum_require_count] = mul_count;
+        gsum_require[gsum_require_count] = cols_compressed;
     }
 
     // 0] look for repeated provide/require's and, if so, optimize
@@ -133,26 +141,30 @@ function piop_update(int provide, int opid, expr mul_count, expr cols[]) {
 private function PIOP_batch() {
     use air.std.piop;
 
-    int len = length(gsum_provide);
+    // int len = length(gsum_provide);
+    int len = gsum_provide_count;
 
     for (int i = 0; i < len; ++i) {
-        for (int j = 0; j < len; ++i) {
-            if (gsum_provide[i] = gsum_provide[j]) {
+        for (int j = 0; j < len; ++j) {
+            // if (gsum_provide[i] == gsum_provide[j]) {
+            if (i == j) {
                 gsum_provide_mul_count[i] = gsum_provide_mul_count[i] + gsum_provide_mul_count[j];
                 gsum_provide_mul_count[j] = gsum_provide_mul_count[len-1];
-                gsum_provide_mul_count.pop(); // QUESTION: Is array pop implemented?
+                // gsum_provide_mul_count.pop(); // QUESTION: Is array pop implemented?
             }
         }
     }
 
-    len = length(gsum_require);
+    // len = length(gsum_require);
+    len = gsum_require_count;
 
     for (int i = 0; i < len; ++i) {
-        for (int j = 0; j < len; ++i) {
-            if (gsum_require[i] = gsum_require[j]) {
+        for (int j = 0; j < len; ++j) {
+            if (i == j) {
+            // if (gsum_require[i] == gsum_require[j]) {
                 gsum_require_mul_count[i] = gsum_require_mul_count[i] + gsum_require_mul_count[j];
                 gsum_require_mul_count[j] = gsum_require_mul_count[len-1];
-                gsum_require_mul_count.pop();
+                // gsum_require_mul_count.pop();
             }
         }
     }
@@ -163,19 +175,21 @@ private function PIOP_air() {
 
     col witness stage(3) gsum;
 
-    //                                mt1       mt2       mt3       mf1       mf2       mf3            
+    //                                mt1       mt2       mt3       mf1       mf2       mf3
     //  gsum === 'gsum * (1 - L1) + ------- + ------- + ------- - ------- - ------- - -------
-    //                                t1        t2        t3        f1        f2        f3     
+    //                                t1        t2        t3        f1        f2        f3
 
     col fixed L1 = [1,0...];
 
     expr LHS = 1;
     expr RHS1 = 0;
-    for (int i = 0; i < length(gsum_provide); ++i) {
+    // for (int i = 0; i < length(gsum_provide); ++i) {
+    for (int i = 0; i < gsum_provide_count; ++i) {
         LHS = LHS * gsum_provide[i];
 
         RHS1 = RHS1 + gsum_provide_mul_count[i];
-        for (int j = 0; j < length(gsum_provide); ++j) {
+        // for (int j = 0; j < length(gsum_provide); ++j) {
+        for (int j = 0; j < gsum_provide_count; ++j) {
             if (j == i) continue;
             RHS1 = RHS1 * gsum_provide[j];
         }
@@ -183,12 +197,14 @@ private function PIOP_air() {
 
     expr RHS2a = LHS;
     expr RHS2b = 0;
-    for (int i = 0; i < length(gsum_require); ++i) {
+    // for (int i = 0; i < length(gsum_require); ++i) {
+    for (int i = 0; i < gsum_require_count; ++i) {
         LHS = LHS * gsum_require[i];
         RHS1 = RHS1 * gsum_require[i];
 
         RHS2b = RHS2b + gsum_require_mul_count[i];
-        for (int j = 0; j < length(gsum_require); ++j) {
+        // for (int j = 0; j < length(gsum_require); ++j) {
+        for (int j = 0; j < gsum_require_count; ++j) {
             if (j == i) continue;
             RHS2b = RHS2b * gsum_require[j];
         }

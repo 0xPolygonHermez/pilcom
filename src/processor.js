@@ -32,6 +32,7 @@ module.exports = class Processor {
         this.scope = new Scope(this.Fr);
         this.references = new References(Fr, this.context, this.scope);
         this.scope.mark('proof');
+        this.delayedCalls = {};
 
         this.airId = 0;
         this.subproofId = 0;
@@ -67,8 +68,11 @@ module.exports = class Processor {
         this.challenges = new Ids('challenge');
         this.references.register('challenge', this.challenges);
 
-        this.prover = new Ids('prover');
-        this.references.register('prover', this.prover);
+        this.proofvalues = new Ids('proofvalue');
+        this.references.register('proofvalue', this.proofvalues);
+
+        this.subproofvalues = new Ids('subproofvalue');
+        this.references.register('subproofvalue', this.subproofvalues);
 
 //        this.imCols = new Indexable(Fr, 'im');
 //        this.references.register('im', this.imCols);
@@ -375,6 +379,8 @@ module.exports = class Processor {
     }
     execForInExpression(s) {
         // s.list.expr.dump();
+        console.log(s);
+        console.log(s.list);
         let it = new Iterator(s.list);
         this.scope.push();
         this.execute(s.init,`FOR-IN-EXPRESSION ${this.sourceRef} INIT`);
@@ -515,21 +521,34 @@ module.exports = class Processor {
             this.context.push(false, subproof);
             this.scope.push('air');
             this.execute(s.statements, `SUBPROOF ${subproof}`);
+            this.finalAirScope();
             this.scope.pop(['witness', 'fixed', 'im']);
             this.context.pop();
-            this.clearAirScope();
             ++this.airId;
         }
+        this.finalSubproofScope();
         this.scope.pop();
-        this.clearSubproofScope();
         ++this.subproofId;
     }
-    clearAirScope() {
+    finalAirScope() {
+        this.callDelayedFunctions('air', 'final');
         this.references.clearType('fixed');
         this.references.clearType('witness');
     }
-    clearSubproofScope() {
-
+    finalSubproofScope() {
+        this.callDelayedFunctions('subproof', 'final');
+    }
+    finalProofScope() {
+        this.callDelayedFunctions('proof', 'final');
+    }
+    callDelayedFunctions(scope, event) {
+        if (typeof this.delayedCalls[scope] === 'undefined' || typeof this.delayedCalls[scope][event] === 'undefined') {
+            return false;
+        }
+        for (const fname in this.delayedCalls[scope][event]) {
+            console.log(['callDelayedFunctions', fname]);
+            this.execCall({ op: 'call', function: {name: fname}, arguments: [] });
+        }
     }
     execWitnessColDeclaration(s) {
         this.colDeclaration(s, 'witness');
@@ -571,16 +590,49 @@ module.exports = class Processor {
         }
     }
     execPublicDeclaration(s) {
-        this.colDeclaration(s, 'public', true);
+        this.colDeclaration(s, 'public', true, false);
+        // TODO: initialization
+        // TODO: verification defined
+    }
+    execProofValueDeclaration(s) {
+        this.colDeclaration(s, 'proofvalue', true, false);
+        // TODO: initialization
+        // TODO: verification defined
+    }
+    execSubproofValueDeclaration(s) {
+        this.colDeclaration(s, 'subproofvalue', true, false);
         // TODO: initialization
         // TODO: verification defined
     }
     execChallengeDeclaration(s) {
-        this.colDeclaration(s, 'challenge', true);
+        this.colDeclaration(s, 'challenge', true, false);
         // TODO: initialization
         // TODO: verification defined
     }
-
+    execDelayedFunctionCall(s) {
+        const scope = s.scope;
+        const fname = s.function.name;
+        const event = s.event;
+        if (s.arguments.length > 0) {
+            throw new Error('delayed function call arguments are not yet supported');
+        }
+        if (event !== 'final') {
+            throw new Error(`delayed function call event ${event} no supported`);
+        }
+        if (['proof', 'subproof', 'air'].includes(scope) === false) {
+            throw new Error(`delayed function call scope ${scope} no supported`);
+        }
+        if (typeof this.delayedCalls[scope] === 'undefined') {
+            this.delayedCalls[scope] = {};
+        }
+        if (typeof this.delayedCalls[scope][event] === 'undefined') {
+            this.delayedCalls[scope][event] = {};
+        }
+        if (typeof this.delayedCalls[scope][event][fname] === 'undefined') {
+            this.delayedCalls[scope][event][fname] = {sourceRefs: []};
+        }
+        this.delayedCalls[scope][event][fname].sourceRefs.push(this.context.sourceRef);
+    }
     execExpr(s) {
         this.expressions.eval(s.expr);
     }
@@ -599,7 +651,7 @@ module.exports = class Processor {
     decodeLengths(s) {
         return this.decodeIndexes(s.lengths);
     }
-    colDeclaration(s, type, ignoreInit) {
+    colDeclaration(s, type, ignoreInit, fullName = true) {
         const global = s.global ?? false;
         for (const col of s.items) {
             const lengths = this.decodeLengths(col);
@@ -607,7 +659,8 @@ module.exports = class Processor {
             if (init && init && typeof init.instance === 'function') {
                 init = init.instance();
             }
-            this.declareFullReference(col.name, type, lengths, {global}, ignoreInit ? null : init);
+            if (fullName) this.declareFullReference(col.name, type, lengths, {global}, ignoreInit ? null : init);
+            else this.declareReference(col.name, type, lengths, {global}, ignoreInit ? null : init);
             /// TODO: INIT / SEQUENCE
         }
     }

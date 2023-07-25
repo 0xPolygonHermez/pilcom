@@ -1,8 +1,8 @@
 include "byte4.pil";
 
-subproof Arith(2**16) {
+constant ARITH_ID = 2;
 
-    constant ARITH_ID = 2;
+subproof Arith(2**16) {
 
     col witness a[2], b[2], c[2], d[2];
     col witness carry[2];
@@ -21,7 +21,7 @@ subproof Arith(2**16) {
 
     expr byte4col = 0;
     int index = 0;
-    for (col &r in [...a,...b,...c,...d,...carry]) {
+    for (col witness &r in [...a,...b,...c,...d,...carry]) {
         (r'-r) * (1-CLK) === 0;
         // 0
         // 0 + CLK0 * a[0]

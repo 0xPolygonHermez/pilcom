@@ -1,5 +1,5 @@
 
-include "../../../lib/std_sum.pil"
+include "std_sum.pil"
 include "arith.pil"
 
 subproof aggregate Main (2**21, 2**23, 2**25) {

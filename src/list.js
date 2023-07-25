@@ -42,7 +42,7 @@ module.exports = class List {
         console.log("=================  appendValues ==================");
         let values = [];
         console.log(e);
-        const element = this._resolve(e);
+        const element = this._resolve(e.value);
         if (!element.dim && element.dim < 1) {
             throw new Error(`Could not extend and append a non array element`)
         }

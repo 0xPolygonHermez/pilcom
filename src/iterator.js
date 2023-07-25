@@ -6,6 +6,7 @@ module.exports = class Iterator {
         this.setExpression(expr);
     }
     setExpression(expr) {
+        console.log(expr);
         if (expr instanceof Expression === false || expr.isReference() === false) {
             throw new Error(`Invalid iterator`);
         }

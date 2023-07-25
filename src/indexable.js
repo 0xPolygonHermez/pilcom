@@ -12,7 +12,7 @@ module.exports = class Indexable {
 
     clear() {
         this.values = [];
-        this.lableRanges = new LabelRanges();
+        this.labelRanges = new LabelRanges();
     }
     getType(id) {
         return this.rtype;
@@ -37,6 +37,10 @@ module.exports = class Indexable {
 
     get(id) {
         const res = this.values[id] ?? this.undefined;
+        /* if (typeof res === 'number') {
+            console.log([id, this.type, res]);
+            throw new Error('Invalid value');
+        }*/
         if (this.debug) {
             console.log(`GET ${this.constructor.name}.${this.type} @${id} ${res}`);
         }
@@ -64,6 +68,10 @@ module.exports = class Indexable {
     }
 
     set(id, value) {
+        if (typeof value === 'number') {
+            console.log([id, this.type, value]);
+            throw new Error('Invalid value');
+        }
         this.values[id] = value;
         if (this.debug) {
             console.log(`SET ${this.constructor.name}.${this.type} @${id} ${value}`);

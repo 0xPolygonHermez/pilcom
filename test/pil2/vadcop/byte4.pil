@@ -1,6 +1,6 @@
-subproof Byte4(2**16) {
+constant BYTE4_ID = 1;
 
-    constant BYTE4_ID = 1;
+subproof Byte4(2**16) {
 
     /////// Constant Polynomials
     col fixed CLK = [0:3,1]...;
@@ -15,7 +15,7 @@ subproof Byte4(2**16) {
     result * (1 - result) === 0;
     result * (1 - CLK) === 0;
 
-    expr byteFromBits;
+    expr byteFromBits = 0;
     for (int i = 0; i < 8; ++i) {
         byteFromBits = byteFromBits + bits[i] * 2**i;
         bits[i] * (1 - bits[i]) === 0;

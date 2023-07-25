@@ -690,7 +690,7 @@ in_expression
         { $$ = $1 }
 
     | '[' expression_list ']'
-        { $$ = { ...$1, ...$3 } }
+        { $$ = $2 }
     ;
 
 codeblock_closed
