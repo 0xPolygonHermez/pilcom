@@ -235,7 +235,7 @@ class PolsArray {
 	    const MaxBuffSize = 1024*1024; 
         const totalSize = this.$$nPols*this.$$n*n8r;
         const maxSize = Math.min(totalSize, MaxBuffSize);
-        const nPromises = Math.ceil(totalSize / maxSize);
+        const nPromises = totalSize === 0 ? 0 : Math.ceil(totalSize / maxSize);
         const promises = new Array(nPromises);
         let values = new Array(nPromises);
         let pr = 0;
