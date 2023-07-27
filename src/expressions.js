@@ -72,7 +72,7 @@ module.exports = class Expressions {
             const [a,b,reduced] = this.evaluateValues(e, operation.args, fr);
             if (reduced) {
                 if (typeof a.value !== 'bigint' || typeof b.value !== 'bigint') {
-                    throw new Error(`ERROR evaluatin operation: ${a.value}[${typeof a.value}] ${operation} on ${b.value}[${typeof b.value}]`);
+                    throw new Error(`ERROR evaluating operation: ${a.value}[${typeof a.value}] ${operation} on ${b.value}[${typeof b.value}]`);
                 }
                 return { op: 'number',
                          value: fr ? operation.handleFr(fr, a.value, b.value) : operation.handle(a.value, b.value) };
@@ -89,7 +89,7 @@ module.exports = class Expressions {
     checkExpression(e) {
         if (typeof e === 'undefined' || e.expr || !(e instanceof Expression)) {
             console.log(e)
-            throw new Error(`Invalid eval argument, must be an Expression`);
+            throw new Error(`Invalid eval argument, it must be an Expression`);
         }
         return e;
     }
