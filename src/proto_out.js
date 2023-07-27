@@ -135,7 +135,7 @@ module.exports = class ProtoOut {
         fs.writeFileSync(filename, this.data);
     }
     setAir(name, rows) {
-        this.currentAir = {name, numRows: Number(rows)};
+        this.currentAir = this.suba
         this.currentSubproof.airs.push(this.currentAir);
     }
     setSubproof(name, aggregable = false) {
