@@ -135,7 +135,7 @@ module.exports = class ProtoOut {
         fs.writeFileSync(filename, this.data);
     }
     setAir(name, rows) {
-        this.currentAir = this.suba
+        this.currentAir = {name, numRows: Number(rows)};
         this.currentSubproof.airs.push(this.currentAir);
     }
     setSubproof(name, aggregable = false) {
@@ -194,11 +194,9 @@ module.exports = class ProtoOut {
         this.pilOut.numPublicValues = publics.length;
     }
     setFixedCols(fixedCols) {
-        console.log(fixedCols.constructor.name);
         this.setConstantCols(fixedCols, this.currentAir.numRows, false);
     }
     setPeriodicCols(periodicCols) {
-        console.log(periodicCols.constructor.name);
         this.setConstantCols(periodicCols, this.currentAir.numRows, true);
     }
     setConstantCols(cols, rows, periodic) {
@@ -251,7 +249,6 @@ module.exports = class ProtoOut {
                 this.witnessId2ProtoId[witnessId] = [stageId, index++];
             }
         }
-        console.log(this.witnessId2ProtoId);
     }
     setExpressions(packedExpressions) {
         const expressions = this.setupAirProperty('expressions');
