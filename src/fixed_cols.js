@@ -1,6 +1,6 @@
 const LabelRanges = require("./label_ranges.js");
 const Indexable = require("./indexable.js");
-const FixedCol = require("./fixed_col.js");
+const FixedCol = require("./pil_items/fixed_col.js");
 module.exports = class FixedCols extends Indexable {
 
     constructor (Fr) {
@@ -19,7 +19,7 @@ module.exports = class FixedCols extends Indexable {
         return this.labelRanges.getLabel(id, options);
     }
 
-    getTypedValue(id, offset) {
+    getTypedValue(id, offset = 0) {
         const res = { type: this.type, value: this.values[id + offset] };
         return res;
     }

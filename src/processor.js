@@ -7,7 +7,10 @@ const References = require("./references.js");
 const Indexable = require("./indexable.js");
 const Ids = require("./ids.js");
 const Constraints = require("./constraints.js");
+const Subproof = require("./subproof.js");
 const Subproofs = require("./subproofs.js");
+const Air = require("./air.js");
+const Airs = require("./airs.js");
 const Variables = require("./variables.js");
 const Sequence = require("./sequence.js");
 const List = require("./list.js");
@@ -26,7 +29,7 @@ const { log2, getKs, getRoots } = require("./utils.js");
 module.exports = class Processor {
     constructor (Fr, parent, references, expressions) {
         this.compiler = parent;
-        this.trace = false;
+        this.trace = true;
         this.Fr = Fr;
         this.context = new Context(this.Fr, this);
         this.scope = new Scope(this.Fr);
@@ -90,7 +93,7 @@ module.exports = class Processor {
         this.constraints = new Constraints(Fr, this.expressions);
         this.globalConstraints = new Constraints(Fr, this.globalExpressions);
 
-        this.assign = new Assign(Fr, this, this.references, this.expressions);
+        this.assign = new Assign(Fr, this, this.context, this.references, this.expressions);
 
         this.executeCounter = 0;
         this.executeStatementCounter = 0;
@@ -131,6 +134,7 @@ module.exports = class Processor {
         this.references.declare('BITS', 'int', [], { global: true, sourceRef: this.sourceRef });
         this.references.declare('__SUBPROOF__', 'string', [], { global: true, sourceRef: this.sourceRef });
         this.execute(statements);
+        this.generateOut();
     }
     generateOut()
     {
@@ -142,13 +146,23 @@ module.exports = class Processor {
 
         let proto = new ProtoOut(this.Fr);
         proto.setupPilOut('myFirstPil', this.publics);
-        proto.setProof('myFirstProof', this.rows);
-        proto.setFixedCols(this.fixeds);
-        proto.setPeriodicCols(this.fixeds);
-        proto.setConstraints(this.constraints, packed);
-        proto.setWitnessCols(this.witness);
-        proto.setExpressions(packed);
-        proto.setReferences(this.references);
+        for (const subproofName of this.subproofs) {
+            const subproof = this.subproofs.get(subproofName);
+            proto.setSubproof(subproofName);
+            for (const airName of subproof.airs) {
+                const air = subproof.airs.get(airName);
+                console.log(airName);
+                console.log(air);
+                const bits = log2(Number(air.rows));
+                console.log(airName);
+                proto.setAir(airName, air.rows);
+                proto.setFixedCols(air.fixeds);
+                proto.setConstraints(this.constraints, packed);
+                proto.setWitnessCols(air.witness);
+                proto.setExpressions(packed);
+                proto.setSymbols(this.references);
+            }
+        }
         proto.encode();
         proto.saveToFile('tmp/pilout.ptb');
         // stageWidths
@@ -489,8 +503,8 @@ module.exports = class Processor {
         }
     }
     execSubproofDefinition(s) {
-        const subproof = s.name ?? false;
-        if (subproof === false) {
+        const subproofName = s.name ?? false;
+        if (subproofName === false) {
             this.error(s, `subproof not defined correctly`);
         }
 
@@ -500,30 +514,40 @@ module.exports = class Processor {
 
 
 
-        let subProofRows = this.evalExpressionList(s.rows);
-        this.checkRows(subProofRows);
+        let subproofRows = this.evalExpressionList(s.rows);
+        this.checkRows(subproofRows);
 
-        // TO-DO: eval expressions;
-        const subproofInfo = {
-            sourceRef: this.sourceRef,
-            rows: subProofRows
-        };
-        this.subproofs.define(subproof, subproofInfo, `subproof ${subproof} has been defined previously on ${subproofInfo.sourceRef}`);
+        // TODO: Fr inside context
+        const subproof = new Subproof(this.Fr, this.context);
+        this.subproofs.define(subproofName, subproof, `subproof ${subproofName} has been defined previously on ${this.context.sourceRef}`);
         this.scope.push('subproof');
-        for (const airRows of subProofRows) {
+        for (const airRows of subproofRows) {
             this.rows = airRows;
 
-            // TO-DO loop with different rows
-            this.references.set('N', [], this.rows);
-            this.references.set('BITS', [], BigInt(this.log2(this.rows)));
-            this.references.set('__SUBPROOF__', [], s.name);
+            console.log(`BEGIN AIR ${subproofName} (${airRows}) #${this.airId}`);
+            const air = new Air(this.Fr, this.context, airRows);
 
-            this.context.push(false, subproof);
+            const airName = subproofName + (subproofRows.length > 1 ? `_${bits}`:'');
+            subproof.airs.define(airName, air);
+
+            // TO-DO loop with different rows
+            console.log([air.bits, air.rows]);
+
+            // create built-in constants
+            this.references.set('N', [], BigInt(air.rows));
+            this.references.set('BITS', [], BigInt(air.bits));
+            this.references.set('__SUBPROOF__', [], subproofName);
+
+            this.context.push(false, subproofName);
             this.scope.push('air');
-            this.execute(s.statements, `SUBPROOF ${subproof}`);
+            this.execute(s.statements, `SUBPROOF ${subproofName}`);
             this.finalAirScope();
+            air.witness = this.witness.dup();
+            air.fixeds = this.fixeds.dup();
+            this.clearAirScope();
             this.scope.pop(['witness', 'fixed', 'im']);
             this.context.pop();
+            console.log(`END AIR ${subproofName} (${airRows}) #${this.airId}`);
             ++this.airId;
         }
         this.finalSubproofScope();
@@ -532,6 +556,8 @@ module.exports = class Processor {
     }
     finalAirScope() {
         this.callDelayedFunctions('air', 'final');
+    }
+    clearAirScope() {
         this.references.clearType('fixed');
         this.references.clearType('witness');
     }

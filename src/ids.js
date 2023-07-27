@@ -8,6 +8,7 @@ module.exports = class Ids {
     }
 
     reserve(count = 1, label, multiarray) {
+        // console.log(`RESERVE ${this.type} ${this.lastId}-${this.lastId+count-1} LABEL:${label}`);
         const id = this.lastId;
         this.lastId += count;
         if (label) {

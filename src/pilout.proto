@@ -161,7 +161,7 @@ message Constraint {
     message EveryFrame {
         Operand.Expression expressionIdx = 1;
         uint32 offsetMin = 2;               // offsetMin = 0 means that current row is at index 0
-        uint32 offsetMax = 3;               // frame size is defined as offsetMin + offsetMax
+        uint32 offsetMax = 3;               // frame size is defined as offsetMax - offsetMin + 1
         optional string debugLine = 4;
     }
 
@@ -290,7 +290,7 @@ enum HintFieldType {
 }
 
 message HintField {
-    HintFieldType hintFieldType = 1;
+    HintFieldType hintFieldType = 1; // ???
     optional string name = 2;
     oneof value {
         string stringValue = 3;

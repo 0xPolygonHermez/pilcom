@@ -10,6 +10,7 @@ module.exports = class Println extends Function {
                 texts.push(arg);
                 continue;
             }
+
             const value = this.expressions.e2value(arg);
             texts.push(value);
         }

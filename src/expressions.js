@@ -1,6 +1,7 @@
 const util = require('util');
 const LabelRanges = require('./label_ranges.js');
 const Expression = require('./expression.js');
+const WitnessCol = require('./pil_items/witness_col.js');
 const NonRuntimeEvaluable = require('./non_runtime_evaluable.js');
 module.exports = class Expressions {
 
@@ -26,7 +27,8 @@ module.exports = class Expressions {
         }
         return id;
     }
-    getTypedValue(id, type) {
+    getTypedValue(id, offset, type) {
+        assert(offset === 0);
         const res = { type, value: this.expressions[id], id };
         return res;
     }
@@ -158,8 +160,7 @@ module.exports = class Expressions {
                 // TODO
                 if (typeof res.row === 'undefined') {
                     console.log(res);
-                    // res = {type: 'fixed', value: res.value.getId()};
-                    res = {type: 'fixed', value: res.id};
+                    res = {refType: 'fixed', id: res.id};
                 } else {
                     // e.parent.fixedRowAccess = true;
                     res = res.value.getValue(res.row);
@@ -171,10 +172,16 @@ module.exports = class Expressions {
                 console.log(res);
                 break;
             case 'witness':
+                if (res.value instanceof WitnessCol) {
+                    res = {refType: ref.type, id: res.value.id };
+                }
+                console.log(res);
+                break;
             case 'public':
             case 'proofvalue':
             case 'subproofvalue':
-                res = ref;
+                console.log(ref);
+                res = {refType: ref.type, id: res.id };
                 break;
             case 'im':
                 // TODO: review next, prior
@@ -267,7 +274,7 @@ module.exports = class Expressions {
         let res = this.references.getTypedValue(names, operand.__indexes, options);
         if (typeof operand.__next !== 'undefined') {
             res.__next = res.next = operand.__next;
-        } else if (operand.next || operand.prior) {
+        } else if (typeof operand.next !== 'number' && (operand.next || operand.prior)) {
             console.log(operand);
             throw new Error(`INTERNAL: next and prior must be previouly evaluated`);
         }

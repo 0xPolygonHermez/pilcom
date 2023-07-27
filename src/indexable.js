@@ -10,6 +10,11 @@ module.exports = class Indexable {
         this.debug = false;
     }
 
+    dup() {
+        let dup = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
+        dup.values = [...this.values];
+        return dup;
+    }
     clear() {
         this.values = [];
         this.labelRanges = new LabelRanges();

@@ -2,8 +2,8 @@ const Definitions = require("./definitions.js");
 
 module.exports = class Subproofs extends Definitions {
 
-    constructor (Fr) {
-        super(Fr);
+    constructor (Fr, context) {
+        super(Fr)
+        this.context = context;
     }
-
 }

@@ -43,7 +43,7 @@ private function check_id_and_cols(int opid, int cols_count, int provide) {
     }
 
     container subproof.std.piop {
-        subproofval aggregate(sum) gsum_result;
+        subproofval aggregate(sum) gsum_result = 0;
     }
 
     container air.std.piop {
@@ -190,8 +190,10 @@ private function PIOP_air() {
         RHS1 = RHS1 + gsum_provide_mul_count[i];
         // for (int j = 0; j < length(gsum_provide); ++j) {
         for (int j = 0; j < gsum_provide_count; ++j) {
-            if (j == i) continue;
-            RHS1 = RHS1 * gsum_provide[j];
+            // if (j == i) continue;
+            if (j != i) {
+                RHS1 = RHS1 * gsum_provide[j];
+            }
         }
     }
 

@@ -1,6 +1,6 @@
 const LabelRanges = require("./label_ranges.js");
 const Indexable = require("./indexable.js");
-const WitnessCol = require("./witness_col.js");
+const WitnessCol = require("./pil_items/witness_col.js");
 module.exports = class WitnessCols extends Indexable {
 
     constructor (Fr) {

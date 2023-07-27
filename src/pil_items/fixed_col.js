@@ -1,8 +1,9 @@
-const LabelRanges = require("./label_ranges.js");
-const Sequence = require("./sequence.js");
-module.exports = class FixedCol {
+const LabelRanges = require("../label_ranges.js");
+const Sequence = require("../sequence.js");
+const PilItem = require("../pil_item.js");
+module.exports = class FixedCol extends PilItem {
     constructor (id) {
-        this.id = id;
+        super(id);
         this.rows = 0;
         this.sequence = null;
         this.values = [];

@@ -3,8 +3,9 @@ const Expressions = require("./expressions.js");
 const Expression = require("./expression.js");
 
 module.exports = class Assign {
-    constructor (Fr, parent, references, expressions) {
+    constructor (Fr, parent, context, references, expressions) {
         this.Fr = Fr;
+        this.context = context;
         this.references = references;
         this.expressions = expressions;
         this.parent = parent;
@@ -78,7 +79,10 @@ module.exports = class Assign {
             return;
         }
         value = value.instance(true);
-        console.log(value.toString());
+        if (this.context.sourceRef === 'std_sum.pil:195') {
+            console.log('XXX');
+        }
+        console.log(`ASSIGN ${this.context.sourceRef} ${value}`);
         this.references.set(name, indexes, value);
         return
     }

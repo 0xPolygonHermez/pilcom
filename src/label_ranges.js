@@ -6,12 +6,13 @@ module.exports = class LabelRanges {
         this.ranges = [];
     }
     define(label, from, multiarray) {
+        // console.log(`LABEL.define ${label}`);
         this.ranges.push({label, from, multiarray, to: from + (multiarray ? multiarray.getSize() - 1 : 0)});
     }
     getLabel(id, options) {
         const range = this.ranges.find(e => id >= e.from && id <= e.to);
         if (!range) {
-            return `@${id}`;
+            return `@[${id}]`;
         }
         let res = range.label;
         options = options ?? {};

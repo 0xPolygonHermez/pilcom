@@ -262,7 +262,7 @@ module.exports = class References {
         // TODO: inside function ??
         // TODO: col reference
         // return ['im', 'witness', 'fixed', 'public', 'prover', 'challenge'].includes(type) === false;
-        return ['public', 'prover', 'challenge','subproof'].includes(type) === false;
+        return ['public', 'proofvalue', 'challenge', 'subproofvalue'].includes(type) === false;
     }
 
     get (name, indexes = []) {
@@ -294,7 +294,7 @@ module.exports = class References {
             tvalue = {type: info.type ?? def.type, id: info.locator + info.offset };
         } else {
             // no array could be resolved
-            tvalue = instance.getTypedValue(info.locator + info.offset, info.type);
+            tvalue = instance.getTypedValue(info.locator + info.offset, 0, info.type);
         }
         if (typeof info.row !== 'undefined') {
             tvalue.row = info.row;
@@ -318,10 +318,13 @@ module.exports = class References {
             tvalue.array = info.array;
         }
         if (options.preDelta) {
+            console.log(typeof tvalue.value);
+            assert(typeof tvalue.value === 'number' || typeof tvalue.value === 'bigint');
             tvalue.value += options.preDelta;
             instance.set(info.locator + info.offset, tvalue.value);
         }
         if (options.postDelta) {
+            assert(typeof tvalue.value === 'number' || typeof tvalue.value === 'bigint');
             instance.set(info.locator + info.offset, tvalue.value + options.postDelta);
         }
         return tvalue;

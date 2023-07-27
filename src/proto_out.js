@@ -40,7 +40,7 @@ module.exports = class ProtoOut {
         this.root = protobuf.loadSync(__dirname + '/pilout.proto');
         this.constants = false;
         this.debug = false;
-        this.references = true;
+        this.symbols = true;
         this.varbytes = true;
         this.airs = [];
         this.currentAir = null;
@@ -115,16 +115,17 @@ module.exports = class ProtoOut {
         this.pilOut = {
             name,
             baseField: this.toBaseField(this.Fr.p),
-            airs: [],
+            subproofs: [],
             numChallenges: [],
             numProverValues: 0,
             numPublicValues: 0,
             expressions: [],
             constraints: [],
-            references: []
+            symbols: []
         }
     }
     encode() {
+        console.log(this.pilOut);
         let message = this.PilOut.fromObject(this.pilOut);
         this.data = this.PilOut.encode(message).finish();
         console.log(this.data);
@@ -135,35 +136,20 @@ module.exports = class ProtoOut {
     }
     setAir(name, rows) {
         this.currentAir = {name, numRows: Number(rows)};
-        this.pilOut.airs.push(this.currentAir);
+        this.currentSubproof.airs.push(this.currentAir);
     }
-    generateReferences(references, totalAirs) {
-        if (this.references === false) {
-            return [];
-        }
-        let items = [];
-        const fruits = ['Lemon', 'Orange', 'Grapefruit', 'Watermelon', 'Mango', 'Cherry', 'Banana', 'DragonFruit'];
-        const desserts = ['Chocolate', 'Vanilla', 'Cake', 'Fruit', 'Tiramisu'];
-        for (let air = 0; air < totalAirs; ++airs) {
-            const airname = fruits[air % fruits.length]+(13*air);
-            for (let index = 0; index < references; ++index) {
-                const namespace = desserts[index % desserts.length]+(17*index);
-                const dim = this.random(0, 5) % 4; // 0,4 => 0  1,5 => 1  2 => 2 3 => 3
-                let lengths = Array(dim).map((x) => this.random(4, 32));
-                let payload = { name: `${airname}::${namespace}.colname-${index}`, airId: air, type: index % 8, id: index, dim, lengths, debugLine: this.randomDebugLine()};
-                items.push(payload);
-            }
-        }
-        return items;
+    setSubproof(name, aggregable = false) {
+        this.currentSubproof = {name, aggregable, airs: []};
+        this.pilOut.subproofs.push(this.currentSubproof);
     }
-    setReferences(references) {
-        for(const [name, ref] of references.keyValuesOfTypes(['witness', 'fixed', 'public'])) {
+    setSymbols(symbols) {
+        for(const [name, ref] of symbols.keyValuesOfTypes(['witness', 'fixed', 'public', 'subproofvalue', 'proofvalue'])) {
             console.log(ref);
             const arrayInfo = ref.array ? ref.array : {dim: 0, lengths: []};
-            const [protoType, id, stage] = this.referenceType2Proto(ref.type, ref.locator);
+            const [protoType, id, stage] = this.symbolType2Proto(ref.type, ref.locator);
             let payout = {
                 name,
-                airId: this.pilOut.airs.length - 1,
+                airId: 0,
                 type: 0,
                 id,
                 stage,
@@ -171,11 +157,11 @@ module.exports = class ProtoOut {
                 lengths: arrayInfo.lengths,
                 debugLine: ''
             };
-            this.pilOut.references.push(payout);
+            this.pilOut.symbols.push(payout);
         }
     }
 
-    referenceType2Proto(type, id) {
+    symbolType2Proto(type, id) {
         switch(type) {
             case 'im':
                 return [REF_TYPE_IM_COL, id, 0];
@@ -201,25 +187,29 @@ module.exports = class ProtoOut {
                 return [REF_TYPE_CHALLENGE, id, 0];
 
         }
-        throw new Error(`Invalid reference type ${type}`);
+        throw new Error(`Invalid symbol type ${type}`);
     }
 
     setPublics(publics) {
         this.pilOut.numPublicValues = publics.length;
     }
     setFixedCols(fixedCols) {
-        this.setCols(fixedCols, this.currentAir.numRows, false);
+        console.log(fixedCols.constructor.name);
+        this.setConstantCols(fixedCols, this.currentAir.numRows, false);
     }
     setPeriodicCols(periodicCols) {
-        this.setCols(periodicCols, this.currentAir.numRows, true);
+        console.log(periodicCols.constructor.name);
+        this.setConstantCols(periodicCols, this.currentAir.numRows, true);
     }
-    setCols(cols, rows, periodic) {
+    setConstantCols(cols, rows, periodic) {
         const property = periodic ? 'periodicCols':'fixedCols';
         const airCols = this.setupAirProperty(property);
 
         const colType = periodic ? 'P':'F';
         for (const col of cols) {
-            if (col.isPeriodic() !== periodic) continue;
+            console.log([col, col.isPeriodic()]);
+            const colIsPeriodic = col.isPeriodic() && col.rows < rows;
+            if (colIsPeriodic !== periodic) continue;
             const _rows = periodic ? col.rows : rows;
             console.log(['rows', col.rows]);
             this.fixedId2ProtoId[col.id] = [colType, airCols.length];
@@ -236,7 +226,9 @@ module.exports = class ProtoOut {
         // sort by stage
         this.witnessId2ProtoId = [];
         let stages = [];
+        console.log(cols);
         for (const col of cols) {
+            console.log(['WITNESS', col]);
             if (col.stage < 1) {
                 throw new Error(`Invalid stage ${col.stage}`);
             }
@@ -255,6 +247,7 @@ module.exports = class ProtoOut {
             // colIdx must be relative stage
             let index = 0;
             for (const witnessId of stage) {
+                console.log(['witnessId2ProtoId', witnessId, stageId]);
                 this.witnessId2ProtoId[witnessId] = [stageId, index++];
             }
         }
