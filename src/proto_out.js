@@ -119,8 +119,10 @@ module.exports = class ProtoOut {
             numChallenges: [],
             numProverValues: 0,
             numPublicValues: 0,
+            publicTables: [],
             expressions: [],
             constraints: [],
+            hints: [],
             symbols: []
         }
     }
@@ -128,8 +130,7 @@ module.exports = class ProtoOut {
         console.log(this.pilOut);
         let message = this.PilOut.fromObject(this.pilOut);
         this.data = this.PilOut.encode(message).finish();
-        console.log(this.data);
-        return this.data;
+        // return this.data;
     }
     saveToFile(filename) {
         fs.writeFileSync(filename, this.data);
@@ -307,7 +308,7 @@ module.exports = class ProtoOut {
     }
     setupAirProperty(propname, init = []) {
         if (this.currentAir === null) {
-            throw new Error('Not defined a current air');
+            throw new Error('Current air not defined');
         }
         if (typeof this.currentAir[propname] !== 'undefined') {
             throw new Error(`Property ${propname} already defined on current air`);
@@ -339,7 +340,7 @@ module.exports = class ProtoOut {
                     break;
 
                 default:
-                    throw new Error(`Invalid contraint boundery '${constraint.boundery}'`);
+                    throw new Error(`Invalid constraint boundery '${constraint.boundery}'`);
 
             }
             airConstraints.push(payload);

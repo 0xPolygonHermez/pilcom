@@ -143,10 +143,10 @@ module.exports = class Processor {
         // this.fixeds.dump();
 
         let proto = new ProtoOut(this.Fr);
-        proto.setupPilOut('myFirstPil', this.publics);
+        proto.setupPilOut('myFirstPil');
         for (const subproofName of this.subproofs) {
             const subproof = this.subproofs.get(subproofName);
-            proto.setSubproof(subproofName);
+            proto.setSubproof(subproofName); // Add the aggregability property to subproofs
             for (const airName of subproof.airs) {
                 const air = subproof.airs.get(airName);
                 console.log(airName);

@@ -1,6 +1,6 @@
 const Function = require("../function.js");
 
-module.exports = class Println extends Function {
+module.exports = class IsArray extends Function {
     constructor (parent) {
         super(parent, {funcname: 'is_array'});
     }
