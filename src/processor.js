@@ -138,11 +138,9 @@ module.exports = class Processor {
     }
     generateOut()
     {
-        let packed = new PackedExpressions();
-        this.expressions.pack(packed);
         //packed.dump();
-        this.constraints.dump(packed);
-        this.fixeds.dump();
+        // this.constraints.dump(packed);
+        // this.fixeds.dump();
 
         let proto = new ProtoOut(this.Fr);
         proto.setupPilOut('myFirstPil', this.publics);
@@ -157,6 +155,10 @@ module.exports = class Processor {
                 console.log(airName);
                 proto.setAir(airName, air.rows);
                 proto.setFixedCols(air.fixeds);
+
+                // expression: constraint, hint, operand (expression)
+                let packed = new PackedExpressions();
+                this.expressions.pack(packed);
                 proto.setConstraints(this.constraints, packed);
                 proto.setWitnessCols(air.witness);
                 proto.setExpressions(packed);

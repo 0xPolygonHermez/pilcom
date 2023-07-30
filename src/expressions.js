@@ -354,4 +354,10 @@ module.exports = class Expressions {
     instance(e) {
         return e.instance();
     }
+
+    *[Symbol.iterator]() {
+        for (let index = 0; index < this.expressions.length; ++index) {
+          yield this.expressions[index] ?? false;
+        }
+    }
 }

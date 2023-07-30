@@ -947,6 +947,7 @@ module.exports = class Expression {
                 break;
 
             case OP_ID_REF:
+                console.log(['PACK_OP_ID_REF',ope.refType, ope.id, ope.next]);
                 this.referencePack(container, ope.refType, ope.id, ope.next, options);
                 break;
 
