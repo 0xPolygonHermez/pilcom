@@ -325,6 +325,7 @@ module.exports = class Expression {
                         ope.type = OP_ID_REF;
                         ope.refType = res.refType;
                         ope.id = res.id;
+                        if (res.next) ope.next = res.next;
                         assert(typeof ope.id === 'number');
                     }
                     delete ope.op;
@@ -573,6 +574,8 @@ module.exports = class Expression {
 
         // [op,v1,v2] ==> [v1 op v2]
         if (firstValue !== false && secondValue !== false) {
+            assert(!firstValue || (!firstValue.next && !firstValue.__next));
+            assert(!secondValue || (!secondValue.next && !secondValue.__next));
             const res = this.calculate(st);
             if (res === null) return false;
             st.operands = [{type: OP_VALUE, value: res}];
@@ -585,6 +588,7 @@ module.exports = class Expression {
 
         // [neg,value] ==> [false,-value]
         if (st.op === 'neg' && firstValue !== false) {
+            assert(!firstValue.next && !firstValue.__next);
             st.op = false;
             st.operands[0].value = -st.operands[0].value;
             return true;

@@ -174,6 +174,7 @@ module.exports = class Expressions {
             case 'witness':
                 if (res.value instanceof WitnessCol) {
                     res = {refType: ref.type, id: res.value.id };
+                    if (ref.next) res.next = ref.next;
                 }
                 console.log(res);
                 break;
@@ -272,12 +273,16 @@ module.exports = class Expressions {
             }
         }
         let res = this.references.getTypedValue(names, operand.__indexes, options);
+        console.log(['DEBUG', names, operand]);
         if (typeof operand.__next !== 'undefined') {
             res.__next = res.next = operand.__next;
         } else if (typeof operand.next !== 'number' && (operand.next || operand.prior)) {
             console.log(operand);
             throw new Error(`INTERNAL: next and prior must be previouly evaluated`);
+        } else if (typeof operand.next === 'number' && operand.next) {
+            res.next = operand.next;
         }
+        console.log(res);
         return res;
     }
     getReferenceInfo(e, options) {
