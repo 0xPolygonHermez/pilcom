@@ -1,0 +1,111 @@
+
+Main-0
+col fixed LLAST = [0...,1];
+multiset_provide(MAIN_ID, LLAST, [step, ...A,....])
+
+Main-1
+multiset_require(MAIN_ID, L1, [step, ...A,....])
+
+Main-2  512
+
+mu
+
+multiset_require()
+multiset_provide()
+
+
+SM(i)
+
+(1-L1) * (A' - * setA * (CONST - A) - A) = 0
+
+0 setA=1 CONST=10 A=0
+1 A=10 setA=1 CONST=20
+2 A=20 setA=1 CONST=30
+3 A=30 setA=1 CONST=40
+
+4 A=40 setA=1 CONST=50
+5 A=50 setA=1 CONST=60
+6 A=60 setA=1 CONST=70
+7 A=70 setA=1 CONST=80
+
+
+0 setA=1 CONST=10 A=0
+1 A=10 setA=1 CONST=20
+2 A=20 setA=1 CONST=30
+3 A=30 setA=0 CONST=X
+
+
+multiset_require(MAIN_ID, L1, [step(0), A(30)]);
+multiset_provide(MAIN_ID, LLAST, [step+1(4), A(30)]);
+
+multiset_require(MAIN_ID, L1, [step(4), A(30)]);
+multiset_provide(MAIN_ID, LLAST, [step+1(8), A(70)]);
+
+
+
+4 A=30 setA=1 CONST=50
+5 A=50 setA=1 CONST=60
+6 A=60 setA=1 CONST=70
+7 A=70 setA=0 CONST=X
+
+multiset_require(MAIN_ID, L1, [step(8), A(70)]);
+multiset_provide(MAIN_ID, LLAST, [step+1(11), A(0)]);
+
+
+8 A=70 setA=1 CONST=50
+9 A=80 setA=1 CONST=60
+10 A=90 setA=1 CONST=0
+11 A=0 setA=0 CONST=X
+
+subproofvalue aggregation(sequencial) nblock;
+
+step = STEP + nblock * N;
+
+(1 - L1) * (step' - step - 1) = 0
+
+X R0 L1 * block
+P4   LLAST * _final
+
+R4   L1 *
+P8   LLAST * _final
+
+R8   L1
+X P12
+
+R12
+P16
+
+L1 * (step - nblock * N) == 0
+
+set_transition_constraint(step, step + 1);
+
+set_transition_state_update(col witness, expr sel, new state);
+set_transition_state()
+set_transition_wlbh(A, setA, CONST);
+set_transition_constraint(A, setA * (CONST - A) - A,
+                     B, );
+
+    (1-L1) * (A' - * setA * (CONST - A) - A) === 0
+    cols[] = setA * (CONST - A) - A
+
+set_manual_transtion_constraint(XXX);
+    cols[];
+multiset_require(MAIN_ID, L1, [step(0), A(30)]);
+multiset_provide(MAIN_ID, LLAST, [step+1(4), A(30)]);
+
+multiset_require(MAIN_ID, L1, [step(4), A(30)]);
+multiset_provide(MAIN_ID, LLAST, [step+1(8), A(70)]);
+
+multiset_require(MAIN_ID, L1, [step(8), A(70)]);
+multiset_provide(MAIN_ID, LLAST, [step+1(11), A(0)]);
+
+// (1-L1) * (A' - * setA * (CONST - A) - A) = 0
+
+multiset_require(MAIN_ID, L1, [step(0), A(30)]);
+multiset_provide(MAIN_ID, LLAST, [step+1(4), setA * (CONST - A) + A]);
+
+multiset_require(MAIN_ID, L1, [step(4), A(30)]);
+multiset_provide(MAIN_ID, LLAST, [step+1(8), A(70)]);
+
+multiset_require(MAIN_ID, L1, [step(8), A(70)]);
+multiset_provide(MAIN_ID, LLAST, [step+1(11), A(0)]);

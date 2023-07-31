@@ -1,0 +1,10 @@
+function set_transition_state_update(col witness reg, expr update_selector, expr update_new_state) {
+    set_transition_state(reg, update_selector, update_new_state, reg );
+}
+
+function set_transition_state(col witness reg, expr update_selector, expr update_new_state, expr no_update_new_state ) {
+    set_transition_state_direct(reg, update_select * (update_new_state - no_update_new_state) + no_update_new_state );
+}
+
+function set_transition_state_direct(col witness reg, expr next_state) {
+}
