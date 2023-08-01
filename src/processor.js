@@ -146,7 +146,7 @@ module.exports = class Processor {
         proto.setupPilOut('myFirstPil');
         for (const subproofName of this.subproofs) {
             const subproof = this.subproofs.get(subproofName);
-            proto.setSubproof(subproofName); // Add the aggregability property to subproofs
+            proto.setSubproof(subproofName); // TODO: Add the aggregability property and value to subproofs
             for (const airName of subproof.airs) {
                 const air = subproof.airs.get(airName);
                 console.log(airName);

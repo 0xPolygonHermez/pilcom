@@ -26,9 +26,9 @@ async function run() {
     }
 
     const fullFileName = path.resolve(process.cwd(), inputFile);
-    const fileName = path.basename(fullFileName, ".pil");
 
     // TBD
+    // const fileName = path.basename(fullFileName, ".pil");
     // const outputFile =
     //     typeof argv.output === "string" ? argv.output : fileName + ".json";
     // const config =
@@ -42,70 +42,117 @@ async function run() {
     //     }
     // }
 
-    const pilout = fs.readFileSync(fullFileName);
+    // Decode the pilout from its root
+    const piloutEnc = fs.readFileSync(fullFileName);
+    const path2proto = path.join(__dirname, '..', 'src', '/pilout.proto');
+    const root = protobuf.loadSync(path2proto);
+    const PilOut = root.lookupType("PilOut");
+    const piloutDec = PilOut.toObject(PilOut.decode(piloutEnc)); // pilout -> subproofs -> airs -> constraints
 
-    const root = protobuf.loadSync(path.join(__dirname, '..', 'src') + '/pilout.proto');
+    for (let i = 0; i < piloutDec.subproofs.length; i++) {
+        const subproof = piloutDec.subproofs[i];
+        console.log(`=== SubProof: ${subproof.name} ===`);
+        for (let j = 0; j < subproof.airs.length; j++) {
+            const air = subproof.airs[j];
+            console.log(`=== AIR: ${air.name} ===`);
 
-    const types = lookupTypes(root);
-    for (const type of types) {
-        // console.log(type);
-        try {
-            console.log(type.decode(pilout));
-        } catch (e) {
-            // console.log(e);
+            const everyRow = [];
+            const firstRow = [];
+            const lastRow = [];
+            const everyFrame = [];
+            for (let k = 0; k < air.constraints.length; k++) {
+                const constraint = air.constraints[k];
+                if (constraint.everyRow !== 'undefined') {
+                    everyRow.push(constraint.everyRow);
+                } else if (constraint.firstRow !== 'undefined') {
+                    firstRow.push(constraint.firstRow);
+                } else if (constraint.lastRow !== 'undefined') {
+                    lastRow.push(constraint.lastRow);
+                } else if (constraint.everyFrame !== 'undefined') {
+                    everyFrame.push(constraint.everyFrame);
+                }
+            }
+
+            console.log(`=== Constraints: EveryRow ===`);
+            for (let k = 0; k < everyRow.length; k++) {
+                const constraint = everyRow[k];
+                console.log(`=== Constraint ${k} ===`);
+                console.log(constraint.debugLine);
+            }
+
+            console.log(`=== Constraints: FirstRow ===`);
+            for (let k = 0; k < firstRow.length; k++) {
+                const constraint = firstRow[k];
+                console.log(`=== Constraint ${k} ===`);
+                console.log(constraint.debugLine);
+            }
+
+            console.log(`=== Constraints: LastRow ===`);
+            for (let k = 0; k < lastRow.length; k++) {
+                const constraint = lastRow[k];
+                console.log(`=== Constraint ${k} ===`);
+                console.log(constraint.debugLine);
+            }
+
+            console.log(`=== Constraints: EveryFrame ===`);
+            for (let k = 0; k < everyFrame.length; k++) {
+                const constraint = everyFrame[k];
+                console.log(`=== Constraint ${k} ===`);
+                console.log(constraint.debugLine);
+            }
         }
     }
 }
 
-function lookupTypes(root) {
-    return [
-        root.lookupType("PilOut"),
-        root.lookupType("BaseFieldElement"),
-        root.lookupType("Subproof"),
-        root.lookupType("BasicAir"),
-        root.lookupType('PublicTable'),
-        root.lookupType('GlobalExpression'),
-        root.lookupType('GlobalConstraint'),
-        root.lookupType('Symbol'),
-        root.lookupType('GlobalOperand'),
-        root.lookupType('GlobalExpression.Add'),
-        root.lookupType('GlobalExpression.Sub'),
-        root.lookupType('GlobalExpression.Mul'),
-        root.lookupType('GlobalExpression.Neg'),
-        root.lookupType('GlobalOperand.Constant'),
-        root.lookupType('GlobalOperand.Challenge'),
-        root.lookupType('GlobalOperand.SubproofValue'),
-        root.lookupType('GlobalOperand.ProofValue'),
-        root.lookupType('GlobalOperand.PublicValue'),
-        root.lookupType('GlobalOperand.PublicTableAggregatedValue'),
-        root.lookupType('GlobalOperand.PublicTableColumn'),
-        root.lookupType('GlobalOperand.Expression'),
-        root.lookupType('PeriodicCol'),
-        root.lookupType('FixedCol'),
-        root.lookupType('Expression'),
-        root.lookupType('Constraint'),
-        root.lookupType('Operand.Expression'),
-        root.lookupType('Constraint.FirstRow'),
-        root.lookupType('Constraint.LastRow'),
-        root.lookupType('Constraint.EveryRow'),
-        root.lookupType('Constraint.EveryFrame'),
-        root.lookupType('Operand.Constant'),
-        root.lookupType('Operand.Challenge'),
-        root.lookupType('Operand.SubproofValue'),
-        root.lookupType('Operand.ProofValue'),
-        root.lookupType('Operand.PublicValue'),
-        root.lookupType('Operand.PeriodicCol'),
-        root.lookupType('Operand.FixedCol'),
-        root.lookupType('Operand.WitnessCol'),
-        root.lookupType('Expression.Add'),
-        root.lookupType('Expression.Sub'),
-        root.lookupType('Expression.Mul'),
-        root.lookupType('Expression.Neg'),
-        root.lookupType('HintField'),
-        root.lookupType('HintFieldArray'),
-        root.lookupType('Hint'),
-    ];
-}
+// function lookupTypes(root) {
+//     return [
+//         root.lookupType("PilOut"),
+//         root.lookupType("BaseFieldElement"),
+//         root.lookupType("Subproof"),
+//         root.lookupType("BasicAir"),
+//         root.lookupType('PublicTable'),
+//         root.lookupType('GlobalExpression'),
+//         root.lookupType('GlobalConstraint'),
+//         root.lookupType('Symbol'),
+//         root.lookupType('GlobalOperand'),
+//         root.lookupType('GlobalExpression.Add'),
+//         root.lookupType('GlobalExpression.Sub'),
+//         root.lookupType('GlobalExpression.Mul'),
+//         root.lookupType('GlobalExpression.Neg'),
+//         root.lookupType('GlobalOperand.Constant'),
+//         root.lookupType('GlobalOperand.Challenge'),
+//         root.lookupType('GlobalOperand.SubproofValue'),
+//         root.lookupType('GlobalOperand.ProofValue'),
+//         root.lookupType('GlobalOperand.PublicValue'),
+//         root.lookupType('GlobalOperand.PublicTableAggregatedValue'),
+//         root.lookupType('GlobalOperand.PublicTableColumn'),
+//         root.lookupType('GlobalOperand.Expression'),
+//         root.lookupType('PeriodicCol'),
+//         root.lookupType('FixedCol'),
+//         root.lookupType('Expression'),
+//         root.lookupType('Constraint'),
+//         root.lookupType('Operand.Expression'),
+//         root.lookupType('Constraint.FirstRow'),
+//         root.lookupType('Constraint.LastRow'),
+//         root.lookupType('Constraint.EveryRow'),
+//         root.lookupType('Constraint.EveryFrame'),
+//         root.lookupType('Operand.Constant'),
+//         root.lookupType('Operand.Challenge'),
+//         root.lookupType('Operand.SubproofValue'),
+//         root.lookupType('Operand.ProofValue'),
+//         root.lookupType('Operand.PublicValue'),
+//         root.lookupType('Operand.PeriodicCol'),
+//         root.lookupType('Operand.FixedCol'),
+//         root.lookupType('Operand.WitnessCol'),
+//         root.lookupType('Expression.Add'),
+//         root.lookupType('Expression.Sub'),
+//         root.lookupType('Expression.Mul'),
+//         root.lookupType('Expression.Neg'),
+//         root.lookupType('HintField'),
+//         root.lookupType('HintFieldArray'),
+//         root.lookupType('Hint'),
+//     ];
+// }
 
 // const originalMethod = console.log;
 // const maxSourceRefLen = 20;
