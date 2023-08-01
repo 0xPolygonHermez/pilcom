@@ -118,7 +118,7 @@ module.exports = class ProtoOut {
             baseField: this.toBaseField(this.Fr.p),
             subproofs: [],
             numChallenges: [],
-            numProverValues: 0,
+            numProofValues: 0,
             numPublicValues: 0,
             publicTables: [],
             expressions: [],
@@ -128,8 +128,9 @@ module.exports = class ProtoOut {
         }
     }
     encode() {
-        console.log(this.pilOut);
+        console.log("hey",this.pilOut);
         let message = this.PilOut.fromObject(this.pilOut);
+        console.log("hey",message);
         this.data = this.PilOut.encode(message).finish();
         // return this.data;
     }
@@ -140,7 +141,7 @@ module.exports = class ProtoOut {
         this.currentAir = {name, numRows: Number(rows)};
         this.currentSubproof.airs.push(this.currentAir);
     }
-    setSubproof(name, aggregable = false) {
+    setSubproof(name, aggregable = false) { // TODO: Add subproof value
         this.currentSubproof = {name, aggregable, airs: []};
         this.pilOut.subproofs.push(this.currentSubproof);
     }
