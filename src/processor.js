@@ -22,7 +22,10 @@ const FixedCols = require("./fixed_cols.js");
 const WitnessCols = require("./witness_cols.js");
 const Iterator = require("./iterator.js");
 const Context = require("./context.js");
+const Runtime = require("./runtime.js");
 const {FlowAbortCmd, BreakCmd, ContinueCmd, ReturnCmd} = require("./flow_cmd.js")
+const {Reference, ExpressionItem, FeValue, IntValue, ProofItem,
+       ExpressionReference, StringValue, FixedCol, WitnessCol } = require("./expression_items.js");
 const fs = require('fs');
 const { log2, getKs, getRoots } = require("./utils.js");
 
@@ -34,35 +37,39 @@ module.exports = class Processor {
         this.context = new Context(this.Fr, this);
         this.scope = new Scope(this.Fr);
         this.references = new References(Fr, this.context, this.scope);
+        this.runtime = new Runtime(this.context);
+
+        Expression.setContext(this.context);
+
         this.scope.mark('proof');
         this.delayedCalls = {};
 
         this.airId = 0;
         this.subproofId = 0;
 
-        this.ints = new Variables(Fr, 'int');
+        this.ints = new Variables('int', IntValue);
         this.references.register('int', this.ints);
 
-        this.fes = new Variables(Fr, 'fe');
+        this.fes = new Variables('fe', FeValue);
         this.references.register('fe', this.fes);
 
-        this.strings = new Variables(Fr, 'string');
+        this.strings = new Variables('string', StringValue);
         this.references.register('string', this.strings);
 
-        this.vexprs = new Variables(Fr, 'expr');
+        this.vexprs = new Variables('expr', Expression);
         this.references.register('expr', this.vexprs);
 
-        this.lexprs = new Variables(Fr, 'lexpr');
+        this.lexprs = new Variables('lexpr', Expression);
         this.references.register('lexpr', this.lexprs);
 
-        this.fixeds = new FixedCols(Fr);
+        this.fixeds = new Indexable('fixed', FixedCol);
         this.fixeds.runtimeRows = true;
         this.references.register('fixed', this.fixeds);
 
-        this.witness = new WitnessCols(Fr);
+        this.witness = new Indexable('witness', WitnessCol);
         this.references.register('witness', this.witness);
 
-        this.constants = new Indexable(Fr, 'constant', 'int');
+        this.constants = new Indexable('constant', 'int');
         this.references.register('constant', this.constants);
 
         this.publics = new Ids('public');
@@ -255,11 +262,15 @@ module.exports = class Processor {
         // TODO: move to assign class
         const indexes = this.decodeIndexes(st.name.indexes)
         const names = this.context.getNames(st.name.name);
+        console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> EXEC-ASSIGN <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<');
         if (st.name.reference) {
             assert(indexes.length === 0);
-            this.assign.assignReference(names, st.value.instance());
+            const assignedValue = st.value.instance();
+            console.log(assignedValue);
+            this.assign.assignReference(names, assignedValue);
             return;
         }
+        console.log(st.value);
         this.assign.assign(names, indexes, st.value);
         // this.references.set(st.name.name, [], this.expressions.eval(st.value));
     }
@@ -536,9 +547,9 @@ module.exports = class Processor {
             console.log([air.bits, air.rows]);
 
             // create built-in constants
-            this.references.set('N', [], BigInt(air.rows));
-            this.references.set('BITS', [], BigInt(air.bits));
-            this.references.set('__SUBPROOF__', [], subproofName);
+            this.references.set('N', [], new IntValue(air.rows));
+            this.references.set('BITS', [], new IntValue(air.bits));
+            this.references.set('__SUBPROOF__', [], new StringValue(subproofName));
 
             this.context.push(false, subproofName);
             this.scope.push('air');
@@ -717,7 +728,13 @@ module.exports = class Processor {
         console.log(`Ignore once section because it has already executed ${s.debug}`);
     }
     execConstraint(s) {
-        const id = this.constraints.define(s.left.instance(true), s.right.instance(true),false,this.sourceRef);
+        const left = s.left.instance(true);
+        const right = s.right.instance(true);
+        s.left.dump();
+        console.log(left);
+        s.right.dump();
+        console.log(right);
+        const id = this.constraints.define(left, right, false, this.sourceRef);
         const expr = this.constraints.getExpr(id);
         console.log(`\x1B[1;36;44mCONSTRAINT      > ${expr.toString({hideClass:true, hideLabel:false})} === 0 (${this.sourceRef})\x1B[0m`);
         console.log(`\x1B[1;36;44mCONSTRAINT (RAW)> ${expr.toString({hideClass:true, hideLabel:true})} === 0 (${this.sourceRef})\x1B[0m`);
@@ -726,9 +743,12 @@ module.exports = class Processor {
         // REVIEW used only inside loop (increment) in other cases was an expression
         const name = s.name;
         const value = this.references.get(name, []);
-        this.references.set(name, [], value + s.pre + s.post);
+        // REVIEW: could be an expression (if expression x+1+1 = x+2)
+        console.log(s.pre, s.post, value.getValue());
+        this.references.set(name, [], value.getValue() + s.pre + s.post);
     }
     execVariableDeclaration(s) {
+        console.log('VARIABLE DECLARATION '+this.context.sourceRef+' init:'+s.init);
         const init = typeof s.init !== 'undefined';
 //         console.log(s);
         const count = s.items.length;
@@ -744,15 +764,19 @@ module.exports = class Processor {
             const scope = s.scope ?? false;
             let initValue = null;
             if (init) {
+                console.log(s.vtype);
                 if (s.vtype === 'expr') {
                     // s.init[index].expr.dump('INIT1 '+name);
-                    initValue = this.expressions.instance(s.init[index]);
+                    console.log(s.init[index]);
+                    initValue = s.init[index].eval();
+                    console.log(initValue);
                     // initValue.dump('INIT2 '+name);
                 }
                 else {
-                    initValue = this.expressions.e2value(s.init[index]);
+                    initValue = new IntValue(this.expressions.e2value(s.init[index]));
                 }
             }
+            console.log(initValue);
             this.references.declare(name, s.vtype, lengths, { scope, sourceRef }, initValue);
             // if (initValue !== null) this.references.set(name, [], initValue);
         }

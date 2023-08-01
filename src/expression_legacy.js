@@ -3,19 +3,18 @@ const {cloneDeep} = require('lodash');
 const {assert} = require("chai");
 const NonRuntimeEvaluable = require('./non_runtime_evaluable.js');
 const PilItem = require('./pil_item.js');
-const {Reference, StackItem, ExpressionItem, ValueItem, IntValue, ProofItem} = require("./expression_items.js");
 
-const OP_VALUE = 'value';
-const OP_ID_REF = 'idref';
-const OP_STACK = 'stack';
-const OP_RUNTIME = 'runtime';
+const OP_VALUE = 0;
+const OP_ID_REF = 1;
+const OP_STACK = 2;
+const OP_RUNTIME = 3;
 const NATIVE_REFS = ['witness', 'fixed', 'public', 'challenge', 'subproofvalue', 'proofvalue', 'publictable'];
 const NATIVE_OPS = ['add', 'sub', 'mul', 'neg'];
 const VALID_NATIVE_OPS = [false, ...NATIVE_OPS];
 
 class ExpressionStackEvaluating {};
 class InstanceArray extends Error {};
-module.exports = class Expression extends ExpressionItem {
+module.exports = class Expression {
 
     // op (string)
     // operands (array)
@@ -27,7 +26,6 @@ module.exports = class Expression extends ExpressionItem {
     // offset (number)
 
     static parent;
-    static context;
     // TODO: add all operations as if,
     static operations = {
         mul:  { type: 'arith',   label: '*',  prec:  96, args: 2, handle: (a, b) => a * b,  handleFr: (Fr, a, b) => Fr.mul(a, b)},
@@ -54,17 +52,12 @@ module.exports = class Expression extends ExpressionItem {
     }
 
     constructor () {
-        super();
         this.stack = [];
         this.fixedRowAccess = false;
     }
 
     static setParent (parent) {
         Expression.parent = parent;
-    }
-
-    static setContext (context) {
-        Expression.context = context;
     }
 
     clone() {
@@ -165,8 +158,7 @@ module.exports = class Expression extends ExpressionItem {
     isReference () {
         // TODO: review if best place?
         // TODO: review if next/prior
-        // return (this.isAlone() && this.stack[0].operands[0].type === OP_RUNTIME && this.stack[0].operands[0].op === 'reference' );
-        return (this.isAlone() && this.stack[0].operands[0] instanceof Reference);
+        return (this.isAlone() && this.stack[0].operands[0].type === OP_RUNTIME && this.stack[0].operands[0].op === 'reference' );
     }
 
     // OP_VALUE (value)
@@ -180,7 +172,7 @@ module.exports = class Expression extends ExpressionItem {
         }
         this.stack.push({op: false, operands: [cloneDeep(operand)]});
     }
-/*
+
     setIdReference (id, refType, next) {
         assert(typeof refType === 'string');
         this._set({type: OP_ID_REF, id, refType, next});
@@ -199,18 +191,17 @@ module.exports = class Expression extends ExpressionItem {
         }
         this._set({type: OP_RUNTIME, ...value});
     }
-*/
+
     isRuntime () {
         return this.stack.some(st => this.isRuntimeStackPos(st));
     }
     isRuntimeStackPos(st) {
-        return ((st.op !== false &&  NATIVE_OPS.indexOf(st.op) < 0) || st.operands.some(operand  => operand instanceof RuntimeItem));
+        return ((st.op !== false &&  NATIVE_OPS.indexOf(st.op) < 0) || st.operands.some(ope => this.isRuntimeOperand(ope)));
     }
-/*    isRuntimeOperand(ope) {
+    isRuntimeOperand(ope) {
         return (ope.type === OP_RUNTIME);
-    }*/
+    }
     insertOne (op, b) {
-        assert(b instanceof Expression);
         const aIsEmpty = this.stack.length === 0;
         const bIsEmpty = b.stack.length === 0;
 
@@ -225,34 +216,25 @@ module.exports = class Expression extends ExpressionItem {
                 this.stack[0].operands.push(b.cloneAlone());
                 return this;
             }
-            // let operandA = aIsEmpty ? [] : [{type: OP_STACK, offset: 1}];
-            // this.stack.push({op, operands: [...operandA, b.cloneAlone()]});
-            let operandA = aIsEmpty ? [] : [new StackItem(1)];
-            this.stack.push({op, operands: [operandA, b.cloneAlone()]});
+            let operandA = aIsEmpty ? [] : [{type: OP_STACK, offset: 1}];
+            this.stack.push({op, operands: [...operandA, b.cloneAlone()]});
             return this;
         }
 
         // !aIsAlone (aIsEmpty?) && !bIsAlone
         const count = this.pushStack(b);
         if (aIsEmpty) {
-            this.stack.push({op, operands: [new StackItem(1)]});
+            this.stack.push({op, operands: [{type: OP_STACK, offset: 1}]});
             return this;
         }
-        this.stack.push({op, operands: [new StackItem(count + 1), new StackItem(1)]});
+        this.stack.push({op, operands: [{type: OP_STACK, offset: count + 1}, {type: OP_STACK, offset: 1}]});
         return this;
     }
 
-    insert (op, bs) {
-        if (!Array.isArray(bs)) {
-            return this.insertOne(op, bs);
-        }
+    insert (op, ...bs) {
         if (bs.length === 1) {
             return this.insertOne(op, bs[0]);
         }
-        // verify that all bs are expressions
-        assert(bs.reduce((isExpression, b) => isExpresion = isExpression && b instanceof Expression, true));
-
-
         const anyEmptyB = bs.some((b) => b.stack.length === 0);
         const aIsEmpty = this.stack.length === 0;
 
@@ -302,6 +284,72 @@ module.exports = class Expression extends ExpressionItem {
             }
         }
         return operand.__value;
+    }
+    evaluateOperandValue(ope, pos, deeply, instance = false) {
+        console.log(deeply);
+        console.log(ope);
+
+        if (deeply) {
+            if (ope.type === OP_STACK) {
+                const stackPos = pos-ope.offset;
+                this.evaluateStackPosValue(stackPos);       // TODO: cache and infinite-loops
+                ope.__value = this.stack[stackPos].__value;
+            }
+        } else if (ope.type === OP_VALUE ) {
+            ope.__value = ope.value;
+
+        } else if (ope.type === OP_ID_REF ) {
+            ope.__value = new NonRuntimeEvaluable();
+
+        } else if (ope.type === OP_RUNTIME ) {
+            let res = this.evaluateRuntime(ope, deeply);
+            console.log(res);
+            console.log(instance);
+            // BUG: if type was an expression not apply value !!
+            // if (!(res instanceof Expression)) {
+            if (instance) {
+                console.log(res);
+                if (res instanceof Expression && res.isAlone()) {
+                    res = res.getAloneOperand();
+                }
+                console.log(res);
+                if (res instanceof Expression) {
+                    res.dump();
+                    console.log(ope);
+                    ope.__value = res;
+                } else {
+                    assert(!(res instanceof Expression));
+                    Object.keys(ope).forEach(key => delete ope[key]);
+                    if (typeof res === 'bigint') {
+                        ope.type = OP_VALUE;
+                        ope.value = res;
+                        delete ope.op;
+                    } else {
+                        if (res.value) {
+                            res = res.value;
+                        }
+                        if (res.refType) {
+                            console.log(res);
+        //                    assert(NATIVE_REFS.includes(res.type));
+                            assert(NATIVE_REFS.includes(res.refType));
+                            ope.type = OP_ID_REF;
+                            ope.refType = res.refType;
+                            ope.id = res.id;
+                            if (res.next) ope.next = res.next;
+                            assert(typeof ope.id === 'number');
+                            delete ope.op;
+                        } else if (res.array) {
+                            throw new InstanceArray();
+                        } else {
+                            console.log(res);
+                            EXIT_HERE;
+                        }
+                    }
+                }
+            } else {
+                ope.__value = res;
+            }
+        }
     }
     assertInstanced() {
         try {
@@ -410,131 +458,18 @@ module.exports = class Expression extends ExpressionItem {
         EXIT_HERE;
 
     }
-    // stackResults[pos][0] contains result of this stack position,
-    // in stackResults[pos][1] contains a results array of this stack position operands
-    instance() {
-        this.dump();
+    _instance() {
         let dup = this.clone();
         const options = {instance: true}
-        let stackResults = dup.evaluateOperands(options);
-        // dup.extendExpressions(options);
-        dup.evaluateFullStack(stackResults, options);
-        console.log(stackResults);
+        let stackResults = dup._evaluateOperands(options);
+        dup._extendExpressions(options);
+        dup._evaluteFullStack(stackResults, options);
     }
-    eval() {
-        if (this.stack.length === 0) {
-            return this;
-        }
-        let options = {};
-        this.dump();
-        let stackResults = this.evaluateOperands(options);
-        // this.instanceExpressions(options);
-        this.evaluateFullStack(stackResults, options);
-        console.log('====[ RESULT ]====> ', stackResults[0][0]);
-        return stackResults[this.stack.length-1][0];
-    }
-    evaluateFullStack(stackResults, options) {
-        this.evaluateStackPos(stackResults, this.stack.length - 1, options);
-    }
-    evaluateStackPos(stackResults, pos, options) {
-        const st = this.stack[pos];
-        const results = stackResults[pos];
-        console.log(st);
-        console.log(stackResults[pos]);
-
-        if (results[0] !== null) {
-            console.log(['RETURN', results[0]])
-            return results[0];
-        }
-        /* if (st.op === false) {
-            if (st.operands[0].type === OP_VALUE) {
-            }
-            return stackResults[pos];
-        }*/
-
-        let value;
-        let values = results[1];
-        console.log(values);
-        for (let operandIndex = 0; operandIndex < st.operands.length; ++operandIndex) {
-            const operand = st.operands[operandIndex];
-            if (values[operandIndex] !== null) {
-                console.log(value);
-                continue;
-            }
-            value = null;
-            console.log(operand);
-            switch (typeof operand) {
-                case 'IntValue':
-                    value = operand.getValue();
-                    console.log(value);
-                    break;
-                case 'StackItem':
-                    value = this.evaluateStackPos(stackResults, pos - operand.getOffset());
-                    console.log(value);
-                    break;
-                default:
-                    console.log(['DEFAULT', value]);
-            }
-            values[operandIndex] = value;
-        }
-        console.log([st.op, ...values]);
-        value = null;
-        if (values.some(value => value === null))  {
-            value = null;
-        } else if (st.op === false) {
-            value = values[0];
-        } else {
-            value = this.applyOperation(st.op, values);
-        }
-        results[0] = value;
-        return value;
-    }
-    applyOperation(operation, values) {
-        const opfunc = Expression.operations[operation] ?? false;
-        if (opfunc === false) {
-            throw new Error(`NOT FOUND OPERATION (${operation})`);
-        }
-        let value;
-        try {
-            console.log(values);
-            const intvalues = values.map(x => x.getValue());
-            console.log(intvalues);
-            value = opfunc.handle.apply(this, intvalues);
-        } catch (e) {
-            console.log([{op: operation},...values]);
-            throw e;
-        }
-        return new IntValue(value);
-    }
-    evaluateValue(value, options) {
-        console.log(value);
-        if (typeof value === 'undefined') {
-            return 0;
-        }
+    _evaluate(value, options) {
         // stack references not replaced
         // expression references not extended (inserted)
-        console.log(value);
-        if (value instanceof Expression) {
-            value.dump();
-        }
-        assert(value instanceof ExpressionItem);
-        if (value instanceof StackItem) {
-            return null;
-        } else if (value instanceof ValueItem) {
-            return value;
-        } else if (value instanceof ProofItem) {
-            return null;
-        } else if (value instanceof Reference) {
-            let res = Expression.context.runtime.eval(value, {});
-            return res;
-        } else {
-            console.log(value);
-            return value;
-            EXIT_HERE;
-        }
-        return value;
     }
-    evaluateValues(values, options) {
+    _evaluates(values, options) {
         // do array of evaluates, for example to evaluate
         // indexes o call arguments, this method call n times
         // evaluations
@@ -544,14 +479,14 @@ module.exports = class Expression extends ExpressionItem {
         assert (Array.isArray(values));
         let result = [];
         for (const value of values) {
-            result.push(this.evaluateValue(value, options));
+            result.push(this._evaluate(value, options));
         }
         return result;
     }
     getArrayResult(results, indexes, options) {
         // this method take one of results using indexes
     }
-    evaluateOperands(options) {
+    _evaluateOperands(options) {
         // evaluation must be from left to right (l2r) operands, inside operand
         // also evaluation is l2r: prior, value, arguments (l2r), indexes (l2r)
         // at end of this operand evaluation, must manage increment/decrement
@@ -562,45 +497,195 @@ module.exports = class Expression extends ExpressionItem {
 
         let stackResults = [];
         for (let stpos = 0; stpos < this.stack.length; ++stpos) {
-            let results = [null, []];
-            stackResults.push(results);
-            let operandResults = results[1];
+            if (!options.instance) {
+                // prepare stack of results
+                stackResults.push([]);
+            }
             for (let ope of this.stack[stpos].operands) {
                 let next = 0;
                 // if no prior defined priorValue was 0
-                let priorValue = this.evaluateValue(ope.prior, options);
+                let priorValue = this._evaluate(ope.prior, options);
 
-                let result = this.evaluateValue(ope, stackResults, options);
-                console.log(['RESULT', result]);
-                let indexes = this.evaluateValues(ope.indexes, options);
+                let result = this._evaluateOperandValue(ope, stackResults, options);
+                let indexes = this._evaluates(ope.indexes, options);
                 if (indexes.length) {
                     // TODO: fixed access
                     result = this.getArrayResult(result, indexes, options);
                 }
                 // if no prior defined nextValue was 0
-                let nextValue = this.evaluateValue(ope.next, options);
+                let nextValue = this._evaluate(ope.next, options);
 
                 // prior and next are excl
                 if (priorValue && nextValue) {
                     throw new Error(`prior and next for same operand it's ambiguous`);
                 }
                 next = nextValue - priorValue;
-                operandResults.push(result);
+                if (!options.instance) {
+                    // store operand result
+                    stackResults[stpos].push([]);
+                }
             }
         }
-        return stackResults;
+    }
+    evaluateOperandValue(ope, pos, deeply, instance = false) {
+        console.log(deeply);
+        console.log(ope);
+
+        if (deeply) {
+            if (ope.type === OP_STACK) {
+                const stackPos = pos-ope.offset;
+                this.evaluateStackPosValue(stackPos);       // TODO: cache and infinite-loops
+                ope.__value = this.stack[stackPos].__value;
+            }
+        } else if (ope.type === OP_VALUE ) {
+            ope.__value = ope.value;
+
+        } else if (ope.type === OP_ID_REF ) {
+            ope.__value = new NonRuntimeEvaluable();
+
+        } else if (ope.type === OP_RUNTIME ) {
+            let res = this.evaluateRuntime(ope, deeply);
+            console.log(res);
+            console.log(instance);
+            // BUG: if type was an expression not apply value !!
+            // if (!(res instanceof Expression)) {
+            if (instance) {
+                console.log(res);
+                if (res instanceof Expression && res.isAlone()) {
+                    res = res.getAloneOperand();
+                }
+                console.log(res);
+                if (res instanceof Expression) {
+                    res.dump();
+                    console.log(ope);
+                    ope.__value = res;
+                } else {
+                    assert(!(res instanceof Expression));
+                    Object.keys(ope).forEach(key => delete ope[key]);
+                    if (typeof res === 'bigint') {
+                        ope.type = OP_VALUE;
+                        ope.value = res;
+                        delete ope.op;
+                    } else {
+                        if (res.value) {
+                            res = res.value;
+                        }
+                        if (res.refType) {
+                            console.log(res);
+        //                    assert(NATIVE_REFS.includes(res.type));
+                            assert(NATIVE_REFS.includes(res.refType));
+                            ope.type = OP_ID_REF;
+                            ope.refType = res.refType;
+                            ope.id = res.id;
+                            if (res.next) ope.next = res.next;
+                            assert(typeof ope.id === 'number');
+                            delete ope.op;
+                        } else if (res.array) {
+                            throw new InstanceArray();
+                        } else {
+                            console.log(res);
+                            EXIT_HERE;
+                        }
+                    }
+                }
+            } else {
+                ope.__value = res;
+            }
+        }
+    }
+    instance(simplify = false) {
+        let dup = this.clone();
+        try {
+            dup.dump();
+            dup.evaluateOperands(true, true);
+            dup.instanceExpressions();
+            dup.dump();
+            const top = dup.stack.length-1;
+            dup.evaluateStackPosValue(top, true);
+            dup.instanceValues();
+            if (simplify) {
+                console.log('=== SIMPLIFY ===');
+                dup.dump();
+                dup.simplify();
+                dup.assertInstanced();
+                dup.dump();
+            }
+            dup.dump();
+        } catch (e) {
+            // It isn't possible instance an array, because not was an expression, it's an
+            // array of expressions
+            if (e instanceof InstanceArray) {
+                throw new Error('Instancing an array');
+            }
+            throw e;
+        }
+        return dup;
+    }
+    eval(deeply = false) {
+        if (this.stack.length === 0) {
+            return this;
+        }
+        if (this.stack[0].op === false) {
+            delete this.stack[0].operands[0].__value;
+        }
+        this.evaluateOperands(deeply);
+        this.evaluateStackPosValue(this.stack.length-1);
+        return this.stack[this.stack.length-1].__value ?? this;
+    }
+    evaluateStackPosValue(pos, instance = false) {
+        const st = this.stack[pos];
+
+        this.evaluateStackPosOperands(pos, true, instance);
+
+        delete st.__value;
+        const res = this.calculate(st);
+        if (res !== null) {
+            st.__value = res;
+        }
     }
     _calculate(st, pos, stackResults) {
         if (st.op === false) {
             return stackResults[pos][0];
         }
 
-        if (stackResults[pos][1].some(x => !(x instanceof IntValue))) {
+        if (st.operands.some((x, index) => (typeof x === 'object' && x.type !== OP_VALUE && typeof stackResults[pos][index] !== 'bigint'))) {
             return null;
         }
 
-        stackResults[pos][0] = this.applyOperation(st.op, stackResults[pos][1]);
-        return stackResults[pos][0];
+        const opfunc = Expression.operations[st.op] ?? false;
+        if (opfunc === false) {
+            throw new Error(`NOT FOUND OPERATION (${st.op})`);
+        }
+
+        try {
+            return opfunc.handle.apply(this, stackResults[pos]);
+        } catch (e) {
+            console.log([{op: st.op},...stackResults[pos]]);
+            throw e;
+        }
+    }
+
+    calculate(st) {
+        if (st.op === false) {
+            return st.operands[0].__value;
+        }
+
+        if (st.operands.some(x => (typeof x === 'object' && x.type !== OP_VALUE && typeof x.__value !== 'bigint'))) {
+            return null;
+        }
+
+        const opfunc = Expression.operations[st.op] ?? false;
+        if (opfunc === false) {
+            throw new Error(`NOT FOUND OPERATION (${st.op})`);
+        }
+
+        const values = st.operands.map(x => x.type === 0 ? x.value : x.__value);
+        try {
+            return opfunc.handle.apply(this, values);
+        } catch (e) {
+            console.log([{op: st.op},...values]);
+            throw e;
+        }
     }
     isRuntimeCalculable(e) {
         const te = typeof e;
@@ -613,7 +698,7 @@ module.exports = class Expression extends ExpressionItem {
     }
     // this method instance the expression references to include them inside
     // TODO: view how these affects to optimization.
-    instanceExpressions(options) {
+    instanceExpressions() {
         let pos = 0;
         while (pos < this.stack.length) {
             let nextPos = true;
@@ -621,7 +706,6 @@ module.exports = class Expression extends ExpressionItem {
                 // assert(ope.__value instanceof Expression === false);
                 if (ope.type !== OP_RUNTIME) continue;
                 console.log(ope);
-                EXIT_HERE;
                 if (ope.__value instanceof Expression) {
                     ope.type = OP_STACK;
                     const exprToInsert = ope.__value.instance();
@@ -822,6 +906,59 @@ module.exports = class Expression extends ExpressionItem {
         // return if expression was updated
         return stackLen > this.stack.length;
     }
+    evaluateOperands(deeply = false, instance = false) {
+        for (let index = 0; index < this.stack.length; ++index) {
+            this.evaluateStackPosOperands(index, deeply, instance);
+        }
+    }
+    evaluateStackPosOperands(pos, deeply, instance = false) {
+        console.log([this.stack, pos]);
+        for (let ope of this.stack[pos].operands) {
+            this.evaluateOperand(ope, pos, deeply, instance);
+        }
+    }
+    evaluateOperand(ope, pos, deeply, instance = false) {
+        if (!deeply) {
+            this.clearNext(ope);
+            this.evaluatePrior(ope);
+            this.evaluateIndexes(ope);
+            this.evaluateNext(ope);
+            // TODO: for optimizations
+            if (instance) {
+                // indexes not exists when instanced !!!
+                ope.next = ope.__next;
+                delete ope.__next;
+            }
+        }
+        this.evaluateOperandValue(ope, pos, deeply, instance);
+        if (instance) {
+            delete ope.indexes;
+            delete ope._indexes;
+        }
+    }
+
+    clearNext(ope) {
+        ope.__next = 0;
+    }
+    evaluatePrior(ope) {
+        if (typeof ope.prior === 'undefined') {
+            return 0;
+        }
+        ope.__next = -this.evaluateContent(ope.prior);
+        return ope.__next;
+    }
+
+    evaluateIndexes(ope) {
+        if (typeof ope.indexes === 'undefined') {
+            return [];
+        }
+        ope.__indexes = [];
+        for (let index of ope.indexes) {
+            ope.__indexes.push(this.evaluateContent(index));
+        }
+        return ope.__indexes;
+    }
+
     evaluateNext(ope) {
         if (typeof ope.next === 'undefined') {
             return 0;
@@ -882,9 +1019,6 @@ module.exports = class Expression extends ExpressionItem {
         const cType = '\x1B[38;5;76m';
         const cProp = '\x1B[38;5;250m';
         const cValue = '\x1B[38;5;40m';
-        if (op instanceof ExpressionItem) {
-            return op.dump({cType, cProp, cValue});
-        }
         switch (op.type) {
             case OP_VALUE:
                 return `${cType}VALUE ${cValue}${op.value}`;
@@ -902,7 +1036,7 @@ module.exports = class Expression extends ExpressionItem {
                 }
                 return `${cType}RUNTIME${props}`;
         }
-        return `\x1B[1;31m¿¿${op.constructor.name ?? op.type}??\x1B[0m`;
+        return `\x1B[1;31m¿¿${op.type}??\x1B[0m`;
     }
     // TODO: cache of next
     instanceNext(next) {
@@ -948,8 +1082,6 @@ module.exports = class Expression extends ExpressionItem {
         return res;
     }
     operandToString(ope, pos, pprec, options) {
-        return ope.dump();
-/*
         switch (ope.type) {
 
             case OP_VALUE:
@@ -975,7 +1107,7 @@ module.exports = class Expression extends ExpressionItem {
                 return `RUNTIME{${ope.op}(${ope.name??''})}`;
                 //console.log(ope);
 
-        }*/
+        }
 
     }
     pack(container, options) {

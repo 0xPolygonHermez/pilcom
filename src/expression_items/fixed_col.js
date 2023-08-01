@@ -1,7 +1,7 @@
 const LabelRanges = require("../label_ranges.js");
 const Sequence = require("../sequence.js");
-const PilItem = require("../pil_item.js");
-module.exports = class FixedCol extends PilItem {
+const ProofItem = require("./proof_item.js");
+module.exports = class FixedCol extends ProofItem {
     constructor (id) {
         super(id);
         this.rows = 0;

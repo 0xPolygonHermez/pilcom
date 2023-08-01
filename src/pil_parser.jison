@@ -162,10 +162,12 @@ frame                                       { return 'FRAME' }
 const DEFAULT_STAGE = 1;
 const util = require('util');
 const Expression = require('../src/expression.js');
+const ExpressionFactory = require('../src/expression_factory.js');
 
 function showcode(title, info) {
     console.log(title+` ${info.last_line}:${info.last_column}`);
 }
+/*
 function runtime_expr(value) {
     let res = new Expression();
     if (value.type) {
@@ -183,7 +185,7 @@ function insert_expr(e, op, ...values) {
     // console.log(values);
     e.insert.apply(e, [op, ...values]);
     return e;
-}
+}*/
 //         console.log(`STATE ${state} ${(this.terminals_[symbol] || symbol)}`);
 %}
 
@@ -619,13 +621,13 @@ data_object
         { $$ = $1; $$.data[$3] = $5 }
 
     | data_object ',' IDENTIFIER
-        { $$ = $1; $$.data[$3] = runtime_expr({ type: 'expr', op: 'reference', next: false, name: $3 }) }
+        { $$ = $1; $$.data[$3] = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, name: $3 }) }
 
     | IDENTIFIER ':' data_value
         { $$ = {data: {}}; $$.data[$1] = $3 }
 
     | IDENTIFIER
-        { $$ = {data: {}}; $$.data[$1] = runtime_expr({ type: 'expr', op: 'reference', next: false, name: $1 }) }
+        { $$ = {data: {}}; $$.data[$1] = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, name: $1 }) }
     ;
 
 data_array
@@ -1213,115 +1215,115 @@ constant_definition
 /* */
 expression
     : expression EQ expression
-        { $$ = insert_expr($1, 'eq', $3) }
+        { $$ = $1.insert('eq', ExpressionFactory.fromObject($3)) }
 
     | expression NE expression
-        { $$ = insert_expr($1, 'ne', $3) }
+        { $$ = $1.insert('ne', ExpressionFactory.fromObject($3)) }
 
     | expression LT expression
-        { $$ = insert_expr($1, 'lt', $3) }
+        { $$ = $1.insert('lt', ExpressionFactory.fromObject($3)) }
 
     | expression GT expression
-        { $$ = insert_expr($1, 'gt', $3) }
+        { $$ = $1.insert('gt', ExpressionFactory.fromObject($3)) }
 
     | expression LE expression
-        { $$ = insert_expr($1, 'le', $3) }
+        { $$ = $1.insert('le', ExpressionFactory.fromObject($3)) }
 
     | expression GE expression
-        { $$ = insert_expr($1, 'ge', $3) }
+        { $$ = $1.insert('ge', ExpressionFactory.fromObject($3)) }
 
     | expression IN expression %prec IN
-        { $$ = insert_expr($1, 'in', $3) }
+        { $$ = $1.insert('in', ExpressionFactory.fromObject($3)) }
 
     | expression IS return_type %prec IS
-        { $$ = insert_expr($1, 'is', runtime_expr({op: 'type', vtype: $3.type, dim: $3.dim})) }
+        { $$ = $1.insert('is', ExpressionFactory.fromObject({op: 'type', vtype: $3.type, dim: $3.dim})); }
 
     | expression AND expression %prec AND
-        { $$ = insert_expr($1, 'and', $3) }
+        { $$ = $1.insert('and', ExpressionFactory.fromObject($3)) }
 
     | expression '?' expression ':' expression %prec '?'
-        { $$ = insert_expr($1, 'if', $3, $5) }
+        { $$ = $1.insert('if', ExpressionFactory.fromObjects($3, $5)) }
 
     | expression B_AND expression %prec AND
-        { $$ = insert_expr($1, 'band', $3) }
+        { $$ = $1.insert('band', ExpressionFactory.fromObject($3)) }
 
     | expression B_OR expression %prec AND
-        { $$ = insert_expr($1, 'bor', $3) }
+        { $$ = $1.insert('bor', ExpressionFactory.fromObject($3)) }
 
     | expression B_XOR expression %prec AND
-        { $$ = insert_expr($1, 'bxor', $3) }
+        { $$ = $1.insert('bxor', ExpressionFactory.fromObject($3)) }
 
     | expression OR expression %prec OR
-        { $$ = insert_expr($1, 'or', $3) }
+        { $$ = $1.insert('or', ExpressionFactory.fromObject($3)) }
 
     | expression SHL expression %prec AND
-        { $$ = insert_expr($1, 'shl', $3) }
+        { $$ = $1.insert('shl', ExpressionFactory.fromObject($3)) }
 
     | expression SHR expression %prec OR
-        { $$ = insert_expr($1, 'shr', $3) }
+        { $$ = $1.insert('shr', ExpressionFactory.fromObject($3)) }
 
     | '!' expression %prec '!'
-        { $$ = insert_expr($2, 'not') }
+        { $$ = $1.insert('not') })
 
     | expression '+' expression %prec '+'
-        { $$ = insert_expr($1, 'add', $3) }
+        { $$ = $1.insert('add', ExpressionFactory.fromObject($3)) }
 
     | expression '-' expression %prec '-'
-        { $$ = insert_expr($1, 'sub', $3) }
+        { $$ = $1.insert('sub', ExpressionFactory.fromObject($3)) }
 
     | expression '*' expression %prec '*'
-        { $$ = insert_expr($1, 'mul', $3) }
+        { $$ = $1.insert('mul', ExpressionFactory.fromObject($3)) }
 
     | expression '%' expression %prec '%'
-        { $$ = insert_expr($1, 'mod', $3) }
+        { $$ = $1.insert('mod', ExpressionFactory.fromObject($3)) }
 
     | expression '/' expression %prec '/'
-        { $$ = insert_expr($1, 'div', $3) }
+        { $$ = $1.insert('div', ExpressionFactory.fromObject($3)) }
 
     | expression '\\' expression %prec '\\'
-        { $$ = insert_expr($1, 'intdiv', $3) }
+        { $$ = $1.insert('intdiv', ExpressionFactory.fromObject($3)) }
 
     | expression POW expression %prec POW
-        { $$ = insert_expr($1, 'pow', $3) }
+        { $$ = $1.insert('pow', ExpressionFactory.fromObject($3)) }
 
     | '+' expression %prec UPLUS
         { $$ = $2 }
 
     | '-' expression %prec UMINUS
-        { $$ = insert_expr($2, 'neg') }
+        { $$ = $2.insert('neg') }
 
     | name_id
-        { $$ = runtime_expr({ type: 'expr', op: 'reference', next: false, ...$1 }) }
+        { $$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$1 }) }
 
     | INC name_id
-        { $$ = runtime_expr({ type: 'expr', op: 'reference', next: false, ...$2, inc: 'pre'}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$2, inc: 'pre'}) }
 
     | DEC name_id
-        { $$ = runtime_expr({ type: 'expr', op: 'reference', next: false, ...$2, dec: 'pre'}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$2, dec: 'pre'}) }
 
     | name_id INC
-        { $$ = runtime_expr({ type: 'expr', op: 'reference', next: false, ...$1, inc: 'post'}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$1, inc: 'post'}) }
 
     | name_id DEC
-        { $$ = runtime_expr({ type: 'expr', op: 'reference', next: false, ...$1, dec: 'post'}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$1, dec: 'post'}) }
 
     | NUMBER %prec EMPTY
-        { $$ = new Expression(); $$.setValue(BigInt($1)) }
+        { $$ = ExpressionFactory.fromObject({ type: 'expr', op: 'number', value: BigInt($1)}) }
 
     | flexible_string %prec EMPTY
-        { $$ = runtime_expr({...$1, op: 'string'}) }
+        { $$ = ExpressionFactory.fromObject({...$1, op: 'string'}) }
 
     | '(' expression ')'
         { $$ = $2 }
 
     | function_call
-        { $$ = runtime_expr({...$1}) }
+        { $$ = ExpressionFactory.fromObject({...$1}) }
 
     | POSITIONAL_PARAM
-        { $$ = runtime_expr({position: $1, op: 'positional_param'}) }
+        { $$ = ExpressionFactory.fromObject({position: $1, op: 'positional_param'}) }
 
     | casting
-        { $$ = runtime_expr({...$1}) }
+        { $$ = ExpressionFactory.fromObject({...$1}) }
     ;
 
 
@@ -1370,7 +1372,7 @@ name_id
         { $$ = { ...$1, next:$4 } }
 
     | name_optional_index "'" POSITIONAL_PARAM
-        { $$ = { ...$1, next: runtime_expr({position: $3, op: 'positional_param'}) } }
+        { $$ = { ...$1, next: ExpressionFactory.fromObject({position: $3, op: 'positional_param'}) } }
 
     | "'" name_optional_index %prec LOWER_PREC
         { $$ = { ...$2, prior:1 } }
@@ -1382,7 +1384,7 @@ name_id
         { $$ = { ...$5, prior:$2 } }
 
     | POSITIONAL_PARAM "'" name_optional_index
-        { $$ = { ...$3, prior:runtime_expr({position: $1, op: 'positional_param'}) } }
+        { $$ = { ...$3, prior: ExpressionFactory.fromObject({position: $1, op: 'positional_param'}) } }
 
     | name_optional_index
         { $$ = $1 }

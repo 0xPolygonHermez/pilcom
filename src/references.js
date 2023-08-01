@@ -1,6 +1,7 @@
-const {assert} = require("chai");
+const {assert, assertLog} = require('./assert.js');
 const {MultiArray} = require("./multi_array.js");
 const Expression = require("./expression.js");
+const {ExpressionItem, ArrayOf} = require("./expression_items.js");
 module.exports = class References {
 
     constructor (Fr, context, scope) {
@@ -14,6 +15,7 @@ module.exports = class References {
         this.containers = {};
         this.currentContainer = false;
         this.scope.setReferences(this);
+        this.context.references = this;
         this.aliases = {};
         this.uses = [];
     }
@@ -165,7 +167,7 @@ module.exports = class References {
         assert(!name.includes('.object'));
 
         const nameInfo = this.decodeName(name);
-        console.log(`DECLARE_REFERENCE ${name} ==> ${nameInfo.name} ${type} []${lengths.length} scope:${nameInfo.scope} #${this.scope.deep}`, data);
+        console.log(`DECLARE_REFERENCE ${name} ==> ${nameInfo.name} ${type} []${lengths.length} scope:${nameInfo.scope} #${this.scope.deep} ${initValue}`, data);
 
         let [array, size] = this.getArrayAndSize(lengths);
 
@@ -288,14 +290,19 @@ module.exports = class References {
         if (typeof indexes === 'undefined') indexes = [];
 
         const [instance, info, def] = this._getInstanceAndLocator(name, indexes);
+        console.log(info);
         let tvalue;
         if (info.array) {
             // array info, could not be resolved
-            tvalue = {type: info.type ?? def.type, id: info.locator + info.offset };
+            console.log('***** ARRAY ******');
+            tvalue = new ArrayOf(instance.cls, info.locator + info.offset, info.type ?? def.type, instance);
         } else {
             // no array could be resolved
+            console.log([instance.constructor.name, info.type]);
             tvalue = instance.getTypedValue(info.locator + info.offset, 0, info.type);
         }
+        assertLog(tvalue instanceof ExpressionItem, {name, tvalue});
+        console.log(tvalue);
         if (typeof info.row !== 'undefined') {
             tvalue.row = info.row;
         }
@@ -493,6 +500,12 @@ module.exports = class References {
         this.definitions[name] = cdef;
     }
     set (name, indexes, value) {
+        console.log('SET', name, indexes, value);
+        assert(value !== null);
+        if (value === null) {
+            return;
+        }
+
         // console.log({name, indexes, value});
         // if (name === 'N_MAX') debugger;
         const [instance, info] = this._getInstanceAndLocator(name, indexes);

@@ -1,13 +1,29 @@
 const LabelRanges = require("./label_ranges.js");
+const {cloneDeep} = require('lodash');
+const {assert, assertLog} = require('./assert.js');
 module.exports = class Indexable {
-
-    constructor (Fr, type, rtype) {
-        this.Fr = Fr;
+    constructor (type, cls, rtype) {
+        this.cls = cls;
         this.values = [];
         this.type = type;
         this.rtype = rtype ?? type;
         this.labelRanges = new LabelRanges();
         this.debug = false;
+        this._undefined = null;
+        if (this.cls) {
+            try {
+                this._undefined = new this.cls();
+            } catch (e) { }
+        }
+    }
+    get undefined() {
+        if (this._undefined instanceof Object) {
+            return cloneDeep(this._undefined);
+        }
+        return this._undefined;
+    }
+    getEmptyValue(id) {
+        return this.undefined;
     }
 
     dup() {
@@ -21,9 +37,6 @@ module.exports = class Indexable {
     }
     getType(id) {
         return this.rtype;
-    }
-    getEmptyValue(id) {
-        return null;
     }
     reserve(count, label, multiarray) {
         const id = this.values.length;
@@ -39,13 +52,13 @@ module.exports = class Indexable {
         }
         return id;
     }
-
     get(id) {
-        const res = this.values[id] ?? this.undefined;
-        /* if (typeof res === 'number') {
-            console.log([id, this.type, res]);
-            throw new Error('Invalid value');
-        }*/
+        let res = this.values[id];
+        if (typeof res === 'undefined') {
+           res = this.undefined;
+        } else {
+            assertLog(!this.cls || res instanceof this.cls, [this.cls.constructor.name, res]);
+        }
         if (this.debug) {
             console.log(`GET ${this.constructor.name}.${this.type} @${id} ${res}`);
         }
@@ -57,8 +70,9 @@ module.exports = class Indexable {
     }
 
     getTypedValue(id) {
-        const res = { type: this.rtype, value: this.get(id) };
-        return res;
+        // const res = { type: this.rtype, value: this.get(id) };
+        console.log(['getTypedValue', this.type, this.cls.constructor.name, id]);
+        return this.get(id);
     }
 
     isDefined(id) {
@@ -73,9 +87,11 @@ module.exports = class Indexable {
     }
 
     set(id, value) {
-        if (typeof value === 'number') {
-            console.log([id, this.type, value]);
-            throw new Error('Invalid value');
+        if (this.cls) {
+            if ((value instanceof this.cls) === false) {
+                console.log([this.type, this.cls.constructor.name, value]);
+                value = new this.cls(value);
+            }
         }
         this.values[id] = value;
         if (this.debug) {

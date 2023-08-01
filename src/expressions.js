@@ -1,7 +1,7 @@
 const util = require('util');
 const LabelRanges = require('./label_ranges.js');
 const Expression = require('./expression.js');
-const WitnessCol = require('./pil_items/witness_col.js');
+const WitnessCol = require('./expression_items/witness_col.js');
 const NonRuntimeEvaluable = require('./non_runtime_evaluable.js');
 module.exports = class Expressions {
 
@@ -33,6 +33,7 @@ module.exports = class Expressions {
         return res;
     }
     get(id) {
+        console.log(this.expressions);
         if (this.isDefined(id)) {
             return this.expressions[id];
         }

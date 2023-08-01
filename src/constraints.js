@@ -1,3 +1,5 @@
+const {assert, assertLog} = require('./assert.js');
+const Expression = require('./expression.js');
 module.exports = class Constraints {
 
     constructor (Fr, expressions) {
@@ -19,6 +21,8 @@ module.exports = class Constraints {
     }
 
     define(left, right, boundery, sourceRef) {
+        assertLog(left instanceof Expression, left);
+        assertLog(right instanceof Expression, right);
         if (left.isRuntime()) {
             left.dump('LEFT  CONSTRAINT');
             throw new Error(`left constraint has runtime no resolved elements`);

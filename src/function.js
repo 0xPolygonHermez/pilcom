@@ -103,7 +103,10 @@ module.exports = class Function {
                     console.log(s.arguments[iarg]);
                     EXIT_HERE;
                 } else {
-                    const value = s.arguments[iarg].instance().getAloneOperand();
+                    // const value = s.arguments[iarg].instance().getAloneOperand();
+                    // const value = s.arguments[iarg].getAloneOperand();
+                    // const value = s.arguments[iarg].getReference();
+                    const value = s.arguments[iarg].evaluateAloneReference();
                     const dim = value.array ? value.array.dim : 0;
                     if (dim !== argDim) {
                         throw new Error(`Invalid array on ${this.parent.sourceRef}`);

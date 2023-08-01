@@ -1,6 +1,7 @@
 const References = require("./references.js");
 const Expressions = require("./expressions.js");
 const Expression = require("./expression.js");
+const {assert, assertLog} = require('./assert.js');
 
 module.exports = class Assign {
     constructor (Fr, parent, context, references, expressions) {
@@ -14,17 +15,16 @@ module.exports = class Assign {
     assign (name, indexes, value) {
         // console.log(value.stack[0].operands[0]);
         const _value = value.eval();
-        if (typeof _value !== 'undefined') {
+        if (typeof _value !== 'undefined' && _value !== null) {
             value = _value;
         }
+        assert(value !== null);
         return this.__assign(name, indexes, value);
     }
     __assign(name, indexes, value) {
         const [type, reference, array] = this.references.getTypeR(name, indexes);
+        console.log([type, reference, array]);
         const dim = (array && array.dim) ? array.dim : 0;
-        if (this.parent.context.sourceRef === 'assigns.pil:115') {
-            debugger;
-        }
         if (dim > 0) {
             return this.assignArray(name, indexes, value, array);
         }

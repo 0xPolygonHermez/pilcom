@@ -1,6 +1,7 @@
 const LabelRanges = require("../label_ranges.js");
-const PilItem = require("../pil_item.js")
-module.exports = class Public extends PilItem {
+const ProofItem = require("./proof_item.js");
+
+module.exports = class Proofval extends ProofItem {
     constructor (id) {
         super(id);
     }
