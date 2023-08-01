@@ -167,7 +167,7 @@ module.exports = class Expressions {
                 }
                 break;
             case 'challenge':
-                res = ref;
+                res = {refType: ref.type, id: ref.id };
                 console.log('=========== CHALLENGE ============');
                 console.log(res);
                 break;

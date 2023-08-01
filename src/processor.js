@@ -529,7 +529,7 @@ module.exports = class Processor {
             console.log(`BEGIN AIR ${subproofName} (${airRows}) #${this.airId}`);
             const air = new Air(this.Fr, this.context, airRows);
 
-            const airName = subproofName + (subproofRows.length > 1 ? `_${bits}`:'');
+            const airName = subproofName + (subproofRows.length > 1 ? `_${air.bits}`:'');
             subproof.airs.define(airName, air);
 
             // TO-DO loop with different rows
