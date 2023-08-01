@@ -29,10 +29,11 @@ const REF_TYPE_IM_COL = 0;
 const REF_TYPE_FIXED_COL = 1;
 const REF_TYPE_PERIODIC_COL = 2;
 const REF_TYPE_WITNESS_COL = 3;
-const REF_TYPE_PROVER_VALUE = 4;
-const REF_TYPE_PUBLIC_VALUE = 5;
-const REF_TYPE_PUBLIC_TABLE = 6;
-const REF_TYPE_CHALLENGE = 7;
+const REF_TYPE_PROOF_VALUE = 4;
+const REF_TYPE_SUBPROOF_VALUE = 5;
+const REF_TYPE_PUBLIC_VALUE = 6;
+const REF_TYPE_PUBLIC_TABLE = 7;
+const REF_TYPE_CHALLENGE = 8;
 
 module.exports = class ProtoOut {
     constructor (Fr, options = {}) {
@@ -178,8 +179,11 @@ module.exports = class ProtoOut {
                 const [stage, protoId] = this.witnessId2ProtoId[id];
                 return [REF_TYPE_WITNESS_COL, protoId, stage];
             }
-            case 'prover':
-                return [REF_TYPE_PROVER_VALUE, id, 0];
+            case 'subproofvalue':
+                return [REF_TYPE_SUBPROOF_VALUE, id, 0];
+
+            case 'proofvalue':
+                return [REF_TYPE_PROOF_VALUE, id, 0];
 
             case 'public':
                 return [REF_TYPE_PUBLIC_VALUE, id, 0];

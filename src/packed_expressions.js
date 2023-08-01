@@ -40,8 +40,11 @@ module.exports = class PackedExpressions {
     pushChallenge (idx, stage = 1) {
         this.values.push({challenge: {stage, idx}});
     }
-    pushProverValue (idx) {
-        this.values.push({proverValue: {idx}});
+    pushSubproofValue (idx, subproofId) {
+        this.values.push({subproofValue: {idx, subproofId}});
+    }
+    pushProofValue (idx) {
+        this.values.push({proofValue: {idx}});
     }
     pushPublicValue (idx) {
         this.values.push({publicValue: {idx}});
@@ -63,6 +66,7 @@ module.exports = class PackedExpressions {
     }
     exprToString(id, options) {
         const expr = this.expressions[id];
+        console.log([id, expr, this.expressions.length]);
         const [op] = Object.keys(expr);
         let opes = [];
         for (const ope of Object.values(expr[op])) {
@@ -101,6 +105,15 @@ module.exports = class PackedExpressions {
 
             case 'expression':
                 return '('+this.exprToString(props.value, options)+')';
+
+            case 'challenge':
+                return this.getLabel('challenge', props.idx, options);
+
+            case 'subproofValue':
+                return this.getLabel('subproofvalue', props.idx, options);
+
+            case 'proofValue':
+                return this.getLabel('proofValue', props.idx, options);
 
             default:
                 console.log(ope);
