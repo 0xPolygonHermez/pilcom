@@ -48,10 +48,16 @@ async function run() {
     const root = protobuf.loadSync(path2proto);
     const PilOut = root.lookupType("PilOut");
     const piloutDec = PilOut.toObject(PilOut.decode(piloutEnc)); // pilout -> subproofs -> airs -> constraints
-    console.log(piloutDec)
-    // console.log(piloutDec.subproofs[0].airs[0].expressions)
-    // console.log(piloutDec.subproofs[0].airs[0].constraints)
+    console.log("air",piloutDec.subproofs[0].airs[0].expressions)
+    console.log(piloutDec.subproofs[0].airs[0].constraints[0])
+    console.log(piloutDec.symbols)
 
+    // Classify symbols
+    // for (let i = 0; i < piloutDec.symbols.length; i++) {
+    //     const symbol = piloutDec.symbols[i];
+    //     console.log(`=== Symbol: ${symbol.name} ===`);
+    //     console.log(symbol);
+    // }
 
     for (let i = 0; i < piloutDec.subproofs.length; i++) {
         const subproof = piloutDec.subproofs[i];
@@ -105,6 +111,31 @@ async function run() {
                 console.log(constraint.debugLine);
             }
         }
+    }
+}
+
+function symbolToString(symbol) {
+    switch (symbol) {
+        case 0:
+            return "IM_COL";
+        case 1:
+            return "FIXED_COL";
+        case 2:
+            return "PERIODIC_COL";
+        case 3:
+            return "WITNESS_COL";
+        case 4:
+            return "PROOF_VALUE";
+        case 5:
+            return "SUBPROOF_VALUE";
+        case 6:
+            return "PUBLIC_VALUE";
+        case 7:
+            return "PUBLIC_TABLE";
+        case 8:
+            return "CHALLENGE";
+        default:
+            throw new Error(`Invalid symbol ${symbol}`);
     }
 }
 

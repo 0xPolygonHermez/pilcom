@@ -128,9 +128,9 @@ module.exports = class ProtoOut {
         }
     }
     encode() {
-        console.log("hey",this.pilOut);
+        console.log(this.pilOut);
         let message = this.PilOut.fromObject(this.pilOut);
-        console.log("hey",message);
+        console.log(message);
         this.data = this.PilOut.encode(message).finish();
         // return this.data;
     }
