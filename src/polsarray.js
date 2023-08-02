@@ -190,10 +190,10 @@ class PolsArray {
         if(Fr.p !== this.F.p) throw new Error("Curve Prime doesn't match");
         const fd = await fastFile.readExisting(fileName);
 
-        const MaxBuffSize = 1024*1024; 
+        const MaxBuffSize = 1024*1024*256; 
         const totalSize = this.$$nPols*this.$$n*this.F.n8;
 
-        console.log(`Reading buffer with total size ${totalSize/1024/1024}...`);
+        console.log(`Reading buffer with total size ${totalSize/1024/1024/8}...`);
 
         const buff = await fd.read(totalSize);
 
@@ -202,7 +202,7 @@ class PolsArray {
         let i=0;
         let j=0;
         for(let k = 0; k < totalSize; k += this.F.n8) {
-            if(k%MaxBuffSize == 0) console.log(`Storing ${fileName}.. ${k/1024/1024} of ${totalSize/1024/1024}`);
+            if(k%MaxBuffSize == 0) console.log(`Storing ${fileName}.. ${k/1024/1024/8} of ${totalSize/1024/1024/8}`);
             this.$$array[i++][j] = BigInt(Fr.toString(buff.slice(k, k+this.F.n8)));
             if (i==this.$$nPols) {
                 i=0;
@@ -269,7 +269,7 @@ class PolsArray {
 
         // await Promise.all(promises);
 
-        const MaxBuffSize = 1024*1024; 
+        const MaxBuffSize = 1024*1024*256; 
         const totalSize = this.$$nPols*this.$$n*n8r;
         const maxSize = Math.min(totalSize, MaxBuffSize);
 
@@ -278,7 +278,7 @@ class PolsArray {
         let p = 0;
         for (let i=0; i<this.$$n; i++) {
             for (let j=0; j<this.$$nPols; j++) {
-                if(p%MaxBuffSize == 0) console.log(`saving ${fileName}.. ${p/1024/1024} of ${totalSize/1024/1024}`);
+                if(p%MaxBuffSize == 0) console.log(`saving ${fileName}.. ${p/1024/1024/8} of ${totalSize/1024/1024/8}`);
                 const v = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
                 buff.set(Fr.e(v), p);
                 p += n8r;            
@@ -290,6 +290,73 @@ class PolsArray {
         await fd.write(buff);
 
         console.log("File written.")
+
+        await fd.close();
+    }
+
+    async loadFromFileFrLE(fileName) {
+
+        const fd =await fs.promises.open(fileName, "r");
+
+        const MaxBuffSize = 1024*1024*256;  //  256Mb
+        const totalSize = this.$$nPols*this.$$n*this.F.n8;
+        const buff = new Uint8Array((Math.min(totalSize, MaxBuffSize)));
+
+        let i=0;
+        let j=0;
+        let p=0;
+        let n;
+        for (let k=0; k<totalSize; k+= n) {
+            console.log(`loading ${fileName}.. ${k/1024/1024/8} of ${totalSize/1024/1024/8}` );
+            n = Math.min(buff.length, totalSize-k);
+            const res = await fd.read({buffer: buff, offset: 0, position: p, length: n});
+            if (n != res.bytesRead) {
+                console.log(`n: ${n} bytesRead: ${res.bytesRead} div: ${res.bytesRead}`);
+                return;
+            }
+            n = res.bytesRead;
+            p += n;
+            for (let l=0; l<n; l+=this.F.n8) {
+                this.$$array[i++][j] = this.F.fromRprLE(buff, l);
+                if (i==this.$$nPols) {
+                    i=0;
+                    j++;
+                }
+            }
+        }
+
+        await fd.close();
+
+    }
+
+    async saveToFileFrLE(fileName) {
+
+        const fd =await fs.promises.open(fileName, "w+");
+
+        const MaxBuffSize = 1024*1024*256;  //  256Mb
+        const totalSize = this.$$nPols*this.$$n*this.F.n8;
+        const buff = new Uint8Array(Math.min(totalSize, MaxBuffSize));
+        let p=0;
+        let k=0;
+        for (let i=0; i<this.$$n; i++) {
+            for (let j=0; j<this.$$nPols; j++) {
+                const element = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
+                this.F.toRprLE(buff, p, element);
+                p += this.F.n8;
+
+                if(p == buff.length) {
+                    console.log(`writting ${fileName}.. ${k/1024/1024/8} of ${totalSize/1024/1024/8}` );
+                    await fd.write(buff);
+                    p=0;
+                    ++k;
+                }
+            }
+        }
+
+	    if (p) {
+            const buff8 = new Uint8Array(buff.buffer, 0, p);
+            await fd.write(buff8);
+        }
 
         await fd.close();
     }
