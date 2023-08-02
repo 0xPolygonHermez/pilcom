@@ -6,6 +6,12 @@ module.exports = class Constraints {
         this.expressions = expressions;
     }
 
+    dup() {
+        let dup = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
+        dup.constraints = [...this.constraints];
+        return dup;
+    }
+
     get(id) {
         return this.constraints[id];
     }
@@ -66,11 +72,11 @@ module.exports = class Constraints {
         const constraint = this.constraints[index];
         const eid = constraint.exprId;
         const peid = this.expressions.getPackedExpressionId(eid);
-        let info = `${index}: ${eid} ${peid} ${constraint.sourceRef}`
+        let info = `INFO ${index}: ${eid} ${peid} ${constraint.sourceRef}`
 
-        if (packed) {
+/*        if (packed) {
             info += ' '  + packed.exprToString(peid, {labels: this.expressions, hideClass: true});
-        }
+        }*/
         return info;
     }
 }

@@ -258,6 +258,12 @@ module.exports = class ProtoOut {
     }
     setExpressions(packedExpressions) {
         const expressions = this.setupAirProperty('expressions');
+        this._setExpressions(expressions, packedExpressions);
+    }
+    setGlobalExpressions(packedExpressions) {
+        this._setExpressions(this.pilOut.expressions, packedExpressions);
+    }
+    _setExpressions(expressions, packedExpressions) {
         for (const packedExpression of packedExpressions) {
             const e = cloneDeep(packedExpression);
             const [op] = Object.keys(e);
@@ -321,7 +327,15 @@ module.exports = class ProtoOut {
         this.currentAir[propname] = init;
         return this.currentAir[propname];
     }
+    setGlobalConstraints(constraints, packed) {
+        for (const [index, constraint] of constraints.keyValues()) {
+            let payload = { expressionIdx: { idx: constraint.exprId },
+                            debugLine: constraints.getDebugInfo(index, packed) };
+            this.pilOut.constraints.push(payload);
+        }
+    }
     setConstraints(constraints, packed) {
+        console.log(constraints.constraints);
         let airConstraints = this.setupAirProperty('constraints');
         for (const [index, constraint] of constraints.keyValues()) {
             let payload;

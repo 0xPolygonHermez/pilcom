@@ -4,7 +4,7 @@ package pilout;
 message PilOut {
     optional string name = 1;
     bytes baseField = 2;                        // base field characteristic
-    repeated Subproof subproofs = 3;             
+    repeated Subproof subproofs = 3;
     repeated uint32 numChallenges = 4;          // number of challenges per stage
     uint32 numProofValues = 5;
     uint32 numPublicValues = 6;

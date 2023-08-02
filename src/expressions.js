@@ -16,7 +16,11 @@ module.exports = class Expressions {
         this.labelRanges = new LabelRanges();
         Expression.setParent(this);
     }
-
+    dup() {
+        let dup = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
+        dup.expressions = this.expressions.map(x => x.clone());
+        return dup;
+    }
     reserve(count, label, multiarray) {
         const id = this.expressions.length;
         for (let times = 0; times < count; ++times) {
@@ -345,6 +349,7 @@ module.exports = class Expressions {
         EXIT_HERE;
     }
     pack(container, options) {
+        this.packedIds = [];
         for (let id = 0; id < this.expressions.length; ++id) {
             if (typeof this.packedIds[id] !== 'undefined') continue;    // already packed
             this.packedIds[id] = this.expressions[id].pack(container, options);
@@ -358,6 +363,16 @@ module.exports = class Expressions {
     }
     instance(e) {
         return e.instance();
+    }
+
+    dump(name) {
+        console.log(`DUMP EXPRESSION COUNT:${this.expressions.length} # ${name}`);
+        for (let index = 0; index < this.expressions.length; ++index) {
+            this.expressions[index].dump(`EXPRESSION ${index} # ${name}`);
+        }
+    }
+    clear() {
+        this.expressions = [];
     }
 
     *[Symbol.iterator]() {

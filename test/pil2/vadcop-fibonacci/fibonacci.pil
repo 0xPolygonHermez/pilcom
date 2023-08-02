@@ -7,6 +7,10 @@ public out;
 
 include "module.pil";
 
+function final_function() {
+    gsum_fibonacci + gsum_module === 0;
+}
+
 subproof Fibonacci(2**16) {
 
     subproofval aggregate(sum) gsum_fibonacci = 0;
@@ -56,9 +60,7 @@ subproof Fibonacci(2**16) {
     // *L1' * (gsum - subproof.std.piop.gsum_result) === 0;
     L1' * (gsum - gsum_fibonacci) === 0;
 
+    on final proof final_function();
 };
 
-final proof function fpexs() {
-    gsum_fibonacci + gsum_module === 0;
-}
 
