@@ -1,3 +1,5 @@
+include "module.pil";
+
 challenge stage(2) std_alpha;
 challenge stage(2) std_beta;
 public in1;
@@ -5,19 +7,16 @@ public in2;
 public mod;
 public out;
 
-include "module.pil";
-
 function final_function() {
     gsum_fibonacci + gsum_module === 0;
 }
 
 subproof Fibonacci(2**16) {
 
-    subproofval aggregate(sum) gsum_fibonacci = 0;
+    subproofval aggregate(sum) gsum_fibonacci;
 
     col fixed L1 = [1,0...];
     col witness a,b;
-
 
     (b' - a) * (1 - L1') === 0;
     L1 * (b - in1) === 0;

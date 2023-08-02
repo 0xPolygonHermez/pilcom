@@ -48,6 +48,10 @@ async function run() {
     const root = protobuf.loadSync(path2proto);
     const PilOut = root.lookupType("PilOut");
     const piloutDec = PilOut.toObject(PilOut.decode(piloutEnc)); // pilout -> subproofs -> airs -> constraints
+    console.log(piloutDec)
+    // console.log(piloutDec.subproofs[0].airs[0].expressions)
+    // console.log(piloutDec.subproofs[0].airs[0].constraints)
+
 
     for (let i = 0; i < piloutDec.subproofs.length; i++) {
         const subproof = piloutDec.subproofs[i];
@@ -103,56 +107,6 @@ async function run() {
         }
     }
 }
-
-// function lookupTypes(root) {
-//     return [
-//         root.lookupType("PilOut"),
-//         root.lookupType("BaseFieldElement"),
-//         root.lookupType("Subproof"),
-//         root.lookupType("BasicAir"),
-//         root.lookupType('PublicTable'),
-//         root.lookupType('GlobalExpression'),
-//         root.lookupType('GlobalConstraint'),
-//         root.lookupType('Symbol'),
-//         root.lookupType('GlobalOperand'),
-//         root.lookupType('GlobalExpression.Add'),
-//         root.lookupType('GlobalExpression.Sub'),
-//         root.lookupType('GlobalExpression.Mul'),
-//         root.lookupType('GlobalExpression.Neg'),
-//         root.lookupType('GlobalOperand.Constant'),
-//         root.lookupType('GlobalOperand.Challenge'),
-//         root.lookupType('GlobalOperand.SubproofValue'),
-//         root.lookupType('GlobalOperand.ProofValue'),
-//         root.lookupType('GlobalOperand.PublicValue'),
-//         root.lookupType('GlobalOperand.PublicTableAggregatedValue'),
-//         root.lookupType('GlobalOperand.PublicTableColumn'),
-//         root.lookupType('GlobalOperand.Expression'),
-//         root.lookupType('PeriodicCol'),
-//         root.lookupType('FixedCol'),
-//         root.lookupType('Expression'),
-//         root.lookupType('Constraint'),
-//         root.lookupType('Operand.Expression'),
-//         root.lookupType('Constraint.FirstRow'),
-//         root.lookupType('Constraint.LastRow'),
-//         root.lookupType('Constraint.EveryRow'),
-//         root.lookupType('Constraint.EveryFrame'),
-//         root.lookupType('Operand.Constant'),
-//         root.lookupType('Operand.Challenge'),
-//         root.lookupType('Operand.SubproofValue'),
-//         root.lookupType('Operand.ProofValue'),
-//         root.lookupType('Operand.PublicValue'),
-//         root.lookupType('Operand.PeriodicCol'),
-//         root.lookupType('Operand.FixedCol'),
-//         root.lookupType('Operand.WitnessCol'),
-//         root.lookupType('Expression.Add'),
-//         root.lookupType('Expression.Sub'),
-//         root.lookupType('Expression.Mul'),
-//         root.lookupType('Expression.Neg'),
-//         root.lookupType('HintField'),
-//         root.lookupType('HintFieldArray'),
-//         root.lookupType('Hint'),
-//     ];
-// }
 
 // const originalMethod = console.log;
 // const maxSourceRefLen = 20;
