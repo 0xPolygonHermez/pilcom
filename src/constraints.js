@@ -27,6 +27,9 @@ module.exports = class Constraints {
         return (typeof this.constraints[id] != 'undefined');
     }
 
+    getPackedExpressionId(id, container, options) {
+        return this.expressions.getPackedExpressionId(id, container, options);
+    }
     define(left, right, boundery, sourceRef) {
         if (left.isRuntime()) {
             left.dump('LEFT  CONSTRAINT');

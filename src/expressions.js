@@ -171,6 +171,7 @@ module.exports = class Expressions {
                     // e.parent.fixedRowAccess = true;
                     res = res.value.getValue(res.row);
                 }
+                if (ref.next) res.next = ref.next;
                 break;
             case 'challenge':
                 res = {refType: ref.type, id: ref.id };
@@ -354,12 +355,16 @@ module.exports = class Expressions {
         this.packedIds = [];
         for (let id = 0; id < this.expressions.length; ++id) {
             if (typeof this.packedIds[id] !== 'undefined') continue;    // already packed
-            this.packedIds[id] = this.expressions[id].pack(container, options);
+            const packedId = this.expressions[id].pack(container, options);
+            console.log(`PACK EXPR ${id} => ${packedId} ${this.expressions[id].toString()}`);
+            this.packedIds[id] = packedId;
         }
     }
     getPackedExpressionId(id, container, options) {
         if (container && typeof this.packedIds[id] === 'undefined') {
-            this.packedIds[id] = this.expressions[id].pack(container, options);
+            const packedId = this.expressions[id].pack(container, options);
+            console.log(`PACK EXPR (GET) ${id} => ${packedId} ${this.expressions[id].toString()}`);
+            this.packedIds[id] = packedId;
         }
         return this.packedIds[id];
     }
@@ -375,6 +380,8 @@ module.exports = class Expressions {
     }
     clear() {
         this.expressions = [];
+        this.packedIds = [];
+        this.labelRanges = new LabelRanges();
     }
 
     *[Symbol.iterator]() {

@@ -35,7 +35,7 @@ module.exports = class PackedExpressions {
         return this.insert({sub: {value}});
     }
     pushConstant (value) {
-        this.values.push({constant: {value}});
+        this.values.push({constant: {value: {value}}});
     }
     pushChallenge (idx, stage = 1) {
         this.values.push({challenge: {stage, idx}});
@@ -59,7 +59,7 @@ module.exports = class PackedExpressions {
         this.values.push({witnessCol: {colIdx, rowOffset, stage}});
     }
     pushExpression (idx) {
-        this.values.push({expression: {value:idx}});
+        this.values.push({expression: {idx}});
     }
     dump() {
         console.log(util.inspect(this.expressions, false, null, true /* enable colors */));
@@ -92,7 +92,7 @@ module.exports = class PackedExpressions {
         const props = ope[type];
         switch (type) {
             case 'constant':
-                return ope.constant.value;
+                return ope.constant.value.value;
 
             case 'fixedCol':
                 return this.rowOffsetToString(props.rowOffset, this.getLabel('fixed', props.idx, options));
@@ -104,7 +104,7 @@ module.exports = class PackedExpressions {
                 return this.getLabel('public', props.idx, options);
 
             case 'expression':
-                return '('+this.exprToString(props.value, options)+')';
+                return '('+this.exprToString(props.idx, options)+')';
 
             case 'challenge':
                 return this.getLabel('challenge', props.idx, options);

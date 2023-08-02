@@ -322,7 +322,7 @@ module.exports = class ProtoOut {
                 }
                 break;
             case 'constant':
-                ope.constant.value = this.toBaseField(ope.constant.value);
+                ope.constant.value.value = this.toBaseField(ope.constant.value.value);
                 break;
         }
     }
@@ -338,7 +338,8 @@ module.exports = class ProtoOut {
     }
     setGlobalConstraints(constraints, packed) {
         for (const [index, constraint] of constraints.keyValues()) {
-            let payload = { expressionIdx: { idx: constraint.exprId },
+            const packedExpressionId = constraints.getPackedExpressionId(constraint.exprId, packed);
+            let payload = { expressionIdx: { idx: packedExpressionId },
                             debugLine: constraints.getDebugInfo(index, packed) };
             this.pilOut.constraints.push(payload);
         }
@@ -349,22 +350,23 @@ module.exports = class ProtoOut {
         for (const [index, constraint] of constraints.keyValues()) {
             let payload;
             const debugLine = constraints.getDebugInfo(index, packed, options);
+            const packedExpressionId = constraints.getPackedExpressionId(constraint.exprId, packed, options);
             switch (constraint.boundery) {
                 case false:
                 case 'all':
-                    payload = { everyRow: { expressionIdx: { idx: constraint.exprId + 1}, debugLine}};
+                    payload = { everyRow: { expressionIdx: { idx: packedExpressionId }, debugLine}};
                     break;
 
                 case 'first':
-                    payload = { firstRow: { expressionIdx: { idx: constraint.exprId }, debugLine}};
+                    payload = { firstRow: { expressionIdx: { idx: packedExpressionId }, debugLine}};
                     break;
 
                 case 'last':
-                    payload = { lastRow: { expressionIdx: { idx: constraint.exprId }, debugLine}};
+                    payload = { lastRow: { expressionIdx: { idx: packedExpressionId }, debugLine}};
                     break;
 
                 case 'frame':
-                    payload = { everyFrame: { expressionIdx: { idx: constraint.exprId }, offsetMin: 0, offsetMax:0, debugLine}};
+                    payload = { everyFrame: { expressionIdx: { idx: packedExpressionId }, offsetMin: 0, offsetMax:0, debugLine}};
                     break;
 
                 default:
