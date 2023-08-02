@@ -49,9 +49,16 @@ async function run() {
     const root = protobuf.loadSync(path2proto);
     const PilOut = root.lookupType('PilOut');
     const piloutDec = PilOut.toObject(PilOut.decode(piloutEnc)); // pilout -> subproofs -> airs -> constraints
+<<<<<<< HEAD
     // console.log('air',piloutDec.subproofs[0].airs[0].expressions[0].sub)
     // console.log(piloutDec.subproofs[1].airs[0].constraints)
     // console.log(piloutDec.symbols)
+=======
+    console.log(piloutDec)
+    // console.log(piloutDec.subproofs[0].airs[0].expressions)
+    // console.log(piloutDec.subproofs[0].airs[0].constraints)
+
+>>>>>>> 91fd291 (WIP)
 
     for (let i = 0; i < piloutDec.subproofs.length; i++) {
         const subproof = piloutDec.subproofs[i];
