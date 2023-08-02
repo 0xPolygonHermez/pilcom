@@ -124,8 +124,11 @@ module.exports = class PackedExpressions {
     getLabel(type, id, options) {
         options = options ?? {};
         const labels = options.labels;
+        const labelsByType = options.labelsByType;
         let label;
-        if (typeof labels === 'object' && typeof labels.getLabel === 'function') {
+        if (labelsByType && typeof labelsByType[type] === 'object' && typeof labelsByType[type].getLabel === 'function') {
+            label = labelsByType[type].getLabel(id, options);
+        } else if (typeof labels === 'object' && typeof labels.getLabel === 'function') {
             label = labels.getLabel(type, id, options);
         }
         if (!label) {

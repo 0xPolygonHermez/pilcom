@@ -166,8 +166,15 @@ module.exports = class Processor {
                 // this.expressions.pack(packed);
                 air.expressions.pack(packed);
                 console.log(air.constraints);
-                proto.setConstraints(air.constraints, packed);
+                proto.setConstraints(air.constraints, packed,
+                    { labelsByType: {
+                        witness: air.witness.labelRanges,
+                        fixed: air.fixeds.labelRanges,
+                    }
+                    });
                 proto.setWitnessCols(air.witness);
+                proto.setSymbolsFromLabels(air.witness.labelRanges, 'witness');
+                proto.setSymbolsFromLabels(air.fixeds.labelRanges, 'fixed');
                 proto.setExpressions(packed);
             }
         }
@@ -176,7 +183,7 @@ module.exports = class Processor {
         this.globalExpressions.pack(packed);
         proto.setGlobalConstraints(this.globalConstraints, packed);
         proto.setGlobalExpressions(packed);
-        proto.setSymbols(this.references);
+        proto.setGlobalSymbols(this.references);
         proto.encode();
         proto.saveToFile('tmp/pilout.ptb');
         // stageWidths

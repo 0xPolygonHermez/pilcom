@@ -71,14 +71,15 @@ module.exports = class Constraints {
             console.log(this.getDebugInfo(index, packed));
         }
     }
-    getDebugInfo(index, packed) {
+    getDebugInfo(index, packed, options) {
         const constraint = this.constraints[index];
         const eid = constraint.exprId;
         const peid = this.expressions.getPackedExpressionId(eid);
         let info = `INFO ${index}: ${eid} ${peid} ${constraint.sourceRef}`
+        options = options ?? {};
 
         if (packed) {
-            info += ' '  + packed.exprToString(peid, {labels: this.expressions, hideClass: true});
+            info += ' '  + packed.exprToString(peid, {...options, labels: this.expressions, hideClass: true});
         }
         return info;
     }

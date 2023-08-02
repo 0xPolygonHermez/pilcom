@@ -146,13 +146,17 @@ module.exports = class ProtoOut {
         this.pilOut.subproofs.push(this.currentSubproof);
     }
     setGlobalSymbols(symbols) {
-        this._setSymbols(symbols, ['public', 'subproofvalue', 'proofvalue']);
+        this._setSymbols(symbols.keyValuesOfTypes(['public', 'subproofvalue', 'proofvalue']));
     }
-    setSymbols(symbols) {
-        this._setSymbols(symbols, ['witness', 'fixed']);
+    setSymbolsFromLabels(labels, type) {
+        let symbols = [];
+        for (const label of labels) {
+            symbols.push([label.label, {type, locator: label.from, array: label.multiarray, data: {}}]);
+        }
+        this._setSymbols(symbols);
     }
-    _setSymbols(symbols, types) {
-        for(const [name, ref] of symbols.keyValuesOfTypes(types)) {
+    _setSymbols(symbols) {
+        for(const [name, ref] of symbols) {
             console.log(ref);
             const arrayInfo = ref.array ? ref.array : {dim: 0, lengths: []};
             const [protoType, id, stage] = this.symbolType2Proto(ref.type, ref.locator);
@@ -176,7 +180,6 @@ module.exports = class ProtoOut {
                 return [REF_TYPE_IM_COL, id, 0];
 
             case 'fixed': {
-                console.log(id);
                 const [ftype, protoId] = this.fixedId2ProtoId[id];
                 if (ftype === 'P') return [REF_TYPE_PERIODIC_COL, protoId, 0];
                 return [REF_TYPE_FIXED_COL, protoId, 0];
@@ -340,12 +343,12 @@ module.exports = class ProtoOut {
             this.pilOut.constraints.push(payload);
         }
     }
-    setConstraints(constraints, packed) {
+    setConstraints(constraints, packed, options) {
         console.log(constraints.constraints);
         let airConstraints = this.setupAirProperty('constraints');
         for (const [index, constraint] of constraints.keyValues()) {
             let payload;
-            const debugLine = constraints.getDebugInfo(index, packed);
+            const debugLine = constraints.getDebugInfo(index, packed, options);
             switch (constraint.boundery) {
                 case false:
                 case 'all':

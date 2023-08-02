@@ -35,4 +35,10 @@ module.exports = class LabelRanges {
         }
         return cloned;
     }
+
+    *[Symbol.iterator]() {
+        for (let index = 0; index < this.ranges.length; ++index) {
+          yield this.ranges[index];
+        }
+    }
 }
