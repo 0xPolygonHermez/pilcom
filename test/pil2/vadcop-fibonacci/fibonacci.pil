@@ -30,12 +30,6 @@ subproof Fibonacci(2**16) {
     // gsum_require[0] = ((((L1' * out)+ (1-L1') * a') * std_alpha + a * a + b * b) * std_alpha) + MODULE_ID + std_beta;
     // gsum_require_mul_count[0] = 1
 
-    // * gsum_require_mul_count[i] = gsum_require_mul_count[i] + gsum_require_mul_count[j]
-    // gsum_require_mul_count[0] = gsum_require_mul_count[0] + gsum_require_mul_count[0] = 1 + 1 = 2
-
-    // * gsum_require_mul_count[j] = gsum_require_mul_count[len-1];
-    // gsum_require_mul_count[0] = gsum_require_mul_count[0] = 2
-
     col witness stage(3) gsum;
 
     // * expr LHS = 1;
@@ -49,14 +43,14 @@ subproof Fibonacci(2**16) {
     // * RHS1 = RHS1 * gsum_require[i];
     // RHS1 = 0
     // * RHS2b = RHS2b + gsum_require_mul_count[i];
-    // RHS2b = 0 + gsum_require_mul_count[0] = 0 + 2 = 2
+    // RHS2b = 0 + gsum_require_mul_count[0] = 0 + 1 = 1
     // * RHS2 = RHS2a * RHS2b;
-    // RHS2 = 1 * 2 = 2
+    // RHS2 = 1 * 1 = 1
     // * RHS = RHS1 - RHS2;
-    // RHS = 0 - 2 = -2
+    // RHS = 0 - 1 = -1
 
     // * (gsum - 'gsum * (1 - L1)) * LHS === RHS;
-    (gsum - 'gsum * (1 - L1)) * (((((L1' * out)+ (1-L1') * a') * std_alpha + a * a + b * b) * std_alpha) + MODULE_ID + std_beta) + 2 === 0;
+    (gsum - 'gsum * (1 - L1)) * (((((L1' * out)+ (1-L1') * a') * std_alpha + a * a + b * b) * std_alpha) + MODULE_ID + std_beta) + 1 === 0;
     // *L1' * (gsum - subproof.std.piop.gsum_result) === 0;
     L1' * (gsum - gsum_fibonacci) === 0;
 

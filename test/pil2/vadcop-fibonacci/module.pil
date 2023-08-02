@@ -17,10 +17,6 @@ subproof Module(2**16) {
     // gsum_provide[0] = ((x_mod * std_alpha + x) * std_alpha) + MODULE_ID + std_beta
 
 
-    // * gsum_provide_mul_count[i] = gsum_provide_mul_count[i] + gsum_provide_mul_count[j];
-    // gsum_provide_mul_count[0] = gsum_provide_mul_count[0] + gsum_provide_mul_count[0] = 2
-    // gsum_provide_mul_count[0] = gsum_provide_mul_count[0] = 2
-
     col witness stage(3) gsum;
 
     // LHS = 1
@@ -30,7 +26,7 @@ subproof Module(2**16) {
     // LHS = ((x_mod * std_alpha + x) * std_alpha) + MODULE_ID + std_beta;
 
     // * RHS1 = RHS1 + gsum_provide_mul_count[i];
-    // RHS1 = 2;
+    // RHS1 = 1;
 
     // * RHS2a = LHS;
     // RHS2a = ((x_mod * std_alpha + x) * std_alpha) + MODULE_ID + std_beta;
@@ -40,10 +36,10 @@ subproof Module(2**16) {
     // RHS2 = 0;
 
     // * RHS = RHS1 - RHS2;
-    // RHS = 2 - 0 = 2
+    // RHS = 1 - 0 = 1
 
     // (gsum - 'gsum * (1 - L1)) * LHS === RHS;
-    (gsum - 'gsum * (1 - L1)) * (((x_mod * std_alpha + x) * std_alpha) + MODULE_ID + std_beta) === 2;
+    (gsum - 'gsum * (1 - L1)) * (((x_mod * std_alpha + x) * std_alpha) + MODULE_ID + std_beta) === 1;
 
     subproofval aggregate(sum) gsum_module;
 
