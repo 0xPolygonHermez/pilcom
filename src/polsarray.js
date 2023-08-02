@@ -232,42 +232,62 @@ class PolsArray {
 
         const n8r = this.F.n8;
         
-	    const MaxBuffSize = 1024*1024; 
+	    // const MaxBuffSize = 1024*1024; 
+        // const totalSize = this.$$nPols*this.$$n*n8r;
+        // const maxSize = Math.min(totalSize, MaxBuffSize);
+        // const nPromises = totalSize === 0 ? 0 : Math.ceil(totalSize / maxSize);
+        // const promises = new Array(nPromises);
+        // let values = new Array(nPromises);
+        // let pr = 0;
+        // let vIndex = 0;
+
+        // for(let i = 0; i < nPromises; i++) {
+        //     values[i] = new Array(Math.min(maxSize/n8r, (totalSize - i*maxSize)/n8r));
+        // }
+
+        // for (let i=0; i<this.$$n; i++) {
+        //     for (let j=0; j<this.$$nPols; j++) {
+        //         if(vIndex == 0) console.log(`saving ${fileName}.. ${pr*maxSize/1024/1024} of ${totalSize/1024/1024}`);
+        //         const v = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
+        //         values[pr][vIndex] = v;
+
+        //         vIndex++;
+        //         if(vIndex === values[pr].length) {
+        //             promises.push(this.writeBuffer(fd, values[pr], pr*maxSize, Fr));
+        //             pr++;
+        //             vIndex=0;
+        //         }
+            
+        //     }
+        // }
+
+        // if(vIndex > 0) {
+        //     promises.push(this.writeBuffer(fd, values[pr], pr*maxSize, Fr));
+        // }
+
+        // console.log("Writting buffer...")
+
+        // await Promise.all(promises);
+
+        const MaxBuffSize = 1024*1024; 
         const totalSize = this.$$nPols*this.$$n*n8r;
         const maxSize = Math.min(totalSize, MaxBuffSize);
-        const nPromises = totalSize === 0 ? 0 : Math.ceil(totalSize / maxSize);
-        const promises = new Array(nPromises);
-        let values = new Array(nPromises);
-        let pr = 0;
-        let vIndex = 0;
 
-        for(let i = 0; i < nPromises; i++) {
-            values[i] = new Array(Math.min(maxSize/n8r, (totalSize - i*maxSize)/n8r));
-        }
+        const buff = new Uint8Array(totalSize);
 
+        let p = 0;
         for (let i=0; i<this.$$n; i++) {
             for (let j=0; j<this.$$nPols; j++) {
-                if(vIndex == 0) console.log(`saving ${fileName}.. ${pr*maxSize/1024/1024} of ${totalSize/1024/1024}`);
+                if(p%MaxBuffSize == 0) console.log(`saving ${fileName}.. ${p/1024/1024} of ${totalSize/1024/1024}`);
                 const v = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
-                values[pr][vIndex] = v;
-
-                vIndex++;
-                if(vIndex === values[pr].length) {
-                    promises.push(this.writeBuffer(fd, values[pr], pr*maxSize, Fr));
-                    pr++;
-                    vIndex=0;
-                }
-            
+                buff.set(Fr.e(v), p);
+                p += n8r;            
             }
         }
 
-        if(vIndex > 0) {
-            promises.push(this.writeBuffer(fd, values[pr], pr*maxSize, Fr));
-        }
-
         console.log("Writting buffer...")
-
-        await Promise.all(promises);
+        
+        await fd.write(buff);
 
         console.log("File written.")
 
