@@ -16,10 +16,12 @@ module.exports = class Expressions {
         this.labelRanges = new LabelRanges();
         Expression.setParent(this);
     }
-    dup() {
-        let dup = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
-        dup.expressions = this.expressions.map(x => x.clone());
-        return dup;
+    clone() {
+        let cloned = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
+        cloned.expressions = this.expressions.map(x => x.clone());
+        cloned.labelRanges = this.labelRanges.clone();
+
+        return cloned;
     }
     reserve(count, label, multiarray) {
         const id = this.expressions.length;

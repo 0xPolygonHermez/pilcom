@@ -145,20 +145,26 @@ module.exports = class ProtoOut {
         this.currentSubproof = {name, aggregable, airs: []};
         this.pilOut.subproofs.push(this.currentSubproof);
     }
+    setGlobalSymbols(symbols) {
+        this._setSymbols(symbols, ['public', 'subproofvalue', 'proofvalue']);
+    }
     setSymbols(symbols) {
-        for(const [name, ref] of symbols.keyValuesOfTypes(['witness', 'fixed', 'public', 'subproofvalue', 'proofvalue'])) {
+        this._setSymbols(symbols, ['witness', 'fixed']);
+    }
+    _setSymbols(symbols, types) {
+        for(const [name, ref] of symbols.keyValuesOfTypes(types)) {
             console.log(ref);
             const arrayInfo = ref.array ? ref.array : {dim: 0, lengths: []};
             const [protoType, id, stage] = this.symbolType2Proto(ref.type, ref.locator);
             let payout = {
                 name,
                 airId: 0,
-                type: 0,
+                type: protoType,
                 id,
                 stage,
                 dim: arrayInfo.dim,
                 lengths: arrayInfo.lengths,
-                debugLine: ''
+                debugLine: (ref.data ?? {}).sourceRef ?? ''
             };
             this.pilOut.symbols.push(payout);
         }
@@ -343,7 +349,7 @@ module.exports = class ProtoOut {
             switch (constraint.boundery) {
                 case false:
                 case 'all':
-                    payload = { everyRow: { expressionIdx: { idx: constraint.exprId }, debugLine}};
+                    payload = { everyRow: { expressionIdx: { idx: constraint.exprId + 1}, debugLine}};
                     break;
 
                 case 'first':

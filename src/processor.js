@@ -169,7 +169,6 @@ module.exports = class Processor {
                 proto.setConstraints(air.constraints, packed);
                 proto.setWitnessCols(air.witness);
                 proto.setExpressions(packed);
-                proto.setSymbols(this.references);
             }
         }
         let packed = new PackedExpressions();
@@ -177,6 +176,7 @@ module.exports = class Processor {
         this.globalExpressions.pack(packed);
         proto.setGlobalConstraints(this.globalConstraints, packed);
         proto.setGlobalExpressions(packed);
+        proto.setSymbols(this.references);
         proto.encode();
         proto.saveToFile('tmp/pilout.ptb');
         // stageWidths
@@ -557,10 +557,10 @@ module.exports = class Processor {
             this.scope.pushInstanceType('air');
             this.execute(s.statements, `SUBPROOF ${subproofName}`);
             this.finalAirScope();
-            air.witness = this.witness.dup();
-            air.fixeds = this.fixeds.dup();
-            air.expressions = this.expressions.dup();
-            air.constraints = this.constraints.dup();
+            air.witness = this.witness.clone();
+            air.fixeds = this.fixeds.clone();
+            air.expressions = this.expressions.clone();
+            air.constraints = this.constraints.clone();
             air.constraints.expressions = air.expressions;
             this.clearAirScope();
             this.constraints = new Constraints(this.Fr, this.expressions);

@@ -23,7 +23,7 @@ subproof Fibonacci(2**16) {
     L1 * (b - in1) === 0;
     L1 * (a - in2) === 0;
 
-    // * multiset_request(MODULE_ID, 1, [a*a + b*b, a'])
+    // * multiset_require(MODULE_ID, 1, [a*a + b*b, a'])
 
     // * (1-LLAST) [a*a + b*b, a'] is (1-LLAST) [Arith.x, Arith.x_mod]
     // * cols compressed

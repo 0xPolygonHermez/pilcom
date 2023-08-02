@@ -275,7 +275,7 @@ module.exports = class References {
     }
     getLabel(type, id, options) {
         const instance = this.types[type].instance;
-        return instance.getLabel(id, options);
+        return instance.getLabel(id, {type, ...options});
     }
     getTypeR(name, indexes, options) {
         const [instance, info] = this._getInstanceAndLocator(name, indexes);
