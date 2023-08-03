@@ -26,10 +26,6 @@ message SubproofValue {
     AggregationType aggType = 1;
 }
 
-message BaseFieldElement {
-    bytes value = 1;
-}
-
 enum AggregationType {
     SUM = 0;
     PROD = 1;
@@ -77,7 +73,7 @@ message GlobalExpression {
 
 message GlobalOperand {
     message Constant {
-        BaseFieldElement value = 1;
+        bytes value = 1;    // basefield element, variable length
     }
 
     message Challenge {
@@ -136,11 +132,11 @@ message BasicAir {
 }
 
 message PeriodicCol {
-    repeated BaseFieldElement values = 1;   // Only the cycle
+    repeated bytes values = 1;   // BaseFieldElement, only the cycle
 }
 
 message FixedCol {
-    repeated BaseFieldElement values = 1;
+    repeated bytes values = 1; // BaseFieldElement
 }
 
 message Constraint {
@@ -176,7 +172,7 @@ message Constraint {
 
 message Operand {
     message Constant {
-        BaseFieldElement value = 1;
+        bytes value = 1; // BaseFieldElement
     }
 
     message Challenge {

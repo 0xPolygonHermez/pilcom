@@ -35,7 +35,7 @@ module.exports = class PackedExpressions {
         return this.insert({sub: {value}});
     }
     pushConstant (value) {
-        this.values.push({constant: {value: {value}}});
+        this.values.push({constant: {value}});
     }
     pushChallenge (idx, stage = 1) {
         this.values.push({challenge: {stage, idx}});
@@ -92,7 +92,7 @@ module.exports = class PackedExpressions {
         const props = ope[type];
         switch (type) {
             case 'constant':
-                return ope.constant.value.value;
+                return ope.constant.value;
 
             case 'fixedCol':
                 return this.rowOffsetToString(props.rowOffset, this.getLabel('fixed', props.idx, options));
