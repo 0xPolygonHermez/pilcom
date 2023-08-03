@@ -64,7 +64,6 @@ module.exports = class ProtoOut {
     }
     buildTypes() {
         this.PilOut = this.root.lookupType('PilOut');
-        this.BaseFieldElement = this.root.lookupType('BaseFieldElement');
         this.Subproof = this.root.lookupType('Subproof');
         this.BasicAir = this.root.lookupType('BasicAir');
         this.PublicTable = this.root.lookupType('PublicTable');
@@ -228,7 +227,7 @@ module.exports = class ProtoOut {
             this.fixedId2ProtoId[col.id] = [colType, airCols.length];
             let values = [];
             for (let irow = 0; irow < _rows; ++irow) {
-                values.push({value: this.toBaseField(col.getValue(irow))});
+                values.push(this.toBaseField(col.getValue(irow)));
             }
             airCols.push({values});
         }
@@ -322,7 +321,8 @@ module.exports = class ProtoOut {
                 }
                 break;
             case 'constant':
-                ope.constant.value.value = this.toBaseField(ope.constant.value.value);
+                console.log(ope.constant);
+                ope.constant.value = this.toBaseField(ope.constant.value);
                 break;
         }
     }
@@ -452,59 +452,6 @@ module.exports = class ProtoOut {
         console.log(PilOut);
         */
     }
-    encodingExamples () {
-        const buf = Buffer.alloc(100);
-
-        // BaseFieldElement
-        console.log("***** BaseField ******");
-        let BaseFieldElement = this.root.lookupType('BaseFieldElement');
-        let payload =
-          { value: this.toBaseField(0x102030405060708090A0B0C0D0E0F0n) };
-//          { value: this.toBaseField(-1n) };
-        console.log(BaseFieldElement.verify(payload));
-        let message = BaseFieldElement.fromObject(payload);
-        console.log(message);
-
-        console.log("==== ENCODE DELIMITED (BaseFieldElement) ====");
-        let data = BaseFieldElement.encodeDelimited(message).finish();
-        console.log(`---- data (${data.length}) ----`);
-        console.log(data);
-        console.log(BaseFieldElement.decodeDelimited(data));
-
-        console.log("==== ENCODE (BaseFieldElement) ====");
-        data = BaseFieldElement.encode(message).finish();
-        console.log(`---- data (${data.length}) ----`);
-        console.log(data);
-        console.log(BaseFieldElement.decode(data));
-
-
-        // BasicAir
-        console.log("***** BaseAir ******");
-        let BasicAir = this.root.lookupType('BasicAir');
-        let numRows = (2n ** 32n)-1n;
-        payload =
-          { name: 'AAAAAAAAAA', numRows: numRows+'' };
-//          { name: 'myFirstPilOut', numRows: Long.fromValue(2n**23n) };
-//          { value: this.toBaseField(-1n) };
-        console.log(BasicAir.verify(payload));
-        message = BasicAir.fromObject(payload);
-        console.log(message);
-        // let payload = { name:'pepe', type: 1,  dim: 5, id: 4, awesomeField: "AwesomeString" };
-
-        console.log("==== ENCODE DELIMITED (BasicAir) ====");
-        data = BasicAir.encodeDelimited(message).finish();
-        console.log(`---- data (${data.length}) ----`);
-        console.log(data);
-        console.log(BasicAir.decodeDelimited(data));
-
-        console.log("==== ENCODE (BasicAir) ====");
-        data = BasicAir.encode(message).finish();
-        console.log(`---- data (${data.length}) ----`);
-        console.log(data);
-        console.log(BasicAir.decode(data));
-
-        console.log("That's all !!");
-    }
-};
+}
 
 let pout = new module.exports();
