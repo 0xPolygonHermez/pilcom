@@ -3,6 +3,7 @@
 const protobuf = require('protobufjs');
 const path = require("path");
 const fs = require("fs");
+const exp = require('constants');
 const version = require("../package").version;
 
 const argv = require("yargs")
@@ -48,8 +49,8 @@ async function run() {
     const root = protobuf.loadSync(path2proto);
     const PilOut = root.lookupType("PilOut");
     const piloutDec = PilOut.toObject(PilOut.decode(piloutEnc)); // pilout -> subproofs -> airs -> constraints
-    console.log("air",piloutDec.subproofs[0].airs[0].expressions)
-    console.log(piloutDec.subproofs[0].airs[0].constraints[0])
+    console.log("air",piloutDec.subproofs[0].airs[0].expressions[0])
+    console.log(piloutDec.subproofs[0].airs[0].constraints)
     console.log(piloutDec.symbols)
 
     // Classify symbols
@@ -66,20 +67,47 @@ async function run() {
             const air = subproof.airs[j];
             console.log(`=== AIR: ${air.name} ===`);
 
-            const everyRow = [];
-            const firstRow = [];
-            const lastRow = [];
-            const everyFrame = [];
-            for (let k = 0; k < air.constraints.length; k++) {
-                const constraint = air.constraints[k];
-                if (constraint.everyRow !== 'undefined') {
-                    everyRow.push(constraint.everyRow);
-                } else if (constraint.firstRow !== 'undefined') {
-                    firstRow.push(constraint.firstRow);
-                } else if (constraint.lastRow !== 'undefined') {
-                    lastRow.push(constraint.lastRow);
-                } else if (constraint.everyFrame !== 'undefined') {
-                    everyFrame.push(constraint.everyFrame);
+            // Given a constraint, we use its expressionIdx to find the expression in a recursive way
+            // TODO: Check if the following arrays is necessary
+            let everyRow = [];
+            let firstRow = [];
+            let lastRow = [];
+            let everyFrame = [];
+            for (let k = 0; k < 1; k++) {
+                let constraint = air.constraints[k];
+                constraint = findConstraintByType(constraint);
+                const expressionIdx = constraint.expressionIdx.idx;
+
+                // For now, assume the ope is binary (lhs + rhs)
+                let constt = [null, null, null];
+                constraintConstruction(expressionIdx);
+
+                function constraintConstruction(idx) {
+                    let expression = air.expressions[idx];
+                    let type;
+                    [expression, type] = findExpressionByType(expression); // First step of constraint recursive construction
+                    console.log("exp", expression, type)
+                    const lhs = expression.lhs;
+                    const rhs = expression.rhs;
+                    constt[0] = lhs;
+                    constt[1] = type;
+                    constt[2] = rhs;
+                    console.log("constt",constt)
+
+                    if (lhs.expression !== undefined) {
+                        const idx = lhs.expression.idx;
+                        constraintConstruction(idx);
+                    }
+                    if (rhs.expression !== undefined) {
+                        const idx = rhs.expression.idx;
+                        constraintConstruction(idx);
+                    }
+
+                    let lhsElement = findExpElementByType(piloutDec.symbols, lhs);
+                    let rhsElement = findExpElementByType(piloutDec.symbols, rhs);
+                    console.log("hey3",lhsElement,rhsElement)
+
+                    return [lhs, rhs]
                 }
             }
 
@@ -111,6 +139,89 @@ async function run() {
                 console.log(constraint.debugLine);
             }
         }
+    }
+}
+
+function findConstraintByType(constraint) {
+    if (constraint.everyRow !== undefined) {
+        return constraint.everyRow;
+    } else if (constraint.firstRow !== undefined) {
+        return constraint.firstRow;
+    } else if (constraint.lastRow !== undefined) {
+        return constraint.lastRow;
+    } else if (constraint.everyFrame !== undefined) {
+        return constraint.everyFrame;
+    } else {
+        throw new Error(`Invalid constraint type ${constraint}`);
+    }
+}
+
+// TODO: Complete
+function findExpressionByType(expression) {
+    if (expression.mul !== undefined) {
+        return [expression.mul, '*'];
+    } else if (expression.add !== undefined) {
+        return [expression.add, '+'];
+    } else if (expression.sub !== undefined) {
+        return [expression.sub, '-'];
+    } else {
+        throw new Error(`Invalid expression type ${expression}`);
+    }
+}
+
+// TODO: Complete
+function findExpElementByType(symbols, expElement) {
+    if (expElement.witnessCol !== undefined) {
+        const witnessCol = expElement.witnessCol;
+        const type = stringToSymbol("WITNESS_COL");
+        return findSymbolByTypeAndId(symbols, type, witnessCol.colIdx);
+        // return [witnessCol.stage, witnessCol.colIdx, witnessCol.rowOffset];
+
+    } else if (expElement.fixedCol !== undefined) {
+        const fixedCol = expElement.fixedCol;
+        const type = stringToSymbol("FIXED_COL");
+        return findSymbolByTypeAndId(symbols, type, fixedCol.idx);
+
+    } else if (expElement.constant !== undefined) {
+        return expElement.constant.value;
+
+    } else {
+        throw new Error(`Invalid expression element type ${expElement}`);
+    }
+}
+
+function findSymbolByTypeAndId(symbols, type, id) {
+    for (let i = 0; i < symbols.length; i++) {
+        const symbol = symbols[i];
+        if (symbol.type === type && symbol.id === id) {
+            return symbol.name;
+        }
+    }
+    throw new Error(`Invalid symbol type ${type} and id ${id}`);
+}
+
+function stringToSymbol(string) {
+    switch (string) {
+        case "IM_COL":
+            return 0;
+        case "FIXED_COL":
+            return 1;
+        case "PERIODIC_COL":
+            return 2;
+        case "WITNESS_COL":
+            return 3;
+        case "PROOF_VALUE":
+            return 4;
+        case "SUBPROOF_VALUE":
+            return 5;
+        case "PUBLIC_VALUE":
+            return 6;
+        case "PUBLIC_TABLE":
+            return 7;
+        case "CHALLENGE":
+            return 8;
+        default:
+            throw new Error(`Invalid string ${string}`);
     }
 }
 
