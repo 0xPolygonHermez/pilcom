@@ -3,8 +3,8 @@ package pilout;
 
 message PilOut {
     optional string name = 1;
-    bytes baseField = 2;
-    repeated Subproof subproofs = 3;             // modulus of the base filed
+    bytes baseField = 2;                        // base field characteristic
+    repeated Subproof subproofs = 3;
     repeated uint32 numChallenges = 4;          // number of challenges per stage
     uint32 numProofValues = 5;
     uint32 numPublicValues = 6;
@@ -16,17 +16,14 @@ message PilOut {
 }
 
 message Subproof {
-    bool aggregable = 1;
-    repeated SubproofValue subproofvalues = 2;
-    repeated BasicAir airs = 3;
+    optional string name = 1;
+    bool aggregable = 2;
+    repeated SubproofValue subproofvalues = 3;
+    repeated BasicAir airs = 4;
 }
 
 message SubproofValue {
     AggregationType aggType = 1;
-}
-
-message BaseFieldElement {
-    bytes value = 1;
 }
 
 enum AggregationType {
@@ -76,7 +73,7 @@ message GlobalExpression {
 
 message GlobalOperand {
     message Constant {
-        BaseFieldElement value = 1;
+        bytes value = 1;    // basefield element, variable length
     }
 
     message Challenge {
@@ -135,11 +132,11 @@ message BasicAir {
 }
 
 message PeriodicCol {
-    repeated BaseFieldElement values = 1;   // Only the cycle
+    repeated bytes values = 1;   // BaseFieldElement, only the cycle
 }
 
 message FixedCol {
-    repeated BaseFieldElement values = 1;
+    repeated bytes values = 1; // BaseFieldElement
 }
 
 message Constraint {
@@ -175,7 +172,7 @@ message Constraint {
 
 message Operand {
     message Constant {
-        BaseFieldElement value = 1;
+        bytes value = 1; // BaseFieldElement
     }
 
     message Challenge {

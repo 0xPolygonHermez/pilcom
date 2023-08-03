@@ -146,8 +146,7 @@ private function PIOP_batch() {
 
     for (int i = 0; i < len; ++i) {
         for (int j = 0; j < len; ++j) {
-            // if (gsum_provide[i] == gsum_provide[j]) {
-            if (i == j) {
+            if (i != j && gsum_provide[i] == gsum_provide[j]) {
                 gsum_provide_mul_count[i] = gsum_provide_mul_count[i] + gsum_provide_mul_count[j];
                 gsum_provide_mul_count[j] = gsum_provide_mul_count[len-1];
                 // gsum_provide_mul_count.pop(); // QUESTION: Is array pop implemented?
@@ -160,8 +159,7 @@ private function PIOP_batch() {
 
     for (int i = 0; i < len; ++i) {
         for (int j = 0; j < len; ++j) {
-            if (i == j) {
-            // if (gsum_require[i] == gsum_require[j]) {
+            if (i != j && gsum_require[i] == gsum_require[j]) {
                 gsum_require_mul_count[i] = gsum_require_mul_count[i] + gsum_require_mul_count[j];
                 gsum_require_mul_count[j] = gsum_require_mul_count[len-1];
                 // gsum_require_mul_count.pop();

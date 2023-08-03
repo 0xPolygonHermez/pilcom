@@ -12,7 +12,8 @@ module.exports = class LabelRanges {
     getLabel(id, options) {
         const range = this.ranges.find(e => id >= e.from && id <= e.to);
         if (!range) {
-            return `@[${id}]`;
+            const type = options.type ?? '';
+            return `${type}@${id}`;
         }
         let res = range.label;
         options = options ?? {};
@@ -24,5 +25,20 @@ module.exports = class LabelRanges {
             res = res +'['+range.multiarray.offsetToIndexes(offset).join('][')+']';
         }
         return res;
+    }
+    clone() {
+        let cloned = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
+        cloned.ranges = [];
+        for (const range of this.ranges) {
+            let duprange = {...range, multiarray: range.multiarray ? range.multiarray.clone() : range.multiarray};
+            cloned.ranges.push(duprange);
+        }
+        return cloned;
+    }
+
+    *[Symbol.iterator]() {
+        for (let index = 0; index < this.ranges.length; ++index) {
+          yield this.ranges[index];
+        }
     }
 }

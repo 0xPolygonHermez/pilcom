@@ -26,10 +26,21 @@ module.exports = class Indexable {
         return this.undefined;
     }
 
-    dup() {
-        let dup = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
-        dup.values = [...this.values];
-        return dup;
+    clone() {
+        let cloned = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
+        cloned.values = [];
+        for (const value of this.values) {
+            if (typeof value.clone === 'function') {
+                cloned.values.push(value.clone());
+            } else if (value instanceof Object) {
+                cloned.values.push(Object.assign(Object.create(Object.getPrototypeOf(value)), value));
+            } else {
+                cloned.values.push(value);
+            }
+        }
+        cloned.labelRanges = this.labelRanges.clone();
+
+        return cloned;
     }
     clear() {
         this.values = [];

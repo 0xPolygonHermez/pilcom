@@ -108,6 +108,7 @@ module.exports = class Processor {
         this.callstack = []; // TODO
         this.breakpoints = ['expr.pil:26'];
         this.loadBuiltInClass();
+        this.scopeType = 'proof';
     }
     loadBuiltInClass() {
         const filenames = fs.readdirSync(__dirname + '/builtin');
@@ -140,7 +141,10 @@ module.exports = class Processor {
         this.references.declare('N', 'int', [], { global: true, sourceRef: this.sourceRef });
         this.references.declare('BITS', 'int', [], { global: true, sourceRef: this.sourceRef });
         this.references.declare('__SUBPROOF__', 'string', [], { global: true, sourceRef: this.sourceRef });
+        this.scope.pushInstanceType('proof');
         this.execute(statements);
+        this.finalProofScope();
+        this.scope.popInstanceType();
         this.generateOut();
     }
     generateOut()
@@ -152,8 +156,9 @@ module.exports = class Processor {
         let proto = new ProtoOut(this.Fr);
         proto.setupPilOut('myFirstPil');
         for (const subproofName of this.subproofs) {
+            console.log(`****************** PILOUT SUBPROOF ${subproofName} ******************`);
             const subproof = this.subproofs.get(subproofName);
-            proto.setSubproof(subproofName); // Add the aggregability property to subproofs
+            proto.setSubproof(subproofName); // TODO: Add the aggregability property and value to subproofs
             for (const airName of subproof.airs) {
                 const air = subproof.airs.get(airName);
                 console.log(airName);
@@ -162,16 +167,30 @@ module.exports = class Processor {
                 console.log(airName);
                 proto.setAir(airName, air.rows);
                 proto.setFixedCols(air.fixeds);
-
+                air.expressions.dump('EXPRESSION PILOUT '+subproofName);
                 // expression: constraint, hint, operand (expression)
                 let packed = new PackedExpressions();
-                this.expressions.pack(packed);
-                proto.setConstraints(this.constraints, packed);
+                // this.expressions.pack(packed);
+                air.expressions.pack(packed);
+                console.log(air.constraints);
+                proto.setConstraints(air.constraints, packed,
+                    { labelsByType: {
+                        witness: air.witness.labelRanges,
+                        fixed: air.fixeds.labelRanges,
+                    }
+                    });
                 proto.setWitnessCols(air.witness);
+                proto.setSymbolsFromLabels(air.witness.labelRanges, 'witness');
+                proto.setSymbolsFromLabels(air.fixeds.labelRanges, 'fixed');
                 proto.setExpressions(packed);
-                proto.setSymbols(this.references);
             }
         }
+        let packed = new PackedExpressions();
+        // this.expressions.pack(packed);
+        this.globalExpressions.pack(packed);
+        proto.setGlobalConstraints(this.globalConstraints, packed);
+        proto.setGlobalExpressions(packed);
+        proto.setGlobalSymbols(this.references);
         proto.encode();
         proto.saveToFile('tmp/pilout.ptb');
         // stageWidths
@@ -533,14 +552,14 @@ module.exports = class Processor {
         // TODO: Fr inside context
         const subproof = new Subproof(this.Fr, this.context);
         this.subproofs.define(subproofName, subproof, `subproof ${subproofName} has been defined previously on ${this.context.sourceRef}`);
-        this.scope.push('subproof');
+        this.scope.pushInstanceType('subproof');
         for (const airRows of subproofRows) {
             this.rows = airRows;
 
             console.log(`BEGIN AIR ${subproofName} (${airRows}) #${this.airId}`);
             const air = new Air(this.Fr, this.context, airRows);
 
-            const airName = subproofName + (subproofRows.length > 1 ? `_${bits}`:'');
+            const airName = subproofName + (subproofRows.length > 1 ? `_${air.bits}`:'');
             subproof.airs.define(airName, air);
 
             // TO-DO loop with different rows
@@ -552,19 +571,23 @@ module.exports = class Processor {
             this.references.set('__SUBPROOF__', [], new StringValue(subproofName));
 
             this.context.push(false, subproofName);
-            this.scope.push('air');
+            this.scope.pushInstanceType('air');
             this.execute(s.statements, `SUBPROOF ${subproofName}`);
             this.finalAirScope();
-            air.witness = this.witness.dup();
-            air.fixeds = this.fixeds.dup();
+            air.witness = this.witness.clone();
+            air.fixeds = this.fixeds.clone();
+            air.expressions = this.expressions.clone();
+            air.constraints = this.constraints.clone();
+            air.constraints.expressions = air.expressions;
             this.clearAirScope();
-            this.scope.pop(['witness', 'fixed', 'im']);
+            this.constraints = new Constraints(this.Fr, this.expressions);
+            this.scope.popInstanceType(['witness', 'fixed', 'im']);
             this.context.pop();
             console.log(`END AIR ${subproofName} (${airRows}) #${this.airId}`);
             ++this.airId;
         }
         this.finalSubproofScope();
-        this.scope.pop();
+        this.scope.popInstanceType();
         ++this.subproofId;
     }
     finalAirScope() {
@@ -573,6 +596,7 @@ module.exports = class Processor {
     clearAirScope() {
         this.references.clearType('fixed');
         this.references.clearType('witness');
+        this.expressions.clear();
     }
     finalSubproofScope() {
         this.callDelayedFunctions('subproof', 'final');
@@ -728,16 +752,21 @@ module.exports = class Processor {
         console.log(`Ignore once section because it has already executed ${s.debug}`);
     }
     execConstraint(s) {
-        const left = s.left.instance(true);
-        const right = s.right.instance(true);
-        s.left.dump();
-        console.log(left);
-        s.right.dump();
-        console.log(right);
-        const id = this.constraints.define(left, right, false, this.sourceRef);
-        const expr = this.constraints.getExpr(id);
-        console.log(`\x1B[1;36;44mCONSTRAINT      > ${expr.toString({hideClass:true, hideLabel:false})} === 0 (${this.sourceRef})\x1B[0m`);
-        console.log(`\x1B[1;36;44mCONSTRAINT (RAW)> ${expr.toString({hideClass:true, hideLabel:true})} === 0 (${this.sourceRef})\x1B[0m`);
+        const scopeType = this.scope.getInstanceType();
+        let id, expr, prefix = '';
+
+        if (scopeType === 'air') {
+            id = this.constraints.define(s.left.instance(true), s.right.instance(true),false,this.sourceRef);
+            expr = this.constraints.getExpr(id);
+        } else if (scopeType === 'proof') {
+            id = this.globalConstraints.define(s.left.instance(true), s.right.instance(true),false,this.sourceRef);
+            expr = this.globalConstraints.getExpr(id);
+            prefix = 'GLOBAL';
+        } else {
+            throw new Error(`Constraint definition on invalid scope (${scopeType}) ${this.context.sourceRef}`);
+        }
+        console.log(`\x1B[1;36;44m${prefix}CONSTRAINT      > ${expr.toString({hideClass:true, hideLabel:false})} === 0 (${this.sourceRef})\x1B[0m`);
+        console.log(`\x1B[1;36;44m${prefix}CONSTRAINT (RAW)> ${expr.toString({hideClass:true, hideLabel:true})} === 0 (${this.sourceRef})\x1B[0m`);
     }
     execVariableIncrement(s) {
         // REVIEW used only inside loop (increment) in other cases was an expression

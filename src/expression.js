@@ -1016,8 +1016,7 @@ module.exports = class Expression extends ExpressionItem {
                 break;
 
             case OP_ID_REF:
-                console.log(['PACK_OP_ID_REF',ope.refType, ope.id, ope.next]);
-                this.referencePack(container, ope.refType, ope.id, ope.next, options);
+                this.referencePack(container, ope.refType, ope.id, ope.next, ope.stage, options);
                 break;
 
             case OP_STACK:
@@ -1034,7 +1033,7 @@ module.exports = class Expression extends ExpressionItem {
         }
 
     }
-    referencePack(container, type, id, next, options) {
+    referencePack(container, type, id, next, stage, options) {
         // TODO stage
         switch (type) {
             case 'im':
@@ -1042,15 +1041,27 @@ module.exports = class Expression extends ExpressionItem {
                 break;
 
             case 'witness':
-                container.pushWitnessCol(id, next); // TODO: stage
+                container.pushWitnessCol(id, next ?? 0, stage ?? 1); // TODO: stage
                 break;
 
             case 'fixed':
-                container.pushFixedCol(id, next);
+                container.pushFixedCol(id, next ?? 0);
                 break;
 
             case 'public':
                 container.pushPublicValue(id);
+                break;
+
+            case 'challenge':
+                container.pushChallenge(id, stage ?? 1);
+                break;
+
+            case 'subproofvalue':
+                container.pushSubproofValue(id/*, subproofId*/);
+                break;
+
+            case 'proofvalue':
+                container.pushProofValue(id);
                 break;
 
             default:

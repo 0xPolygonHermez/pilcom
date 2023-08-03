@@ -40,8 +40,11 @@ module.exports = class PackedExpressions {
     pushChallenge (idx, stage = 1) {
         this.values.push({challenge: {stage, idx}});
     }
-    pushProverValue (idx) {
-        this.values.push({proverValue: {idx}});
+    pushSubproofValue (idx, subproofId) {
+        this.values.push({subproofValue: {idx, subproofId}});
+    }
+    pushProofValue (idx) {
+        this.values.push({proofValue: {idx}});
     }
     pushPublicValue (idx) {
         this.values.push({publicValue: {idx}});
@@ -56,13 +59,14 @@ module.exports = class PackedExpressions {
         this.values.push({witnessCol: {colIdx, rowOffset, stage}});
     }
     pushExpression (idx) {
-        this.values.push({expression: {value:idx}});
+        this.values.push({expression: {idx}});
     }
     dump() {
         console.log(util.inspect(this.expressions, false, null, true /* enable colors */));
     }
     exprToString(id, options) {
         const expr = this.expressions[id];
+        console.log([id, expr, this.expressions.length]);
         const [op] = Object.keys(expr);
         let opes = [];
         for (const ope of Object.values(expr[op])) {
@@ -100,7 +104,16 @@ module.exports = class PackedExpressions {
                 return this.getLabel('public', props.idx, options);
 
             case 'expression':
-                return '('+this.exprToString(props.value, options)+')';
+                return '('+this.exprToString(props.idx, options)+')';
+
+            case 'challenge':
+                return this.getLabel('challenge', props.idx, options);
+
+            case 'subproofValue':
+                return this.getLabel('subproofvalue', props.idx, options);
+
+            case 'proofValue':
+                return this.getLabel('proofValue', props.idx, options);
 
             default:
                 console.log(ope);
@@ -111,8 +124,11 @@ module.exports = class PackedExpressions {
     getLabel(type, id, options) {
         options = options ?? {};
         const labels = options.labels;
+        const labelsByType = options.labelsByType;
         let label;
-        if (typeof labels === 'object' && typeof labels.getLabel === 'function') {
+        if (labelsByType && typeof labelsByType[type] === 'object' && typeof labelsByType[type].getLabel === 'function') {
+            label = labelsByType[type].getLabel(id, options);
+        } else if (typeof labels === 'object' && typeof labels.getLabel === 'function') {
             label = labels.getLabel(type, id, options);
         }
         if (!label) {

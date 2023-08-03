@@ -91,15 +91,17 @@ module.exports = class Scope {
         }
         return this.deep;
     }
-
+    getInstanceType() {
+        return this.instanceType;
+    }
     pushInstanceType(type) {
         this.stackInstanceTypes.push(this.instanceType);
         this.push(type);
         this.instanceType = type;
     }
-    popInstanceType() {
+    popInstanceType(excludeTypes = []) {
         this.instanceType = this.stackInstanceTypes.pop();
-        this.pop();
+        this.pop(excludeTypes);
         return this.instanceType;
     }
     *[Symbol.iterator]() {

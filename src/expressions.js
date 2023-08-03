@@ -16,7 +16,13 @@ module.exports = class Expressions {
         this.labelRanges = new LabelRanges();
         Expression.setParent(this);
     }
+    clone() {
+        let cloned = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
+        cloned.expressions = this.expressions.map(x => x.clone());
+        cloned.labelRanges = this.labelRanges.clone();
 
+        return cloned;
+    }
     reserve(count, label, multiarray) {
         const id = this.expressions.length;
         for (let times = 0; times < count; ++times) {
@@ -166,9 +172,10 @@ module.exports = class Expressions {
                     // e.parent.fixedRowAccess = true;
                     res = res.value.getValue(res.row);
                 }
+                if (ref.next) res.next = ref.next;
                 break;
             case 'challenge':
-                res = ref;
+                res = {refType: ref.type, id: ref.id };
                 console.log('=========== CHALLENGE ============');
                 console.log(res);
                 break;
@@ -346,19 +353,36 @@ module.exports = class Expressions {
         EXIT_HERE;
     }
     pack(container, options) {
+        this.packedIds = [];
         for (let id = 0; id < this.expressions.length; ++id) {
             if (typeof this.packedIds[id] !== 'undefined') continue;    // already packed
-            this.packedIds[id] = this.expressions[id].pack(container, options);
+            const packedId = this.expressions[id].pack(container, options);
+            console.log(`PACK EXPR ${id} => ${packedId} ${this.expressions[id].toString()}`);
+            this.packedIds[id] = packedId;
         }
     }
     getPackedExpressionId(id, container, options) {
         if (container && typeof this.packedIds[id] === 'undefined') {
-            this.packedIds[id] = this.expressions[id].pack(container, options);
+            const packedId = this.expressions[id].pack(container, options);
+            console.log(`PACK EXPR (GET) ${id} => ${packedId} ${this.expressions[id].toString()}`);
+            this.packedIds[id] = packedId;
         }
         return this.packedIds[id];
     }
     instance(e) {
         return e.instance();
+    }
+
+    dump(name) {
+        console.log(`DUMP EXPRESSION COUNT:${this.expressions.length} # ${name}`);
+        for (let index = 0; index < this.expressions.length; ++index) {
+            this.expressions[index].dump(`EXPRESSION ${index} # ${name}`);
+        }
+    }
+    clear() {
+        this.expressions = [];
+        this.packedIds = [];
+        this.labelRanges = new LabelRanges();
     }
 
     *[Symbol.iterator]() {

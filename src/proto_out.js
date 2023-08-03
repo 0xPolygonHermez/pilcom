@@ -29,10 +29,11 @@ const REF_TYPE_IM_COL = 0;
 const REF_TYPE_FIXED_COL = 1;
 const REF_TYPE_PERIODIC_COL = 2;
 const REF_TYPE_WITNESS_COL = 3;
-const REF_TYPE_PROVER_VALUE = 4;
-const REF_TYPE_PUBLIC_VALUE = 5;
-const REF_TYPE_PUBLIC_TABLE = 6;
-const REF_TYPE_CHALLENGE = 7;
+const REF_TYPE_PROOF_VALUE = 4;
+const REF_TYPE_SUBPROOF_VALUE = 5;
+const REF_TYPE_PUBLIC_VALUE = 6;
+const REF_TYPE_PUBLIC_TABLE = 7;
+const REF_TYPE_CHALLENGE = 8;
 
 module.exports = class ProtoOut {
     constructor (Fr, options = {}) {
@@ -63,7 +64,6 @@ module.exports = class ProtoOut {
     }
     buildTypes() {
         this.PilOut = this.root.lookupType('PilOut');
-        this.BaseFieldElement = this.root.lookupType('BaseFieldElement');
         this.Subproof = this.root.lookupType('Subproof');
         this.BasicAir = this.root.lookupType('BasicAir');
         this.PublicTable = this.root.lookupType('PublicTable');
@@ -117,7 +117,7 @@ module.exports = class ProtoOut {
             baseField: this.toBaseField(this.Fr.p),
             subproofs: [],
             numChallenges: [],
-            numProverValues: 0,
+            numProofValues: 0,
             numPublicValues: 0,
             publicTables: [],
             expressions: [],
@@ -127,8 +127,9 @@ module.exports = class ProtoOut {
         }
     }
     encode() {
-        console.log(this.pilOut);
+        console.log("hey",this.pilOut);
         let message = this.PilOut.fromObject(this.pilOut);
+        console.log("hey",message);
         this.data = this.PilOut.encode(message).finish();
         // return this.data;
     }
@@ -139,24 +140,34 @@ module.exports = class ProtoOut {
         this.currentAir = {name, numRows: Number(rows)};
         this.currentSubproof.airs.push(this.currentAir);
     }
-    setSubproof(name, aggregable = false) {
+    setSubproof(name, aggregable = false) { // TODO: Add subproof value
         this.currentSubproof = {name, aggregable, airs: []};
         this.pilOut.subproofs.push(this.currentSubproof);
     }
-    setSymbols(symbols) {
-        for(const [name, ref] of symbols.keyValuesOfTypes(['witness', 'fixed', 'public', 'subproofvalue', 'proofvalue'])) {
+    setGlobalSymbols(symbols) {
+        this._setSymbols(symbols.keyValuesOfTypes(['public', 'subproofvalue', 'proofvalue']));
+    }
+    setSymbolsFromLabels(labels, type) {
+        let symbols = [];
+        for (const label of labels) {
+            symbols.push([label.label, {type, locator: label.from, array: label.multiarray, data: {}}]);
+        }
+        this._setSymbols(symbols);
+    }
+    _setSymbols(symbols) {
+        for(const [name, ref] of symbols) {
             console.log(ref);
             const arrayInfo = ref.array ? ref.array : {dim: 0, lengths: []};
             const [protoType, id, stage] = this.symbolType2Proto(ref.type, ref.locator);
             let payout = {
                 name,
                 airId: 0,
-                type: 0,
+                type: protoType,
                 id,
                 stage,
                 dim: arrayInfo.dim,
                 lengths: arrayInfo.lengths,
-                debugLine: ''
+                debugLine: (ref.data ?? {}).sourceRef ?? ''
             };
             this.pilOut.symbols.push(payout);
         }
@@ -168,7 +179,6 @@ module.exports = class ProtoOut {
                 return [REF_TYPE_IM_COL, id, 0];
 
             case 'fixed': {
-                console.log(id);
                 const [ftype, protoId] = this.fixedId2ProtoId[id];
                 if (ftype === 'P') return [REF_TYPE_PERIODIC_COL, protoId, 0];
                 return [REF_TYPE_FIXED_COL, protoId, 0];
@@ -178,8 +188,11 @@ module.exports = class ProtoOut {
                 const [stage, protoId] = this.witnessId2ProtoId[id];
                 return [REF_TYPE_WITNESS_COL, protoId, stage];
             }
-            case 'prover':
-                return [REF_TYPE_PROVER_VALUE, id, 0];
+            case 'subproofvalue':
+                return [REF_TYPE_SUBPROOF_VALUE, id, 0];
+
+            case 'proofvalue':
+                return [REF_TYPE_PROOF_VALUE, id, 0];
 
             case 'public':
                 return [REF_TYPE_PUBLIC_VALUE, id, 0];
@@ -214,7 +227,7 @@ module.exports = class ProtoOut {
             this.fixedId2ProtoId[col.id] = [colType, airCols.length];
             let values = [];
             for (let irow = 0; irow < _rows; ++irow) {
-                values.push({value: this.toBaseField(col.getValue(irow))});
+                values.push(this.toBaseField(col.getValue(irow)));
             }
             airCols.push({values});
         }
@@ -253,6 +266,12 @@ module.exports = class ProtoOut {
     }
     setExpressions(packedExpressions) {
         const expressions = this.setupAirProperty('expressions');
+        this._setExpressions(expressions, packedExpressions);
+    }
+    setGlobalExpressions(packedExpressions) {
+        this._setExpressions(this.pilOut.expressions, packedExpressions);
+    }
+    _setExpressions(expressions, packedExpressions) {
         for (const packedExpression of packedExpressions) {
             const e = cloneDeep(packedExpression);
             const [op] = Object.keys(e);
@@ -302,6 +321,7 @@ module.exports = class ProtoOut {
                 }
                 break;
             case 'constant':
+                console.log(ope.constant);
                 ope.constant.value = this.toBaseField(ope.constant.value);
                 break;
         }
@@ -316,27 +336,37 @@ module.exports = class ProtoOut {
         this.currentAir[propname] = init;
         return this.currentAir[propname];
     }
-    setConstraints(constraints, packed) {
+    setGlobalConstraints(constraints, packed) {
+        for (const [index, constraint] of constraints.keyValues()) {
+            const packedExpressionId = constraints.getPackedExpressionId(constraint.exprId, packed);
+            let payload = { expressionIdx: { idx: packedExpressionId },
+                            debugLine: constraints.getDebugInfo(index, packed) };
+            this.pilOut.constraints.push(payload);
+        }
+    }
+    setConstraints(constraints, packed, options) {
+        console.log(constraints.constraints);
         let airConstraints = this.setupAirProperty('constraints');
         for (const [index, constraint] of constraints.keyValues()) {
             let payload;
-            const debugLine = constraints.getDebugInfo(index, packed);
+            const debugLine = constraints.getDebugInfo(index, packed, options);
+            const packedExpressionId = constraints.getPackedExpressionId(constraint.exprId, packed, options);
             switch (constraint.boundery) {
                 case false:
                 case 'all':
-                    payload = { everyRow: { expressionIdx: { idx: constraint.exprId }, debugLine}};
+                    payload = { everyRow: { expressionIdx: { idx: packedExpressionId }, debugLine}};
                     break;
 
                 case 'first':
-                    payload = { firstRow: { expressionIdx: { idx: constraint.exprId }, debugLine}};
+                    payload = { firstRow: { expressionIdx: { idx: packedExpressionId }, debugLine}};
                     break;
 
                 case 'last':
-                    payload = { lastRow: { expressionIdx: { idx: constraint.exprId }, debugLine}};
+                    payload = { lastRow: { expressionIdx: { idx: packedExpressionId }, debugLine}};
                     break;
 
                 case 'frame':
-                    payload = { everyFrame: { expressionIdx: { idx: constraint.exprId }, offsetMin: 0, offsetMax:0, debugLine}};
+                    payload = { everyFrame: { expressionIdx: { idx: packedExpressionId }, offsetMin: 0, offsetMax:0, debugLine}};
                     break;
 
                 default:
@@ -422,59 +452,6 @@ module.exports = class ProtoOut {
         console.log(PilOut);
         */
     }
-    encodingExamples () {
-        const buf = Buffer.alloc(100);
-
-        // BaseFieldElement
-        console.log("***** BaseField ******");
-        let BaseFieldElement = this.root.lookupType('BaseFieldElement');
-        let payload =
-          { value: this.toBaseField(0x102030405060708090A0B0C0D0E0F0n) };
-//          { value: this.toBaseField(-1n) };
-        console.log(BaseFieldElement.verify(payload));
-        let message = BaseFieldElement.fromObject(payload);
-        console.log(message);
-
-        console.log("==== ENCODE DELIMITED (BaseFieldElement) ====");
-        let data = BaseFieldElement.encodeDelimited(message).finish();
-        console.log(`---- data (${data.length}) ----`);
-        console.log(data);
-        console.log(BaseFieldElement.decodeDelimited(data));
-
-        console.log("==== ENCODE (BaseFieldElement) ====");
-        data = BaseFieldElement.encode(message).finish();
-        console.log(`---- data (${data.length}) ----`);
-        console.log(data);
-        console.log(BaseFieldElement.decode(data));
-
-
-        // BasicAir
-        console.log("***** BaseAir ******");
-        let BasicAir = this.root.lookupType('BasicAir');
-        let numRows = (2n ** 32n)-1n;
-        payload =
-          { name: 'AAAAAAAAAA', numRows: numRows+'' };
-//          { name: 'myFirstPilOut', numRows: Long.fromValue(2n**23n) };
-//          { value: this.toBaseField(-1n) };
-        console.log(BasicAir.verify(payload));
-        message = BasicAir.fromObject(payload);
-        console.log(message);
-        // let payload = { name:'pepe', type: 1,  dim: 5, id: 4, awesomeField: "AwesomeString" };
-
-        console.log("==== ENCODE DELIMITED (BasicAir) ====");
-        data = BasicAir.encodeDelimited(message).finish();
-        console.log(`---- data (${data.length}) ----`);
-        console.log(data);
-        console.log(BasicAir.decodeDelimited(data));
-
-        console.log("==== ENCODE (BasicAir) ====");
-        data = BasicAir.encode(message).finish();
-        console.log(`---- data (${data.length}) ----`);
-        console.log(data);
-        console.log(BasicAir.decode(data));
-
-        console.log("That's all !!");
-    }
-};
+}
 
 let pout = new module.exports();

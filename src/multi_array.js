@@ -5,6 +5,9 @@ class MultiArray {
         this.debug = debug || '';
         this.initOffsets(lengths);
     }
+    clone() {
+        return new MultiArray(this.lengths, this.debug);
+    }
     checkIndexes(indexes) {
         if (indexes === null || typeof indexes === 'undefined') {
            if (this.dim === 0) return true;
@@ -37,7 +40,7 @@ class MultiArray {
     }
     applyIndex(obj, indexes) {
         const res = this.getIndexesTypedOffset(indexes);
-        let dup = cloneDeep(obj);
+        let dup = obj.clone()
         if (dup.id) {
             dup.id = dup.id + res.offset;
         }

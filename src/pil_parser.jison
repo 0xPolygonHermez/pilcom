@@ -207,7 +207,7 @@ top_level_blocks
 
 lopcs
     : lopcs CS %prec CS
-    |  %prec EMPTY
+    | %prec EMPTY
     ;
 
 top_level_block
@@ -246,7 +246,6 @@ top_level_block
 
     | constant_definition
         { $$ = $1 }
-
     ;
 
 use_directive

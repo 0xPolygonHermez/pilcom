@@ -8,6 +8,15 @@ module.exports = class Constraints {
         this.expressions = expressions;
     }
 
+    clone() {
+        let cloned = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
+        cloned.constraints = [];
+        for (const constraint of this.constraints) {
+            cloned.constraints.push({...constraint});
+        }
+        return cloned;
+    }
+
     get(id) {
         return this.constraints[id];
     }
@@ -20,6 +29,9 @@ module.exports = class Constraints {
         return (typeof this.constraints[id] != 'undefined');
     }
 
+    getPackedExpressionId(id, container, options) {
+        return this.expressions.getPackedExpressionId(id, container, options);
+    }
     define(left, right, boundery, sourceRef) {
         assertLog(left instanceof Expression, left);
         assertLog(right instanceof Expression, right);
@@ -66,14 +78,15 @@ module.exports = class Constraints {
             console.log(this.getDebugInfo(index, packed));
         }
     }
-    getDebugInfo(index, packed) {
+    getDebugInfo(index, packed, options) {
         const constraint = this.constraints[index];
         const eid = constraint.exprId;
         const peid = this.expressions.getPackedExpressionId(eid);
-        let info = `${index}: ${eid} ${peid} ${constraint.sourceRef}`
+        let info = `INFO ${index}: ${eid} ${peid} ${constraint.sourceRef}`
+        options = options ?? {};
 
         if (packed) {
-            info += ' '  + packed.exprToString(peid, {labels: this.expressions, hideClass: true});
+            info += ' '  + packed.exprToString(peid, {...options, labels: this.expressions, hideClass: true});
         }
         return info;
     }
