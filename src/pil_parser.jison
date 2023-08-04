@@ -1196,6 +1196,9 @@ subproof_definition
 
     | SUBPROOF IDENTIFIER '(' expression_list ')'  '{' statement_block '}'
         { $$ = { type: 'subproof_definition', aggregate: false, name: $2, rows: $4, statements: $7.statements } }
+
+    | SUBPROOF IDENTIFIER '{' statement_block '}'
+        { $$ = { type: 'subproof_block', aggregate: false, name: $2, statements: $4.statements } }
     ;
 
 constant_definition
