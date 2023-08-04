@@ -50,8 +50,8 @@ async function run() {
     const PilOut = root.lookupType('PilOut');
     const piloutDec = PilOut.toObject(PilOut.decode(piloutEnc)); // pilout -> subproofs -> airs -> constraints
     // console.log('air',piloutDec.subproofs[0].airs[0].expressions[0].sub)
-    // console.log(piloutDec.subproofs[0].airs[0].constraints)
-    // console.log(piloutDec.symbols)
+    console.log(piloutDec.subproofs[0].airs[0].constraints)
+    console.log(piloutDec.symbols)
 
     for (let i = 0; i < piloutDec.subproofs.length; i++) {
         const subproof = piloutDec.subproofs[i];
@@ -142,6 +142,8 @@ function findExpressionByType(expression) {
 
 // TODO: Complete
 function findExpElementByType(symbols, expElement) {
+    console.log(expElement)
+
     if (expElement.expression !== undefined) {
         return expElement.expression;
 
