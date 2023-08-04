@@ -50,22 +50,8 @@ async function run() {
     const PilOut = root.lookupType('PilOut');
     const piloutDec = PilOut.toObject(PilOut.decode(piloutEnc)); // pilout -> subproofs -> airs -> constraints
     // console.log('air',piloutDec.subproofs[0].airs[0].expressions[0].sub)
-    // console.log(piloutDec.subproofs[1].airs[0].constraints)
-    // console.log(piloutDec.symbols)
-    console.log(piloutDec)
-    // console.log(piloutDec.subproofs[0].airs[0].expressions)
     // console.log(piloutDec.subproofs[0].airs[0].constraints)
-
-    console.log("air",piloutDec.subproofs[0].airs[0].expressions)
-    console.log(piloutDec.subproofs[0].airs[0].constraints[0])
-    console.log(piloutDec.symbols)
-
-    // Classify symbols
-    // for (let i = 0; i < piloutDec.symbols.length; i++) {
-    //     const symbol = piloutDec.symbols[i];
-    //     console.log(`=== Symbol: ${symbol.name} ===`);
-    //     console.log(symbol);
-    // }
+    // console.log(piloutDec.symbols)
 
     for (let i = 0; i < piloutDec.subproofs.length; i++) {
         const subproof = piloutDec.subproofs[i];

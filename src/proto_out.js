@@ -479,22 +479,27 @@ module.exports = class ProtoOut {
         return buf;
     }
     buf2bint(buf) {
-        let value = 0n;
         let offset = 0;
+        let value;
+        if ((buf.length - offset) >= 8) {
+            value = 0n;
+        } else {
+            value = 0;
+        }
         while ((buf.length - offset) >= 8) {
             value = (value << 64n) + (offset ? buf.readBigUInt64BE(offset):buf.readBigInt64BE(offset));
             offset += 8;
         }
         while ((buf.length - offset) >= 4) {
-            value = (value << 32n) + (offset ? buf.readBigUInt32BE(offset):buf.readBigInt32BE(offset));
+            value = (value << 32) + (offset ? buf.readUInt32BE(offset):buf.readInt32BE(offset));
             offset += 4;
         }
         while ((buf.length - offset) >= 2) {
-            value = (value << 16n) + (offset ? buf.readBigUInt16BE(offset):buf.readBigInt16BE(offset));
+            value = (value << 16) + (offset ? buf.readUInt16BE(offset):buf.readInt16BE(offset));
             offset += 2;
         }
         while ((buf.length - offset) >= 1) {
-            value += (value << 8n) + (offset ? buf.readBigUInt8(offset):buf.readBigInt8(offset));
+            value += (value << 8) + (offset ? buf.readUInt8(offset):buf.readInt8(offset));
             offset += 1;
         }
         return value;
