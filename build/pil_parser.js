@@ -709,7 +709,7 @@ case 279:
  this.$ = { type: 'subproof_definition', aggregate: false, name: $$[$0-6], rows: $$[$0-4], statements: $$[$0-1].statements } 
 break;
 case 280:
- this.$ = { type: 'subproof_block', aggregate: false, name: $$[$0-3], rows: $$[$0-1], statements: $$[$02].statements } 
+ this.$ = { type: 'subproof_block', aggregate: false, name: $$[$0-3], statements: $$[$0-1].statements } 
 break;
 case 281:
  this.$ = { type: 'constant_definition', name: $$[$0-2], value: $$[$0] } 

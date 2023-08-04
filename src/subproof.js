@@ -10,4 +10,7 @@ module.exports = class Subproof {
         this.blocks = [statements];
         this.airs = new Airs();
     }
+    addBlock(statements) {
+        this.blocks.push(statements);
+    }
 }
