@@ -145,7 +145,7 @@ module.exports = class ProtoOut {
         this.pilOut.subproofs.push(this.currentSubproof);
     }
     setGlobalSymbols(symbols) {
-        this._setSymbols(symbols.keyValuesOfTypes(['public', 'subproofvalue', 'proofvalue']));
+        this._setSymbols(symbols.keyValuesOfTypes(['public', 'subproofvalue', 'proofvalue', 'challenge', 'publictable']));
     }
     setSymbolsFromLabels(labels, type) {
         let symbols = [];
