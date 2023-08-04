@@ -4,9 +4,13 @@ const Air = require("./air.js")
 
 module.exports = class Subproof {
 
-    constructor (Fr, context) {
-        this.Fr = Fr;
+    constructor (context, rows, statements) {
         this.context = context;
+        this.rows = rows;   // array of rows
+        this.blocks = [statements];
         this.airs = new Airs();
+    }
+    addBlock(statements) {
+        this.blocks.push(statements);
     }
 }
