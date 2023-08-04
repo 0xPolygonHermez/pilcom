@@ -69,7 +69,7 @@ module.exports = class Processor {
         this.witness = new Indexable('witness', WitnessCol);
         this.references.register('witness', this.witness);
 
-        this.constants = new Indexable('constant', 'int');
+        this.constants = new Indexable('constant', IntValue);
         this.references.register('constant', this.constants);
 
         this.publics = new Ids('public');
@@ -201,6 +201,7 @@ module.exports = class Processor {
     }
     traceLog(text, color = '') {
         if (!this.trace) return;
+        console.log([Expression.constructor.name]);
         if (color) console.log(`\x1B[${color}m${text}\x1B[0m`);
         else console.log(text);
     }
@@ -246,6 +247,7 @@ module.exports = class Processor {
             }
             res = this[method](st);
         } catch (e) {
+            console.log([Expression.constructor.name]);
             console.log("EXCEPTION ON "+st.debug+" ("+this.callstack.join(' > ')+")");
             throw e;
         }
@@ -475,8 +477,10 @@ module.exports = class Processor {
         this.references.set(func.name, [], func);
     }
     getExprNumber(expr, s, title) {
+        console.log(s);
+        expr.dump();
         // expr.expr.dump();
-        const se = this.expressions.eval(expr);
+        const se = IntValue.castTo(expr.eval());
         if (typeof se !== 'bigint') {
 //        if (se.op !== 'number') {
             console.log('ERROR');
@@ -563,7 +567,7 @@ module.exports = class Processor {
             subproof.airs.define(airName, air);
 
             // TO-DO loop with different rows
-            console.log([air.bits, air.rows]);
+            console.log([air.bits, air.rows, Expression.constructor.name]);
 
             // create built-in constants
             this.references.set('N', [], new IntValue(air.rows));

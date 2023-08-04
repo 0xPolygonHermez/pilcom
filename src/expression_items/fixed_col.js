@@ -1,6 +1,5 @@
-const LabelRanges = require("../label_ranges.js");
-const Sequence = require("../sequence.js");
 const ProofItem = require("./proof_item.js");
+const Sequence = require("../sequence.js");
 module.exports = class FixedCol extends ProofItem {
     constructor (id) {
         super(id);
@@ -22,7 +21,7 @@ module.exports = class FixedCol extends ProofItem {
         return this.sequence.getValue(row);
     }
     set(value) {
-        if (value instanceof Sequence) {
+       /* if (value instanceof Sequence) {
             if (this.sequence !== null) {
                 EXIT_HERE;
             }
@@ -35,6 +34,16 @@ module.exports = class FixedCol extends ProofItem {
         else {
             console.log(value);
             EXIT_HERE;
+        }*/
+    }
+    clone() {
+        let cloned = new FixedCol(this.id);
+        cloned.rows = this.rows;
+        cloned.values = [...this.values];
+        cloned.fullFilled = this.fullFilled;
+        if (this.sequence) {
+            cloned.sequence = this.sequence.clone();
         }
+        return cloned;
     }
 }

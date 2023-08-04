@@ -15,4 +15,7 @@ module.exports = class StringValue extends RuntimeItem {
         this.value = value;
         return this.value;
     }
+    clone() {
+        return new StringValue(this.value);
+    }
 }

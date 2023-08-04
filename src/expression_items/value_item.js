@@ -1,4 +1,3 @@
-const LabelRanges = require("../label_ranges.js");
 const ExpressionItem = require("./expression_item.js");
 
 module.exports = class ValueItem extends ExpressionItem {
@@ -14,5 +13,8 @@ module.exports = class ValueItem extends ExpressionItem {
     }
     dump() {
         return `${this.constructor.name}(${this.value})`;
+    }
+    clone() {
+        return new ValueItem(this.value);
     }
 }

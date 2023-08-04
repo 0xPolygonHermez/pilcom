@@ -1,4 +1,3 @@
-const LabelRanges = require("../label_ranges.js");
 const ProofItem = require("./proof_item.js");
 module.exports = class WitnessCol extends ProofItem {
     constructor (id, stage = 1) {
@@ -7,5 +6,8 @@ module.exports = class WitnessCol extends ProofItem {
     }
     getId() {
         return this.id;
+    }
+    clone() {
+        return new WitnessCol(this.id, this.stage);
     }
 }

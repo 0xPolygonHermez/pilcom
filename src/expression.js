@@ -3,8 +3,13 @@ const {cloneDeep} = require('lodash');
 const {assert} = require("chai");
 const NonRuntimeEvaluable = require('./non_runtime_evaluable.js');
 const PilItem = require('./pil_item.js');
-const {Reference, StackItem, ExpressionItem, ValueItem, IntValue, ProofItem} = require("./expression_items.js");
-
+const Reference = require("./expression_items/reference.js");
+const StackItem = require("./expression_items/stack_item.js");
+const ExpressionItem = require("./expression_items/expression_item.js");
+const ValueItem = require("./expression_items/value_item.js");
+const IntValue = require("./expression_items/int_value.js");
+const ProofItem = require("./expression_items/proof_item.js");
+// const {Reference, StackItem, ExpressionItem, ValueItem, IntValue, ProofItem} = require("./expression_items.js");
 const OP_VALUE = 'value';
 const OP_ID_REF = 'idref';
 const OP_STACK = 'stack';
@@ -54,6 +59,7 @@ module.exports = class Expression extends ExpressionItem {
     }
 
     constructor () {
+
         super();
         this.stack = [];
         this.fixedRowAccess = false;
@@ -67,6 +73,9 @@ module.exports = class Expression extends ExpressionItem {
         Expression.context = context;
     }
 
+    get isExpression() {
+        return true;
+    }
     clone() {
         let cloned = new Expression();
         cloned.fixedRowAccess = this.fixedRowAccess;
@@ -548,6 +557,9 @@ module.exports = class Expression extends ExpressionItem {
         }
         return result;
     }
+    /* evalAsIntValue() {
+        return IntValue.castTo(this.eval());
+    }*/
     getArrayResult(results, indexes, options) {
         // this method take one of results using indexes
     }

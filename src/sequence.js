@@ -1,5 +1,4 @@
-const chai = require("chai");
-const assert = chai.assert;
+const {assert, assertLog} = require("./assert.js");
 const Router = require("./router.js");
 const Expression = require("./expression.js");
 
@@ -10,6 +9,7 @@ class SequencePadding {
         this.size = size;
     }
 }
+console.log("LOADING SEQUENCE");
 module.exports = class Sequence {
     static cacheGeomN = [];
     // TODO: Review compiler estructures
@@ -30,6 +30,10 @@ module.exports = class Sequence {
         this.debug = '';
         this.valueCounter = 0;
         this.sizeOf(expression);
+    }
+    clone() {
+        let cloned = new Sequence(this.parent, this.expression, this.maxSize);
+        return cloned;
     }
     preRoute(method, e) {
         if (e.debug) this.debug = e.debug;

@@ -1,4 +1,3 @@
-const LabelRanges = require("../label_ranges.js");
 const ProofItem = require("./proof_item.js");
 module.exports = class Public extends ProofItem {
     constructor (id) {
@@ -6,5 +5,8 @@ module.exports = class Public extends ProofItem {
     }
     getId() {
         return this.id;
+    }
+    clone() {
+        return new Public(this.id);
     }
 }

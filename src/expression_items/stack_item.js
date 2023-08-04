@@ -1,4 +1,3 @@
-const LabelRanges = require("../label_ranges.js");
 const ExpressionItem = require("./expression_item.js");
 
 module.exports = class StackItem extends ExpressionItem {
@@ -12,5 +11,8 @@ module.exports = class StackItem extends ExpressionItem {
     setOffset(value) {
         this.offset = value;
         return value;
+    }
+    clone() {
+        return new StackItem(this.offset);
     }
 }

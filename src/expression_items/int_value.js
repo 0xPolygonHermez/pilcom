@@ -19,4 +19,12 @@ module.exports = class IntValue extends ValueItem {
         assert(typeof value === 'bigint');
         this.value = value;
     }
+    clone() {
+        return new IntValue(value);
+    }
+    static castTo(value) {
+        if (value instanceof IntValue) {
+            return value.value;
+        }
+    }
 }

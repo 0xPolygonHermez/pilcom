@@ -6,7 +6,9 @@ const Router = require("./router.js");
 const {assert, assertLog} = require('./assert');
 module.exports = class ExpressionFactory {
 
+    // pre function to delete property op only used by routing
     static router = new Router(this, 'op', {defaultPrefix: 'from', pre: (method, obj) => delete obj.op});
+
     static fromObject(obj) {
         if (obj instanceof Expression) {
             return obj;
@@ -46,10 +48,12 @@ module.exports = class ExpressionFactory {
         return expressions;
     }
     static fromReference(obj) {
-        let res = new Reference(obj.name, obj.indexes ?? []);
+        let res = new Reference(obj.name, obj.indexes ?? [], (obj.next ?? 0) - (obj.prior ?? 0));
         delete obj.name;
         delete obj.indexes;
         delete obj.dim;
+        delete obj.next;
+        delete obj.prior;
         return res;
     }
     static fromNumber(obj) {

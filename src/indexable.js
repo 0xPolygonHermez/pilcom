@@ -98,9 +98,10 @@ module.exports = class Indexable {
     }
 
     set(id, value) {
+        console.log(value);
         if (this.cls) {
+//            if (typeof value !== 'object' || (value instanceof this.cls) === false) {
             if ((value instanceof this.cls) === false) {
-                console.log([this.type, this.cls.constructor.name, value]);
                 value = new this.cls(value);
             }
         }
