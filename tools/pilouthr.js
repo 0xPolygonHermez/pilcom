@@ -50,10 +50,10 @@ async function run() {
     const PilOut = root.lookupType('PilOut');
     const piloutDec = PilOut.toObject(PilOut.decode(piloutEnc)); // pilout -> subproofs -> airs -> constraints
     // console.log('air',piloutDec.subproofs[0].airs[0].expressions[0].sub)
-    console.log(piloutDec.subproofs[0].airs[0].constraints)
+    console.log(piloutDec.subproofs[1].airs[0].constraints)
     console.log(piloutDec.symbols)
 
-    for (let i = 0; i < piloutDec.subproofs.length; i++) {
+    for (let i = 1; i < piloutDec.subproofs.length; i++) {
         const subproof = piloutDec.subproofs[i];
         console.log('■', `SubProof ${subproof.name}:`);
         for (let j = 0; j < subproof.airs.length; j++) {
@@ -142,12 +142,21 @@ function findExpressionByType(expression) {
 
 // TODO: Complete
 function findExpElementByType(symbols, expElement) {
-    console.log(expElement)
-
     if (expElement.expression !== undefined) {
         return expElement.expression;
 
+    } else if (expElement.challenge !== undefined) {
+        const challenge = expElement.challenge;
+        const type = stringToSymbol('CHALLENGE');
+        return findSymbolByTypeAndId(symbols, type, challenge.idx);
+
+    } else if (expElement.subproofValue !== undefined) {
+        const subproofValue = expElement.subproofValue;
+        const type = stringToSymbol('SUBPROOF_VALUE');
+        return findSymbolByTypeAndId(symbols, type, subproofValue.idx);
+
     } else if (expElement.witnessCol !== undefined) {
+        console.log(expElement)
         const witnessCol = expElement.witnessCol;
         const type = stringToSymbol('WITNESS_COL');
 
@@ -164,7 +173,16 @@ function findExpElementByType(symbols, expElement) {
     } else if (expElement.fixedCol !== undefined) {
         const fixedCol = expElement.fixedCol;
         const type = stringToSymbol('FIXED_COL');
-        return findSymbolByTypeAndId(symbols, type, fixedCol.idx);
+
+        const symbol = findSymbolByTypeAndId(symbols, type, fixedCol.idx);
+        const rowOffset = fixedCol.rowOffset;
+        if (rowOffset > 0) {
+            return (rowOffset > 1 ? `${symbol}'${-rowOffset}` : `${symbol}'`);
+        }
+        if (rowOffset < 0) {
+            return (rowOffset < -1 ? `${-rowOffset}'${symbol}` : `'${symbol}`);
+        }
+        return symbol;
 
     } else if (expElement.constant !== undefined) {
         return buf2bint(expElement.constant.value);
@@ -178,6 +196,7 @@ function findExpElementByType(symbols, expElement) {
     }
 }
 
+// We should also look for subproofId
 function findSymbolByTypeAndId(symbols, type, id) {
     for (let i = 0; i < symbols.length; i++) {
         const symbol = symbols[i];
