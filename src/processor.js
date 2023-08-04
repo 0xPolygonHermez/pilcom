@@ -547,7 +547,10 @@ module.exports = class Processor {
         if (subproofName === false) {
             this.error(s, `subproof not defined correctly`);
         }
-        const subproof = this.subproof.get(subproofName);
+        const subproof = this.subproofs.get(subproofName);
+        if (!subproof) {
+            throw new Error(`Subproof definition ${subproofName} hasn't been defined before subproof block`);
+        }
         subproof.addBlock(s.statements);
     }
     executeSubproof(subproofName, subproof) {
@@ -573,7 +576,7 @@ module.exports = class Processor {
             this.context.push(false, subproofName);
             this.scope.pushInstanceType('air');
             for (const statements of subproof.blocks) {
-                // REVIEW
+                // REVIEW: clear uses and regular expressions
                 // this.scope.push();
                 this.execute(statements, `SUBPROOF ${subproofName}`);
                 // this.scope.pop();
