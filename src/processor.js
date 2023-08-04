@@ -83,7 +83,7 @@ module.exports = class Processor {
         this.functions = new Indexable(Fr, 'function');
         this.references.register('function', this.functions);
 
-        this.subproofs = new Subproofs(Fr);
+        this.subproofs = new Subproofs(Fr, this.context);
 
         this.expressions = new Expressions(Fr, this, this.references, this.publics, this.constants);
         this.globalExpressions = new Expressions(Fr, this, this.references, this.publics, this.constants);
@@ -136,9 +136,15 @@ module.exports = class Processor {
         this.references.declare('__SUBPROOF__', 'string', [], { global: true, sourceRef: this.sourceRef });
         this.scope.pushInstanceType('proof');
         this.execute(statements);
+        this.executeSubproofs();
         this.finalProofScope();
         this.scope.popInstanceType();
         this.generateOut();
+    }
+    executeSubproofs() {
+        for (const name of this.subproofs) {
+            this.executeSubproof(name, this.subproofs.get(name));
+        }
     }
     generateOut()
     {
@@ -529,26 +535,30 @@ module.exports = class Processor {
             this.error(s, `subproof not defined correctly`);
         }
 
-
-
-        // TODO: verify if namespace just was declared in this case subproof must be the same
-
-
-
         let subproofRows = this.evalExpressionList(s.rows);
         this.checkRows(subproofRows);
 
         // TODO: Fr inside context
-        const subproof = new Subproof(this.Fr, this.context);
+        const subproof = new Subproof(this.context, subproofRows, s.statements);
         this.subproofs.define(subproofName, subproof, `subproof ${subproofName} has been defined previously on ${this.context.sourceRef}`);
+    }
+    execSubproofBlock(s) {
+        const subproofName = s.name ?? false;
+        if (subproofName === false) {
+            this.error(s, `subproof not defined correctly`);
+        }
+        const subproof = this.subproof.get(subproofName);
+        subproof.addBlock(s.statements);
+    }
+    executeSubproof(subproofName, subproof) {
         this.scope.pushInstanceType('subproof');
-        for (const airRows of subproofRows) {
+        for (const airRows of subproof.rows) {
             this.rows = airRows;
 
             console.log(`BEGIN AIR ${subproofName} (${airRows}) #${this.airId}`);
             const air = new Air(this.Fr, this.context, airRows);
 
-            const airName = subproofName + (subproofRows.length > 1 ? `_${air.bits}`:'');
+            const airName = subproofName + (subproof.rows.length > 1 ? `_${air.bits}`:'');
             subproof.airs.define(airName, air);
 
             // TO-DO loop with different rows
@@ -562,7 +572,12 @@ module.exports = class Processor {
 
             this.context.push(false, subproofName);
             this.scope.pushInstanceType('air');
-            this.execute(s.statements, `SUBPROOF ${subproofName}`);
+            for (const statements of subproof.blocks) {
+                // REVIEW
+                // this.scope.push();
+                this.execute(statements, `SUBPROOF ${subproofName}`);
+                // this.scope.pop();
+            }
             this.finalAirScope();
             air.witness = this.witness.clone();
             air.fixeds = this.fixeds.clone();
