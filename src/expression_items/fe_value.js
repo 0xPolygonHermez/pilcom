@@ -8,5 +8,10 @@ module.exports = class FeValue extends ValueItem {
     clone() {
         return new FeValue(this.value);
     }
-
+    asInt(value) {
+        return this.value;
+    }
+    asNumber(value) {
+        return Number(this.value);
+    }
 }

@@ -4,5 +4,8 @@ module.exports = class ProofItem extends ExpressionItem {
         super();
         this.id = id;
     }
+    getId() {
+        return this.id;
+    }
 }
 

@@ -4,6 +4,7 @@ const FeValue = require("./expression_items/fe_value.js");
 const IntValue = require("./expression_items/int_value.js");
 const ProofItem = require("./expression_items/proof_item.js");
 const Proofval = require("./expression_items/proofval.js");
+const Challenge = require("./expression_items/challenge.js");
 const Public = require("./expression_items/public.js");
 const Publictable = require("./expression_items/publictable.js");
 const Reference = require("./expression_items/reference.js");
@@ -24,6 +25,7 @@ module.exports = {
     IntValue,
     ProofItem,
     Proofval,
+    Challenge,
     Public,
     Publictable,
     Reference,

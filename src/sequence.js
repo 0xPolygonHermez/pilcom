@@ -23,6 +23,7 @@ module.exports = class Sequence {
         this.padding = false;
         this.expression = expression;
         this.router = new Router(this, 'type', {pre: this.preRoute});
+
         this.maxSize = typeof maxSize === 'undefined' ? false : Number(maxSize);
         this.paddingCycleSize = false;
         this.paddingSize = 0;
@@ -59,13 +60,16 @@ module.exports = class Sequence {
         this.paddingSize = 0;
         const size = this._sizeOf(e);
         assert(size >= this.paddingCycleSize, `size(${size}) < paddingCycleSize(${this.paddingCycleSize})`);
+        console.log(['SIZE(MAXSIZE)', this.maxSize]);
+        console.log(['SIZE(paddingCycleSize)', this.paddingCycleSize]);
+        console.log(['SIZE(paddingSize)', this.paddingSize]);
         if (this.paddingCycleSize) {
             this.paddingSize = this.maxSize - (size - this.paddingCycleSize);
             this.size = size - this.paddingCycleSize + this.paddingSize;
         } else {
             this.size = size;
         }
-
+        console.log(['SIZE', this.size]);
         return this.size;
     }
     _sizeOf(e) {
@@ -83,7 +87,8 @@ module.exports = class Sequence {
         return this._sizeOfSeqList(e);
     }
     _sizeOfRepeatSeq(e) {
-        const times = Number(this.parent.getExprNumber(e.times));
+        const times = this.toNumber(this.parent.getExprNumber(e.times));
+        console.log(['times', times]);
         return times  * this._sizeOf(e.value);
     }
     setPaddingSize(size) {
@@ -100,17 +105,19 @@ module.exports = class Sequence {
         return this.setPaddingSize(this._sizeOf(e.value));
     }
     getRangeSeqInfo(e) {
-        const fromTimes = e.times ? Number(this.e2num(e.times)): 1;
-        const toTimes = e.toTimes ? Number(this.e2num(e.toTimes)): fromTimes;
+        const fromTimes = e.times ? this.toNumber(this.e2num(e.times)): 1;
+        const toTimes = e.toTimes ? this.toNumber(this.e2num(e.toTimes)): fromTimes;
+        console.log(['fromTimes', fromTimes, 'toTimes', toTimes]);
         if (fromTimes !== toTimes) {
             throw new Error(`In range sequence, from(${fromTimes}) and to(${toTimes}) must be same`);
         }
         return [this.e2num(e.from), this.e2num(e.to), fromTimes];
     }
     getTermSeqInfo(e) {
-        const t1Times = e.t1.times ? Number(this.e2num(e.t1.times)): 1;
-        const t2Times = e.t2.times ? Number(this.e2num(e.t2.times)): 1;
-        const tnTimes = e.tn.times === false ? false : (e.tn.times ? Number(this.e2num(e.t2.times)): 1);
+        const t1Times = e.t1.times ? this.toNumber(this.e2num(e.t1.times)): 1;
+        const t2Times = e.t2.times ? this.toNumber(this.e2num(e.t2.times)): 1;
+        const tnTimes = e.tn.times === false ? false : (e.tn.times ? this.toNumber(this.e2num(e.t2.times)): 1);
+        console.log(['t1Times', t1Times, 't2Times', t2Times, 'tnTimes', tnTimes]);
         if (t1Times !== t2Times && (tnTimes === false || tnTimes === t2Times)) {
             throw new Error(`In term sequence, t1(${t1Times}), t2(${t2Times})`+
                         (tnTimes === false ? '':` and tn(${tbTimes}`)+'must be same');
@@ -128,7 +135,7 @@ module.exports = class Sequence {
     _sizeOfRangeSeq(e) {
         // TODO review if negative, fe?
         const [fromValue, toValue, times] = this.getRangeSeqInfo(e);
-        return Number(toValue > fromValue ? toValue - fromValue + 1n : toValue - fromValue + 1n) *  times;
+        return this.toNumber(toValue > fromValue ? toValue - fromValue + 1n : toValue - fromValue + 1n) *  times;
     }
     _sizeOfArithSeq(e) {
         const [t1, t2, tn, times] = this.getTermSeqInfo(e);
@@ -138,7 +145,7 @@ module.exports = class Sequence {
             if ((delta > 0 && tn < t2) || (delta < 0 && tn > t2) || (distance % delta !== 0n)) {
                 throw new Error(`Invalid terms of arithmetic sequence ${t1},${t2}...${tn} at ${this.debug}`);
             }
-            return Number(distance/delta + 2n) * times;
+            return this.toNumber(distance/delta + 2n) * times;
         }
         else {
             return this.setPaddingSize(2);
@@ -152,7 +159,7 @@ module.exports = class Sequence {
         const tfinal = tn === false ? t1 + delta * BigInt(this.paddingSize): tn + delta;
         console.log({tag: 'XXXXX', tn, tfinal, paddingSize: this.paddingSize});
         let value = t1;*/
-        const count = tn === false ? this.paddingSize : times * (Number(((tn - t1) / delta)) + 1);
+        const count = tn === false ? this.paddingSize : times * (this.toNumber(((tn - t1) / delta)) + 1);
         const finalExtendPos = this.extendPos + count;
         // console.log({t1, t2, delta, tn, extendPos: this.extendPos, count, finalExtendPos, paddingSize: this.paddingSize});
         let value = t1;
@@ -165,11 +172,11 @@ module.exports = class Sequence {
         return count;
     }
     calculateGeomN(ratio, ti, tf) {
-        const ratioAsNum = Number(ratio);
+        const ratioAsNum = this.toNumber(ratio);
         const rn = tf/ti;
 
         if (rn <= Number.MAX_SAFE_INTEGER) {
-            return BigInt(Math.round(Math.log(Number(rn))/Math.log(ratioAsNum)));
+            return BigInt(Math.round(Math.log(this.toNumber(rn))/Math.log(ratioAsNum)));
         }
 
         const key = [ratio, rn].join('_');
@@ -197,7 +204,7 @@ module.exports = class Sequence {
             value = value / chunkValues[index];
             n = n + chunks[index];
         }
-        n = n + BigInt(Math.round(Math.log(Number(value))/Math.log(ratioAsNum)));
+        n = n + BigInt(Math.round(Math.log(this.toNumber(value))/Math.log(ratioAsNum)));
         Sequence.cacheGeomN[key] = n;
         return n;
     }
@@ -244,7 +251,7 @@ module.exports = class Sequence {
             // console.log({padding, calculateSize, ti, tf, ratio, n, t1, t2, tn});
             throw new Error(`ERROR geometric seq calculation ${tf} !== ${ti} * (${ratio} ** ${BigInt(n)})`);
         }
-        return [Number(n) + 1, reverse, ti, tf, ratio];
+        return [this.toNumber(n) + 1, reverse, ti, tf, ratio];
     }
     _sizeOfGeomSeq(e) {
         const [t1, t2, tn, times] = this.getTermSeqInfo(e);
@@ -302,6 +309,7 @@ module.exports = class Sequence {
         return this.extendPos - initialExtendPos;
     }
     extend() {
+        console.log(this.size);
         this.values = new Array(this.size);
         this.extendPos = 0;
         this._extend(this.expression);
@@ -310,6 +318,7 @@ module.exports = class Sequence {
     verify() {
         console.log(this.toString());
         console.log([this.extendPos, this.size]);
+        console.log(['SIZE', this.size]);
         assert(this.valueCounter === this.size);
         for (let index = 0; index < size; ++index) {
             assert(this.values[index] === 'bigint', `type of index ${index} not bigint (${typeof this.values[index]}) ${value}`);
@@ -389,5 +398,12 @@ module.exports = class Sequence {
     } */
     toString() {
         return this.values.join(',');
+    }
+    toNumber(value) {
+        let nvalue = Number(value);
+        if (nvalue === NaN || !isNaN(value)) {
+            throw new Error(`Invalid number ${value}`);
+        }
+        return nvalue;
     }
 }

@@ -27,4 +27,10 @@ module.exports = class IntValue extends ValueItem {
             return value.value;
         }
     }
+    asInt(value) {
+        return this.value;
+    }
+    asNumber(value) {
+        return Number(this.value);
+    }
 }

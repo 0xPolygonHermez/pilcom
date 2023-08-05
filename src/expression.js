@@ -8,6 +8,7 @@ const StackItem = require("./expression_items/stack_item.js");
 const ExpressionItem = require("./expression_items/expression_item.js");
 const ValueItem = require("./expression_items/value_item.js");
 const IntValue = require("./expression_items/int_value.js");
+const FeValue = require("./expression_items/fe_value.js");
 const ProofItem = require("./expression_items/proof_item.js");
 // const {Reference, StackItem, ExpressionItem, ValueItem, IntValue, ProofItem} = require("./expression_items.js");
 const OP_VALUE = 'value';
@@ -518,11 +519,11 @@ module.exports = class Expression extends ExpressionItem {
     evaluateValue(value, options) {
         console.log(value);
         if (typeof value === 'undefined') {
-            return 0;
+            return options ? options.default ?? 0n : 0n;
         }
         // stack references not replaced
         // expression references not extended (inserted)
-        console.log(value);
+        console.log([typeof value, value]);
         if (value instanceof Expression) {
             value.dump();
         }
@@ -560,6 +561,27 @@ module.exports = class Expression extends ExpressionItem {
     /* evalAsIntValue() {
         return IntValue.castTo(this.eval());
     }*/
+    evaluateValueAsNumber(value, options) {
+        let evaluated = false;
+        while (true) {
+            if (typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean') {
+                return Number(value);
+            }
+            if (value instanceof ExpressionItem) {
+                return value.asNumber();
+            }
+            if (evaluated) break;
+            value = this.evaluateValue(value, options);
+            evaluated = true;
+        }
+        throw new Error(`Value isn't a number`);
+    }
+    evaluateValuesAsNumbers(values, options) {
+        if (typeof values === 'undefined') {
+            return (options ? options.default ?? [] : []);
+        }
+        return values.map(value => this.evaluateValuesAsNumbers(value, options));
+    }
     getArrayResult(results, indexes, options) {
         // this method take one of results using indexes
     }
@@ -580,17 +602,17 @@ module.exports = class Expression extends ExpressionItem {
             for (let ope of this.stack[stpos].operands) {
                 let next = 0;
                 // if no prior defined priorValue was 0
-                let priorValue = this.evaluateValue(ope.prior, options);
+                let priorValue = this.evaluateValueAsNumber(ope.prior, options);
 
                 let result = this.evaluateValue(ope, stackResults, options);
                 console.log(['RESULT', result]);
-                let indexes = this.evaluateValues(ope.indexes, options);
+                let indexes = this.evaluateValuesAsNumbers(ope.indexes, options);
                 if (indexes.length) {
                     // TODO: fixed access
                     result = this.getArrayResult(result, indexes, options);
                 }
                 // if no prior defined nextValue was 0
-                let nextValue = this.evaluateValue(ope.next, options);
+                let nextValue = this.evaluateValueAsNumber(ope.next, options);
 
                 // prior and next are excl
                 if (priorValue && nextValue) {

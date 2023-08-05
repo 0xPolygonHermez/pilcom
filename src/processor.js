@@ -23,8 +23,9 @@ const WitnessCols = require("./witness_cols.js");
 const Iterator = require("./iterator.js");
 const Context = require("./context.js");
 const Runtime = require("./runtime.js");
+// const FunctionCall = require("./function_call.js");
 const {FlowAbortCmd, BreakCmd, ContinueCmd, ReturnCmd} = require("./flow_cmd.js")
-const {Reference, ExpressionItem, FeValue, IntValue, ProofItem,
+const {Reference, ExpressionItem, FeValue, IntValue, ProofItem, Proofval, Subproofval, Challenge, Public, ProofStageItem,
        ExpressionReference, StringValue, FixedCol, WitnessCol } = require("./expression_items.js");
 const fs = require('fs');
 const { log2, getKs, getRoots } = require("./utils.js");
@@ -72,16 +73,16 @@ module.exports = class Processor {
         this.constants = new Indexable('constant', IntValue);
         this.references.register('constant', this.constants);
 
-        this.publics = new Ids('public');
+        this.publics = new Ids('public', Public);
         this.references.register('public', this.publics);
 
-        this.challenges = new Ids('challenge');
+        this.challenges = new Ids('challenge', Challenge);
         this.references.register('challenge', this.challenges);
 
-        this.proofvalues = new Ids('proofvalue');
+        this.proofvalues = new Ids('proofvalue', Proofval);
         this.references.register('proofvalue', this.proofvalues);
 
-        this.subproofvalues = new Ids('subproofvalue');
+        this.subproofvalues = new Ids('subproofvalue', Subproofval);
         this.references.register('subproofvalue', this.subproofvalues);
 
 //        this.imCols = new Indexable(Fr, 'im');
@@ -647,7 +648,7 @@ module.exports = class Processor {
             let init = s.sequence;
             let seq = null;
             if (init) {
-                seq = new Sequence(this, init, this.references.get('N'));
+                seq = new Sequence(this, init, IntValue.castTo(this.references.get('N')));
                 // console.log(`Extending fixed col ${colname} ...`);
                 seq.extend();
                 // console.log('SEQ:'+seq.values.join(','));
