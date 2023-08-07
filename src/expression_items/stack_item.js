@@ -15,4 +15,7 @@ module.exports = class StackItem extends ExpressionItem {
     clone() {
         return new StackItem(this.offset);
     }
+    dump(options) {
+        return `StackItem(${this.offset})`;
+    }
 }

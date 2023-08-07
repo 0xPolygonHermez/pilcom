@@ -290,7 +290,6 @@ module.exports = class References {
         if (typeof indexes === 'undefined') indexes = [];
 
         const [instance, info, def] = this._getInstanceAndLocator(name, indexes);
-        console.log(info);
         let tvalue;
         if (info.array) {
             // array info, could not be resolved
@@ -301,8 +300,10 @@ module.exports = class References {
             console.log([instance.constructor.name, info.type]);
             tvalue = instance.getTypedValue(info.locator + info.offset, 0, info.type);
         }
-        assertLog(tvalue instanceof ExpressionItem, {name, tvalue});
-        console.log(tvalue);
+        // TODO: review
+        if (info.type !== 'function') {
+            assertLog(tvalue instanceof ExpressionItem, {name, tvalue});
+        }
         if (typeof info.row !== 'undefined') {
             tvalue.row = info.row;
         }

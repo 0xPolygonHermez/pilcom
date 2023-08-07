@@ -1,5 +1,5 @@
 const ProofItem = require("./proof_item.js");
-const Sequence = require("../sequence.js");
+// const Sequence = require("../sequence.js");
 module.exports = class FixedCol extends ProofItem {
     constructor (id) {
         super(id);
@@ -21,7 +21,8 @@ module.exports = class FixedCol extends ProofItem {
         return this.sequence.getValue(row);
     }
     set(value) {
-       /* if (value instanceof Sequence) {
+        // REVIEW: cyclic references
+        if (value instanceof Object) {
             if (this.sequence !== null) {
                 EXIT_HERE;
             }
@@ -29,12 +30,12 @@ module.exports = class FixedCol extends ProofItem {
                 EXIT_HERE;
             }
             this.sequence = value;
-            this.rows = this.sequence.values.length;
+            this.rows = this.sequence.size;
         }
         else {
             console.log(value);
             EXIT_HERE;
-        }*/
+        }
     }
     clone() {
         let cloned = new FixedCol(this.id);

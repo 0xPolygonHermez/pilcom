@@ -398,6 +398,7 @@ module.exports = class ProtoOut {
             return Buffer.alloc(0);
         }
 
+        console.log(value);
         const buf = Buffer.alloc(32);
         buf.writeBigInt64BE(value >> 64n*3n, 0);
         buf.writeBigUInt64BE((value >> 64n*2n) & 0xFFFFFFFFFFFFFFFFn, 8);

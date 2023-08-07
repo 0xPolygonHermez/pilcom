@@ -1,6 +1,7 @@
 const {assert, assertLog} = require("./assert.js");
 const Router = require("./router.js");
 const Expression = require("./expression.js");
+const Values = require('./values.js');
 
 const MAX_ELEMS_GEOMETRIC_SEQUENCE = 300;
 class SequencePadding {
@@ -9,8 +10,9 @@ class SequencePadding {
         this.size = size;
     }
 }
-console.log("LOADING SEQUENCE");
 module.exports = class Sequence {
+    #values;
+
     static cacheGeomN = [];
     // TODO: Review compiler estructures
     // TODO: iterator of values without "extend"
@@ -19,7 +21,7 @@ module.exports = class Sequence {
 
     constructor (parent, expression, maxSize) {
         this.parent = parent;
-        this.values = [];
+        this.#values = new Values();
         this.padding = false;
         this.expression = expression;
         this.router = new Router(this, 'type', {pre: this.preRoute});
@@ -34,13 +36,15 @@ module.exports = class Sequence {
     }
     clone() {
         let cloned = new Sequence(this.parent, this.expression, this.maxSize);
+        this.#values.mutable = false;
+        cloned.#values = this.#values.clone();
         return cloned;
     }
     preRoute(method, e) {
         if (e.debug) this.debug = e.debug;
     }
     getValue(index) {
-        return this.values[index];
+        return this.#values.getValue(index);
     }
     setValue(index, value) {
         /* assert(this.extendPos >= 0 && (this.maxSize === false || this.extendPos < this.maxSize),
@@ -49,11 +53,11 @@ module.exports = class Sequence {
         if ((index >= 0 && (this.maxSize === false || index < this.maxSize) === false)) {
             console.log(`\x1B[33mERROR Invalid value of extendPos:${index} maxSize:${this.maxSize}  ${this.debug}\x1B[0m`);
         }
-        if (typeof this.values[index] !== 'undefined') {
+        if (typeof this.#values.getValue(index) !== 'undefined') {
             console.log(`\x1B[33mERROR Rewrite index position:${index} ${this.debug}\x1B[0m`);
         }
         ++this.valueCounter;
-        return this.values[index] = value;
+        return this.#values.setValue(index, value);
     }
     sizeOf(e) {
         this.paddingCycleSize = false;
@@ -310,10 +314,10 @@ module.exports = class Sequence {
     }
     extend() {
         console.log(this.size);
-        this.values = new Array(this.size);
+        // this.values = new Array(this.size);
         this.extendPos = 0;
         this._extend(this.expression);
-        return this.values;
+        this.#values.mutable = false;
     }
     verify() {
         console.log(this.toString());
@@ -357,7 +361,7 @@ module.exports = class Sequence {
             let upto = remaingValues >= seqSize ? seqSize : remaingValues;
             // console.log(`SETTING UPTO ${upto} ${remaingValues} ${seqSize}`);
             for (let index = 0; index < upto; ++index) {
-                this.setValue(this.extendPos++, this.values[from + index]);
+                this.setValue(this.extendPos++, this.#values.getValue(from + index));
             }
             remaingValues = remaingValues - upto;
         }

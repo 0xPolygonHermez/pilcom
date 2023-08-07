@@ -3,7 +3,7 @@ const {cloneDeep} = require('lodash');
 const {assert, assertLog} = require('./assert.js');
 module.exports = class Indexable {
     constructor (type, cls, rtype) {
-        this.cls = cls;
+        this.cls = cls ?? false;
         this.values = [];
         this.type = type;
         this.rtype = rtype ?? type;
@@ -68,6 +68,7 @@ module.exports = class Indexable {
         if (typeof res === 'undefined') {
            res = this.undefined;
         } else {
+            console.log(this.cls);
             assertLog(!this.cls || res instanceof this.cls, [this.cls.constructor.name, res]);
         }
         if (this.debug) {
@@ -82,7 +83,7 @@ module.exports = class Indexable {
 
     getTypedValue(id) {
         // const res = { type: this.rtype, value: this.get(id) };
-        console.log(['getTypedValue', this.type, this.cls.constructor.name, id]);
+        console.log(['getTypedValue', this.type, this.cls ? this.cls.constructor.name : 'no-class', id]);
         return this.get(id);
     }
 
@@ -98,9 +99,19 @@ module.exports = class Indexable {
     }
 
     set(id, value) {
+        if (this.type === 'fixed') {
+            console.log('FIXED_SET', value);
+        }
         if (typeof this.cls === 'function') {
             if ((value instanceof this.cls) === false) {
-                value = new this.cls(value);
+                if (this.cls.directValue) {
+                    value = new this.cls(value);
+                } else {
+                    let initValue = value;
+                    value = new this.cls(id);
+                    console.log(value);
+                    value.set(initValue);
+                }
             }
         }
         this.values[id] = value;

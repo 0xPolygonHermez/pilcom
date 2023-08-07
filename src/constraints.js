@@ -33,6 +33,7 @@ module.exports = class Constraints {
         return this.expressions.getPackedExpressionId(id, container, options);
     }
     define(left, right, boundery, sourceRef) {
+        console.log(left, right);
         assertLog(left instanceof Expression, left);
         assertLog(right instanceof Expression, right);
         if (left.isRuntime()) {
@@ -50,7 +51,7 @@ module.exports = class Constraints {
         if (right.eval() !== 0n) {
             left.insert('sub', right);
         }
-        left.simplify();
+        // left.simplify();
         const exprId = this.expressions.insert(left);
         return this.constraints.push({exprId, sourceRef, boundery}) - 1;
     }

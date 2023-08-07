@@ -1,6 +1,7 @@
 const ExpressionItem = require("./expression_item.js");
 
 module.exports = class ValueItem extends ExpressionItem {
+    static directValue = true;
     constructor (value) {
         super();
         this.value = value;

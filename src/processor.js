@@ -1,4 +1,4 @@
-const {assert} = require("chai");
+const {assert, assertLog} = require('./assert.js');
 const Scope = require("./scope.js");
 const Expressions = require("./expressions.js");
 const Expression = require("./expression.js");
@@ -64,31 +64,37 @@ module.exports = class Processor {
         this.references.register('lexpr', this.lexprs);
 
         this.fixeds = new Indexable('fixed', FixedCol);
+        ExpressionItem.setManager(FixedCol, this.fixeds);
         this.fixeds.runtimeRows = true;
         this.references.register('fixed', this.fixeds);
 
         this.witness = new Indexable('witness', WitnessCol);
+        ExpressionItem.setManager(WitnessCol, this.witness);
         this.references.register('witness', this.witness);
 
         this.constants = new Indexable('constant', IntValue);
         this.references.register('constant', this.constants);
 
         this.publics = new Ids('public', Public);
+        ExpressionItem.setManager(Public, this.publics);
         this.references.register('public', this.publics);
 
         this.challenges = new Ids('challenge', Challenge);
+        ExpressionItem.setManager(Challenge, this.challenges);
         this.references.register('challenge', this.challenges);
 
         this.proofvalues = new Ids('proofvalue', Proofval);
+        ExpressionItem.setManager(Proofval, this.proofvalues);
         this.references.register('proofvalue', this.proofvalues);
 
         this.subproofvalues = new Ids('subproofvalue', Subproofval);
+        ExpressionItem.setManager(Subproofval, this.subproofvalues);
         this.references.register('subproofvalue', this.subproofvalues);
 
 //        this.imCols = new Indexable(Fr, 'im');
 //        this.references.register('im', this.imCols);
 
-        this.functions = new Indexable(Fr, 'function');
+        this.functions = new Indexable('function');
         this.references.register('function', this.functions);
 
         this.subproofs = new Subproofs(Fr, this.context);
@@ -169,9 +175,7 @@ module.exports = class Processor {
             for (const airName of subproof.airs) {
                 const air = subproof.airs.get(airName);
                 console.log(airName);
-                console.log(air);
                 const bits = log2(Number(air.rows));
-                console.log(airName);
                 proto.setAir(airName, air.rows);
                 proto.setFixedCols(air.fixeds);
                 air.expressions.dump('EXPRESSION PILOUT '+subproofName);
@@ -267,7 +271,7 @@ module.exports = class Processor {
     }
     execCall(st) {
         const name = st.function.name;
-        const func = this.builtIn[name] ?? (this.references.getTypedValue(name) || {}).value;
+        const func = this.builtIn[name] ?? this.references.getTypedValue(name);
 
         if (func) {
             this.callstack.push(st.debug);
@@ -645,7 +649,7 @@ module.exports = class Processor {
             const colname = this.context.getFullName(col.name);
             // console.log(`COL_FIXED_DECLARATION(${colname})`);
             const lengths = this.decodeLengths(col);
-            let init = s.sequence;
+            let init = s.sequence ?? null;
             let seq = null;
             if (init) {
                 seq = new Sequence(this, init, IntValue.castTo(this.references.get('N')));
@@ -760,7 +764,13 @@ module.exports = class Processor {
         }
         const res = this.references.declare(name, type, lengths, data);
         if (initValue !== null) {
+            if (type === 'fixed') {
+                console.log('FIXED-SET', initValue.getValue(0), initValue.getValue(1));
+            }
             this.references.set(name, [], initValue);
+            if (type === 'fixed') {
+                console.log('FIXED-SET', this.fixeds.values[0]);
+            }
         }
         return res;
     }
@@ -778,6 +788,14 @@ module.exports = class Processor {
         const scopeType = this.scope.getInstanceType();
         let id, expr, prefix = '';
 
+        assertLog(s.left instanceof Expression, s.left);
+        assertLog(s.right instanceof Expression, s.right);
+        console.log(s.left);
+        console.log(s.right);
+        const left = s.left.instance();
+        console.log(left);
+        const right = s.right.instance();
+        console.log(right);
         if (scopeType === 'air') {
             id = this.constraints.define(s.left.instance(true), s.right.instance(true),false,this.sourceRef);
             expr = this.constraints.getExpr(id);
@@ -846,9 +864,10 @@ module.exports = class Processor {
                 throw new Error(`Array size mismatch on initialization ${asize} vs ${ssize}`);
             }
             // TODO, check sizes before extends
-            const values = seq.extend();
-            for (let index = 0; index < values.length; ++index) {
-                this.references.set(s.name, def.array.offsetToIndexes(index), values[index]);
+            seq.extend();
+            const seqSize = seq.getSize();
+            for (let index = 0; index < seqSize; ++index) {
+                this.references.set(s.name, def.array.offsetToIndexes(index), seq.getValue(index));
             }
         } else {
             this.references.declare(s.name, 'constant', [], { sourceRef: this.sourceRef });

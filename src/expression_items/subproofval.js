@@ -1,5 +1,5 @@
-const ProofStageItem = require("./proof_stage_item.js");
-module.exports = class Subproofval extends ProofStageItem {
+const ProofItem = require("./proof_item.js");
+module.exports = class Subproofval extends ProofItem {
     constructor (id, stage) {
         super(id, stage);
     }

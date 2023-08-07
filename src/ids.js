@@ -1,6 +1,6 @@
 const LabelRanges = require('./label_ranges.js');
 const ExpressionItem = require('./expression_items/expression_item.js');
-const {assert,assertLog} = require('./assert.js')
+const {assert,assertLog} = require('./assert.js');
 module.exports = class Ids {
 
     constructor (type, cls) {
@@ -28,7 +28,7 @@ module.exports = class Ids {
     }
 
     getTypedValue(id, offset = 0) {
-        return { type: this.type, value: id + offset };
+        return new this.cls(id + offset);
     }
 
     isDefined(id) {
