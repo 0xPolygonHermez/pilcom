@@ -4,6 +4,11 @@ const WitnessCol = require("./expression_items/witness_col.js");
 module.exports = class WitnessCols extends Indexable {
 
     constructor () {
-        super('witness');
+        super('witness', WitnessCol);
     }
+    getEmptyValue(id, options) {
+        let _options = options ?? {};
+        return new WitnessCol(id, _options.stage ?? 1);
+    }
+
 }

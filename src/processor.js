@@ -63,12 +63,12 @@ module.exports = class Processor {
         this.lexprs = new Variables('lexpr', Expression);
         this.references.register('lexpr', this.lexprs);
 
-        this.fixeds = new Indexable('fixed', FixedCol);
+        this.fixeds = new FixedCols();
         ExpressionItem.setManager(FixedCol, this.fixeds);
         this.fixeds.runtimeRows = true;
         this.references.register('fixed', this.fixeds);
 
-        this.witness = new Indexable('witness', WitnessCol);
+        this.witness = new WitnessCols();
         ExpressionItem.setManager(WitnessCol, this.witness);
         this.references.register('witness', this.witness);
 

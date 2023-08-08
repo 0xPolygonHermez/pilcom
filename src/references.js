@@ -302,7 +302,7 @@ module.exports = class References {
         }
         // TODO: review
         if (info.type !== 'function') {
-            assertLog(tvalue instanceof ExpressionItem, {name, tvalue});
+            assertLog(tvalue instanceof ExpressionItem, {name, infotype: info.type, tvalue});
         }
         if (typeof info.row !== 'undefined') {
             tvalue.row = info.row;

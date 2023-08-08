@@ -5,4 +5,7 @@ module.exports = class FixedCols extends Indexable {
     constructor () {
         super('fixed', FixedCol);
     }
+    getEmptyValue(id) {
+        return new FixedCol(id);
+    }
 }

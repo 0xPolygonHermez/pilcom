@@ -436,8 +436,11 @@ module.exports = class Expression extends ExpressionItem {
         // dup.extendExpressions(options);
         cloned.evaluateFullStack(stackResults, options);
         cloned.dump();
-        console.log(stackResults);
-        cloned.dumpStackResults(stackResults, '');
+        console.log('SIMPLIFY');
+        cloned.simplify();
+        cloned.dump();
+        // console.log(stackResults);
+        // cloned.dumpStackResults(stackResults, '');
         return cloned;
     }
     eval() {
@@ -714,14 +717,14 @@ module.exports = class Expression extends ExpressionItem {
             if (!updated) break;
         }
     }
-    simplifyRuntimeToValue(st) {
+    /* simplifyRuntimeToValue(st) {
         for (let index = 0; index < st.operands.length; ++index) {
             const value = st.operands[index].__value;
             if (['string', 'number', 'bigint'].includes(value)) {
                 st.operands[index] = {type: OP_VALUE, value};
             }
         }
-    }
+    }*/
 
     // this method simplify trivial operations as 0 + x or 1 * x, also
     // simplify operations between values, not only direct values also
@@ -732,9 +735,9 @@ module.exports = class Expression extends ExpressionItem {
             return false;
         }
 
-        this.simplifyRuntimeToValue(st);
-        const firstValue = st.operands[0].type === OP_VALUE ? st.operands[0].value : false;
-        const secondValue = (st.operands.length > 1 && st.operands[1].type === OP_VALUE) ? st.operands[1].value : false;
+        // this.simplifyRuntimeToValue(st);
+        const firstValue = st.operands[0] instanceof ValueItem ? st.operands[0].getValue() : false;
+        const secondValue = (st.operands.length > 1 && st.operands[1] instanceof ValueItem) ? st.operands[1].getValue() : false;
 
         // [op,v1,v2] ==> [v1 op v2]
         if (firstValue !== false && secondValue !== false) {
@@ -742,11 +745,10 @@ module.exports = class Expression extends ExpressionItem {
             assert(!secondValue || (!secondValue.next && !secondValue.__next));
             const res = this.calculate(st);
             if (res === null) return false;
-            st.operands = [{type: OP_VALUE, value: res}];
+            // TODO: operations with FE ?
+            console.log(res);
+            st.operands = new IntValue(res);
             st.op = false;
-            delete st.__value;
-            delete st.__indexes;
-            delete st.__next;
             return true;
         }
 
@@ -754,7 +756,7 @@ module.exports = class Expression extends ExpressionItem {
         if (st.op === 'neg' && firstValue !== false) {
             assert(!firstValue.next && !firstValue.__next);
             st.op = false;
-            st.operands[0].value = -st.operands[0].value;
+            st.operands[0].setValue(-st.operands[0].getValue());
             return true;
         }
 
@@ -824,7 +826,7 @@ module.exports = class Expression extends ExpressionItem {
                 const ope = st.operands[0];
                 // two situations, for alone stack reference, use its reference and it must
                 // be purged
-                translate[istack] = ope.type === OP_STACK ? [true, translate[istack - ope.offset][1]] : [true, istack];
+                translate[istack] = ope instanceof StackItem ? [true, translate[ope.getAbsolutePos(istack)][1]] : [true, istack];
                 continue;
             }
 
@@ -833,19 +835,19 @@ module.exports = class Expression extends ExpressionItem {
             // foreach operand if it's a stack reference, must be replaced by
             // new reference or by copy of reference if it was alone (no operation)
             for (let iope = 0; iope < st.operands.length; ++iope) {
-                if (st.operands[iope].type !== OP_STACK) continue;
-                const absolutePos = istack - st.operands[iope].offset;
+                if ((st.operands[iope] instanceof StackItem) === false) continue;
+                const absolutePos = st.operands[iope].getAbsolutePos(istack);
                 const [purge, newAbsolutePos] = translate[absolutePos];
                 assert(absolutePos < istack);
                 if (purge && this.stack[newAbsolutePos].op === false) {
                     // if purge and referenced position was alone, it is copied (duplicated)
-                    this.stack[istack].operands[iope] = cloneDeep(this.stack[newAbsolutePos].operands[0]);
+                    this.stack[istack].operands[iope] = this.stack[newAbsolutePos].operands[0].clone();
                 } else {
                     // stackPos - 1 is new really istack after clear simplified stack positions
                     // calculate relative position (offset)
                     const newOffset = (stackPos - 1) - newAbsolutePos;
                     assert(newOffset > 0);
-                    this.stack[istack].operands[iope].offset = newOffset;
+                    this.stack[istack].operands[iope].setOffset(newOffset);
                 }
             }
 
@@ -910,7 +912,7 @@ module.exports = class Expression extends ExpressionItem {
         // positional_param op:'positional_param' position:
         // casting op:'cast' cast: value: dim: ??
     }*/
-    getCaller(stackLevels = 3) {
+    getCaller(stackLevels = 4) {
         let caller = '';
         try {
             throw new Error();

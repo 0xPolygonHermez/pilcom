@@ -2,11 +2,12 @@ const LabelRanges = require("./label_ranges.js");
 const {cloneDeep} = require('lodash');
 const {assert, assertLog} = require('./assert.js');
 module.exports = class Indexable {
-    constructor (type, cls, rtype) {
+    constructor (type, cls, options) {
         this.cls = cls ?? false;
         this.values = [];
         this.type = type;
-        this.rtype = rtype ?? type;
+        this.options = options ?? {}
+        this.rtype = this.options.rtype ?? type;
         this.labelRanges = new LabelRanges();
         this.debug = false;
         this._undefined = null;
@@ -23,6 +24,9 @@ module.exports = class Indexable {
         return this._undefined;
     }
     getEmptyValue(id) {
+        if (this.options.idAsValue) {
+            return id;
+        }
         return this.undefined;
     }
 
@@ -49,14 +53,14 @@ module.exports = class Indexable {
     getType(id) {
         return this.rtype;
     }
-    reserve(count, label, multiarray) {
+    reserve(count, label, multiarray, options) {
         const id = this.values.length;
         for (let index = 0; index < count; ++index) {
             const absoluteIndex = index + id;
-            this.values[absoluteIndex] = this.getEmptyValue(absoluteIndex);
-            if (this.debug) {
+            this.values[absoluteIndex] = this.getEmptyValue(absoluteIndex, options);
+            // if (this.debug) {
                 console.log(`INIT ${this.constructor.name}.${this.type} @${absoluteIndex} (${id}+${index}) ${this.values[absoluteIndex]} LABEL:${label}`);
-            }
+            // }
         }
         if (label) {
             this.labelRanges.define(label, id, multiarray);
@@ -65,14 +69,17 @@ module.exports = class Indexable {
     }
     get(id) {
         let res = this.values[id];
-        if (typeof res === 'undefined') {
+        console.log(res);
+        if (typeof res === 'undefined' || res === null) {
            res = this.undefined;
         } else {
-            console.log(this.cls);
-            assertLog(!this.cls || res instanceof this.cls, [this.cls.constructor.name, res]);
+            assertLog(!this.cls || res instanceof this.cls, [this.cls.name, res]);
         }
         if (this.debug) {
             console.log(`GET ${this.constructor.name}.${this.type} @${id} ${res}`);
+        }
+        if (res && typeof res.clone === 'function') {
+            return res.clone();
         }
         return res;
     }
@@ -83,7 +90,7 @@ module.exports = class Indexable {
 
     getTypedValue(id) {
         // const res = { type: this.rtype, value: this.get(id) };
-        console.log(['getTypedValue', this.type, this.cls ? this.cls.constructor.name : 'no-class', id]);
+        console.log(['getTypedValue', this.type, this.cls ? this.cls.name : 'no-class', id, this.values.length]);
         return this.get(id);
     }
 

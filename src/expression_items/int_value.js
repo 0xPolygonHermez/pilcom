@@ -20,7 +20,7 @@ module.exports = class IntValue extends ValueItem {
         this.value = value;
     }
     clone() {
-        return new IntValue(value);
+        return new IntValue(this.value);
     }
     static castTo(value) {
         if (value instanceof IntValue) {
