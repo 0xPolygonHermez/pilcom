@@ -10,24 +10,9 @@ module.exports = class Indexable {
         this.rtype = this.options.rtype ?? type;
         this.labelRanges = new LabelRanges();
         this.debug = false;
-        this._undefined = null;
-        if (this.cls) {
-            try {
-                this._undefined = new this.cls();
-            } catch (e) { }
-        }
-    }
-    get undefined() {
-        if (this._undefined instanceof Object) {
-            return cloneDeep(this._undefined);
-        }
-        return this._undefined;
     }
     getEmptyValue(id) {
-        if (this.options.idAsValue) {
-            return id;
-        }
-        return this.undefined;
+        return id;
     }
 
     clone() {
@@ -57,10 +42,10 @@ module.exports = class Indexable {
         const id = this.values.length;
         for (let index = 0; index < count; ++index) {
             const absoluteIndex = index + id;
-            this.values[absoluteIndex] = this.getEmptyValue(absoluteIndex, options);
-            // if (this.debug) {
+            this.values[absoluteIndex] = this.getEmptyValue(absoluteIndex);
+            if (this.debug) {
                 console.log(`INIT ${this.constructor.name}.${this.type} @${absoluteIndex} (${id}+${index}) ${this.values[absoluteIndex]} LABEL:${label}`);
-            // }
+            }
         }
         if (label) {
             this.labelRanges.define(label, id, multiarray);
@@ -69,29 +54,25 @@ module.exports = class Indexable {
     }
     get(id) {
         let res = this.values[id];
-        console.log(res);
         if (typeof res === 'undefined' || res === null) {
-           res = this.undefined;
-        } else {
-            assertLog(!this.cls || res instanceof this.cls, [this.cls.name, res]);
+            return this.getEmptyValue(id);
         }
-        if (this.debug) {
-            console.log(`GET ${this.constructor.name}.${this.type} @${id} ${res}`);
-        }
-        if (res && typeof res.clone === 'function') {
-            return res.clone();
+        return res;
+    }
+    getItem(id, properties) {
+        let res = this.get(id);
+        if (this.cls && (res instanceof this.cls) === false) {
+            properties = properties ?? {};
+            res = new this.cls(this.id);
+            for (const property in properties) {
+                res[property] = properties[property];
+            }
         }
         return res;
     }
 
     getLabel(id, options) {
         return this.labelRanges.getLabel(id, options);
-    }
-
-    getTypedValue(id) {
-        // const res = { type: this.rtype, value: this.get(id) };
-        console.log(['getTypedValue', this.type, this.cls ? this.cls.name : 'no-class', id, this.values.length]);
-        return this.get(id);
     }
 
     isDefined(id) {
@@ -106,9 +87,8 @@ module.exports = class Indexable {
     }
 
     set(id, value) {
-        if (this.type === 'fixed') {
-            console.log('FIXED_SET', value);
-        }
+        this.values[id] = value;
+/*
         if (typeof this.cls === 'function') {
             if ((value instanceof this.cls) === false) {
                 if (this.cls.directValue) {
@@ -121,7 +101,7 @@ module.exports = class Indexable {
                 }
             }
         }
-        this.values[id] = value;
+        this.values[id] = value;*/
         if (this.debug) {
             console.log(`SET ${this.constructor.name}.${this.type} @${id} ${value}`);
         }

@@ -576,7 +576,7 @@ statement_no_closed
         { $$ = { type: 'constraint', left: $1, right: $3 } }
 
     | delayed_function_call
-        { $$ = {...$1, type: 'delayed_function_call'} }
+        { $$ = $1 }
 
     | include_directive
         { $$ = $1 }
@@ -662,7 +662,7 @@ defined_scopes
 
 delayed_function_call
     : ON delayed_function_event defined_scopes name_optional_index '(' multiple_expression_list ')'
-        { $$ = { op: 'delayed_call', event: $2, scope: $3, function: $4, arguments: $6.values } }
+        { $$ = { type: 'delayed_function_call', event: $2, scope: $3, function: $4, arguments: $6.values } }
     ;
 
 

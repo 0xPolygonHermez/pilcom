@@ -25,7 +25,7 @@ const Context = require("./context.js");
 const Runtime = require("./runtime.js");
 // const FunctionCall = require("./function_call.js");
 const {FlowAbortCmd, BreakCmd, ContinueCmd, ReturnCmd} = require("./flow_cmd.js")
-const {Reference, ExpressionItem, FeValue, IntValue, ProofItem, Proofval, Subproofval, Challenge, Public, ProofStageItem,
+const {ReferenceItem, ExpressionItem, FeValue, IntValue, ProofItem, Proofval, Subproofval, Challenge, Public, ProofStageItem,
        ExpressionReference, StringValue, FixedCol, WitnessCol } = require("./expression_items.js");
 const fs = require('fs');
 const { log2, getKs, getRoots } = require("./utils.js");
@@ -57,11 +57,14 @@ module.exports = class Processor {
         this.strings = new Variables('string', StringValue);
         this.references.register('string', this.strings);
 
-        this.vexprs = new Variables('expr', Expression);
-        this.references.register('expr', this.vexprs);
+        this.exprs = new Variables('expr', Expression);
+        this.references.register('expr', this.exprs);
 
-        this.lexprs = new Variables('lexpr', Expression);
-        this.references.register('lexpr', this.lexprs);
+        this.subexprs = new Variables('subexpr', Expression);
+        this.references.register('subexpr', this.subexprs);
+
+        // this.lexprs = new Variables('lexpr', Expression);
+        // this.references.register('lexpr', this.lexprs);
 
         this.fixeds = new FixedCols();
         ExpressionItem.setManager(FixedCol, this.fixeds);
@@ -90,9 +93,6 @@ module.exports = class Processor {
         this.subproofvalues = new Ids('subproofvalue', Subproofval);
         ExpressionItem.setManager(Subproofval, this.subproofvalues);
         this.references.register('subproofvalue', this.subproofvalues);
-
-//        this.imCols = new Indexable(Fr, 'im');
-//        this.references.register('im', this.imCols);
 
         this.functions = new Indexable('function');
         this.references.register('function', this.functions);

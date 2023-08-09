@@ -1,7 +1,7 @@
 const util = require('util');
 const {cloneDeep} = require('lodash');
 const Expression = require("./expression.js");
-const {Reference, IntValue} = require("./expression_items.js");
+const {ReferenceItem, IntValue} = require("./expression_items.js");
 const Router = require("./router.js");
 const {assert, assertLog} = require('./assert');
 module.exports = class ExpressionFactory {
@@ -48,7 +48,7 @@ module.exports = class ExpressionFactory {
         return expressions;
     }
     static fromReference(obj) {
-        let res = new Reference(obj.name, obj.indexes ?? [], (obj.next ?? 0) - (obj.prior ?? 0));
+        let res = new ReferenceItem(obj.name, obj.indexes ?? [], (obj.next ?? 0) - (obj.prior ?? 0));
         delete obj.name;
         delete obj.indexes;
         delete obj.dim;
@@ -61,4 +61,13 @@ module.exports = class ExpressionFactory {
         delete obj.value;
         return res;
     }
+    static fromCall(obj) {
+        let res = new FunctionCall(obj.name, obj.arguments ?? [], obj.indexes ?? []);
+        delete obj.name;
+        delete obj.indexes;
+        delete obj.dim;
+        delete obj.arguments;
+        return res;
+    }
+    // TODO: positionalParams
 }

@@ -10,7 +10,7 @@ module.exports = class FunctionCall extends RuntimeItem {
     dump(options) {
         const pre = next < 0 ? (next < -1 ? `${-next}'`:"'"):'';
         const post = next > 0 ? (next > 1 ? `'${next}`:"'"):'';
-        return `Reference(${pre}${this.name}${this.indexes.length > 0 ? '['+this.indexes.join(',')+']':''}${post})`;
+        return `Function(${pre}${this.name}${this.indexes.length > 0 ? '['+this.indexes.join(',')+']':''}${post})`;
     }
     clone() {
         return new FunctionCall(this.name, this.args, this.indexes);

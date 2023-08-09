@@ -1,5 +1,5 @@
 const RuntimeItem = require("./runtime_item.js");
-module.exports = class Reference extends RuntimeItem {
+module.exports = class ReferenceItem extends RuntimeItem {
     constructor (name, indexes = [], next = 0) {
         super();
         this.name = name;
@@ -8,9 +8,9 @@ module.exports = class Reference extends RuntimeItem {
     }
     dump(options) {
         const [pre,post] = this.getNextStrings();
-        return `Reference(${pre}${this.name}${this.indexes.length > 0 ? '['+this.indexes.join(',')+']':''}${post})`;
+        return `ReferenceItem(${pre}${this.name}${this.indexes.length > 0 ? '['+this.indexes.join(',')+']':''}${post})`;
     }
     clone() {
-        return new Reference(this.name, this.indexes, this.next);
+        return new ReferenceItem(this.name, this.indexes, this.next);
     }
 }

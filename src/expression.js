@@ -3,7 +3,7 @@ const {cloneDeep} = require('lodash');
 const {assert} = require("chai");
 const NonRuntimeEvaluable = require('./non_runtime_evaluable.js');
 const PilItem = require('./pil_item.js');
-const Reference = require("./expression_items/reference.js");
+const ReferenceItem = require("./expression_items/reference_item.js");
 const StackItem = require("./expression_items/stack_item.js");
 const ExpressionItem = require("./expression_items/expression_item.js");
 const ValueItem = require("./expression_items/value_item.js");
@@ -182,7 +182,7 @@ module.exports = class Expression extends ExpressionItem {
         // TODO: review if best place?
         // TODO: review if next/prior
         // return (this.isAlone() && this.stack[0].operands[0].type === OP_RUNTIME && this.stack[0].operands[0].op === 'reference' );
-        return (this.isAlone() && this.stack[0].operands[0] instanceof Reference);
+        return (this.isAlone() && this.stack[0].operands[0] instanceof ReferenceItem);
     }
 
     // OP_VALUE (value)
@@ -548,7 +548,7 @@ module.exports = class Expression extends ExpressionItem {
             return value;
         } else if (value instanceof ProofItem) {
             return null;
-        } else if (value instanceof Reference) {
+        } else if (value instanceof ReferenceItem) {
             let res = Expression.context.runtime.eval(value, {});
             return res;
         } else {

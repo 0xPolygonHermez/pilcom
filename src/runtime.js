@@ -2,7 +2,7 @@ const util = require('util');
 const Expression = require('./expression.js');
 const NonRuntimeEvaluable = require('./non_runtime_evaluable.js');
 const {assert, assertLog} = require('./assert.js');
-const {Reference, StackItem, ExpressionItem, ValueItem, IntValue, ProofItem} = require("./expression_items.js");
+const {ReferenceItem, StackItem, ExpressionItem, ValueItem, IntValue, ProofItem} = require("./expression_items.js");
 
 module.exports = class Runtime {
 
@@ -13,7 +13,7 @@ module.exports = class Runtime {
 
     eval(operand, options) {
 
-        if (operand instanceof Reference) {
+        if (operand instanceof ReferenceItem) {
             return this.resolveReference(operand, options);
         }
         EXIT_HERE;

@@ -1,13 +1,19 @@
 
-class MultiArray {
+const {cloneDeep} = require('lodash');
+module.exports = class DynamicMultiArray extends MultiArray {
     constructor (lengths, debug) {
-        this.debug = debug || '';
-        this.initOffsets(lengths);
+        // length[0] means dynamic index
+        this.dynamics = lengths.map(x => x == 0);
+        super(lengths, debug);
     }
     clone() {
-        return new MultiArray(this.lengths, this.debug);
+        let cloned = new DynamicMultiArray(this.lengths, this.debug);
+        cloned.dynamics = [...this.dynamics];
+        return cloned;
     }
-    checkIndexes(indexes) {
+    /*
+    // assignation to indicate if allowed to increase one element
+    checkIndexes(indexes, assignation = false) {
         if (indexes === null || typeof indexes === 'undefined') {
            if (this.dim === 0) return true;
            throw Error('Invalid index access'); // TODO: extra debug info
@@ -94,20 +100,6 @@ class MultiArray {
 
         // for offsets first index length isn't rellevant
         this.offsets = offsets.reverse();
-    }
-    getLengths() {
-        return this.lengths;
-    }
-    getSize() {
-        return this.size;
-    }
-    getLength(dim = 0) {
-        return this.lengths[dim] ?? 0;
-    }
+    }*/
 }
 
-class ErrorIndexOutOfRange extends Error {
-
-}
-
-module.exports = { MultiArray, ErrorIndexOutOfRange };
