@@ -2,8 +2,8 @@ const {assert, assertLog} = require('./assert.js');
 const {MultiArray} = require("./multi_array.js");
 const Expression = require("./expression.js");
 const {ExpressionItem, ArrayOf} = require("./expression_items.js");
-const {Reference} = require('./reference.js');
-const {Containers} = require('./containers.js');
+const Reference = require('./reference.js');
+const Containers = require('./containers.js');
 module.exports = class References {
 
     constructor (Fr, context, scope) {
@@ -97,7 +97,7 @@ module.exports = class References {
                 return {...res, scope: parts[0], name: parts.slice(-1), container: parts.slice(0, -1).join('.')};
             }
             // if absolute, but only 2 or less parts, no container specified.
-            return {...res, scope: parts[0], static: true, name: parts.slice(1).join('.')};
+            return {...res, scope: parts[0], isStatic: true, name: parts.slice(1).join('.')};
         }
         // if no absolute scope, could be an alias if it has 2 parts.
         return {...res, scope, name};
@@ -117,10 +117,10 @@ module.exports = class References {
         return container;
     }
     isStaticDeclaredPreviously(nameInfo, existingReference) {
-        if (!nameInfo.static) return false;
+        if (!nameInfo.isStatic) return false;
             // only created and init once
         if (existingReference) {
-            if (existingReference.static) {
+            if (existingReference.isStatic) {
                 return true;
             }
             throw new Error(`Static reference ${nameInfo.name} has been defined on non-static scope`);
@@ -129,11 +129,11 @@ module.exports = class References {
     }
     prepareScope(nameInfo, type, existingReference) {
 
-        if (nameInfo.static) {
-            return [this.scope.declare(nameInfo.name, finalType, false, nameInfo.scope), nameInfo.scope];
+        if (nameInfo.isStatic) {
+            return [this.scope.declare(nameInfo.name, type, false, nameInfo.scope), nameInfo.scope];
         }
 
-        const scopeId = this.hasScope(finalType) ? this.scope.declare(nameInfo.name, finalType, existingReference, false) : 0;
+        const scopeId = this.hasScope(type) ? this.scope.declare(nameInfo.name, type, existingReference, false) : 0;
         // scope(name, def) => exception !!!
         //                  => scopeId;
         if (existingReference !== false && existingReference.scopeId === scopeId) {
@@ -175,7 +175,8 @@ module.exports = class References {
         const id = isReference ? null : instance.reserve(size, nameInfo.name, array, data);
 
         const reference = new Reference(nameInfo.name, type, isReference, array, id, instance, scopeId,
-                                        {container, scope, static, data});
+                                        {container, scope, isStatic: nameInfo.isStatic, data});
+        console.log(container, reference);
 
         if (container) {
             this.containers.addReference(nameInfo.name, reference);
@@ -199,8 +200,10 @@ module.exports = class References {
     }
 
     get (name, indexes = []) {
-        const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        return instance.get(info.locator + info.offset);
+        console.log('GET', name, indexes);
+
+        // getReference produce an exception if name not found
+        return this.getReference(name).get(indexes);
     }
     getIdRefValue(type, id) {
         return this.getTypeDefinition(type).instance.getItem(id);
@@ -213,8 +216,30 @@ module.exports = class References {
         return [instance.getType(info.locator + info.offset), info.reference, info.array ?? false];
     }
     getItem(name, indexes, options) {
+
+        assert(typeof name === 'string' || (Array.isArray(name) && name.length > 0));
+
         indexes = indexes ?? [];
         options = options ?? {};
+
+        console.log(name);
+        const reference = this.getReference(name);
+        const item = reference.getItem(indexes);
+        console.log(item);
+
+        EXIT_HERE;
+
+        if (options.preDelta) {
+            console.log(typeof tvalue.value);
+            assert(typeof tvalue.value === 'number' || typeof tvalue.value === 'bigint');
+            tvalue.value += options.preDelta;
+            instance.set(info.locator + info.offset, tvalue.value);
+        }
+        if (options.postDelta) {
+            assert(typeof tvalue.value === 'number' || typeof tvalue.value === 'bigint');
+            instance.set(info.locator + info.offset, tvalue.value + options.postDelta);
+        }
+        return item;
 
         const [instance, info, def] = this._getInstanceAndLocator(name, indexes);
         let tvalue;
@@ -336,6 +361,9 @@ module.exports = class References {
 
         let reference = false;
 
+        if (name === 'MODULE_ID') {
+            debugger;
+        }
         if (!explicitContainer) {
             reference = this.containers.getReferenceInsideCurrent(lname, false);
         } else {
@@ -370,7 +398,7 @@ module.exports = class References {
         // stored with full name.
         const mainName = Array.isArray(name) ? name[0]:name;
         const nameInfo = this.decodeName(mainName);
-        let names =false;
+        let names = false;
 
         if (nameInfo.scope !== false) {
             // if scope is specified on mainName, the other names don't make sense
@@ -378,7 +406,7 @@ module.exports = class References {
         } else if (!nameInfo.absoluteScope && nameInfo.parts.length == 2) {
             // absoluteScope means that first scope was proof, subproof or air. If a non absolute
             // scope is defined perhaps was an alias.
-            const container = this.container.getFromAlias(nameInfo.parts[0], false);
+            const container = this.containers.getFromAlias(nameInfo.parts[0], false);
             if (container) {
                 // if it's an alias associated with container, replace alias with
                 // container associated.
@@ -386,17 +414,20 @@ module.exports = class References {
             }
         }
 
+        console.log(names);
         if (!names) {
             names = this.context.getNames(name);
         }
+
+        console.log(names);
         // console.log(`getReference(${name}) on ${this.context.sourceRef} = [${names.join(', ')}]`);
-        let reference;
+        let reference = false;
 
         for (const name of names) {
             reference = this.searchDefinition(name);
             if (reference) break;
         }
-        if (reference) {
+        if (!reference) {
             if (typeof defaultValue !== 'undefined') return defaultValue;
             throw new Error(`Reference ${names.join(',')} not found`);
         }
@@ -482,12 +513,8 @@ module.exports = class References {
         console.log('SET', name, indexes, value);
         assert(value !== null); // to detect obsolete legacy uses
 
-        const reference = this.getReference(name);
-        if (reference) {
-            reference.set(value, indexes);
-        }
-        const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        return instance.set(info.locator + info.offset, value);
+        // getReference produce an exception if name not found
+        this.getReference(name).set(value, indexes);
     }
 
     unset(name) {

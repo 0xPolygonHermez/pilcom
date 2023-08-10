@@ -46,7 +46,7 @@ module.exports = class Runtime {
         if (operand.dec === 'post') {
             getTypeValueOptions.postDelta = -1n;
         }
-        let res = this.context.references.getTypedValue(names, operand.__indexes ?? [], options);
+        let res = this.context.references.getItem(names, operand.__indexes ?? [], options);
         if (typeof operand.__next !== 'undefined') {
             res.__next = res.next = operand.__next;
         } else if (typeof operand.next !== 'number' && (operand.next || operand.prior)) {

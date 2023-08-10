@@ -1,6 +1,5 @@
 const {assert, assertLog} = require('./assert.js');
 module.exports = class Containers {
-
     constructor (parent,context, scope) {
         this.parent = parent;
         this.context = context;
@@ -116,44 +115,19 @@ module.exports = class Containers {
     getReference(name, defaultValue) {
         return this.#getReference(name, defaultValue, this.current, true);
     }
-    #getReference(name, defaultValue, container, useAlias) {
-        const nameInfo = this.decodeName(Array.isArray(name) ? name[0]:name);
-        let names;
-        if (nameInfo.scope !== false) {
-            names = [Array.isArray(name) ? name[0]:name];
-        } else if (!nameInfo.absoluteScope && nameInfo.parts.length == 2) {
-            // console.log(['getScopeAlias',nameInfo.parts[0]]);
-            const container = this.getAlias(nameInfo.parts[0], {container: false}).container;
-            if (container) {
-                names = [container + '.' + nameInfo.parts.slice(1).join('.')];
-            }
+    #getReference(name, defaultValue, container, uses) {
+        // first search on specific container
+        let reference = false;
+        if (container) {
+            reference = this.containers[container].references[name] ?? false;
         }
-        if (!names) {
-            names = this.context.getNames(name);
+        // if not found check other counters indicate with use
+        let usesIndex = this.uses.length;
+        while (!reference && usesIndex > 0) {
+            --usesIndex;
+            reference = this.containers[this.uses[usesIndex]].references[name] ?? false;
         }
-        // console.log(`getReference(${name}) on ${this.context.sourceRef} = [${names.join(', ')}]`);
-        let reference;
-
-        for (const name of names) {
-            reference = this.searchDefinition(name);
-            if (reference) break;
-        }
-        if (reference) {
-            if (typeof defaultValue !== 'undefined') return defaultValue;
-            throw new Error(`Reference ${names.join(',')} not found`);
-        }
-
-        // constants are visible inside functions
-        if (this.isVisible(reference) === false) {
-            if (typeof defaultValue !== 'undefined') return defaultValue;
-            throw new Error(`Reference ${names.join(',')} not visible from current scope`);
-        }
-        let iuse = this.uses.length;
-        while (!def && iuse > 0) {
-            --iuse;
-            def = this.containers[this.uses[iuse]].definitions[name];
-        }
-        return reference;
+        return reference ? reference : defaultValue;
     }
     *[Symbol.iterator]() {
         for (let name in this.containers) {
