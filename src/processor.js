@@ -187,6 +187,7 @@ module.exports = class Processor {
         let packed = new PackedExpressions();
         // this.expressions.pack(packed);
         this.globalExpressions.pack(packed);
+        proto.setPublics(this.publics);
         proto.setGlobalConstraints(this.globalConstraints, packed);
         proto.setGlobalExpressions(packed);
         proto.setGlobalSymbols(this.references);

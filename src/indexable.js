@@ -9,7 +9,9 @@ module.exports = class Indexable {
         this.labelRanges = new LabelRanges();
         this.debug = false;
     }
-
+    get length() {
+        return this.values.length;
+    }
     clone() {
         let cloned = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
         cloned.values = [];
