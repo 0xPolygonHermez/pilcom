@@ -500,10 +500,6 @@ module.exports = class References {
     }
 
     unset(name) {
-        console.log(`UNSET ${name}`);
-        if (name === 'BYTE4_ID') {
-            EXIT_HERE;
-        }
         let def = this.definitions[name];
         if (def.array) delete def.array;
         delete this.definitions[name];

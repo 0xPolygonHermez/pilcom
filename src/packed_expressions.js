@@ -66,7 +66,6 @@ module.exports = class PackedExpressions {
     }
     exprToString(id, options) {
         const expr = this.expressions[id];
-        console.log([id, expr, this.expressions.length]);
         const [op] = Object.keys(expr);
         let opes = [];
         for (const ope of Object.values(expr[op])) {
