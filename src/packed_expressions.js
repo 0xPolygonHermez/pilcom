@@ -40,8 +40,8 @@ module.exports = class PackedExpressions {
     pushChallenge (idx, stage = 1) {
         this.values.push({challenge: {stage, idx}});
     }
-    pushSubproofValue (idx, subproofId) {
-        this.values.push({subproofValue: {idx, subproofId}});
+    pushSubproofValue (idx) {
+        this.values.push({subproofValue: {idx}});
     }
     pushProofValue (idx) {
         this.values.push({proofValue: {idx}});

@@ -35,6 +35,7 @@ const REF_TYPE_PUBLIC_VALUE = 6;
 const REF_TYPE_PUBLIC_TABLE = 7;
 const REF_TYPE_CHALLENGE = 8;
 
+const SPV_AGGREGATIONS = ['sum', 'prod'];
 module.exports = class ProtoOut {
     constructor (Fr, options = {}) {
         this.Fr = Fr;
@@ -142,7 +143,26 @@ module.exports = class ProtoOut {
     }
     setSubproof(name, aggregable = false) { // TODO: Add subproof value
         this.currentSubproof = {name, aggregable, airs: []};
+        const subproofId = this.pilOut.subproofs.length;
         this.pilOut.subproofs.push(this.currentSubproof);
+        this.currentSubproof.subproofvalues = this.spvId2Proto.filter(value => value[2] === subproofId).map(value => { return {aggType: SPV_AGGREGATIONS.indexOf(value[1])}});
+    }
+
+    // use for all subproof values, of all subproofs
+    setSubproofvalues(values) {
+        this.spvId2Proto = [];
+        let subproofBaseId = [];
+        for (const [id, aggregation, subproofId] of values) {
+            let baseId = subproofBaseId[subproofId] ?? false;
+            if (baseId === false) {
+                baseId = id;
+                subproofBaseId[subproofId] = id;
+            }
+            if (aggregation !== 'sum' && aggregation !== 'prod') {
+                throw new Error(`Invalid subproofvalue aggregation ${aggregation}`);
+            }
+            this.spvId2Proto[id] = [id - baseId, aggregation, subproofId];
+        }
     }
     setGlobalSymbols(symbols) {
         this._setSymbols(symbols.keyValuesOfTypes(['public', 'subproofvalue', 'proofvalue', 'challenge', 'publictable']));
@@ -207,11 +227,28 @@ module.exports = class ProtoOut {
     setPublics(publics) {
         this.pilOut.numPublicValues = publics.length;
     }
+    setProofvalues(proofvalues) {
+        this.pilOut.numProofValues = proofvalues.length;
+    }
     setFixedCols(fixedCols) {
         this.setConstantCols(fixedCols, this.currentAir.numRows, false);
     }
     setPeriodicCols(periodicCols) {
         this.setConstantCols(periodicCols, this.currentAir.numRows, true);
+    }
+    setChallenges(challenges) {
+        const countByStage = challenges.countByProperty('stage');
+        let challengesByStage = [];
+        let maxStage = 0;
+        for (let stage in countByStage) {
+            const nStage = Number(stage);
+            if (nStage > maxStage) maxStage = nStage;
+        }
+        for (let iStage = 1; iStage <= maxStage; ++iStage) {
+            // starts from stage 1 (no starts from stage 0)
+            challengesByStage.push(countByStage[iStage] ?? 0);
+        }
+        this.pilOut.numChallenges = challengesByStage;
     }
     setConstantCols(cols, rows, periodic) {
         const property = periodic ? 'periodicCols':'fixedCols';
@@ -251,7 +288,8 @@ module.exports = class ProtoOut {
             stages[stageIndex].push(col.id);
         }
         let stageId = 0;
-        for (const stage of stages) {
+        for (const _stage of stages) {
+            const stage = _stage ?? []; // stages without elements
             ++stageId;      // stageId starts by 1 (stage0 constant generation)
 
             stageWidths.push(stage.length);
@@ -318,6 +356,19 @@ module.exports = class ProtoOut {
                         throw new Error(`Translate: Found invalid witnessColId ${ope.witnessCol.colIdx}`);
                     }
                     ope.witnessCol.colIdx = protoId;
+                    ope.witnessCol.stage = stage;
+                }
+                break;
+            case 'subproofValue': {
+                    // translate index of subproof because it's relative to subproof
+                    const id = ope.subproofValue.idx;
+                    const [protoId, aggregation, subproofId] = this.spvId2Proto[id] ?? [false,false,false];
+                    if (protoId === false) {
+                        console.log(ope);
+                        throw new Error(`Translate: Found invalid subproofvalue ${id}`);
+                    }
+                    ope.subproofValue.idx = protoId;
+                    ope.subproofValue.subproofId = subproofId;
                 }
                 break;
             case 'constant':

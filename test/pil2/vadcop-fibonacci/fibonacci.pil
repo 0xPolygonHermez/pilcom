@@ -11,7 +11,7 @@ function final_function() {
     gsum_fibonacci + gsum_module === 0;
 }
 
-subproof Fibonacci(2**16) {
+subproof aggregate Fibonacci(2**16, 2**18) {
 
     subproofval aggregate(sum) gsum_fibonacci;
 
