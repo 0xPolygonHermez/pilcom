@@ -992,7 +992,7 @@ module.exports = class Expression {
                 break;
 
             case 'subproofvalue':
-                container.pushSubproofValue(id/*, subproofId*/);
+                container.pushSubproofValue(id);
                 break;
 
             case 'proofvalue':

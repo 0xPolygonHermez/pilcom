@@ -4,7 +4,9 @@ module.exports = class Definitions {
         this.Fr = Fr;
         this.definitions = {};
     }
-
+    get length () {
+        return Object.keys(this.definitions).length;
+    }
     get(name) {
         if (this.isDefined(name)) {
             return this.definitions[name];

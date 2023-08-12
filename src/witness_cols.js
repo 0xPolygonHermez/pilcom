@@ -7,8 +7,9 @@ module.exports = class WitnessCols extends Indexable {
         super(Fr, 'witness');
     }
 
-    getEmptyValue(id) {
-        return new WitnessCol(id);
+    getEmptyValue(id, data = {}) {
+        const col = new WitnessCol(id, data.stage ?? 1);
+        return col;
     }
 /*
     set(id, offset, value) {
