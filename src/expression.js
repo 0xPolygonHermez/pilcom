@@ -298,19 +298,14 @@ module.exports = class Expression {
 
         } else if (ope.type === OP_RUNTIME ) {
             let res = this.evaluateRuntime(ope, deeply);
-            console.log(res);
-            console.log(instance);
             // BUG: if type was an expression not apply value !!
             // if (!(res instanceof Expression)) {
             if (instance) {
-                console.log(res);
                 if (res instanceof Expression && res.isAlone()) {
                     res = res.getAloneOperand();
                 }
-                console.log(res);
                 if (res instanceof Expression) {
                     res.dump();
-                    console.log(ope);
                     ope.__value = res;
                 } else {
                     assert(!(res instanceof Expression));
@@ -319,7 +314,6 @@ module.exports = class Expression {
                         ope.type = OP_VALUE;
                         ope.value = res;
                     } else {
-                        console.log(res);
     //                    assert(NATIVE_REFS.includes(res.type));
                         assert(NATIVE_REFS.includes(res.refType));
                         ope.type = OP_ID_REF;
@@ -442,13 +436,12 @@ module.exports = class Expression {
         dup.evaluateStackPosValue(top, true);
         dup.instanceValues();
         if (simplify) {
-            console.log('=== SIMPLIFY ===');
-            dup.dump();
+            // console.log('=== SIMPLIFY ===');
+            // dup.dump();
             dup.simplify();
             dup.assertInstanced();
-            dup.dump();
+            // dup.dump();
         }
-        dup.dump();
         return dup;
     }
     eval(deeply = false) {
@@ -687,7 +680,7 @@ module.exports = class Expression {
 
         }
         // DEBUG:
-        translate.forEach((value, index) => console.log(`#${index} => ${value}`));
+        // translate.forEach((value, index) => console.log(`#${index} => ${value}`));
 
         // move stackpositions to definitive positions, from end to begin to avoid
         // overwriting, updating last position used to remove rest of stack positions
@@ -715,7 +708,6 @@ module.exports = class Expression {
         }
     }
     evaluateStackPosOperands(pos, deeply, instance = false) {
-        console.log([this.stack, pos]);
         for (let ope of this.stack[pos].operands) {
             this.evaluateOperand(ope, pos, deeply, instance);
         }
@@ -799,13 +791,13 @@ module.exports = class Expression {
         // positional_param op:'positional_param' position:
         // casting op:'cast' cast: value: dim: ??
     }*/
-    dump(title) {
+    dump(title, levels = 2) {
         // console.trace();
         let caller = '';
         try {
             throw new Error();
         } catch (e) {
-            caller = e.stack.split('\n')[2].trim().substring(3);
+            caller = e.stack.split('\n')[levels].trim().substring(3);
         }
         title = title ? `(${title}) `:'';
         console.log(`\x1B[38;5;214m|==========> DUMP ${title}${caller} <==========|\x1B[0m`);

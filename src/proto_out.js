@@ -1,3 +1,4 @@
+const {assert} = require("chai");
 const protobuf = require('protobufjs');
 const {cloneDeep} = require('lodash');
 const Long = require('long');
@@ -128,11 +129,9 @@ module.exports = class ProtoOut {
         }
     }
     encode() {
-        console.log("hey",this.pilOut);
         let message = this.PilOut.fromObject(this.pilOut);
-        console.log("hey",message);
         this.data = this.PilOut.encode(message).finish();
-        // return this.data;
+        return this.data;
     }
     saveToFile(filename) {
         fs.writeFileSync(filename, this.data);
@@ -165,29 +164,27 @@ module.exports = class ProtoOut {
         }
     }
     setGlobalSymbols(symbols) {
-        this._setSymbols(symbols.keyValuesOfTypes(['public', 'subproofvalue', 'proofvalue']));
+        this._setSymbols(symbols.keyValuesOfTypes(['public', 'subproofvalue', 'proofvalue', 'challenge', 'publictable']));
     }
-    setSymbolsFromLabels(labels, type) {
+    setSymbolsFromLabels(labels, type, data = {}) {
         let symbols = [];
         for (const label of labels) {
             symbols.push([label.label, {type, locator: label.from, array: label.multiarray, data: {}}]);
         }
-        this._setSymbols(symbols);
+        this._setSymbols(symbols, data);
     }
-    _setSymbols(symbols) {
+    _setSymbols(symbols, data = {}) {
         for(const [name, ref] of symbols) {
-            console.log(ref);
             const arrayInfo = ref.array ? ref.array : {dim: 0, lengths: []};
-            const [protoType, id, stage] = this.symbolType2Proto(ref.type, ref.locator);
+            const sym2proto = this.symbolType2Proto(ref.type, ref.locator);
             let payout = {
                 name,
-                airId: 0,
-                type: protoType,
-                id,
-                stage,
+                stage: 1,
                 dim: arrayInfo.dim,
                 lengths: arrayInfo.lengths,
-                debugLine: (ref.data ?? {}).sourceRef ?? ''
+                debugLine: (ref.data ?? {}).sourceRef ?? '',
+                ...data,
+                ...sym2proto
             };
             this.pilOut.symbols.push(payout);
         }
@@ -196,29 +193,33 @@ module.exports = class ProtoOut {
     symbolType2Proto(type, id) {
         switch(type) {
             case 'im':
-                return [REF_TYPE_IM_COL, id, 0];
+                return {type: REF_TYPE_IM_COL, id};
 
             case 'fixed': {
                 const [ftype, protoId] = this.fixedId2ProtoId[id];
-                if (ftype === 'P') return [REF_TYPE_PERIODIC_COL, protoId, 0];
-                return [REF_TYPE_FIXED_COL, protoId, 0];
+                if (ftype === 'P') return {type: REF_TYPE_PERIODIC_COL, id: protoId};
+                return {type: REF_TYPE_FIXED_COL, id: protoId, stage: 0};
             }
 
             case 'witness': {
                 const [stage, protoId] = this.witnessId2ProtoId[id];
-                return [REF_TYPE_WITNESS_COL, protoId, stage];
+                return {type: REF_TYPE_WITNESS_COL, id: protoId, stage};
             }
-            case 'subproofvalue':
-                return [REF_TYPE_SUBPROOF_VALUE, id, 0];
-
+            case 'subproofvalue': {
+                const [protoId, aggregation, subproofId] = this.spvId2Proto[id];
+                return {type: REF_TYPE_SUBPROOF_VALUE, id: protoId, subproofId};
+            }
             case 'proofvalue':
-                return [REF_TYPE_PROOF_VALUE, id, 0];
+                return {type: REF_TYPE_PROOF_VALUE, id};
 
             case 'public':
-                return [REF_TYPE_PUBLIC_VALUE, id, 0];
+                return {type: REF_TYPE_PUBLIC_VALUE, id};
 
-            case 'challenge':
-                return [REF_TYPE_CHALLENGE, id, 0];
+            case 'challenge': {
+                const [protoId, stage] = this.challengeId2Proto[id];
+                const res = {type: REF_TYPE_CHALLENGE, id: protoId, stage};
+                return res;
+            }
 
         }
         throw new Error(`Invalid symbol type ${type}`);
@@ -237,18 +238,22 @@ module.exports = class ProtoOut {
         this.setConstantCols(periodicCols, this.currentAir.numRows, true);
     }
     setChallenges(challenges) {
-        const countByStage = challenges.countByProperty('stage');
-        let challengesByStage = [];
-        let maxStage = 0;
-        for (let stage in countByStage) {
-            const nStage = Number(stage);
-            if (nStage > maxStage) maxStage = nStage;
+        const values = challenges.getPropertyValues(['id', 'stage']);
+        const valuesSortedByStageAndId = values.sort((a,b) => (a[1] > b[1] || (a[1] == b[1] && a[0] > b[0])) ? 1 : -1);
+        let previousStage = false;
+        let protoId;
+        let countByStage = [];
+        this.challengeId2Proto = [];
+        for (const [id, stage] of valuesSortedByStageAndId) {
+            if (previousStage !== stage) {
+                previousStage = id;
+                protoId = 0;
+            }
+            assert(stage > 0);
+            countByStage[stage-1] = (countByStage[stage-1] ?? 0) + 1;
+            this.challengeId2Proto[id] = [protoId, stage];
         }
-        for (let iStage = 1; iStage <= maxStage; ++iStage) {
-            // starts from stage 1 (no starts from stage 0)
-            challengesByStage.push(countByStage[iStage] ?? 0);
-        }
-        this.pilOut.numChallenges = challengesByStage;
+        this.pilOut.numChallenges = Array.from(countByStage, x => x ?? 0);
     }
     setConstantCols(cols, rows, periodic) {
         const property = periodic ? 'periodicCols':'fixedCols';
@@ -256,11 +261,9 @@ module.exports = class ProtoOut {
 
         const colType = periodic ? 'P':'F';
         for (const col of cols) {
-            console.log([col, col.isPeriodic()]);
             const colIsPeriodic = col.isPeriodic() && col.rows < rows;
             if (colIsPeriodic !== periodic) continue;
             const _rows = periodic ? col.rows : rows;
-            console.log(['rows', col.rows]);
             this.fixedId2ProtoId[col.id] = [colType, airCols.length];
             let values = [];
             for (let irow = 0; irow < _rows; ++irow) {
@@ -268,16 +271,13 @@ module.exports = class ProtoOut {
             }
             airCols.push({values});
         }
-        console.log(airCols[0]);
     }
     setWitnessCols(cols) {
         const stageWidths = this.setupAirProperty('stageWidths');
         // sort by stage
         this.witnessId2ProtoId = [];
         let stages = [];
-        console.log(cols);
         for (const col of cols) {
-            console.log(['WITNESS', col]);
             if (col.stage < 1) {
                 throw new Error(`Invalid stage ${col.stage}`);
             }
@@ -297,7 +297,6 @@ module.exports = class ProtoOut {
             // colIdx must be relative stage
             let index = 0;
             for (const witnessId of stage) {
-                console.log(['witnessId2ProtoId', witnessId, stageId]);
                 this.witnessId2ProtoId[witnessId] = [stageId, index++];
             }
         }
@@ -371,8 +370,18 @@ module.exports = class ProtoOut {
                     ope.subproofValue.subproofId = subproofId;
                 }
                 break;
+            case 'challenge': {
+                    const id = ope.challenge.idx;
+                    const [protoId, stage] = this.challengeId2Proto[id] ?? [false, false];
+                    if (protoId === false) {
+                        console.log(ope);
+                        throw new Error(`Translate: Found invalid subproofvalue ${id}`);
+                    }
+                    ope.challenge.idx = protoId;
+                    ope.challenge.stage = stage;
+                }
+                break;
             case 'constant':
-                console.log(ope.constant);
                 ope.constant.value = this.toBaseField(ope.constant.value);
                 break;
         }
@@ -396,7 +405,6 @@ module.exports = class ProtoOut {
         }
     }
     setConstraints(constraints, packed, options) {
-        console.log(constraints.constraints);
         let airConstraints = this.setupAirProperty('constraints');
         for (const [index, constraint] of constraints.keyValues()) {
             let payload;
@@ -426,8 +434,6 @@ module.exports = class ProtoOut {
             }
             airConstraints.push(payload);
         }
-        console.log(airConstraints[0]);
-        console.log(airConstraints);
     }
     bint2uint8(value, bytes = 0) {
         let result = new Uint8Array(this.uint8size);

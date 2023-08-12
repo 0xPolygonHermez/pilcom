@@ -157,24 +157,22 @@ module.exports = class Processor {
         proto.setupPilOut('myFirstPil');
         let subproofId = 0;
         proto.setSubproofvalues(this.subproofvalues.getPropertyValues(['id', 'aggregateType', 'subproofId']));
+        proto.setPublics(this.publics);
+        proto.setProofvalues(this.proofvalues);
+        proto.setChallenges(this.challenges);
         for (const subproofName of this.subproofs) {
-            console.log(`****************** PILOUT SUBPROOF ${subproofName} ******************`);
             const subproof = this.subproofs.get(subproofName);
             proto.setSubproof(subproofName, subproof.aggregate);
+            let airId = 0;
             for (const airName of subproof.airs) {
                 const air = subproof.airs.get(airName);
-                console.log(airName);
-                console.log(air);
                 const bits = log2(Number(air.rows));
-                console.log(airName);
                 proto.setAir(airName, air.rows);
                 proto.setFixedCols(air.fixeds);
-                air.expressions.dump('EXPRESSION PILOUT '+subproofName);
                 // expression: constraint, hint, operand (expression)
                 let packed = new PackedExpressions();
                 // this.expressions.pack(packed);
                 air.expressions.pack(packed);
-                console.log(air.constraints);
                 proto.setConstraints(air.constraints, packed,
                     { labelsByType: {
                         witness: air.witness.labelRanges,
@@ -182,18 +180,16 @@ module.exports = class Processor {
                     }
                     });
                 proto.setWitnessCols(air.witness);
-                proto.setSymbolsFromLabels(air.witness.labelRanges, 'witness');
-                proto.setSymbolsFromLabels(air.fixeds.labelRanges, 'fixed');
+                proto.setSymbolsFromLabels(air.witness.labelRanges, 'witness', {airId, subproofId});
+                proto.setSymbolsFromLabels(air.fixeds.labelRanges, 'fixed', {airId, subproofId});
                 proto.setExpressions(packed);
+                ++airId;
             }
             ++subproofId;
         }
         let packed = new PackedExpressions();
         // this.expressions.pack(packed);
         this.globalExpressions.pack(packed);
-        proto.setPublics(this.publics);
-        proto.setProofvalues(this.proofvalues);
-        proto.setChallenges(this.challenges);
         proto.setGlobalConstraints(this.globalConstraints, packed);
         proto.setGlobalExpressions(packed);
         proto.setGlobalSymbols(this.references);
@@ -572,14 +568,10 @@ module.exports = class Processor {
             const airName = subproofName + (subproof.rows.length > 1 ? `_${air.bits}`:'');
             subproof.airs.define(airName, air);
 
-            // TO-DO loop with different rows
-            console.log([air.bits, air.rows]);
-
             // create built-in constants
             this.references.set('N', [], BigInt(air.rows));
             this.references.set('BITS', [], BigInt(air.bits));
             this.references.set('__SUBPROOF__', [], subproofName);
-            this.expressions.dump(subproofName);
 
             this.context.push(false, subproofName);
             this.scope.pushInstanceType('air');
@@ -628,7 +620,6 @@ module.exports = class Processor {
             return false;
         }
         for (const fname in this.delayedCalls[scope][event]) {
-            console.log(['callDelayedFunctions', fname]);
             this.execCall({ op: 'call', function: {name: fname}, arguments: [] });
         }
     }
