@@ -117,6 +117,7 @@ module.exports = class ProtoOut {
         this.pilOut = {
             name,
             baseField: this.toBaseField(this.Fr.p),
+            blowupFactor: 3,
             subproofs: [],
             numChallenges: [],
             numProofValues: 0,
