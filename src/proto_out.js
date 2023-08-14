@@ -179,7 +179,6 @@ module.exports = class ProtoOut {
             const sym2proto = this.symbolType2Proto(ref.type, ref.locator);
             let payout = {
                 name,
-                stage: 1,
                 dim: arrayInfo.dim,
                 lengths: arrayInfo.lengths,
                 debugLine: (ref.data ?? {}).sourceRef ?? '',
