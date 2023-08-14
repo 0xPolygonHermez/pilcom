@@ -853,7 +853,7 @@ module.exports = class Expression extends ExpressionItem {
 
         }
         // DEBUG:
-        translate.forEach((value, index) => console.log(`#${index} => ${value}`));
+        // translate.forEach((value, index) => console.log(`#${index} => ${value}`));
 
         // move stackpositions to definitive positions, from end to begin to avoid
         // overwriting, updating last position used to remove rest of stack positions

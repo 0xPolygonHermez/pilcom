@@ -11,9 +11,9 @@ function final_function() {
     gsum_fibonacci + gsum_module === 0;
 }
 
-subproof Fibonacci(2**16) {
+subproof aggregate Fibonacci(2**16, 2**18) {
 
-    subproofval aggregate(sum) gsum_fibonacci = 0;
+    subproofval aggregate(sum) gsum_fibonacci;
 
     col fixed L1 = [1,0...];
     col witness a,b;

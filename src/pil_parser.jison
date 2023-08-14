@@ -949,7 +949,7 @@ include_directive
 
 stage_definition
     : STAGE '(' NUMBER ')' %prec STAGE
-        { $$ = { stage: $2 } }
+        { $$ = { stage: $3 } }
 
     | %prec NO_STAGE
         { $$ = { stage: DEFAULT_STAGE } }
@@ -1176,25 +1176,19 @@ public_table_declaration
     ;
 
 proof_value_declaration
-    : PROOF_VALUE col_declaration_ident '=' expression
-        { $$ = { type: 'proof_value_declaration', items: [$2], init: $4 } }
-
-    | PROOF_VALUE col_declaration_list
+    : PROOF_VALUE col_declaration_list
         { $$ = { type: 'proof_value_declaration', items: $2.items } }
     ;
 
 subproof_value_declaration
-    : SUBPROOF_VALUE AGGREGATE '(' IDENTIFIER ')' col_declaration_ident '=' expression
-        { $$ = { type: 'subproof_value_declaration', items: [$6], init: $8 } }
-
-    | SUBPROOF_VALUE AGGREGATE '(' IDENTIFIER ')' col_declaration_list
-        { $$ = { type: 'subproof_value_declaration', items: $6.items } }
+    : SUBPROOF_VALUE AGGREGATE '(' IDENTIFIER ')' col_declaration_list
+        { $$ = { type: 'subproof_value_declaration', aggregateType: $4, items: $6.items } }
     ;
 
 
 subproof_definition
     : SUBPROOF AGGREGATE IDENTIFIER '(' expression_list ')'  '{' statement_block '}'
-        { $$ = { type: 'subproof_definition', aggregable: false, props: $2, name: $3, rows: $5, statements: $8.statements } }
+        { $$ = { type: 'subproof_definition', aggregate: true, name: $3, rows: $5, statements: $8.statements } }
 
     | SUBPROOF IDENTIFIER '(' expression_list ')'  '{' statement_block '}'
         { $$ = { type: 'subproof_definition', aggregate: false, name: $2, rows: $4, statements: $7.statements } }

@@ -116,6 +116,7 @@ module.exports = class Processor {
         this.breakpoints = ['expr.pil:26'];
         this.loadBuiltInClass();
         this.scopeType = 'proof';
+        this.currentSubproof = false;
     }
     loadBuiltInClass() {
         const filenames = fs.readdirSync(__dirname + '/builtin');
@@ -168,22 +169,24 @@ module.exports = class Processor {
 
         let proto = new ProtoOut(this.Fr);
         proto.setupPilOut('myFirstPil');
+        let subproofId = 0;
+        proto.setSubproofvalues(this.subproofvalues.getPropertyValues(['id', 'aggregateType', 'subproofId']));
+        proto.setPublics(this.publics);
+        proto.setProofvalues(this.proofvalues);
+        proto.setChallenges(this.challenges);
         for (const subproofName of this.subproofs) {
-            console.log(`****************** PILOUT SUBPROOF ${subproofName} ******************`);
             const subproof = this.subproofs.get(subproofName);
-            proto.setSubproof(subproofName); // TODO: Add the aggregability property and value to subproofs
+            proto.setSubproof(subproofName, subproof.aggregate);
+            let airId = 0;
             for (const airName of subproof.airs) {
                 const air = subproof.airs.get(airName);
-                console.log(airName);
                 const bits = log2(Number(air.rows));
                 proto.setAir(airName, air.rows);
                 proto.setFixedCols(air.fixeds);
-                air.expressions.dump('EXPRESSION PILOUT '+subproofName);
                 // expression: constraint, hint, operand (expression)
                 let packed = new PackedExpressions();
                 // this.expressions.pack(packed);
                 air.expressions.pack(packed);
-                console.log(air.constraints);
                 proto.setConstraints(air.constraints, packed,
                     { labelsByType: {
                         witness: air.witness.labelRanges,
@@ -191,10 +194,12 @@ module.exports = class Processor {
                     }
                     });
                 proto.setWitnessCols(air.witness);
-                proto.setSymbolsFromLabels(air.witness.labelRanges, 'witness');
-                proto.setSymbolsFromLabels(air.fixeds.labelRanges, 'fixed');
+                proto.setSymbolsFromLabels(air.witness.labelRanges, 'witness', {airId, subproofId});
+                proto.setSymbolsFromLabels(air.fixeds.labelRanges, 'fixed', {airId, subproofId});
                 proto.setExpressions(packed);
+                ++airId;
             }
+            ++subproofId;
         }
         let packed = new PackedExpressions();
         // this.expressions.pack(packed);
@@ -559,7 +564,7 @@ module.exports = class Processor {
         this.checkRows(subproofRows);
 
         // TODO: Fr inside context
-        const subproof = new Subproof(this.context, subproofRows, s.statements);
+        const subproof = new Subproof(this.context, subproofRows, s.statements, s.aggregate ?? false);
         this.subproofs.define(subproofName, subproof, `subproof ${subproofName} has been defined previously on ${this.context.sourceRef}`);
     }
     execSubproofBlock(s) {
@@ -574,6 +579,7 @@ module.exports = class Processor {
         subproof.addBlock(s.statements);
     }
     executeSubproof(subproofName, subproof) {
+        this.currentSubproof = subproof;
         this.scope.pushInstanceType('subproof');
         for (const airRows of subproof.rows) {
             this.rows = airRows;
@@ -594,6 +600,7 @@ module.exports = class Processor {
 
             this.context.push(false, subproofName);
             this.scope.pushInstanceType('air');
+            subproof.airStart();
             for (const statements of subproof.blocks) {
                 // REVIEW: clear uses and regular expressions
                 // this.scope.push();
@@ -601,6 +608,7 @@ module.exports = class Processor {
                 // this.scope.pop();
             }
             this.finalAirScope();
+            subproof.airEnd();
             air.witness = this.witness.clone();
             air.fixeds = this.fixeds.clone();
             air.expressions = this.expressions.clone();
@@ -615,6 +623,7 @@ module.exports = class Processor {
         }
         this.finalSubproofScope();
         this.scope.popInstanceType();
+        this.currentSubproof = false;
         ++this.subproofId;
     }
     finalAirScope() {
@@ -636,12 +645,11 @@ module.exports = class Processor {
             return false;
         }
         for (const fname in this.delayedCalls[scope][event]) {
-            console.log(['callDelayedFunctions', fname]);
             this.execCall({ op: 'call', function: {name: fname}, arguments: [] });
         }
     }
     execWitnessColDeclaration(s) {
-        this.colDeclaration(s, 'witness');
+        this.colDeclaration(s, 'witness', false, true, {stage: s.stage ? Number(s.stage):0 });
     }
     execFixedColDeclaration(s) {
         const global = s.global ?? false;
@@ -690,12 +698,18 @@ module.exports = class Processor {
         // TODO: verification defined
     }
     execSubproofValueDeclaration(s) {
-        this.colDeclaration(s, 'subproofvalue', true, false);
-        // TODO: initialization
-        // TODO: verification defined
+        const name = s.items[0].name ?? '';
+
+        if (this.currentSubproof === false) {
+            throw new Error(`Subproofvalue ${name} must be declared inside subproof (air)`);
+        }
+        for (const value of s.items) {
+            const lengths = this.decodeLengths(value);
+            const res = this.currentSubproof.declareSubproofvalue(value.name, lengths, {aggregateType: s.aggregateType, subproofId: this.subproofId, sourceRef: this.sourceRef});
+        }
     }
     execChallengeDeclaration(s) {
-        this.colDeclaration(s, 'challenge', true, false);
+        this.colDeclaration(s, 'challenge', true, false, {stage: s.stage ? Number(s.stage):0});
         // TODO: initialization
         // TODO: verification defined
     }
@@ -741,16 +755,15 @@ module.exports = class Processor {
     decodeLengths(s) {
         return this.decodeIndexes(s.lengths);
     }
-    colDeclaration(s, type, ignoreInit, fullName = true) {
-        const global = s.global ?? false;
+    colDeclaration(s, type, ignoreInit, fullName = true, data = {}) {
         for (const col of s.items) {
             const lengths = this.decodeLengths(col);
             let init = s.init;
             if (init && init && typeof init.instance === 'function') {
                 init = init.instance();
             }
-            if (fullName) this.declareFullReference(col.name, type, lengths, {global}, ignoreInit ? null : init);
-            else this.declareReference(col.name, type, lengths, {global}, ignoreInit ? null : init);
+            if (fullName) this.declareFullReference(col.name, type, lengths, data, ignoreInit ? null : init);
+            else this.declareReference(col.name, type, lengths, data, ignoreInit ? null : init);
             /// TODO: INIT / SEQUENCE
         }
     }

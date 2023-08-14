@@ -4,15 +4,16 @@ package pilout;
 message PilOut {
     optional string name = 1;
     bytes baseField = 2;                        // base field characteristic
-    repeated Subproof subproofs = 3;
-    repeated uint32 numChallenges = 4;          // number of challenges per stage
-    uint32 numProofValues = 5;
-    uint32 numPublicValues = 6;
-    repeated PublicTable publicTables = 7;
-    repeated GlobalExpression expressions = 8;
-    repeated GlobalConstraint constraints = 9;  // Constraints that apply only to signals
-    repeated Hint hints = 10;
-    repeated Symbol symbols = 11;
+    uint32 blowupFactor = 3;
+    repeated Subproof subproofs = 4;
+    repeated uint32 numChallenges = 5;          // number of challenges per stage
+    uint32 numProofValues = 6;
+    uint32 numPublicValues = 7;
+    repeated PublicTable publicTables = 8;
+    repeated GlobalExpression expressions = 9;
+    repeated GlobalConstraint constraints = 10;  // Constraints that apply only to signals
+    repeated Hint hints = 11;
+    repeated Symbol symbols = 12;
 }
 
 message Subproof {
@@ -273,9 +274,10 @@ message Symbol {
     optional uint32 airId = 3;
     SymbolType type = 4;
     uint32 id = 5;
-    uint32 dim = 6;
-    repeated uint32 lengths = 7;
-    optional string debugLine = 8;
+    optional uint32 stage = 6;
+    uint32 dim = 7;
+    repeated uint32 lengths = 8;
+    optional string debugLine = 9;
 }
 
 // ================ Hints ================

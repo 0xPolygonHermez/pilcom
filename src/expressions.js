@@ -166,7 +166,6 @@ module.exports = class Expressions {
                 // DUAL, if access row was a value, if not it's an id
                 // TODO
                 if (typeof res.row === 'undefined') {
-                    console.log(res);
                     res = {refType: 'fixed', id: res.id};
                 } else {
                     // e.parent.fixedRowAccess = true;
@@ -176,20 +175,16 @@ module.exports = class Expressions {
                 break;
             case 'challenge':
                 res = {refType: ref.type, id: ref.id };
-                console.log('=========== CHALLENGE ============');
-                console.log(res);
                 break;
             case 'witness':
                 if (res.value instanceof WitnessCol) {
                     res = {refType: ref.type, id: res.value.id };
                     if (ref.next) res.next = ref.next;
                 }
-                console.log(res);
                 break;
             case 'public':
             case 'proofvalue':
             case 'subproofvalue':
-                console.log(ref);
                 res = {refType: ref.type, id: res.id };
                 break;
             case 'im':
@@ -281,16 +276,13 @@ module.exports = class Expressions {
             }
         }
         let res = this.references.getTypedValue(names, operand.__indexes, options);
-        console.log(['DEBUG', names, operand]);
         if (typeof operand.__next !== 'undefined') {
             res.__next = res.next = operand.__next;
         } else if (typeof operand.next !== 'number' && (operand.next || operand.prior)) {
-            console.log(operand);
             throw new Error(`INTERNAL: next and prior must be previouly evaluated`);
         } else if (typeof operand.next === 'number' && operand.next) {
             res.next = operand.next;
         }
-        console.log(res);
         return res;
     }
     getReferenceInfo(e, options) {
@@ -328,9 +320,6 @@ module.exports = class Expressions {
         if (types.includes(etype)) {
             return toBigInt && etype === 'number' ? BigInt(e) : e;
         }
-        console.log(e);
-        console.log(etype);
-        console.log(e.toString());
         this.error(s, (title ? ' ':'') + `is not constant expression (${etype}) (2)`);
     }
     getValue(e, s, title = '') {
@@ -357,14 +346,12 @@ module.exports = class Expressions {
         for (let id = 0; id < this.expressions.length; ++id) {
             if (typeof this.packedIds[id] !== 'undefined') continue;    // already packed
             const packedId = this.expressions[id].pack(container, options);
-            console.log(`PACK EXPR ${id} => ${packedId} ${this.expressions[id].toString()}`);
             this.packedIds[id] = packedId;
         }
     }
     getPackedExpressionId(id, container, options) {
         if (container && typeof this.packedIds[id] === 'undefined') {
             const packedId = this.expressions[id].pack(container, options);
-            console.log(`PACK EXPR (GET) ${id} => ${packedId} ${this.expressions[id].toString()}`);
             this.packedIds[id] = packedId;
         }
         return this.packedIds[id];
@@ -374,9 +361,8 @@ module.exports = class Expressions {
     }
 
     dump(name) {
-        console.log(`DUMP EXPRESSION COUNT:${this.expressions.length} # ${name}`);
         for (let index = 0; index < this.expressions.length; ++index) {
-            this.expressions[index].dump(`EXPRESSION ${index} # ${name}`);
+            this.expressions[index].dump(`EXPRESSION ${index} # ${name}`, 3);
         }
     }
     clear() {

@@ -11,21 +11,20 @@ module.exports = class Indexable {
         this.labelRanges = new LabelRanges();
         this.debug = false;
     }
-    getEmptyValue(id) {
-        return id;
+    get length() {
+        return this.values.length;
     }
-
     clone() {
         let cloned = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
         cloned.values = [];
         for (const value of this.values) {
+            let clonedValue = value;
             if (typeof value.clone === 'function') {
-                cloned.values.push(value.clone());
+               clonedValue = value.clone();
             } else if (value instanceof Object) {
-                cloned.values.push(Object.assign(Object.create(Object.getPrototypeOf(value)), value));
-            } else {
-                cloned.values.push(value);
+               clonedValue = Object.assign(Object.create(Object.getPrototypeOf(value)), value);
             }
+            cloned.values.push(clonedValue);
         }
         cloned.labelRanges = this.labelRanges.clone();
 
@@ -38,11 +37,14 @@ module.exports = class Indexable {
     getType(id) {
         return this.rtype;
     }
-    reserve(count, label, multiarray, options) {
+    getEmptyValue(id, data) {
+        return null;
+    }
+    reserve(count, label, multiarray, data) {
         const id = this.values.length;
         for (let index = 0; index < count; ++index) {
             const absoluteIndex = index + id;
-            this.values[absoluteIndex] = this.getEmptyValue(absoluteIndex);
+            this.values[absoluteIndex] = this.getEmptyValue(absoluteIndex, data);
             if (this.debug) {
                 console.log(`INIT ${this.constructor.name}.${this.type} @${absoluteIndex} (${id}+${index}) ${this.values[absoluteIndex]} LABEL:${label}`);
             }
