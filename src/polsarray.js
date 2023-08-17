@@ -170,7 +170,8 @@ class PolsArray {
         return buff;
     }
 
-    writeToBigBuffer(buff) {
+    writeToBigBuffer(buff, nPols) {
+        if(!nPols) nPols = this.$$nPols;
         if (typeof buff == "undefined") {
             buff = new BigBuffer(this.$$n*this.$$nPols);
         }
@@ -181,6 +182,7 @@ class PolsArray {
                 buff.setElement(p++, value);
                 
             }
+            for(let i = this.$$nPols; i < nPols; ++i) buff.setElement(p++, 0n);
         }
         return buff;
     }
@@ -231,47 +233,9 @@ class PolsArray {
         const fd =await fastFile.createOverride(fileName);
 
         const n8r = this.F.n8;
-        
-	    // const MaxBuffSize = 1024*1024; 
-        // const totalSize = this.$$nPols*this.$$n*n8r;
-        // const maxSize = Math.min(totalSize, MaxBuffSize);
-        // const nPromises = totalSize === 0 ? 0 : Math.ceil(totalSize / maxSize);
-        // const promises = new Array(nPromises);
-        // let values = new Array(nPromises);
-        // let pr = 0;
-        // let vIndex = 0;
-
-        // for(let i = 0; i < nPromises; i++) {
-        //     values[i] = new Array(Math.min(maxSize/n8r, (totalSize - i*maxSize)/n8r));
-        // }
-
-        // for (let i=0; i<this.$$n; i++) {
-        //     for (let j=0; j<this.$$nPols; j++) {
-        //         if(vIndex == 0) console.log(`saving ${fileName}.. ${pr*maxSize/1024/1024} of ${totalSize/1024/1024}`);
-        //         const v = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
-        //         values[pr][vIndex] = v;
-
-        //         vIndex++;
-        //         if(vIndex === values[pr].length) {
-        //             promises.push(this.writeBuffer(fd, values[pr], pr*maxSize, Fr));
-        //             pr++;
-        //             vIndex=0;
-        //         }
-            
-        //     }
-        // }
-
-        // if(vIndex > 0) {
-        //     promises.push(this.writeBuffer(fd, values[pr], pr*maxSize, Fr));
-        // }
-
-        // console.log("Writting buffer...")
-
-        // await Promise.all(promises);
 
         const MaxBuffSize = 1024*1024*256; 
         const totalSize = this.$$nPols*this.$$n*n8r;
-        const maxSize = Math.min(totalSize, MaxBuffSize);
 
         const buff = new Uint8Array(totalSize);
 
@@ -361,7 +325,8 @@ class PolsArray {
         await fd.close();
     }
 
-    async writeToBigBufferFr(buff, Fr) {
+    async writeToBigBufferFr(buff, Fr, nPols) {
+        if(!nPols) nPols = this.$$nPols;
         if(Fr.p !== this.F.p) throw new Error("Curve Prime doesn't match");
 
         const n8r = this.F.n8;
@@ -374,6 +339,10 @@ class PolsArray {
             for (let j=0; j<this.$$nPols; j++) {
                 const value = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
                 buff.set(Fr.e(value), p);
+                p += n8r;
+            }
+            for(let i = this.$$nPols; i < nPols; ++i) {
+                buff.set(Fr.zero, p);
                 p += n8r;
             }
         }
