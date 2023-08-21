@@ -29,7 +29,7 @@ subproof aggregate Fibonacci(2**16, 2**18) {
     // gsum_require[0] = ((((L1' * out)+ (1-L1') * a') * std_alpha + a * a + b * b) * std_alpha) + MODULE_ID + std_beta;
     // gsum_require_mul_count[0] = 1
 
-    col witness stage(3) gsum;
+    col witness stage(2) gsum;
 
     // * expr LHS = 1;
     // LHS = 1;

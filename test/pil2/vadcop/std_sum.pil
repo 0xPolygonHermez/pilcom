@@ -44,7 +44,7 @@ private function check_id_and_cols(int opid, int cols_count, int provide) {
     }
 
     container subproof.std.piop {
-        subproofval aggregate(sum) gsum_result = 0;
+        subproofval aggregate(sum) gsum_result;
     }
 
     container air.std.piop {
