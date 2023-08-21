@@ -39,7 +39,8 @@ private function check_id_and_cols(int opid, int cols_count, int provide) {
         // FIX: dynamic arrays not ready
         int opids_count = 0;
         int opids[100];
-        int gsum = 0;
+        expr gsum = 0;  // Resulting sum of every subproof and every air. 
+                        // Declared as expression (unknown at runtime), but used as field element.
     }
 
     container subproof.std.piop {
