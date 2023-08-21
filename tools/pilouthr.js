@@ -49,15 +49,18 @@ async function run() {
     const root = protobuf.loadSync(path2proto);
     const PilOut = root.lookupType('PilOut');
     const piloutDec = PilOut.toObject(PilOut.decode(piloutEnc)); // pilout -> subproofs -> airs -> constraints
-    // console.log('air',piloutDec.subproofs[0].airs[0].expressions[0].sub)
+    // console.log('air',piloutDec.subproofs[0].airs[0].expressions[0].mul)
+    // console.log('air',piloutDec.subproofs[0].airs[0].expressions[6].mul)
     // console.log(piloutDec.subproofs[1].airs[0].constraints)
     // console.log(piloutDec.symbols)
 
     for (let i = 0; i < piloutDec.subproofs.length; i++) {
         const subproof = piloutDec.subproofs[i];
+        const subproofId = i;
         console.log('■', `SubProof ${subproof.name}:`);
         for (let j = 0; j < subproof.airs.length; j++) {
             const air = subproof.airs[j];
+            const airId = j;
             console.log(' '.repeat(2), '◆', `AIR ${air.name}:`);
 
             // Given a constraint, we use its expressionIdx to find the expression in a recursive way
@@ -77,8 +80,8 @@ async function run() {
                     let [expression, op] = findExpressionByType(air.expressions[idx]);
                     let lhs = expression.lhs;
                     let rhs = expression.rhs;
-                    let lhsElement = findExpElementByType(piloutDec.symbols, lhs);
-                    let rhsElement = findExpElementByType(piloutDec.symbols, rhs);
+                    let lhsElement = findExpElementByType(piloutDec.symbols, lhs, subproofId, airId);
+                    let rhsElement = findExpElementByType(piloutDec.symbols, rhs, subproofId, airId);
 
                     if (lhs.expression === undefined && rhs.expression === undefined) {
                         return '(' + lhsElement + ' ' + op + ' ' + rhsElement + ')';
@@ -141,25 +144,25 @@ function findExpressionByType(expression) {
 }
 
 // TODO: Complete
-function findExpElementByType(symbols, expElement) {
+function findExpElementByType(symbols, expElement, subproofId, airId) {
     if (expElement.expression !== undefined) {
         return expElement.expression;
 
     } else if (expElement.challenge !== undefined) {
         const challenge = expElement.challenge;
         const type = stringToSymbol('CHALLENGE');
-        return findSymbolByTypeAndId(symbols, type, challenge.idx);
+        return findSymbolByTypeAndId(symbols, subproofId, airId, type, challenge.idx, challenge.stage);
 
     } else if (expElement.subproofValue !== undefined) {
         const subproofValue = expElement.subproofValue;
         const type = stringToSymbol('SUBPROOF_VALUE');
-        return findSymbolByTypeAndId(symbols, type, subproofValue.idx);
+        return findSymbolByTypeAndId(symbols, subproofId, airId, type, subproofValue.idx);
 
     } else if (expElement.witnessCol !== undefined) {
         const witnessCol = expElement.witnessCol;
         const type = stringToSymbol('WITNESS_COL');
 
-        const symbol = findSymbolByTypeAndId(symbols, type, witnessCol.colIdx);
+        const symbol = findSymbolByTypeAndId(symbols, subproofId, airId, type, witnessCol.colIdx, witnessCol.stage);
         const rowOffset = witnessCol.rowOffset;
         if (rowOffset > 0) {
             return (rowOffset > 1 ? `${symbol}'${-rowOffset}` : `${symbol}'`);
@@ -173,7 +176,7 @@ function findExpElementByType(symbols, expElement) {
         const fixedCol = expElement.fixedCol;
         const type = stringToSymbol('FIXED_COL');
 
-        const symbol = findSymbolByTypeAndId(symbols, type, fixedCol.idx);
+        const symbol = findSymbolByTypeAndId(symbols, subproofId, airId, type, fixedCol.idx, fixedCol.stage);
         const rowOffset = fixedCol.rowOffset;
         if (rowOffset > 0) {
             return (rowOffset > 1 ? `${symbol}'${-rowOffset}` : `${symbol}'`);
@@ -189,17 +192,19 @@ function findExpElementByType(symbols, expElement) {
     } else if (expElement.publicValue !== undefined) {
         const publicValue = expElement.publicValue;
         const type = stringToSymbol('PUBLIC_VALUE');
-        return findSymbolByTypeAndId(symbols, type, publicValue.idx);
+        return findSymbolByTypeAndId(symbols, subproofId, airId, type, publicValue.idx);
     } else {
         throw new Error(`Invalid expression element type ${expElement}`);
     }
 }
 
-// We should also look for subproofId
-function findSymbolByTypeAndId(symbols, type, id) {
+function findSymbolByTypeAndId(symbols, subproofId, airId, type, id, stage = 0) {
     for (let i = 0; i < symbols.length; i++) {
         const symbol = symbols[i];
-        if (symbol.type === type && symbol.id === id) {
+        const spid = symbol.subproofId === undefined ? subproofId : symbol.subproofId;
+        const aid = symbol.airId === undefined ? airId : symbol.airId;
+        const stg = symbol.stage === undefined ? stage : symbol.stage;
+        if (spid === subproofId && aid === airId && symbol.type === type && symbol.id === id && stg === stage) {
             return symbol.name;
         }
     }

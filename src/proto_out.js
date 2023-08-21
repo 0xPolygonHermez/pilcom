@@ -248,12 +248,13 @@ module.exports = class ProtoOut {
         this.challengeId2Proto = [];
         for (const [id, stage] of valuesSortedByStageAndId) {
             if (previousStage !== stage) {
-                previousStage = id;
+                previousStage = stage;
                 protoId = 0;
             }
             assert(stage > 0);
             countByStage[stage-1] = (countByStage[stage-1] ?? 0) + 1;
             this.challengeId2Proto[id] = [protoId, stage];
+            ++protoId;
         }
         this.pilOut.numChallenges = Array.from(countByStage, x => x ?? 0);
     }
