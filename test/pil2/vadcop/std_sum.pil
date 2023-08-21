@@ -39,7 +39,8 @@ private function check_id_and_cols(int opid, int cols_count, int provide) {
         // FIX: dynamic arrays not ready
         int opids_count = 0;
         int opids[100];
-        expr gsum = 0;
+        expr gsum = 0;  // Resulting sum of every subproof and every air. 
+                        // Declared as expression (unknown at runtime), but used as field element.
     }
 
     container subproof.std.piop {
@@ -122,6 +123,7 @@ function piop_update(int provide, int opid, expr mul_count, expr cols[]) {
         // adding all sums of require called in this air
         gsum_require_mul_count[gsum_require_count] = mul_count;
         gsum_require[gsum_require_count] = cols_compressed;
+        ++gsum_require_count;
     }
 
     // 0] look for repeated provide/require's and, if so, optimize
