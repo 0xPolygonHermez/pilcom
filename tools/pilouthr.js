@@ -3,7 +3,6 @@
 const protobuf = require('protobufjs');
 const path = require('path');
 const fs = require('fs');
-const exp = require('constants');
 const version = require('../package').version;
 
 const argv = require('yargs')
