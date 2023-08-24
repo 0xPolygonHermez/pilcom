@@ -29,7 +29,7 @@ function lookup_provide(int opid, expr sel, expr cols[]) {
  * @param cols_count number of columns of the PIOP check
  * @param provide 1 if provide, 0 if require
  */
-private function check_id_and_cols(int opid, int cols_count, int provide) {
+private function check_opid_and_cols(int opid, int cols_count, int provide) {
 
     if (cols_count < 1) {
         error(`The number of columns of PIOP #${opid} must be at least 1`);
@@ -106,7 +106,7 @@ function compress_cols(int opid, expr cols[]): expr {
  */
 function piop_update(int provide, int opid, expr mul_count, expr cols[]) {
     // verify if correct opid and cols
-    check_id_and_cols(opid, length(cols), provide);
+    check_opid_and_cols(opid, length(cols), provide);
 
     init_challenges();
 

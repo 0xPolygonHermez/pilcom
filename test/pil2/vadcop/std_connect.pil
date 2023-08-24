@@ -1,0 +1,222 @@
+private function init_challenges() {
+    if (!defined(std_alpha)) {
+        challenge stage(2) std_alpha;
+    }
+    if (!defined(std_beta)) {
+        challenge stage(2) std_beta;
+    }
+}
+
+// Take care of the redeclaration
+private function init_coset_constants(int len) {
+    global std_ks[len];
+
+    for (int i = 0; i < len; ++i) {
+        std_ks[i] = global constant k[i];
+    }
+}
+
+// Two (incompatible??) user interfaces
+
+// 1] WIP
+function connection_init(int opid, expr cols[]) {
+        // connection_update_require(opid, sel, cols);
+}
+
+function connection_connect(int opid, expr cols[]) {
+        // connection_update_provide(opid, sel, cols);
+}
+
+// 2]
+function connection_require(int opid, expr cols[]) {
+    use proof.std.connect.`id${opid}`;
+
+    colsR = cols;
+
+    if (provide == 1) {
+        connection_update_require(opid, cols);
+        connection_update_provide(opid, colsP);
+    } else {
+        connection_update_require(opid, cols);
+    }
+}
+
+function connection_provide(int opid, expr cols[]) {
+    use proof.std.connect.`id${opid}`;
+
+    if (require == 1) {
+        connection_update_provide(opid, cols);
+    } else {
+        colsP = cols;
+    }
+}
+
+/**
+ * Verifies the number of columns of same connect check (require, provide) is the same.
+ * @param opid (unique) identifier of the connect check
+ * @param cols_count number of columns of the connect check
+ * @param provide 1 if provide, 0 if require
+ */
+private function check_opid_and_cols(int opid, int cols_count, int provide) {
+
+    if (cols_count < 1) {
+        error(`The number of columns of connect #${opid} must be at least 1`);
+    }
+
+    container proof.std.connect alias conn {
+        // FIX: dynamic arrays not ready
+        int opids_count = 0;
+        int opids[100];
+    }
+
+    container air.std.connect {
+        // FIX: dynamic arrays not ready
+        expr gsum_require[100];
+        expr gsum_provide[100];
+    }
+
+    container proof.std.connect.`id${opid}` alias connid {
+        int cols;
+        int provide = 0;
+        int require = 0;
+
+        expr colsR[];
+        expr colsP[];
+
+        expr SIDs[];
+    }
+
+    if (connid.cols == 0) {
+        // first time called
+        connid.cols = cols_count;
+        // add opid on a list to verify at final
+        conn.opids[conn.opids_count] = opid;
+        ++conn.opids_count;
+    } else if (connid.cols != cols_count) {
+        error(`The number of columns of connect #${opid} must be ${connid.cols}`);
+    }
+
+    if (provide) {
+        if (connid.provide > 0) {
+            error(`Connection #${opid} provide was called previously`);
+        }
+        ++connid.provide;
+    } else {
+        if (connid.require > 0) {
+            error(`Connection #${opid} require was called previously`);
+        }
+        ++connid.require;
+    }
+}
+
+/**
+ * Given columns C₀,...,Cₙ₋₁, 
+ * @param provide boolean indicating if updating a provide or a require
+ * @param opid (unique) identifier of the connection
+ * @param colsP provide columns of the connection
+ */
+function connection_update_require(int opid, expr colsR[]) {
+    // verify if correct opid and cols
+    check_opid_and_cols(opid, length(colsR), 0);
+
+    init_challenges();
+    init_coset_constants(length(colsR));
+
+    once col fixed IDEN = [1,omega,..*..,omega**(N-1)]; // {1,𝛚,𝛚²,...,𝛚ᴺ⁻¹}
+
+    use proof.std.connect.`id${opid}`;
+    // Define polynomials SID_i(X) := k_i·X
+    for (int icol = 0; icol < length(colsR); ++icol) {
+        SIDs[icol] = std_ks[icol] * IDEN;
+    }
+
+    expr requireEls = [];
+    for (int icol = 0; icol < length(colsR); ++icol) {
+        requireEls[] = colsR[icol] + std_alpha*SIDs[icol] + std_beta;
+    }
+
+    air.std.connect.gsum_require[] = requireEls;
+
+    // define constraints at the air level
+    on final air connection_air();
+}
+
+function connection_update_provide(int opid, expr colsR[], expr colsP[]) {
+    // verify if correct opid and cols
+    check_opid_and_cols(opid, length(colsP), 1);
+
+    init_challenges();
+
+    use proof.std.connect.`id${opid}`;
+
+    expr provideEls = [];
+    for (int icol = 0; icol < length(colsP); ++icol) {
+        provideEls[] = colsR[icol] + std_alpha*colsP[icol] + std_beta;
+    }
+
+    air.std.connect.gsum_provide[] = provideEls;
+
+    // define constraints at the air level
+    on final air connection_air();
+}
+
+private function connection_air() {
+    check_connection_was_completed();
+
+    use air.std.connect;
+
+    col witness stage(2) gsum;
+
+    //                            1                              1                                  1                              1                       1                                1
+    //  gsum === 'gsum + ------------------------ + --------------------------- + ... + -------------------------- - ------------------------ - ------------------------ - ... - ------------------------
+    //                   (f_0 + alpha·X + beta)      (f_1 + alpha·k_1·X + beta)         (f_N + alpha·k_n·X + beta)   (f_0 + alpha·S_0 + beta) · (f_1 + alpha·S_1 + beta)         (f_N + alpha·S_n + beta)
+
+    expr LHS = 0;
+    expr RHS1 = 0;
+    for (int i = 0; i < length(gsum_require); ++i) {
+        LHS = LHS * gsum_require[i];
+
+        expr tmp = 1;
+        for (int j = 0; j < length(gsum_require); ++j) {
+            if (j != i) {
+                tmp = tmp * gsum_require[j];
+            }
+        }
+        RHS1 = RHS1 + tmp;
+    }
+
+    expr RHS2a = LHS;
+    expr RHS2b = 0;
+    for (int i = 0; i < length(gsum_provide); ++i) {
+        LHS = LHS * gsum_provide[i];
+        RHS1 = RHS1 * gsum_provide[i];
+
+        expr tmp = 1;
+        for (int j = 0; j < length(gsum_provide); ++j) {
+            if (j != i) {
+                tmp = tmp * gsum_provide[j];
+            }
+        }
+        RHS2b = RHS2b + tmp;
+    }
+
+    expr RHS2 = RHS2a * RHS2b;
+    expr RHS = RHS1 - RHS2;
+
+    col fixed L1 = [1,0...];
+
+    (gsum - 'gsum) * LHS === RHS;
+    L1' * gsum === 0;
+}
+
+// It checks wheter there is some connection check without either provide or require
+private function check_connection_was_completed() {
+    for (int opid in air.std.connect.opids) {
+        if (proof.std.connect.`id${opid}`.require == 0) {
+            error(`Connection #${opid} defined without require`);
+        }
+        if (proof.std.connect.`id${opid}`.provide == 0) {
+            error(`Connection #${opid} defined without provide`);
+        }
+    }
+}
