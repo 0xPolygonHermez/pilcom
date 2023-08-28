@@ -80,10 +80,7 @@ private function check_opid_and_cols(int opid, int cols_count, int provide) {
         int provide = 0;
         int require = 0;
 
-        expr colsR[];
-        expr colsP[];
-
-        expr SIDs[];
+        expr SIDs[]; // TODO: Should I place this one in another place?
     }
 
     if (connid.cols == 0) {
@@ -125,17 +122,14 @@ function connection_update_require(int opid, expr colsR[]) {
     once col fixed IDEN = [1,omega,..*..,omega**(N-1)]; // {1,𝛚,𝛚²,...,𝛚ᴺ⁻¹}
 
     use proof.std.connect.`id${opid}`;
-    // Define polynomials SID_i(X) := k_i·X
+    // Compute polynomials SID_i(X) := k_i·X
     for (int icol = 0; icol < length(colsR); ++icol) {
         SIDs[icol] = std_ks[icol] * IDEN;
     }
 
-    expr requireEls = [];
     for (int icol = 0; icol < length(colsR); ++icol) {
-        requireEls[] = colsR[icol] + std_alpha*SIDs[icol] + std_beta;
+        air.std.connect.gsum_require[] = colsR[icol] + std_alpha*SIDs[icol] + std_beta;
     }
-
-    air.std.connect.gsum_require[] = requireEls;
 
     // define constraints at the air level
     on final air connection_air();
@@ -147,14 +141,9 @@ function connection_update_provide(int opid, expr colsR[], expr colsP[]) {
 
     init_challenges();
 
-    use proof.std.connect.`id${opid}`;
-
-    expr provideEls = [];
     for (int icol = 0; icol < length(colsP); ++icol) {
-        provideEls[] = colsR[icol] + std_alpha*colsP[icol] + std_beta;
+        air.std.connect.gsum_provide[] = colsR[icol] + std_alpha*colsP[icol] + std_beta;
     }
-
-    air.std.connect.gsum_provide[] = provideEls;
 
     // define constraints at the air level
     on final air connection_air();
@@ -208,6 +197,8 @@ private function connection_air() {
     (gsum - 'gsum) * LHS === RHS;
     L1' * gsum === 0;
 }
+
+// TODO: We use it for just one opid in the sam air
 
 // It checks wheter there is some connection check without either provide or require
 private function check_connection_was_completed() {
