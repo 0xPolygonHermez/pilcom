@@ -6,87 +6,114 @@ const { getRoots } = require("./utils");
 
 function newConstantPolsArray(pil, F) {
     if(!F) F = new F1Field("0xFFFFFFFF00000001");
-
     if(F.p === 18446744069414584321n) F.w = getRoots(F);
+	
+    const symbols = [];
+    for (const polRef in pil.references) {
+        const polInfo = pil.references[polRef];
+        if(polInfo.type !== "constP") continue;
+        symbols.push({name: polRef, idx: polInfo.id, length: polInfo.len});
+    }
 
-    const pa = new PolsArray(pil, "constant", F);
+    const degree = pil.references[Object.keys(pil.references)[0]].polDeg;
+    const pa = new PolsArray(symbols, degree, "constant", F);
     return pa;
 }
 
 function newCommitPolsArray(pil, F) {
     if(!F) F = new F1Field("0xFFFFFFFF00000001");
-
     if(F.p === 18446744069414584321n) F.w = getRoots(F);
-    
-    const pa = new PolsArray(pil, "commit", F);
+
+    const symbols = [];
+    for (const polRef in pil.references) {
+        const polInfo = pil.references[polRef];
+        if(polInfo.type !== "cmP") continue;
+        symbols.push({name: polRef, idx: polInfo.id, length: polInfo.len});
+    }
+
+    const degree = pil.references[Object.keys(pil.references)[0]].polDeg;
+    const pa = new PolsArray(symbols, degree, "commit", F);
+    return pa;
+}
+
+function newConstantPolsArrayPil2(symbols, degree, F) {
+    if(!F) F = new F1Field("0xFFFFFFFF00000001");
+    if(F.p === 18446744069414584321n) F.w = getRoots(F);
+
+    const fixedSymbols = [];
+    for (let i = 0; i < symbols.length; ++i) {
+        if(symbols[i].type !== 1) continue;
+        fixedSymbols.push({name: symbols[i].name, idx: symbols[i].id, length: symbols[i].length});
+    }
+
+    const pa = new PolsArray(fixedSymbols, degree, "constant", F);
+    return pa;
+}
+
+function newCommitPolsArrayPil2(symbols, degree, F) {
+    if(!F) F = new F1Field("0xFFFFFFFF00000001");
+    if(F.p === 18446744069414584321n) F.w = getRoots(F);
+
+    const witnessSymbols = [];
+    for (let i = 0; i < symbols.length; ++i) {
+        if(symbols[i].type !== 3) continue;
+        witnessSymbols.push({name: symbols[i].name, idx: symbols[i].id, length: symbols[i].length});
+    }
+
+    const pa = new PolsArray(witnessSymbols, degree, "commit", F);
     return pa;
 }
 
 module.exports.newConstantPolsArray = newConstantPolsArray;
 module.exports.newCommitPolsArray = newCommitPolsArray;
 
+module.exports.newConstantPolsArrayPil2 = newConstantPolsArrayPil2;
+module.exports.newCommitPolsArrayPil2 = newCommitPolsArrayPil2;
 
 class PolsArray {
-    constructor(pil, type, F) {
-        if (type == "commit") {
-            this.$$nPols = pil.nCommitments;
-        } else if (type == "constant") {
-            this.$$nPols = pil.nConstants;
-        } else {
-            throw new Error("need to specify if you want commited or constant pols")
-        }
-
+    constructor(symbols, degree, type, F) {
+        if (type != "commit" && type != "constant") throw new Error("need to specify if you want commited or constant pols");
+        
         this.$$def = {};
         this.$$defArray = [];
         this.$$array = [];
-        this.F = F;
-        for (let refName in pil.references) {
-            if (pil.references.hasOwnProperty(refName)) {
-                const ref = pil.references[refName];
-                if ((ref.type == "cmP" && type == "commit") ||
-                    (ref.type == "constP" && type == "constant")) {
-                    const [nameSpace, namePol] = refName.split(".");
-                    if (!this[nameSpace]) this[nameSpace] = {};
-                    if (!this.$$def[nameSpace]) this.$$def[nameSpace] = {};
 
-                    if (ref.isArray) {
-                        this[nameSpace][namePol] = [];
-                        this.$$def[nameSpace][namePol] = [];
-                        for (let i=0; i<ref.len; i++) {
-                            const polProxy = new Array(ref.polDeg);
-//                            const polProxy = createPolProxy(this, ref.id + i, ref.polDeg);
-                            this[nameSpace][namePol][i] = polProxy;
-                            this.$$defArray[ref.id + i] = {
-                                name: refName,
-                                id: ref.id + i,
-                                idx: i,
-                                elementType: ref.elementType,
-                                polDeg: ref.polDeg
-                            }
-                            this.$$def[nameSpace][namePol][i] = this.$$defArray[ref.id + i];
-                            this.$$array[ref.id+i] = polProxy;
-                        }
-                    } else {
-                        const polProxy = new Array(ref.polDeg);
-                        // const polProxy = createPolProxy(this, ref.id, ref.polDeg);
-                        this[nameSpace][namePol] = polProxy;
-                        this.$$defArray[ref.id] = {
-                            name: refName,
-                            id: ref.id,
-                            elementType: ref.elementType,
-                            polDeg: ref.polDeg
-                        }
-                        this.$$def[nameSpace][namePol] = this.$$defArray[ref.id];
-                        this.$$array[ref.id] = polProxy;
+        this.F = F;
+        for(let i = 0; i < symbols.length; ++i) {
+            const symbol = symbols[i];
+            const name = symbol.name;
+            const [nameSpace, namePol] = name.split(".");
+            if (!this[nameSpace]) this[nameSpace] = {};
+            if (!this.$$def[nameSpace]) this.$$def[nameSpace] = {};
+            if (symbol.length > 0) {
+                this[nameSpace][namePol] = [];
+                this.$$def[nameSpace][namePol] = [];
+                for(let j=0; j < symbol.length; ++j) {
+                    const polProxy = new Array(degree);
+                    const polId = symbol.idx + j;
+                    this[nameSpace][namePol][j] = polProxy;
+                    this.$$defArray[polId] = {
+                        name: name,
+                        id: polId,
+                        idx: j,
+                        polDeg: degree
                     }
+                    this.$$def[nameSpace][namePol][j] = this.$$defArray[polId];
+                    this.$$array[polId] = polProxy;
+                }   
+            } else {
+                const polProxy = new Array(degree);
+                this[nameSpace][namePol] = polProxy;
+                this.$$defArray[symbol.idx] = {
+                    name: name,
+                    id: symbol.idx,
+                    polDeg: degree
                 }
+                this.$$def[nameSpace][namePol] = this.$$defArray[symbol.idx];
+                this.$$array[symbol.idx] = polProxy;
             }
         }
-        for (let i=0; i<this.$$nPols; i++) {
-            if (!this.$$defArray[i]) {
-                throw new Error("Invalid pils sequence");
-            }
-        }
+
         this.$$nPols = this.$$defArray.length;
         if (this.$$defArray.length>0) {
             this.$$n = this.$$defArray[0].polDeg;
