@@ -187,14 +187,15 @@ private function PIOP_air() {
     for (int i = 0; i < gsum_provide_count; ++i) {
         LHS = LHS * gsum_provide[i];
 
-        RHS1 = RHS1 + gsum_provide_mul_count[i];
+        expr tmp = gsum_provide_mul_count[i];
         // for (int j = 0; j < length(gsum_provide); ++j) {
         for (int j = 0; j < gsum_provide_count; ++j) {
             // if (j == i) continue;
             if (j != i) {
-                RHS1 = RHS1 * gsum_provide[j];
+                tmp = tmp * gsum_provide[j];
             }
         }
+        RHS1 = RHS1 + tmp;
     }
 
     expr RHS2a = LHS;
@@ -204,12 +205,13 @@ private function PIOP_air() {
         LHS = LHS * gsum_require[i];
         RHS1 = RHS1 * gsum_require[i];
 
-        RHS2b = RHS2b + gsum_require_mul_count[i];
+        expr tmp = gsum_require_mul_count[i];
         // for (int j = 0; j < length(gsum_require); ++j) {
         for (int j = 0; j < gsum_require_count; ++j) {
             if (j == i) continue;
-            RHS2b = RHS2b * gsum_require[j];
+            tmp = tmp * gsum_require[j];
         }
+        RHS2b = RHS2b + tmp;
     }
 
     expr RHS2 = RHS2a * RHS2b;

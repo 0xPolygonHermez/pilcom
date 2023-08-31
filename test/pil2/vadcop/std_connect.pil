@@ -1,3 +1,6 @@
+// A this moment, connection arguments are only applicable within the same AIR.
+// However, I think they can be extended to the subproof level.
+
 private function init_challenges() {
     if (!defined(std_alpha)) {
         challenge stage(2) std_alpha;
@@ -7,47 +10,123 @@ private function init_challenges() {
     }
 }
 
-// Take care of the redeclaration
 private function init_coset_constants(int len) {
     global std_ks[len];
 
-    for (int i = 0; i < len; ++i) {
-        std_ks[i] = global constant k[i];
+    std_ks[0] = 1;
+    for (int i = 1; i < len; ++i) {
+        std_ks[i] = global constant k[i-1];
     }
 }
 
-// Two (incompatible??) user interfaces
+// Two user interfaces
 
-// 1] WIP
+// 1] Interface where the user uses the update() method to define the permutation "on the fly"
+//    and when it is done, executes the connect() method to perform the connection argument.
+//    The user also needs to execute init() at the beginning.
+
+// TODO (Héctor): Throw an error if the calling path is not being called correctly?
+
 function connection_init(int opid, expr cols[]) {
-        // connection_update_require(opid, sel, cols);
+    check_opid_and_cols(opid, length(cols), 0, 0);
 }
 
-function connection_connect(int opid, expr cols[]) {
-        // connection_update_provide(opid, sel, cols);
-}
-
-// 2]
-function connection_require(int opid, expr cols[]) {
+private function find_col_index(expr column) {
     use proof.std.connect.`id${opid}`;
 
-    colsR = cols;
+    for (int icol = 0; icol < length(map_cols); ++icol) {
+        if (map_cols[icol] == column) {
+            return icol;
+        }
+    }
+}
+
+function connection_update_one(int opid, expr col1, int row1, expr col2, int row2) {
+    use proof.std.connect.`id${opid}`;
+
+    int col1_index = find_col_index(col1);
+    int col2_index = find_col_index(col2);
+
+    expr tmp = SIDs[col1_index][row1]
+    SIDs[col1_index][row1] = SIDs[col2_index][row2];
+    SIDs[col2_index][row2] = tmp;
+}
+
+function connection_update(int opid, expr col1, int rows1[], expr col2, int rows2[]) {
+    use proof.std.connect.`id${opid}`;
+
+    int len1 = length(rows1);
+    int len2 = length(rows2);
+
+    if (len1 == len2 == 1) {
+        connection_update_one(opid, col1, rows1[0], col2, rows2[0]);
+        return;
+    }
+
+    int col1_index = find_col_index(col1);
+    int col2_index = find_col_index(col2);
+
+    expr SID1 = SIDs[col1_index];
+    expr SID2 = SIDs[col2_index];
+
+    expr SID1_last = SID1[rows1[len1-1]];
+    expr SID2_last = SID2[rows2[len2-1]];
+
+    if (len1 >= 2) {
+        for (int icol = len1 - 2; icol >= 0; --icol) {
+            int row1 = rows1[icol];
+            int row2 = rows1[icol+1];
+
+            SID1[row2] = SID1[row1]
+        }
+    }
+
+    if (len2 >= 2) {
+        for (int icol = len2 - 2; icol >= 0; --icol) {
+            int row1 = rows2[icol];
+            int row2 = rows2[icol+1];
+
+            SID2[row2] = SID2[row1]
+        }
+    }
+
+    SID1[0] = SID2_last;
+    SID2[0] = SID1_last;
+}
+
+// TODO (Héctor): Add a generalisation where more than two columns can be chosen
+
+function connection_connect(int opid) {
+    use proof.std.connect.`id${opid}`;
+
+    connection_update_require(opid, map_cols, 0);
+    connection_update_provide(opid, map_cols, SIDs);
+}
+
+// 2] Interface where the user knows both the inputs (placed in require) and the
+//    permutation (placed in provide) of the argument.
+function connection_require(int opid, expr cols[]) {
+    check_opid_and_cols(opid, length(cols), 0, 1);
+
+    use proof.std.connect.`id${opid}`;
+
+    tmpR = cols;
 
     if (provide == 1) {
-        connection_update_require(opid, cols);
-        connection_update_provide(opid, colsP);
-    } else {
-        connection_update_require(opid, cols);
+        connection_update_provide(opid, cols, tmpP);
     }
+    connection_update_require(opid, cols, 1);
 }
 
 function connection_provide(int opid, expr cols[]) {
+    check_opid_and_cols(opid, length(cols), 1, 1);
+
     use proof.std.connect.`id${opid}`;
 
     if (require == 1) {
-        connection_update_provide(opid, cols);
+        connection_update_provide(opid, tmpR, cols);
     } else {
-        colsP = cols;
+        tmpP = cols;
     }
 }
 
@@ -57,7 +136,7 @@ function connection_provide(int opid, expr cols[]) {
  * @param cols_count number of columns of the connect check
  * @param provide 1 if provide, 0 if require
  */
-private function check_opid_and_cols(int opid, int cols_count, int provide) {
+private function check_opid_and_cols(int opid, int cols_count, int provide, int is_second_interface) {
 
     if (cols_count < 1) {
         error(`The number of columns of connect #${opid} must be at least 1`);
@@ -76,55 +155,76 @@ private function check_opid_and_cols(int opid, int cols_count, int provide) {
     }
 
     container proof.std.connect.`id${opid}` alias connid {
-        int cols;
+        int cols_num;
         int provide = 0;
         int require = 0;
 
-        expr SIDs[]; // TODO: Should I place this one in another place?
+        expr SIDs[];
+        expr map_cols[]; // Used in connection_init()
+
+        // Used in connection_require() and connection_provide()
+        expr tmpR[];
+        expr tmpP[];
     }
 
-    if (connid.cols == 0) {
+    if (connid.cols_num == 0) {
         // first time called
-        connid.cols = cols_count;
+        connid.cols_num = cols_count;
         // add opid on a list to verify at final
         conn.opids[conn.opids_count] = opid;
         ++conn.opids_count;
-    } else if (connid.cols != cols_count) {
-        error(`The number of columns of connect #${opid} must be ${connid.cols}`);
+    } else if (connid.cols_num != cols_count) {
+        error(`The number of columns of connect #${opid} must be ${connid.cols_num}`);
     }
 
-    if (provide) {
-        if (connid.provide > 0) {
-            error(`Connection #${opid} provide was called previously`);
+    if (is_second_interface) {
+        if (provide) {
+            if (connid.provide > 0) {
+                error(`Connection #${opid} provide was called previously`);
+            }
+            ++connid.provide;
+        } else {
+            if (connid.require > 0) {
+                error(`Connection #${opid} require was called previously`);
+            }
+            ++connid.require;
         }
-        ++connid.provide;
     } else {
-        if (connid.require > 0) {
-            error(`Connection #${opid} require was called previously`);
+        // Create a mapping of indexes to set an order of the columns the first time it is called
+        for (int icol = 0; icol < cols_count; ++icol) {
+            connid.map_cols[icol] = cols[icol];
         }
-        ++connid.require;
+
+        init_coset_constants(cols_count);
+
+        col fixed IDEN = [1,omega,..*..,omega**(N-1)]; // {1,𝛚,𝛚²,...,𝛚ᴺ⁻¹}
+
+        // Compute polynomials SID_i(X) := k_i·X
+        for (int icol = 0; icol < cols_count; ++icol) {
+            connid.SIDs[icol] = std_ks[icol] * IDEN;
+        }
     }
 }
 
 /**
- * Given columns C₀,...,Cₙ₋₁, 
- * @param provide boolean indicating if updating a provide or a require
+ * Given columns C₀,...,Cₙ₋₁, it computes the polynomial Cᵢ(X) + alpha·kᵢ·X + beta
  * @param opid (unique) identifier of the connection
- * @param colsP provide columns of the connection
+ * @param colsR require columns of the connection
  */
-function connection_update_require(int opid, expr colsR[]) {
-    // verify if correct opid and cols
-    check_opid_and_cols(opid, length(colsR), 0);
-
+function connection_update_require(int opid, expr colsR[], int is_second_interface) {
     init_challenges();
-    init_coset_constants(length(colsR));
-
-    once col fixed IDEN = [1,omega,..*..,omega**(N-1)]; // {1,𝛚,𝛚²,...,𝛚ᴺ⁻¹}
 
     use proof.std.connect.`id${opid}`;
-    // Compute polynomials SID_i(X) := k_i·X
-    for (int icol = 0; icol < length(colsR); ++icol) {
-        SIDs[icol] = std_ks[icol] * IDEN;
+
+    if (is_second_interface) {
+        init_coset_constants(length(colsR));
+
+        once col fixed IDEN = [1,omega,..*..,omega**(N-1)]; // {1,𝛚,𝛚²,...,𝛚ᴺ⁻¹}
+
+        // Compute polynomials SID_i(X) := k_i·X
+        for (int icol = 0; icol < length(colsR); ++icol) {
+            SIDs[icol] = std_ks[icol] * IDEN;
+        }
     }
 
     for (int icol = 0; icol < length(colsR); ++icol) {
@@ -135,10 +235,13 @@ function connection_update_require(int opid, expr colsR[]) {
     on final air connection_air();
 }
 
+/**
+ * Given columns C₀,...,Cₙ₋₁, and C'₀,...,C'ₙ₋₁, it computes the polynomial Cᵢ(X) + alpha·C'ᵢ(X) + beta
+ * @param opid (unique) identifier of the connection
+ * @param colsR require columns of the connection
+ * @param colsP provide columns of the connection
+ */
 function connection_update_provide(int opid, expr colsR[], expr colsP[]) {
-    // verify if correct opid and cols
-    check_opid_and_cols(opid, length(colsP), 1);
-
     init_challenges();
 
     for (int icol = 0; icol < length(colsP); ++icol) {
@@ -160,7 +263,7 @@ private function connection_air() {
     //  gsum === 'gsum + ------------------------ + --------------------------- + ... + -------------------------- - ------------------------ - ------------------------ - ... - ------------------------
     //                   (f_0 + alpha·X + beta)      (f_1 + alpha·k_1·X + beta)         (f_N + alpha·k_n·X + beta)   (f_0 + alpha·S_0 + beta) · (f_1 + alpha·S_1 + beta)         (f_N + alpha·S_n + beta)
 
-    expr LHS = 0;
+    expr LHS = 1;
     expr RHS1 = 0;
     for (int i = 0; i < length(gsum_require); ++i) {
         LHS = LHS * gsum_require[i];
@@ -198,11 +301,9 @@ private function connection_air() {
     L1' * gsum === 0;
 }
 
-// TODO: We use it for just one opid in the sam air
-
 // It checks wheter there is some connection check without either provide or require
 private function check_connection_was_completed() {
-    for (int opid in air.std.connect.opids) {
+    for (int opid in proof.std.connect.opids) {
         if (proof.std.connect.`id${opid}`.require == 0) {
             error(`Connection #${opid} defined without require`);
         }
