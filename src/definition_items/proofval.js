@@ -1,9 +1,10 @@
 const ProofItem = require("./proof_item.js");
-module.exports = class Challenge extends ProofItem {
+
+module.exports = class Proofval extends ProofItem {
     constructor (id) {
         super(id);
     }
     clone() {
-        return new Challenge(this.id);
+        return new Proofval(this.id);
     }
 }

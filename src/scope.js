@@ -1,6 +1,6 @@
+const Context = require('./context.js');
 module.exports = class Scope {
-    constructor (Fr) {
-        this.Fr = Fr;
+    constructor () {
         this.deep = 0;
         this.shadows = [{}];
         this.properties = [{}];
@@ -21,9 +21,6 @@ module.exports = class Scope {
                 delete this.labels[label];
             }
         }
-    }
-    setReferences(references) {
-        this.references = references;
     }
     addToScopeProperty(property, value) {
         if (typeof this.properties[this.deep][property] === 'undefined') {
@@ -62,19 +59,19 @@ module.exports = class Scope {
             // console.log(`POP ${name}`);
             // console.log(shadows[name]);
             if (shadows[name].ref === false) {
-                if (!exclude) this.references.unset(name);
+                if (!exclude) Context.references.unset(name);
             } else {
                 // I could not 'update' reference name, because was an excluded type. This situation
                 // was an error because could exists same name in scope linked.
                 if (exclude) {
                     throw new Error(`Excluded type ${shadows[name].type} has shadow reference called ${name}`);
                 }
-                this.references.restore(name, shadows[name].ref);
+                Context.references.restore(name, shadows[name].ref);
             }
         }
         this.shadows[this.deep] = {};
         for (const property in this.properties[this.deep]) {
-            this.references.unsetProperty(property, this.properties[this.deep][property]);
+            Context.references.unsetProperty(property, this.properties[this.deep][property]);
         }
         this.properties[this.deep] = {};
         --this.deep;
@@ -103,22 +100,5 @@ module.exports = class Scope {
         this.instanceType = this.stackInstanceTypes.pop();
         this.pop(excludeTypes);
         return this.instanceType;
-    }
-    *[Symbol.iterator]() {
-        for (let index in this.references) {
-          yield index;
-        }
-    }
-
-    *values() {
-        for (let index in this.references) {
-            yield this.references[index];
-        }
-    }
-
-    *keyValues() {
-        for (let index in this.references) {
-            yield [index, this.references[index]];
-        }
     }
 }

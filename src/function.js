@@ -1,21 +1,38 @@
 const util = require('util');
 const {cloneDeep} = require('lodash');
+const {assert, assertLog} = require('./assert.js');
 const {FlowAbortCmd, BreakCmd, ContinueCmd, ReturnCmd} = require("./flow_cmd.js");
 const Expression = require("./expression.js");
 const List = require("./list.js");
+const Context = require('./context.js');
 module.exports = class Function {
-
-    constructor (parent, s) {
-        this.parent = parent;
-        this.references = parent.references;
-        this.expressions = parent.expressions;
-        this.scope = parent.scope;
-        this.name = s.funcname;
-        if (s.args) {
-            this.defineArguments(s.args);
+    constructor (id, data = {}) {
+        console.log(data);
+        this.id = id;
+        // this.references = parent.references;
+        // this.expressions = parent.expressions;
+        this.initialized = [data.args, data.returns, data.statements, data.funcname].some(x => typeof x !== 'undefined');
+        // this.scope = parent.scope;
+        this.name = data.funcname;
+        if (data.args) {
+            this.defineArguments(data.args);
         }
-        this.returns = s.returns ?? []
-        this.statements = s.statements ?? [];
+        this.returns = data.returns ?? []
+        this.statements = data.statements ?? [];
+    }
+    setValue(value) {
+        if (this.initialized) {
+            throw new Error(`function it's initialized again`);
+        }
+        if (value instanceof Function === false) {
+            throw new Error(`Invalid value to setValue of function`);
+        }
+        this.initialized = value.initialized;
+        this.name = value.name;
+        // TODO: clone return types
+        this.args = {...value.args};
+        this.returns = value.returns ? [...value.returns] : value.returns;
+        this.statements = value.statements;
     }
     defineArguments(args) {
         this.args = {};
@@ -53,7 +70,7 @@ module.exports = class Function {
 
                 // special case of col, could be witness, fixed or im
                 if (type === 'col') {
-                    type = this.parent.references.getReferenceType(ref.name);
+                    type = Context.references.getReferenceType(ref.name);
                 }
                 const dim = ref.array ? ref.array.dim : 0;
                 if (dim !== argDim) {
@@ -61,29 +78,29 @@ module.exports = class Function {
                     console.log(ref);
                     console.log(argDim);
                     console.log(s.arguments[iarg].getAloneOperand());
-                    throw new Error(`Invalid array on ${this.parent.sourceRef}`);
+                    throw new Error(`Invalid array on ${Context.sourceRef}`);
                 }
-                this.parent.declareReference(name, type, ref.array ? ref.array.lengths : []);
-                this.parent.references.setReference(name, ref);
+                Context.processor.declareReference(name, type, ref.array ? ref.array.lengths : []);
+                Context.references.setReference(name, ref);
             } else if (arg.type === 'int' || arg.type === 'fe') {
                 if (argDim) {
                     s.arguments[iarg].eval();
                     const ref = s.arguments[iarg].getReference();
                     console.log(ref);
                     console.log(ref.name);
-                    const def = this.references.getDefinition(ref.name);
+                    const def = Context.references.getDefinition(ref.name);
                     const dup = def.array.applyIndex(def, ref.__indexes ?? []);
 
                     if (dup.array.dim !== argDim) {
                         console.log(dup.array.dim, argDim);
-                        throw new Error(`Invalid array on ${this.parent.sourceRef}`);
+                        throw new Error(`Invalid array on ${Context.processor.sourceRef}`);
                     }
 
-                    this.parent.declareReference(name, type, dup.array ? dup.array.lengths: [], {});
+                    Context.processor.declareReference(name, type, dup.array ? dup.array.lengths: [], {});
                 } else {
-                    const value = this.parent.expressions.eval(s.arguments[iarg]);
+                    const value = Context.processor.expressions.eval(s.arguments[iarg]);
                     // TODO: review? no referece?
-                    this.parent.declareReference(name, type, value.array ? value.array.lengths: [], {}, value);
+                    Context.processor.declareReference(name, type, value.array ? value.array.lengths: [], {}, value);
                 }
             } else {
                 // console.log(`MAP-${arg.type}`);
@@ -92,11 +109,11 @@ module.exports = class Function {
                     // check (argDim === 1 && arg.type === 'expr')
                     const list = new List(this, s.arguments[iarg], false);
                     const values = s.arguments[iarg].values;
-                    this.parent.declareReference(name, type, [values.length], {});
+                    Context.processor.declareReference(name, type, [values.length], {});
                     let index = 0;
                     for (const value of list.values) {
                         // console.log(value);
-                        this.parent.references.set(name, [index++], value instanceof Expression ? value.instance() : value);
+                        Context.references.set(name, [index++], value instanceof Expression ? value.instance() : value);
                     }
                 } else if (!(s.arguments[iarg] instanceof Expression)) {
                     console.log(arg);
@@ -109,9 +126,9 @@ module.exports = class Function {
                     const value = s.arguments[iarg].evaluateAloneReference();
                     const dim = value.array ? value.array.dim : 0;
                     if (dim !== argDim) {
-                        throw new Error(`Invalid array on ${this.parent.sourceRef}`);
+                        throw new Error(`Invalid array on ${Context.sourceRef}`);
                     }
-                    this.parent.declareReference(name, type, value.array ? value.array.lengths: [], {}, value);
+                    Context.declareReference(name, type, value.array ? value.array.lengths: [], {}, value);
                 }
             }
             ++iarg;
@@ -119,9 +136,10 @@ module.exports = class Function {
         return false;
     }
     exec(s, mapInfo) {
-        let res = this.parent.execute(this.statements, `FUNCTION ${this.name}`);
+        console.log(Context.constructor.name);
+        let res = Context.processor.execute(this.statements, `FUNCTION ${this.name}`);
         if (res instanceof ReturnCmd) {
-            this.parent.traceLog('[TRACE-BROKE-RETURN]', '38;5;75;48;5;16');
+            Context.processor.traceLog('[TRACE-BROKE-RETURN]', '38;5;75;48;5;16');
             const resvalue = res.value.eval();
             return resvalue;
         }

@@ -25,22 +25,24 @@ const Context = require("./context.js");
 const Runtime = require("./runtime.js");
 // const FunctionCall = require("./function_call.js");
 const {FlowAbortCmd, BreakCmd, ContinueCmd, ReturnCmd} = require("./flow_cmd.js")
-const {ReferenceItem, ExpressionItem, FeValue, IntValue, ProofItem, Proofval, Subproofval, Challenge, Public, ProofStageItem,
-       ExpressionReference, StringValue, FixedCol, WitnessCol } = require("./expression_items.js");
+// const {ReferenceItem, ExpressionItem, FeValue, IntValue, ProofItem, Proofval, Subproofval, Challenge, Public, ProofStageItem,
+//       ExpressionReference, StringValue, FixedCol, WitnessCol } = require("./expression_items.js");
+
+const ExpressionItems = require("./expression_items.js");
+const ExpressionItem = ExpressionItems.ExpressionItem;
+const DefinitionItems = require("./definition_items.js");
 const fs = require('fs');
 const { log2, getKs, getRoots } = require("./utils.js");
 
 module.exports = class Processor {
-    constructor (Fr, parent, references, expressions) {
+    constructor (Fr, parent) {
         this.compiler = parent;
         this.trace = true;
         this.Fr = Fr;
+        this.references = new References();
+        this.scope = new Scope();
+        this.runtime = new Runtime();
         this.context = new Context(this.Fr, this);
-        this.scope = new Scope(this.Fr);
-        this.references = new References(Fr, this.context, this.scope);
-        this.runtime = new Runtime(this.context);
-
-        Expression.setContext(this.context);
 
         this.scope.mark('proof');
         this.delayedCalls = {};
@@ -48,66 +50,67 @@ module.exports = class Processor {
         this.airId = 0;
         this.subproofId = 0;
 
-        this.ints = new Variables('int', IntValue);
+        this.ints = new Variables('int', DefinitionItems.IntValue, ExpressionItems.IntValue);
         this.references.register('int', this.ints);
 
-        this.fes = new Variables('fe', FeValue);
+        this.fes = new Variables('fe', DefinitionItems.FeValue, ExpressionItems.FeValue);
         this.references.register('fe', this.fes);
 
-        this.strings = new Variables('string', StringValue);
+        this.strings = new Variables('string', DefinitionItems.StringValue, ExpressionItems.FeValue);
         this.references.register('string', this.strings);
 
-        this.exprs = new Variables('expr', Expression);
+        this.exprs = new Variables('expr', DefinitionItems.Expression, Expression);
         this.references.register('expr', this.exprs);
 
-        this.subexprs = new Variables('subexpr', Expression);
+        this.subexprs = new Variables('subexpr', DefinitionItems.Expression, Expression);
         this.references.register('subexpr', this.subexprs);
 
         // this.lexprs = new Variables('lexpr', Expression);
         // this.references.register('lexpr', this.lexprs);
 
         this.fixeds = new FixedCols();
-        ExpressionItem.setManager(FixedCol, this.fixeds);
+        ExpressionItem.setManager(ExpressionItems.FixedCol, this.fixeds);
         this.fixeds.runtimeRows = true;
         this.references.register('fixed', this.fixeds);
 
         this.witness = new WitnessCols();
-        ExpressionItem.setManager(WitnessCol, this.witness);
+        ExpressionItem.setManager(ExpressionItems.WitnessCol, this.witness);
         this.references.register('witness', this.witness);
 
-        this.constants = new Indexable('constant', IntValue);
-        this.references.register('constant', this.constants);
+//        this.constants = new Indexable('constant', IntValue);
+//        this.references.register('constant', this.constants);
 
-        this.publics = new Ids('public', Public);
-        ExpressionItem.setManager(Public, this.publics);
+        this.publics = new Indexable('public', DefinitionItems.Public, ExpressionItems.Public);
+        ExpressionItem.setManager(ExpressionItems.Public, this.publics);
         this.references.register('public', this.publics);
 
-        this.challenges = new Ids('challenge', Challenge);
-        ExpressionItem.setManager(Challenge, this.challenges);
+        this.challenges = new Indexable('challenge', DefinitionItems.Challenge, ExpressionItems.Challenge);
+        ExpressionItem.setManager(ExpressionItems.Challenge, this.challenges);
         this.references.register('challenge', this.challenges);
 
-        this.proofvalues = new Ids('proofvalue', Proofval);
-        ExpressionItem.setManager(Proofval, this.proofvalues);
+        this.proofvalues = new Indexable('proofvalue', DefinitionItems.Proofval, ExpressionItems.Proofval);
+        ExpressionItem.setManager(ExpressionItems.Proofval, this.proofvalues);
         this.references.register('proofvalue', this.proofvalues);
 
-        this.subproofvalues = new Ids('subproofvalue', Subproofval);
-        ExpressionItem.setManager(Subproofval, this.subproofvalues);
+        this.subproofvalues = new Indexable('subproofvalue', DefinitionItems.Subproofval, ExpressionItems.Subproofval);
+        ExpressionItem.setManager(ExpressionItems.Subproofval, this.subproofvalues);
         this.references.register('subproofvalue', this.subproofvalues);
 
-        this.functions = new Indexable('function');
+        this.functions = new Indexable('function', Function, ExpressionItems.FunctionCall);
+        ExpressionItem.setManager(ExpressionItems.FunctionCall, this.functions);
         this.references.register('function', this.functions);
 
-        this.subproofs = new Subproofs(Fr, this.context);
+        this.subproofs = new Subproofs();
 
-        this.expressions = new Expressions(Fr, this, this.references, this.publics, this.constants);
-        this.globalExpressions = new Expressions(Fr, this, this.references, this.publics, this.constants);
+        this.expressions = new Expressions();
+        this.globalExpressions = new Expressions();
 
-        this.references.register('im', this.expressions);
+        // this.references.register('im', this.expressions);
 
-        this.constraints = new Constraints(Fr, this.expressions);
-        this.globalConstraints = new Constraints(Fr, this.globalExpressions);
+        this.constraints = new Constraints();
+        this.globalConstraints = new Constraints();
 
-        this.assign = new Assign(Fr, this, this.context, this.references, this.expressions);
+        this.assign = new Assign();
 
         this.executeCounter = 0;
         this.executeStatementCounter = 0;
@@ -126,6 +129,7 @@ module.exports = class Processor {
             if (this.context.config.debug.builtInLoad) {
                 console.log(`Loading builtin ${filename}.....`);
             }
+            console.log(filename);
             const builtInCls = require(__dirname + '/builtin/'+ filename);
             const builtInObj = new builtInCls(this);
             this.builtIn[builtInObj.name] = builtInObj;
@@ -243,8 +247,6 @@ module.exports = class Processor {
         this.traceLog(`[TRACE] #${__executeStatementCounter} ${st.debug ?? ''} (DEEP:${this.scope.deep})`, '38;5;75');
 
         this.sourceRef = st.debug ?? '';
-        this.context.sourceRef = this.sourceRef
-        // console.log(`SOURCE ${this.sourceRef}`);
 
         if (typeof st.type === 'undefined') {
             console.log(st);
@@ -276,12 +278,13 @@ module.exports = class Processor {
     }
     execCall(st) {
         const name = st.function.name;
-        const func = this.builtIn[name] ?? this.references.getTypedValue(name);
+        const func = this.builtIn[name] ?? this.references.get(name);
 
         if (func) {
             this.callstack.push(st.debug);
             ++this.functionDeep;
             this.scope.push();
+            console.log(func.constructor.name);
             const mapInfo = func.mapArguments(st);
             this.references.pushVisibilityScope();
             const res = func.exec(st, mapInfo);
@@ -291,7 +294,7 @@ module.exports = class Processor {
             this.callstack.pop();
             return res;
         }
-        this.error(st, `Undefined function statement type: ${name}`);
+        this.error(st, `Undefined function ${name}`);
     }
     execAssign(st) {
         // type: number(int), fe, string, col, challenge, public, prover,
@@ -488,6 +491,7 @@ module.exports = class Processor {
         }
     }
     execFunctionDefinition(s) {
+        console.log('FUNCTION '+s.funcname);
         let func = new Function(this, s);
         this.references.declare(func.name, 'function');
         this.references.set(func.name, [], func);
@@ -496,7 +500,7 @@ module.exports = class Processor {
         console.log(s);
         expr.dump();
         // expr.expr.dump();
-        const se = IntValue.castTo(expr.eval());
+        const se = ExpressionItems.IntValue.castTo(expr.eval());
         if (typeof se !== 'bigint') {
 //        if (se.op !== 'number') {
             console.log('ERROR');
@@ -564,7 +568,7 @@ module.exports = class Processor {
         this.checkRows(subproofRows);
 
         // TODO: Fr inside context
-        const subproof = new Subproof(this.context, subproofRows, s.statements, s.aggregate ?? false);
+        const subproof = new Subproof(subproofRows, s.statements, s.aggregate ?? false);
         this.subproofs.define(subproofName, subproof, `subproof ${subproofName} has been defined previously on ${this.context.sourceRef}`);
     }
     execSubproofBlock(s) {
@@ -594,9 +598,9 @@ module.exports = class Processor {
             console.log([air.bits, air.rows, Expression.constructor.name]);
 
             // create built-in constants
-            this.references.set('N', [], new IntValue(air.rows));
-            this.references.set('BITS', [], new IntValue(air.bits));
-            this.references.set('__SUBPROOF__', [], new StringValue(subproofName));
+            this.references.set('N', [], air.rows);
+            this.references.set('BITS', [], air.bits);
+            this.references.set('__SUBPROOF__', [], subproofName);
 
             this.context.push(false, subproofName);
             this.scope.pushInstanceType('air');
@@ -660,7 +664,7 @@ module.exports = class Processor {
             let init = s.sequence ?? null;
             let seq = null;
             if (init) {
-                seq = new Sequence(this, init, IntValue.castTo(this.references.get('N')));
+                seq = new Sequence(this, init, ExpressionItems.IntValue.castTo(this.references.get('N')));
                 // console.log(`Extending fixed col ${colname} ...`);
                 seq.extend();
                 // console.log('SEQ:'+seq.values.join(','));
@@ -856,7 +860,7 @@ module.exports = class Processor {
                     // initValue.dump('INIT2 '+name);
                 }
                 else {
-                    initValue = new IntValue(this.expressions.e2value(s.init[index]));
+                    initValue = new ExpressionItems.IntValue(this.expressions.e2value(s.init[index]));
                 }
             }
             console.log(initValue);

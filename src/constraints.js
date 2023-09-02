@@ -1,11 +1,9 @@
 const {assert, assertLog} = require('./assert.js');
 const Expression = require('./expression.js');
+const Context = require('./context.js');
 module.exports = class Constraints {
-
-    constructor (Fr, expressions) {
-        this.Fr = Fr;
+    constructor () {
         this.constraints = [];
-        this.expressions = expressions;
     }
 
     clone() {
@@ -22,7 +20,7 @@ module.exports = class Constraints {
     }
 
     getExpr(id) {
-        return this.expressions.get(this.constraints[id].exprId);
+        return Context.expressions.get(this.constraints[id].exprId);
     }
 
     isDefined(id) {
@@ -30,7 +28,7 @@ module.exports = class Constraints {
     }
 
     getPackedExpressionId(id, container, options) {
-        return this.expressions.getPackedExpressionId(id, container, options);
+        return Context.expressions.getPackedExpressionId(id, container, options);
     }
     define(left, right, boundery, sourceRef) {
         console.log(left, right);
@@ -52,7 +50,7 @@ module.exports = class Constraints {
             left.insert('sub', right);
         }
         // left.simplify();
-        const exprId = this.expressions.insert(left);
+        const exprId = Context.expressions.insert(left);
         return this.constraints.push({exprId, sourceRef, boundery}) - 1;
     }
 
@@ -82,12 +80,12 @@ module.exports = class Constraints {
     getDebugInfo(index, packed, options) {
         const constraint = this.constraints[index];
         const eid = constraint.exprId;
-        const peid = this.expressions.getPackedExpressionId(eid);
+        const peid = Context.expressions.getPackedExpressionId(eid);
         let info = `INFO ${index}: ${eid} ${peid} ${constraint.sourceRef}`
         options = options ?? {};
 
         if (packed) {
-            info += ' '  + packed.exprToString(peid, {...options, labels: this.expressions, hideClass: true});
+            info += ' '  + packed.exprToString(peid, {...options, labels: Context.expressions, hideClass: true});
         }
         return info;
     }

@@ -244,8 +244,12 @@ top_level_block
     | subproof_value_declaration
         { $$ = $1 }
 
-    | constant_definition
+/*    | constant_definition
         { $$ = $1 }
+*/
+    | variable_declaration
+        { $$ = $1 }
+
     ;
 
 use_directive
@@ -552,9 +556,9 @@ declare_item
     | subproof_value_declaration
         { $$ = $1 }
 
-    | constant_definition
+/*    | constant_definition
         { $$ = $1 }
-
+*/
     | variable_declaration
         { $$ = $1 }
     ;

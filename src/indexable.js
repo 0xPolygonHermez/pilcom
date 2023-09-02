@@ -1,13 +1,16 @@
 const LabelRanges = require("./label_ranges.js");
 const {cloneDeep} = require('lodash');
 const {assert, assertLog} = require('./assert.js');
+const ExpressionItem = require('./expression_items/expression_item.js');
 module.exports = class Indexable {
-    constructor (type, cls, options) {
-        this.cls = cls ?? false;
+    constructor (type, definitionClass, expressionItemClass, options) {
+        this.expressionItemClass = expressionItemClass ?? false;
+        this.definitionClass = definitionClass ?? false;
         this.values = [];
         this.type = type;
         this.options = options ?? {}
         this.rtype = this.options.rtype ?? type;
+        assertLog(this.expressionItemClass.prototype instanceof ExpressionItem, expressionItemClass);
         this.labelRanges = new LabelRanges();
         this.debug = false;
     }
@@ -37,14 +40,24 @@ module.exports = class Indexable {
     getType(id) {
         return this.rtype;
     }
-    getEmptyValue(id, data) {
+    getEmptyValue(id, data = {}) {
+        if (this.type === 'subproofvalue') {
+            console.log(['SUBPROOFVALUE-E', data]);
+        }
+        if (this.definitionClass) {
+            return new this.definitionClass(id, data);
+        }
         return null;
     }
     reserve(count, label, multiarray, data) {
+        if (this.type === 'subproofvalue') {
+            console.log(['SUBPROOFVALUE-R', data]);
+        }
         const id = this.values.length;
         for (let index = 0; index < count; ++index) {
             const absoluteIndex = index + id;
-            this.values[absoluteIndex] = this.getEmptyValue(absoluteIndex, data);
+            const _label = label + (multiarray ? multiarray.offsetToIndexesString(index) : '');
+            this.values[absoluteIndex] = this.getEmptyValue(absoluteIndex, {...data, label: _label});
             if (this.debug) {
                 console.log(`INIT ${this.constructor.name}.${this.type} @${absoluteIndex} (${id}+${index}) ${this.values[absoluteIndex]} LABEL:${label}`);
             }
@@ -54,18 +67,20 @@ module.exports = class Indexable {
         }
         return id;
     }
+    // get definition object
     get(id) {
         let res = this.values[id];
-        if (typeof res === 'undefined' || res === null) {
+        if (res === null) {
             return this.getEmptyValue(id);
         }
         return res;
     }
+    // get expression item to add in a expression
     getItem(id, properties) {
-        let res = this.get(id);
-        if (this.cls && (res instanceof this.cls) === false) {
+        let res = this.values[id];
+        if (this.expressionItemClass && (res instanceof this.expressionItemClass) === false) {
             properties = properties ?? {};
-            res = new this.cls(this.id);
+            res = new this.expressionItemClass(id);
             for (const property in properties) {
                 res[property] = properties[property];
             }
@@ -87,9 +102,17 @@ module.exports = class Indexable {
         }
         this.set(id, value);
     }
-
+    getLastId() {
+        return this.values.length === 0 ? false : this.values.length - 1;
+    }
+    getNextId() {
+        return this.values.length;
+    }
     set(id, value) {
-        this.values[id] = value;
+        console.log(this.values[id]);
+        console.log(value);
+        if (this.values[id] && this.values[id].constructor) console.log(this.values[id].constructor.name)
+        this.values[id].setValue(value);
 /*
         if (typeof this.cls === 'function') {
             if ((value instanceof this.cls) === false) {
@@ -117,7 +140,7 @@ module.exports = class Indexable {
 
     *[Symbol.iterator]() {
         for (let index = 0; index < this.values.length; ++index) {
-          yield this.values[index] ?? this.undefined;
+          yield this.get(index);
         }
     }
 
@@ -142,5 +165,45 @@ module.exports = class Indexable {
             }*/
             console.log(`${index}: ${this.values[index]}`);
         }
+    }
+    countByProperty(property) {
+        let res = {};
+        for (let index = 0; index < this.values.length; ++index) {
+            const value = this.get(index);
+            const key = value[property];
+            res[key] = (res[key] ?? 0) + 1;
+        }
+        return res;
+    }
+    getPropertyValues(property) {
+        let res = [];
+        let isArray = Array.isArray(property);
+        const properties = isArray ? property : [property];
+        for (let index = 0; index < this.values.length; ++index) {
+            let value;
+            let pvalues = [];
+            for (const _property of properties) {
+                const definition = this.get(index);
+                console.log(definition);
+                value = _property === 'id' ? definition.id ?? index : definition[_property];
+                if (isArray) {
+                    pvalues.push(value);
+                }
+            }
+            res.push(isArray ? pvalues : value);
+        }
+        return res;
+    }
+    getPropertiesString(properties, options = {}) {
+        let res = [];
+        for (let index = 0; index < this.values.length; ++index) {
+            const definition = this.get(index);
+            let propValues = [];
+            for (const property of properties) {
+                propValues.push(definition[property] ?? '');
+            }
+            res.push(this.getLabel(id)+'@'+id+':'+propValues.join(','));
+        }
+        return res.join('#');
     }
 }

@@ -25,7 +25,7 @@ module.exports = class Reference {
     }
 
     getId(indexes = []) {
-        return  (indexes.length === 0 || !this.array) ? this.id : this.array.getIndexesOffset(indexes);
+        return  (indexes.length === 0 || !this.array) ? this.locator : this.array.getIndexesOffset(indexes);
     }
     init (value, indexes = []) {
         return this.set(value, indexes);
@@ -46,7 +46,13 @@ module.exports = class Reference {
     get (indexes = []) {
         return this.instance.get(this.getId(indexes));
     }
-    getItem(indexes, options) {
+    getItem(indexes, options = {}) {
+        if (Array.isArray(indexes) && indexes.length === 0) {
+            console.log(this.instance);
+            return this.instance.getItem(this.locator);
+        }
+        console.log(indexes, indexes === [], this);
+        console.log(indexes, options);
         EXIT_HERE_TODO;
     }
 }

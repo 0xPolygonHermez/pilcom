@@ -1,10 +1,10 @@
-const LabelRanges = require("./label_ranges.js");
 const Indexable = require("./indexable.js");
-const WitnessCol = require("./expression_items/witness_col.js");
+const WitnessColItem = require("./expression_items/witness_col.js");
+const WitnessCol = require("./definition_items/witness_col.js");
 module.exports = class WitnessCols extends Indexable {
 
     constructor () {
-        super('witness', WitnessCol);
+        super('witness', WitnessCol, WitnessColItem);
     }
     getEmptyValue(id, options) {
         let _options = options ?? {};

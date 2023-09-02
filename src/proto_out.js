@@ -153,6 +153,7 @@ module.exports = class ProtoOut {
         this.spvId2Proto = [];
         let subproofBaseId = [];
         for (const [id, aggregation, subproofId] of values) {
+            console.log([id, aggregation, subproofId]);
             let baseId = subproofBaseId[subproofId] ?? false;
             if (baseId === false) {
                 baseId = id;
@@ -259,8 +260,10 @@ module.exports = class ProtoOut {
         const property = periodic ? 'periodicCols':'fixedCols';
         const airCols = this.setupAirProperty(property);
 
+        console.log(cols.constructor.name);
         const colType = periodic ? 'P':'F';
         for (const col of cols) {
+            console.log(col.constructor.name);
             const colIsPeriodic = col.isPeriodic() && col.rows < rows;
             if (colIsPeriodic !== periodic) continue;
             const _rows = periodic ? col.rows : rows;

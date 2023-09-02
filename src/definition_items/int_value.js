@@ -13,11 +13,15 @@ module.exports = class IntValue extends ValueItem {
         super(value);
     }
     setValue(value) {
+        console.log(value);
+        if (typeof value.asInt === 'function') {
+            value = value.asInt();
+        }
         if (typeof value === 'number') {
             value = BigInt(value);
         }
-        assert(typeof value === 'bigint');
-        this.value = value;
+        assertLog(typeof value === 'bigint', value);
+        super.setValue(value);
     }
     clone() {
         return new IntValue(this.value);
@@ -26,11 +30,6 @@ module.exports = class IntValue extends ValueItem {
         if (value instanceof IntValue) {
             return value.value;
         }
-        if (typeof value.asInt === 'function') {
-            return value.asInt();
-        }
-        console.log(value);
-        EXIT_HERE;
     }
     asInt() {
         return this.value;

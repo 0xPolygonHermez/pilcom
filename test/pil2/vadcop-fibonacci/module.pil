@@ -1,4 +1,4 @@
-constant MODULE_ID=1;
+const int MODULE_ID = 1;
 
 subproof Module(2**16) {
 

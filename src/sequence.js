@@ -36,6 +36,7 @@ module.exports = class Sequence {
     }
     clone() {
         let cloned = new Sequence(this.parent, this.expression, this.maxSize);
+        console.log(['CLONED', this.maxSize, cloned.maxSize]);
         this.#values.mutable = false;
         cloned.#values = this.#values.clone();
         return cloned;

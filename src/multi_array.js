@@ -23,6 +23,9 @@ class MultiArray {
     getIndexesOffset(indexes) {
         return this.getIndexesTypedOffset(indexes).offset;
     }
+    offsetToIndexesString(offset) {
+        return '['+this.offsetToIndexes(offset).join('][')+']';
+    }
     offsetToIndexes(offset) {
         let level = 0;
         let indexes = [];

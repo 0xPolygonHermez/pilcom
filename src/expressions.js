@@ -4,15 +4,9 @@ const Expression = require('./expression.js');
 const WitnessCol = require('./expression_items/witness_col.js');
 const NonRuntimeEvaluable = require('./non_runtime_evaluable.js');
 module.exports = class Expressions {
-
-    constructor (Fr, parent, references, publics, constants) {
-        this.Fr = Fr;
+    constructor () {
         this.expressions = [];
         this.packedIds = [];
-        this.references = references;
-        this.constants = constants;
-        this.parent = parent;
-        this.context = parent.context;
         this.labelRanges = new LabelRanges();
         Expression.setParent(this);
     }
@@ -126,7 +120,7 @@ module.exports = class Expressions {
         throw new Error(`Invalid runtime operation ${op}`);
     }
     _evalString(e) {
-        if (e.template) return this.parent.evaluateTemplate(e.value);
+        if (e.template) return Context.processor.evaluateTemplate(e.value);
         return e.value;
     }
     eval2(e, pos, values) {
@@ -146,13 +140,13 @@ module.exports = class Expressions {
         return e;
     }
     _evalCall(e) {
-        return this.parent.execCall(e);
+        return Context.processor.execCall(e);
     }
     _evalIdref(e) {
         if (e.array) {
             return e;
         }
-        return this.evalReferenceValue(this.references.getIdRefValue(e.refType, e.id));
+        return this.evalReferenceValue(Context.references.getIdRefValue(e.refType, e.id));
     }
     evalReference(e) {
         const ref = this.evalReferenceValue(e);
@@ -254,7 +248,7 @@ module.exports = class Expressions {
         if (type === 'im') {
             return this.labelRanges.getLabel(id, options);
         }
-        return this.references.getLabel(type, id, options);
+        return Context.references.getLabel(type, id, options);
     }
     resolveReference(operand, deeply = false) {
         const names = this.context.getNames(operand.name);
@@ -275,7 +269,7 @@ module.exports = class Expressions {
                 options.postDelta = -1n;
             }
         }
-        let res = this.references.getTypedValue(names, operand.__indexes, options);
+        let res = Context.references.getTypedValue(names, operand.__indexes, options);
         if (typeof operand.__next !== 'undefined') {
             res.__next = res.next = operand.__next;
         } else if (typeof operand.next !== 'number' && (operand.next || operand.prior)) {
@@ -287,7 +281,7 @@ module.exports = class Expressions {
     }
     getReferenceInfo(e, options) {
         const names = this.context.getNames(e.getAloneOperand().name);
-        return this.references.getTypeInfo(names, e.__indexes, options);
+        return Context.references.getTypeInfo(names, e.__indexes, options);
     }
     e2num(e, s, title = '') {
         return this.e2types(e, s, title, ['number','bigint']);

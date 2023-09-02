@@ -1,11 +1,10 @@
 const Definitions = require("./definitions.js");
 const Airs = require("./airs.js");
 const Air = require("./air.js")
-
+const Context = require('./context.js');
 module.exports = class Subproof {
 
-    constructor (context, rows, statements, aggregate) {
-        this.context = context;
+    constructor (rows, statements, aggregate) {
         this.rows = rows;   // array of rows
         this.blocks = [statements];
         this.airs = new Airs(this);
@@ -42,7 +41,8 @@ module.exports = class Subproof {
         }
         if (this.insideFirstAir) {
             // this.colDeclaration(s, 'subproofvalue', true, false, {aggregateType: s.aggregateType});
-            const res = this.context.processor.references.declare(name, 'subproofvalue', lengths, data);
+            console.log(['SUBPROOFVALUE', name,lengths, data]);
+            const res = Context.references.declare(name, 'subproofvalue', lengths, data);
             this.spvDeclaredInFirstAir[name] = {res, lengths: [...lengths]};
             return res;
         }

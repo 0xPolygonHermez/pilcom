@@ -1,15 +1,9 @@
-const References = require("./references.js");
-const Expressions = require("./expressions.js");
 const Expression = require("./expression.js");
+const Context = require('./context.js');
 const {assert, assertLog} = require('./assert.js');
 
 module.exports = class Assign {
-    constructor (Fr, parent, context, references, expressions) {
-        this.Fr = Fr;
-        this.context = context;
-        this.references = references;
-        this.expressions = expressions;
-        this.parent = parent;
+    constructor () {
     }
 
     assign (name, indexes, value) {
@@ -22,7 +16,7 @@ module.exports = class Assign {
         return this.__assign(name, indexes, value);
     }
     __assign(name, indexes, value) {
-        const [type, reference, array] = this.references.getTypeR(name, indexes);
+        const [type, reference, array] = Context.references.getTypeR(name, indexes);
         console.log([type, reference, array]);
         const dim = (array && array.dim) ? array.dim : 0;
         if (dim > 0) {
@@ -40,7 +34,7 @@ module.exports = class Assign {
     assignArray(name, indexes, value, array) {
         const ref = value.getAloneOperand();
         let valueIndexes = value.__indexes ?? [];
-        const def = this.references.getDefinition(ref.name);
+        const def = Context.references.getDefinition(ref.name);
 
         if (array.dim != def.array.dim) {
             throw new Error(`different array dimension on asignation ${array.dim} vs ${def.array.dim}`);
@@ -64,26 +58,25 @@ module.exports = class Assign {
         }
     }
     assignReference (name, value) {
-        this.references.setReference(name, value);
+        Context.references.setReference(name, value);
     }
     assignTypeInt(name, indexes, value, type) {
         // TODO: WARNING: e2value an extra evaluation
-        const v = this.expressions.getValue(value);
+        const v = Expression.getValue(value);
         if (typeof v === 'number' || typeof v === 'bigint') {
-            return this.references.set(name, indexes, v);
+            return Context.references.set(name, indexes, v);
         }
     }
     assignTypeExpr(name, indexes, value, type) {
         if (!(value instanceof Expression)) {
-            this.references.set(name, indexes, value);
+            Context.references.set(name, indexes, value);
             return;
         }
         value = value.instance(true);
-        if (this.context.sourceRef === 'std_sum.pil:195') {
+        if (Context.sourceRef === 'std_sum.pil:195') {
             console.log('XXX');
         }
-        console.log(`ASSIGN ${this.context.sourceRef} ${value}`);
-        this.references.set(name, indexes, value);
-        return
+        console.log(`ASSIGN ${Context.sourceRef} ${value}`);
+        Context.references.set(name, indexes, value);
     }
 }

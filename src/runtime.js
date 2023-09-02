@@ -3,13 +3,9 @@ const Expression = require('./expression.js');
 const NonRuntimeEvaluable = require('./non_runtime_evaluable.js');
 const {assert, assertLog} = require('./assert.js');
 const {ReferenceItem, StackItem, ExpressionItem, ValueItem, IntValue, ProofItem} = require("./expression_items.js");
+const Context = require('./context.js');
 
 module.exports = class Runtime {
-
-    constructor (context) {
-        context.runtime = this;
-        this.context = context;
-    }
 
     eval(operand, options) {
 
@@ -30,7 +26,7 @@ module.exports = class Runtime {
         throw new Error(`Invalid runtime operation ${op}`);
     }
     resolveReference(operand, options) {
-        const names = this.context.getNames(operand.name);
+        const names = Context.current.getNames(operand.name);
 
         let getTypeValueOptions = {};
         if (operand.inc === 'pre') {
@@ -46,7 +42,7 @@ module.exports = class Runtime {
         if (operand.dec === 'post') {
             getTypeValueOptions.postDelta = -1n;
         }
-        let res = this.context.references.getItem(names, operand.__indexes ?? [], options);
+        let res = Context.references.getItem(names, operand.__indexes ?? [], options);
         if (typeof operand.__next !== 'undefined') {
             res.__next = res.next = operand.__next;
         } else if (typeof operand.next !== 'number' && (operand.next || operand.prior)) {

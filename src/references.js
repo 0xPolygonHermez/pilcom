@@ -4,19 +4,25 @@ const Expression = require("./expression.js");
 const {ExpressionItem, ArrayOf} = require("./expression_items.js");
 const Reference = require('./reference.js');
 const Containers = require('./containers.js');
+const Context = require('./context.js');
 module.exports = class References {
 
-    constructor (Fr, context, scope) {
-        this.Fr = Fr;
+    constructor () {
         this.references = {};
         this.types = {};
-        this.context = context;
-        this.scope = scope;
         this.visibilityScope = 0;
         this.visibilityStack = [];
-        this.containers = new Containers(this, context, scope);
-        this.scope.setReferences(this);
-        this.context.references = this;
+        this.containers = new Containers(this);
+    }
+    getDefinitionByItem(item) {
+        let instance = null;
+        console.log(this.types);
+        for (const type in this.types) {
+            instance = this.types[type].instance ?? {};
+            if (instance.expressionItemClass === item.constructor) break;
+        }
+        console.log(instance.constructor.name);
+        return instance.get ? instance.get(instance.id): false;
     }
     getNameScope(name) {
         const nameInfo = this.decodeName(name);
@@ -30,7 +36,7 @@ module.exports = class References {
     }
     pushVisibilityScope() {
         this.visibilityStack.push(this.visibilityScope);
-        this.visibilityScope = this.scope.deep;
+        this.visibilityScope = Context.scope.deep;
     }
     popVisibilityScope() {
         if (this.visibilityStack.length < 1) {
@@ -130,10 +136,10 @@ module.exports = class References {
     prepareScope(nameInfo, type, existingReference) {
 
         if (nameInfo.isStatic) {
-            return [this.scope.declare(nameInfo.name, type, false, nameInfo.scope), nameInfo.scope];
+            return [Context.scope.declare(nameInfo.name, type, false, nameInfo.scope), nameInfo.scope];
         }
 
-        const scopeId = this.hasScope(type) ? this.scope.declare(nameInfo.name, type, existingReference, false) : 0;
+        const scopeId = this.hasScope(type) ? Context.scope.declare(nameInfo.name, type, existingReference, false) : 0;
         // scope(name, def) => exception !!!
         //                  => scopeId;
         if (existingReference !== false && existingReference.scopeId === scopeId) {
@@ -148,7 +154,7 @@ module.exports = class References {
         assert(!name.includes('.object'));
 
         const nameInfo = this.decodeName(name);
-        console.log(`DECLARE_REFERENCE ${name} ==> ${nameInfo.name} ${type} []${lengths.length} scope:${nameInfo.scope} #${this.scope.deep} ${initValue}`, data);
+        console.log(`DECLARE_REFERENCE ${name} ==> ${nameInfo.name} ${type} []${lengths.length} scope:${nameInfo.scope} #${Context.scope.deep} ${initValue}`, data);
 
         let [array, size] = Reference.getArrayAndSize(lengths);
 
@@ -185,7 +191,8 @@ module.exports = class References {
         }
 
         if (initValue !== null) {
-            reference.init(reference, initValue);
+            console.log(initValue);
+            reference.init(initValue);
         }
         return id;
     }
@@ -227,15 +234,16 @@ module.exports = class References {
         const item = reference.getItem(indexes);
         console.log(item);
 
-        EXIT_HERE;
 
         if (options.preDelta) {
+            EXIT_HERE;
             console.log(typeof tvalue.value);
             assert(typeof tvalue.value === 'number' || typeof tvalue.value === 'bigint');
             tvalue.value += options.preDelta;
             instance.set(info.locator + info.offset, tvalue.value);
         }
         if (options.postDelta) {
+            EXIT_HERE;
             assert(typeof tvalue.value === 'number' || typeof tvalue.value === 'bigint');
             instance.set(info.locator + info.offset, tvalue.value + options.postDelta);
         }
@@ -351,7 +359,7 @@ module.exports = class References {
             // TODO: defined must be check containers
             throw new Exception(`Use not created container ${name}`);
         }
-        this.scope.addToScopeProperty('uses', name);
+        Context.scope.addToScopeProperty('uses', name);
         this.uses.push(name);
     }
     searchDefinition(name) {
@@ -360,15 +368,11 @@ module.exports = class References {
         const lname = subnames[subnames.length - 1];
 
         let reference = false;
-
-        if (name === 'MODULE_ID') {
-            debugger;
-        }
         if (!explicitContainer) {
             reference = this.containers.getReferenceInsideCurrent(lname, false);
         } else {
             if (['proof', 'subproof', 'air'].includes(explicitContainer)) {
-                const scopeId = this.scope.getScopeId(explicitContainer);
+                const scopeId = Context.scope.getScopeId(explicitContainer);
                 if (scopeId === false) {
                     throw new Error(`not found scope ${explicitContainer}`);
                 }
@@ -390,7 +394,7 @@ module.exports = class References {
         return reference;
     }
     isVisible(def) {
-        return !def.scopeId || def.type === 'constant' || def.scopeId >= this.visibilityScope; // || def.scopeId <= this.scope.getScopeId('air');
+        return !def.scopeId || def.type === 'constant' || def.scopeId >= this.visibilityScope; // || def.scopeId <= Context.scope.getScopeId('air');
     }
     getReference(name, defaultValue) {
         // if more than one name is sent, use the first one (mainName). Always first name it's directly
@@ -416,7 +420,7 @@ module.exports = class References {
 
         console.log(names);
         if (!names) {
-            names = this.context.getNames(name);
+            names = Context.current.getNames(name);
         }
 
         console.log(names);

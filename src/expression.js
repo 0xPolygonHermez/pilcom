@@ -17,6 +17,7 @@ const RuntimeItem = require("./expression_items/runtime_item.js");
 const FixedCol = require("./expression_items/fixed_col.js");
 const Public = require("./expression_items/public.js");
 const Challenge = require("./expression_items/challenge.js");
+const Context = require('./context.js');
 const OP_VALUE = 'value';
 const OP_ID_REF = 'idref';
 const OP_STACK = 'stack';
@@ -74,10 +75,6 @@ module.exports = class Expression extends ExpressionItem {
 
     static setParent (parent) {
         Expression.parent = parent;
-    }
-
-    static setContext (context) {
-        Expression.context = context;
     }
 
     get isExpression() {
@@ -549,7 +546,7 @@ module.exports = class Expression extends ExpressionItem {
         } else if (value instanceof ProofItem) {
             return null;
         } else if (value instanceof ReferenceItem) {
-            let res = Expression.context.runtime.eval(value, {});
+            let res = Context.runtime.eval(value, {});
             return res;
         } else {
             console.log(value);
@@ -1099,9 +1096,14 @@ module.exports = class Expression extends ExpressionItem {
         // container.pushExpression(Expression.parent.getPackedExpressionId(id, container, options));
         // break;
         const id = ope.getId();
+        const def = Context.references.getDefinitionByItem(ope);
+        assert(def !== false);
         if (ope instanceof WitnessCol) {
             // container.pushWitnessCol(id, next ?? 0, stage ?? 1)
-            container.pushWitnessCol(id, ope.getNext(), ope.getStage());
+            console.log(ope);
+            // CURRENT ERROR: in this scope definition not available.
+            console.log(def);
+            container.pushWitnessCol(id, ope.getNext(), def.stage);
 
         } else if (ope instanceof FixedCol) {
             // container.pushFixedCol(id, next ?? 0);

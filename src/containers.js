@@ -1,9 +1,8 @@
+const Context = require('./context.js');
 const {assert, assertLog} = require('./assert.js');
 module.exports = class Containers {
-    constructor (parent,context, scope) {
+    constructor (parent) {
         this.parent = parent;
-        this.context = context;
-        this.scope = scope;
         this.containers = {};
         this.current = false;
         this.uses = [];
@@ -17,8 +16,8 @@ module.exports = class Containers {
             throw new Error(`Alias ${alias} already defined on ${this.aliases[alias].sourceRef}`);
         }
 
-        this.scope.addToScopeProperty('aliases', alias);
-        this.aliases[alias] = {container: value, sourceRef: this.context.sourceRef};
+        Context.scope.addToScopeProperty('aliases', alias);
+        this.aliases[alias] = {container: value, sourceRef: Context.sourceRef};
     }
     getAlias(alias, defaultValue) {
         return this.aliases[alias] ?? defaultValue;
@@ -102,7 +101,7 @@ module.exports = class Containers {
             // TODO: defined must be check containers
             throw new Exception(`Use not created container ${name}`);
         }
-        this.scope.addToScopeProperty('uses', name);
+        Context.scope.addToScopeProperty('uses', name);
         this.uses.push(name);
     }
     getReferenceInside(container, name, defaultValue) {
