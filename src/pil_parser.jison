@@ -1360,7 +1360,7 @@ name_id
         { $$ = { ...$1, next:1 } }
 
     | name_optional_index "'" NUMBER
-        { $$ = { ...$1, next:$3 } }
+        { $$ = { ...$1, next: Number($3) } }
 
     | name_optional_index "'" '(' expression ')'
         { $$ = { ...$1, next:$4 } }
@@ -1372,7 +1372,7 @@ name_id
         { $$ = { ...$2, prior:1 } }
 
     | NUMBER "'" name_optional_index
-        { $$ = { ...$3, prior:$1 } }
+        { $$ = { ...$3, prior: Number($1) } }
 
     | '(' expression ')' "'" name_optional_index
         { $$ = { ...$5, prior:$2 } }

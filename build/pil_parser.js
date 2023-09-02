@@ -847,7 +847,7 @@ case 328:
  this.$ = { ...$$[$0-1], next:1 } 
 break;
 case 329:
- this.$ = { ...$$[$0-2], next:$$[$0] } 
+ this.$ = { ...$$[$0-2], next: Number($$[$0]) } 
 break;
 case 330:
  this.$ = { ...$$[$0-4], next:$$[$0-1] } 
@@ -859,7 +859,7 @@ case 332:
  this.$ = { ...$$[$0], prior:1 } 
 break;
 case 333:
- this.$ = { ...$$[$0], prior:$$[$0-2] } 
+ this.$ = { ...$$[$0], prior: Number($$[$0-2]) } 
 break;
 case 334:
  this.$ = { ...$$[$0], prior:$$[$0-3] } 

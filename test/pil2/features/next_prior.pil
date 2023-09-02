@@ -1,0 +1,7 @@
+subproof NextPrior(2**16) {
+
+    col witness byteIn, byteOut;
+
+    byteIn === byteOut'2;
+    2'byteIn === byteOut;
+}
