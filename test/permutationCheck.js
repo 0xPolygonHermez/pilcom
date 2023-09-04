@@ -1,11 +1,6 @@
 const chai = require("chai");
-const { exec } = require("child_process");
 const { F1Field } = require("ffjavascript");
-const fs = require("fs");
-const path = require("path");
 const assert = chai.assert;
-const { execSync } = require('child_process');
-var tmp = require('tmp-promise');
 const { compile, verifyPil, newConstantPolsArray, newCommitPolsArray } = require("..");
 
 
@@ -27,8 +22,8 @@ describe("Permutation Check Verification", async function () {
             `, null,
             { compileFromString: true });
 
-        let constPols = newConstantPolsArray(pil);
-        let cmPols = newCommitPolsArray(pil);
+        let constPols = newConstantPolsArray(pil, F);
+        let cmPols = newCommitPolsArray(pil, F);
         const L1 = [1,0,0,0];
         const b1 = [1,1,1,0];
         const b2 = [1,1,1,1];

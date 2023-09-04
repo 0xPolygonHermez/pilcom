@@ -1,11 +1,7 @@
 const chai = require("chai");
-const { exec } = require("child_process");
 const { F1Field } = require("ffjavascript");
 const fs = require("fs");
-const path = require("path");
 const assert = chai.assert;
-const { execSync } = require('child_process');
-var tmp = require('tmp-promise');
 const { compile, verifyPil, newConstantPolsArray, newCommitPolsArray } = require("..");
 
 const commonTestCode = async function (F, name, specificPilProgram, values) {
@@ -20,8 +16,8 @@ const commonTestCode = async function (F, name, specificPilProgram, values) {
         fs.writeFileSync(`tmp/${name}.pil`, pilProgram);
         fs.writeFileSync(`tmp/${name}.pil.json`, JSON.stringify(pil));
 
-        let constPols = newConstantPolsArray(pil);
-        let cmPols = newCommitPolsArray(pil);
+        let constPols = newConstantPolsArray(pil, F);
+        let cmPols = newCommitPolsArray(pil, F);
         const L1 = [1,0,0,0];
 
         for (i = 0; i<4; ++i) {
