@@ -485,15 +485,15 @@ module.exports = class ProtoOut {
             offset += 8;
         }
         while ((buf.length - offset) >= 4) {
-            value = (value << 32n) + (offset ? buf.readBigUInt32BE(offset):buf.readBigInt32BE(offset));
+            value = (value << 32n) + (offset ? BigInt(buf.readUInt32BE(offset)) :BigInt(buf.readInt32BE(offset)));
             offset += 4;
         }
         while ((buf.length - offset) >= 2) {
-            value = (value << 16n) + (offset ? buf.readBigUInt16BE(offset):buf.readBigInt16BE(offset));
+            value = (value << 16n) + (offset ? BigInt(buf.readUInt16BE(offset)) : BigInt(buf.readInt16BE(offset)));
             offset += 2;
         }
         while ((buf.length - offset) >= 1) {
-            value += (value << 8n) + (offset ? buf.readBigUInt8(offset):buf.readBigInt8(offset));
+            value += (value << 8n) + (offset ? BigInt(buf.readUInt8(offset)) : BigInt(buf.readInt8(offset)));
             offset += 1;
         }
         return value;
