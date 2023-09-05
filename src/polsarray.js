@@ -43,6 +43,7 @@ function newConstantPolsArrayPil2(symbols, degree, F) {
     const fixedSymbols = [];
     for (let i = 0; i < symbols.length; ++i) {
         if(symbols[i].type !== 1) continue;
+        if(symbols[i].stage !== 0) throw new Error("Constant pols must be defined in stage 0");
         fixedSymbols.push({name: symbols[i].name, idx: symbols[i].id, length: symbols[i].length});
     }
 
@@ -56,7 +57,7 @@ function newCommitPolsArrayPil2(symbols, degree, F) {
 
     const witnessSymbols = [];
     for (let i = 0; i < symbols.length; ++i) {
-        if(symbols[i].type !== 3) continue;
+        if(symbols[i].type !== 3 || symbols[i].stage !== 1) continue;
         witnessSymbols.push({name: symbols[i].name, idx: symbols[i].id, length: symbols[i].length});
     }
 
