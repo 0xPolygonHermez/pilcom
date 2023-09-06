@@ -4,19 +4,36 @@ const fastFile = require("fastfile");
 const { BigBuffer } = require("./bigbuffer");
 const { getRoots } = require("./utils");
 
+
+function setValueMultiArray(arr, indexes, value) {
+    if (indexes.length === 1) {
+        arr[indexes[0]] = value;
+    } else {
+        const nextIndex = indexes[0];
+        if (!Array.isArray(arr[nextIndex])) arr[nextIndex] = [];
+        setValueMultiArray(arr[nextIndex], indexes.slice(1), value);
+    } 
+}
+
 function newConstantPolsArray(pil, F) {
     if(!F) F = new F1Field("0xFFFFFFFF00000001");
     if(F.p === 18446744069414584321n) F.w = getRoots(F);
 	
-    const symbols = [];
+    const fixedSymbols = [];
     for (const polRef in pil.references) {
         const polInfo = pil.references[polRef];
         if(polInfo.type !== "constP") continue;
-        symbols.push({name: polRef, idx: polInfo.id, length: polInfo.len});
+        if(!polInfo.isArray) {
+            fixedSymbols.push({name: polRef, id: polInfo.id, idx: []});
+        } else {
+            for(let i=0; i < polInfo.len; ++i) {
+                fixedSymbols.push({name: polRef, id: polInfo.id+i, idx: [i]});
+            }
+        }
     }
 
     const degree = pil.references[Object.keys(pil.references)[0]].polDeg;
-    const pa = new PolsArray(symbols, degree, "constant", F);
+    const pa = new PolsArray(fixedSymbols, degree, "constant", F);
     return pa;
 }
 
@@ -24,16 +41,35 @@ function newCommitPolsArray(pil, F) {
     if(!F) F = new F1Field("0xFFFFFFFF00000001");
     if(F.p === 18446744069414584321n) F.w = getRoots(F);
 
-    const symbols = [];
+    const witnessSymbols = [];
     for (const polRef in pil.references) {
         const polInfo = pil.references[polRef];
         if(polInfo.type !== "cmP") continue;
-        symbols.push({name: polRef, idx: polInfo.id, length: polInfo.len});
+        if(!polInfo.isArray) {
+            witnessSymbols.push({name: polRef, id: polInfo.id, idx: []});
+        } else {
+            for(let i=0; i < polInfo.len; ++i) {
+                witnessSymbols.push({name: polRef, id: polInfo.id+i, idx: [i]});
+            }
+        }
     }
 
     const degree = pil.references[Object.keys(pil.references)[0]].polDeg;
-    const pa = new PolsArray(symbols, degree, "commit", F);
+    const pa = new PolsArray(witnessSymbols, degree, "commit", F);
     return pa;
+}
+
+function generateMultiArrayIndexes(symbols, name, lengths, polId, indexes) {
+    if (indexes.length === lengths.length) {
+        symbols.push({ name, idx: indexes, id: polId });
+        return polId + 1;
+    }
+
+    for (let i = 0; i < lengths[indexes.length]; i++) {
+        polId = generateMultiArrayIndexes(symbols, name, lengths, polId, [...indexes, i]);
+    }
+
+    return polId; 
 }
 
 function newConstantPolsArrayPil2(symbols, degree, F) {
@@ -44,7 +80,11 @@ function newConstantPolsArrayPil2(symbols, degree, F) {
     for (let i = 0; i < symbols.length; ++i) {
         if(symbols[i].type !== 1) continue;
         if(symbols[i].stage !== 0) throw new Error("Constant pols must be defined in stage 0");
-        fixedSymbols.push({name: symbols[i].name, idx: symbols[i].id, length: symbols[i].length});
+        if(!symbols[i].dim) {
+            fixedSymbols.push({name: symbols[i].name, id: symbols[i].id, idx: []});
+        } else {
+            generateMultiArrayIndexes(fixedSymbols, symbols[i].name, symbols[i].lengths, symbols[i].id, []);
+        }
     }
 
     const pa = new PolsArray(fixedSymbols, degree, "constant", F);
@@ -58,7 +98,11 @@ function newCommitPolsArrayPil2(symbols, degree, F) {
     const witnessSymbols = [];
     for (let i = 0; i < symbols.length; ++i) {
         if(symbols[i].type !== 3 || symbols[i].stage !== 1) continue;
-        witnessSymbols.push({name: symbols[i].name, idx: symbols[i].id, length: symbols[i].length});
+        if(!symbols[i].dim) {
+            witnessSymbols.push({name: symbols[i].name, id: symbols[i].id, idx: []});
+        } else {
+            generateMultiArrayIndexes(witnessSymbols, symbols[i].name, symbols[i].lengths, symbols[i].id, []);
+        }
     }
 
     const pa = new PolsArray(witnessSymbols, degree, "commit", F);
@@ -86,35 +130,24 @@ class PolsArray {
             const [nameSpace, namePol] = name.split(".");
             if (!this[nameSpace]) this[nameSpace] = {};
             if (!this.$$def[nameSpace]) this.$$def[nameSpace] = {};
-            if (symbol.length > 0) {
-                this[nameSpace][namePol] = [];
-                this.$$def[nameSpace][namePol] = [];
-                for(let j=0; j < symbol.length; ++j) {
-                    const polProxy = new Array(degree);
-                    const polId = symbol.idx + j;
-                    this[nameSpace][namePol][j] = polProxy;
-                    this.$$defArray[polId] = {
-                        name: name,
-                        id: polId,
-                        idx: j,
-                        polDeg: degree
-                    }
-                    this.$$def[nameSpace][namePol][j] = this.$$defArray[polId];
-                    this.$$array[polId] = polProxy;
-                }   
+            const polProxy = new Array(degree);
+            this.$$defArray[symbol.id] = {
+                name: name,
+                id: symbol.id,
+                polDeg: degree
+            }
+            this.$$array[symbol.id] = polProxy;
+            if (symbol.idx.length > 0) {
+                if(!this[nameSpace][namePol]) this[nameSpace][namePol] = [];
+                if(!this.$$def[nameSpace][namePol]) this.$$def[nameSpace][namePol] = [];
+                setValueMultiArray(this[nameSpace][namePol], symbol.idx, polProxy);
+                setValueMultiArray(this.$$def[nameSpace][namePol], symbol.idx, this.$$defArray[symbol.id])
             } else {
-                const polProxy = new Array(degree);
                 this[nameSpace][namePol] = polProxy;
-                this.$$defArray[symbol.idx] = {
-                    name: name,
-                    id: symbol.idx,
-                    polDeg: degree
-                }
-                this.$$def[nameSpace][namePol] = this.$$defArray[symbol.idx];
-                this.$$array[symbol.idx] = polProxy;
+                this.$$def[nameSpace][namePol] = this.$$defArray[symbol.id];
             }
         }
-
+        
         this.$$nPols = this.$$defArray.length;
         if (this.$$defArray.length>0) {
             this.$$n = this.$$defArray[0].polDeg;
