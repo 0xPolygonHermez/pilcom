@@ -4,16 +4,15 @@ package pilout;
 message PilOut {
     optional string name = 1;
     bytes baseField = 2;                        // base field characteristic
-    uint32 blowupFactor = 3;
-    repeated Subproof subproofs = 4;
-    repeated uint32 numChallenges = 5;          // number of challenges per stage
-    uint32 numProofValues = 6;
-    uint32 numPublicValues = 7;
-    repeated PublicTable publicTables = 8;
-    repeated GlobalExpression expressions = 9;
-    repeated GlobalConstraint constraints = 10;  // Constraints that apply only to signals
-    repeated Hint hints = 11;
-    repeated Symbol symbols = 12;
+    repeated Subproof subproofs = 3;
+    repeated uint32 numChallenges = 4;          // number of challenges per stage
+    uint32 numProofValues = 5;
+    uint32 numPublicValues = 6;
+    repeated PublicTable publicTables = 7;
+    repeated GlobalExpression expressions = 8;
+    repeated GlobalConstraint constraints = 9;  // Constraints that apply only to signals
+    repeated Hint hints = 10;
+    repeated Symbol symbols = 11;
 }
 
 message Subproof {
@@ -282,19 +281,12 @@ message Symbol {
 
 // ================ Hints ================
 
-enum HintFieldType {
-    STRING = 0;
-    OPERAND = 1;
-    ARRAY = 2;
-}
-
 message HintField {
-    HintFieldType hintFieldType = 1; // ???
-    optional string name = 2;
+    optional string name = 1;
     oneof value {
-        string stringValue = 3;
-        Operand operand = 4;
-        HintFieldArray hintFields = 5;
+        string stringValue = 2;
+        Operand operand = 3;
+        HintFieldArray hintFieldArray = 4;
     }
 }
 

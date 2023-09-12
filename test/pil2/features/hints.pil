@@ -1,0 +1,16 @@
+
+public input1;
+
+
+subproof Hints(2**16) {
+
+    col witness byte_in, byte_out, bytes[16];
+
+    @my_first_hint {value_xx: 27, values_ab: [2, 3]}
+    @public {reference: input1, expression: bytes[3] + 5, row_index: 13}
+
+    @my_second_hint 10;
+
+    @my_hint3 {value_yy: [byte_out, byte_in, bytes[4]], values_cd: [8, 6]}
+    @my_hint4 {value_zz: byte_in + 2}
+}

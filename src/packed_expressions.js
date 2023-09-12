@@ -11,7 +11,7 @@ module.exports = class PackedExpressions {
         return this.expressions.push(expr) - 1;
     }
 
-    pop(count, operation) {
+    pop(count, operation = false) {
         if (this.values.length < count) {
             throw new Error(`Not enought elements (${this.values.length} vs ${count}) for operation ${operation}`);
         }
