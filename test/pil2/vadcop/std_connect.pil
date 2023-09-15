@@ -214,7 +214,7 @@ private function check_opid_and_cols(int opid, int cols_count, int provide, int 
  * @param opid (unique) identifier of the connection
  * @param colsR require columns of the connection
  */
-function connection_update_require(int opid, expr colsR[], int is_second_interface) {
+private function connection_update_require(int opid, expr colsR[], int is_second_interface) {
     init_challenges();
 
     use proof.std.connect.`id${opid}`;
@@ -244,7 +244,7 @@ function connection_update_require(int opid, expr colsR[], int is_second_interfa
  * @param colsR require columns of the connection
  * @param colsP provide columns of the connection
  */
-function connection_update_provide(int opid, expr colsR[], expr colsP[]) {
+private function connection_update_provide(int opid, expr colsR[], expr colsP[]) {
     init_challenges();
 
     for (int icol = 0; icol < length(colsP); ++icol) {

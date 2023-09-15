@@ -7,6 +7,14 @@ private function init_challenges() {
     }
 }
 
+function multiset_require(int opid, expr cols[]) {
+    piop_update(0, opid, 1, cols);
+}
+
+function multiset_provide(int opid, expr cols[]) {
+    piop_update(1, opid, 1, cols);
+}
+
 function multiset_require(int opid, expr sel, expr cols[]) {
     piop_update(0, opid, sel, cols);
 }
@@ -15,12 +23,63 @@ function multiset_provide(int opid, expr sel, expr cols[]) {
     piop_update(1, opid, sel, cols);
 }
 
+function lookup_require(int opid, expr cols[]) {
+    piop_update(0, opid, 1, cols);
+}
+
+function lookup_provide(int opid, expr cols[]) {
+    piop_update(1, opid, 1, cols);
+}
+
 function lookup_require(int opid, expr sel, expr cols[]) {
     piop_update(0, opid, sel, cols);
 }
 
 function lookup_provide(int opid, expr sel, expr cols[]) {
     piop_update(1, opid, sel, cols);
+}
+
+// To support vector range checks, we would need to compute a table of all permutations of the range [min,max-1].
+function range_check(int opid, expr cols[], int min, int max) {
+    for (int i = 0; i < length(cols); ++i) {
+        piop_update(0, opid, 1, cols[i]);
+    }
+    
+    col fixed RANGE = [min,min+1,..+..,max-1]; // QUESTION: Does this still work if max - min > N?
+    col witness mul_count = compute_multiplicity(cols, RANGE);
+    piop_update(1, opid, mul_count, RANGE);
+}
+
+function range_check(int opid, expr sels[], expr cols[], int min, int max) {
+    for (int i = 0; i < length(cols); ++i) {
+        piop_update(0, opid, sels[i], cols[i]);
+    }
+    
+    col fixed RANGE = [min,min+1,..+..,max-1];
+    col witness mul_count = compute_multiplicity(cols, RANGE);
+    piop_update(1, opid, mul_count, RANGE);
+}
+
+// QUESTION: Can the following O(n³) algorithm be implemented faster?
+/**
+ * Given columns C₀,...,Cₙ₋₁, and a range, computes the multiplicity counter:
+        · mul_count[i] = Σⱼ |{k : Cⱼ[k] = range[i]}|
+ * @param cols
+ * @param range
+ */
+private function compute_multiplicity(expr cols[], expr range) {
+    expr mul_count[length(range)] = 0; // [0,0,...,0]
+    for (int i = 0; i < length(range); ++i) {
+        for (int j = 0; j < length(cols); ++j) {
+            for (int k = 0; k < length(cols[j]); ++k) {
+                if (cols[j][k] == range[i]) {
+                    ++mul_count[i];
+                }
+            }
+        }
+    }
+    // Note: We do not need to normalize the result, since a range has no repeated elements.
+    return mul_count;
 }
 
 /**
@@ -49,11 +108,9 @@ private function check_opid_and_cols(int opid, int cols_count, int provide) {
 
     container air.std.piop {
         // FIX: dynamic arrays not ready
-        int gsum_require_count = 0;
-        expr gsum_require_mul_count[100];
+        expr gsum_require_sel[100];
         expr gsum_require[100];
-        int gsum_provide_count = 0;
-        expr gsum_provide_mul_count[100];
+        expr gsum_provide_sel[100];
         expr gsum_provide[100];
     }
 
@@ -86,7 +143,7 @@ private function check_opid_and_cols(int opid, int cols_count, int provide) {
  * @param cols columns of the PIOP
  * @return [opid + C₁·α + C₂·α² + ... + Cₙ·αⁿ] + β
  */
-function compress_cols(int opid, expr cols[]): expr {
+private function compress_cols(int opid, expr cols[]): expr {
     expr cols_compressed = 0;
     for (int icol = length(cols) - 1; icol >= 0; --icol) {
         cols_compressed = (cols_compressed + cols[icol]) * std_alpha;
@@ -101,10 +158,10 @@ function compress_cols(int opid, expr cols[]): expr {
  * Given columns C₀,...,Cₙ₋₁, and multiplicity counter M, it 1] defines the constraints at the air level, 2] updates the values at the subproof level, and 3] updates the constraints at the proof level.
  * @param provide boolean indicating if updating a provide or a require
  * @param opid (unique) identifier of the PIOP
- * @param mul_count multiplicity counter of the PIOP
+ * @param sel selector of the PIOP
  * @param cols columns of the PIOP
  */
-function piop_update(int provide, int opid, expr mul_count, expr cols[]) {
+private function piop_update(int provide, int opid, expr sel, expr cols[]) {
     // verify if correct opid and cols
     check_opid_and_cols(opid, length(cols), provide);
 
@@ -116,55 +173,47 @@ function piop_update(int provide, int opid, expr mul_count, expr cols[]) {
     use air.std.piop;
     if (provide) {
         // adding all sums of provide called in this air
-        gsum_provide_mul_count[gsum_provide_count] = mul_count;
-        gsum_provide[gsum_provide_count] = cols_compressed;
-        ++gsum_provide_count;
+        gsum_provide_sel[] = sel;
+        gsum_provide[] = cols_compressed;
     } else {
         // adding all sums of require called in this air
-        gsum_require_mul_count[gsum_require_count] = mul_count;
-        gsum_require[gsum_require_count] = cols_compressed;
-        ++gsum_require_count;
+        gsum_require_sel[] = sel;
+        gsum_require[] = cols_compressed;
     }
 
-    // 0] look for repeated provide/require's and, if so, optimize
-    on final air PIOP_batch();
+    // 1] computes the multiplicity counter for lookups and range checks
+    on final air compute_multiplicity_lookup_range();
 
-    // 1] define constraints at the air level
+    // 2] look for repeated provide/require's in both lookups and range checks and, if found, optimize
+    on final air lookup_range_provide_batch();
+
+    // 3] define constraints at the air level
     on final air PIOP_air();
 
-    // 2] update values at the subproof level
+    // 4] update values at the subproof level
     on final subproof PIOP_subproof();
 
-    // 3] update constraints at the proof level
+    // 5] update constraints at the proof level
     on final proof PIOP_proof();
 }
 
-// Can the following O(n²) algorithm be implemented faster?
-private function PIOP_batch() {
+// QUESTION: Can the following O(n²) algorithm be implemented faster?
+// Given the provides, it "merges" the repeated ones through their associated multiplicity counters.
+private function lookup_range_provide_batch() {
     use air.std.piop;
 
-    // int len = length(gsum_provide);
-    int len = gsum_provide_count;
+    int len = length(gsum_provide);
 
     for (int i = 0; i < len; ++i) {
         for (int j = 0; j < len; ++j) {
+            // It two provides are the same, add their multiplicity counters to one and remove the other
             if (i != j && gsum_provide[i] == gsum_provide[j]) {
-                gsum_provide_mul_count[i] = gsum_provide_mul_count[i] + gsum_provide_mul_count[j];
-                gsum_provide_mul_count[j] = gsum_provide_mul_count[len-1];
-                // gsum_provide_mul_count.pop(); // QUESTION: Is array pop implemented?
-            }
-        }
-    }
+                gsum_provide_sel[i] = gsum_provide_sel[i] + gsum_provide_sel[j];
 
-    // len = length(gsum_require);
-    len = gsum_require_count;
-
-    for (int i = 0; i < len; ++i) {
-        for (int j = 0; j < len; ++j) {
-            if (i != j && gsum_require[i] == gsum_require[j]) {
-                gsum_require_mul_count[i] = gsum_require_mul_count[i] + gsum_require_mul_count[j];
-                gsum_require_mul_count[j] = gsum_require_mul_count[len-1];
-                // gsum_require_mul_count.pop();
+                gsum_provide[j] = gsum_provide[len-1];
+                gsum_provide_sel[j] = gsum_provide_sel[len-1];
+                gsum_provide.pop(); // QUESTION: Will array pop be implemented?
+                gsum_provide_sel.pop(); 
             }
         }
     }
@@ -173,7 +222,7 @@ private function PIOP_batch() {
 private function PIOP_air() {
     use air.std.piop;
 
-    col witness stage(3) gsum;
+    col witness stage(2) gsum;
 
     //                                mt1       mt2       mt3       mf1       mf2       mf3
     //  gsum === 'gsum * (1 - L1) + ------- + ------- + ------- - ------- - ------- - -------
@@ -183,33 +232,25 @@ private function PIOP_air() {
 
     expr LHS = 1;
     expr RHS1 = 0;
-    // for (int i = 0; i < length(gsum_provide); ++i) {
-    for (int i = 0; i < gsum_provide_count; ++i) {
+    for (int i = 0; i < length(gsum_provide); ++i) {
         LHS = LHS * gsum_provide[i];
 
-        expr tmp = gsum_provide_mul_count[i];
-        // for (int j = 0; j < length(gsum_provide); ++j) {
-        for (int j = 0; j < gsum_provide_count; ++j) {
-            // if (j == i) continue;
-            if (j != i) {
-                tmp = tmp * gsum_provide[j];
-            }
+        expr tmp = gsum_provide_sel[i];
+        for (int j = 0; j < length(gsum_provide); ++j) {
+            if (j != i) tmp = tmp * gsum_provide[j];
         }
         RHS1 = RHS1 + tmp;
     }
 
     expr RHS2a = LHS;
     expr RHS2b = 0;
-    // for (int i = 0; i < length(gsum_require); ++i) {
-    for (int i = 0; i < gsum_require_count; ++i) {
+    for (int i = 0; i < length(gsum_require); ++i) {
         LHS = LHS * gsum_require[i];
         RHS1 = RHS1 * gsum_require[i];
 
-        expr tmp = gsum_require_mul_count[i];
-        // for (int j = 0; j < length(gsum_require); ++j) {
-        for (int j = 0; j < gsum_require_count; ++j) {
-            if (j == i) continue;
-            tmp = tmp * gsum_require[j];
+        expr tmp = gsum_require_sel[i];
+        for (int j = 0; j < length(gsum_require); ++j) {
+            if (j != i) tmp = tmp * gsum_require[j];
         }
         RHS2b = RHS2b + tmp;
     }
