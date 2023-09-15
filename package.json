@@ -38,7 +38,8 @@
     "mocha": "^10.0.0",
     "nyc": "^15.1.0",
     "tmp-promise": "^3.0.3",
-    "yargs": "^17.2.1"
+    "yargs": "^17.2.1",
+    "fastfile": "^0.0.20"
   },
   "dependencies": {
     "lodash": "^4.17.21",

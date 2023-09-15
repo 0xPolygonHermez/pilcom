@@ -33,6 +33,8 @@ const ExpressionItem = ExpressionItems.ExpressionItem;
 const DefinitionItems = require("./definition_items.js");
 const fs = require('fs');
 const { log2, getKs, getRoots } = require("./utils.js");
+const Hints = require('./hints.js');
+const util = require('util');
 
 module.exports = class Processor {
     constructor (Fr, parent) {
@@ -110,7 +112,8 @@ module.exports = class Processor {
         this.constraints = new Constraints();
         this.globalConstraints = new Constraints();
 
-        this.assign = new Assign();
+        this.assign = new Assign(Fr, this, this.context, this.references, this.expressions);
+        this.hints = new Hints(Fr, this.expressions);
 
         this.executeCounter = 0;
         this.executeStatementCounter = 0;
@@ -196,11 +199,15 @@ module.exports = class Processor {
                         witness: air.witness.labelRanges,
                         fixed: air.fixeds.labelRanges,
                     }
-                    });
+                });
                 proto.setWitnessCols(air.witness);
                 proto.setSymbolsFromLabels(air.witness.labelRanges, 'witness', {airId, subproofId});
                 proto.setSymbolsFromLabels(air.fixeds.labelRanges, 'fixed', {airId, subproofId});
                 proto.setExpressions(packed);
+                proto.addHints(air.hints, packed, {
+                        subproofId,
+                        airId
+                    });
                 ++airId;
             }
             ++subproofId;
@@ -313,6 +320,37 @@ module.exports = class Processor {
         console.log(st.value);
         this.assign.assign(names, indexes, st.value);
         // this.references.set(st.name.name, [], this.expressions.eval(st.value));
+    }
+    execHint(s) {
+        const name = s.name;
+        console.log(util.inspect(s.data, false, null, true));
+        const res = this.processHintData(s.data);
+        console.log(util.inspect(res, false, null, true));
+        this.hints.define(name, res);
+    }
+    processHintData(hdata) {
+        if (hdata.type === 'array') {
+            let result = [];
+            for (const item of hdata.data) {
+                result.push(this.processHintData(item));
+            }
+            return result;
+        }
+        if (hdata.type === 'object') {
+            let result = {};
+            for (const key in hdata.data) {
+                // TODO: key no exists
+                result[key] = this.processHintData(hdata.data[key]);
+            }
+            return result;
+        }
+        if (hdata instanceof Expression) {
+            const value = hdata.eval();
+            if (typeof value === 'bigint') return value;
+            return hdata.instance();
+        }
+        console.log(hdata);
+        EXIT_HERE;
     }
     execIf(s) {
         for (let icond = 0; icond < s.conditions.length; ++icond) {
@@ -618,6 +656,8 @@ module.exports = class Processor {
             air.expressions = this.expressions.clone();
             air.constraints = this.constraints.clone();
             air.constraints.expressions = air.expressions;
+            air.hints = this.hints.clone();
+            air.hints.expressions = air.expressions;
             this.clearAirScope();
             this.constraints = new Constraints(this.Fr, this.expressions);
             this.scope.popInstanceType(['witness', 'fixed', 'im']);

@@ -2,11 +2,13 @@ const int MODULE_ID = 1;
 
 subproof Module(2**16) {
 
+    subproofval aggregate(sum) gsum_module;
+
     col fixed L1 = [1,0...];
     col witness x, q, x_mod;
 
     // TODO: verify range checks and x_mod < mod
-    q * mod + x_mod === x;
+    x === q * mod + x_mod;
 
 
     // multiset_provide(MODULE_ID, 1, [x, x_mod])
@@ -17,7 +19,7 @@ subproof Module(2**16) {
     // gsum_provide[0] = ((x_mod * std_alpha + x) * std_alpha) + MODULE_ID + std_beta
 
 
-    col witness stage(3) gsum;
+    col witness stage(2) gsum;
 
     // LHS = 1
     // RHS1 = 0
@@ -40,8 +42,6 @@ subproof Module(2**16) {
 
     // (gsum - 'gsum * (1 - L1)) * LHS === RHS;
     (gsum - 'gsum * (1 - L1)) * (((x_mod * std_alpha + x) * std_alpha) + MODULE_ID + std_beta) === 1;
-
-    subproofval aggregate(sum) gsum_module;
 
     L1' * (gsum - gsum_module) === 0;
 }

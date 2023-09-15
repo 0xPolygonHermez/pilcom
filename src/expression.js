@@ -1044,6 +1044,10 @@ module.exports = class Expression extends ExpressionItem {
         }*/
 
     }
+    packAlone(container, options) {
+        this.operandPack(container, this.getAloneOperand(), 0, options);
+        return container.pop(1)[0];
+    }
     pack(container, options) {
         let top = this.stack.length-1;
         return this.stackPosPack(container, top, options);

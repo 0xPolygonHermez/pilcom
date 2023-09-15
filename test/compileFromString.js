@@ -6,7 +6,7 @@ const path = require("path");
 const assert = chai.assert;
 const { execSync } = require('child_process');
 var tmp = require('tmp-promise');
-const { compile, newConstantPolsArray, newCommitPolsArray } = require("..");
+const { compile } = require("..");
 
 
 describe("CompileFromString (string compilation - library)", async function () {

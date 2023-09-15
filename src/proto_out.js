@@ -3,6 +3,7 @@ const protobuf = require('protobufjs');
 const {cloneDeep} = require('lodash');
 const Long = require('long');
 const fs = require('fs');
+const util = require('util');
 
 //
 // Legacy Pil Stats
@@ -130,6 +131,8 @@ module.exports = class ProtoOut {
         }
     }
     encode() {
+        console.log(['PROTO.CHALLENGES', this.pilOut.numChallenges]);
+
         let message = this.PilOut.fromObject(this.pilOut);
         this.data = this.PilOut.encode(message).finish();
         return this.data;
@@ -239,6 +242,7 @@ module.exports = class ProtoOut {
         this.setConstantCols(periodicCols, this.currentAir.numRows, true);
     }
     setChallenges(challenges) {
+        console.log(challenges);
         const values = challenges.getPropertyValues(['id', 'stage']);
         const valuesSortedByStageAndId = values.sort((a,b) => (a[1] > b[1] || (a[1] == b[1] && a[0] > b[0])) ? 1 : -1);
         let previousStage = false;
@@ -247,14 +251,16 @@ module.exports = class ProtoOut {
         this.challengeId2Proto = [];
         for (const [id, stage] of valuesSortedByStageAndId) {
             if (previousStage !== stage) {
-                previousStage = id;
+                previousStage = stage;
                 protoId = 0;
             }
             assert(stage > 0);
             countByStage[stage-1] = (countByStage[stage-1] ?? 0) + 1;
             this.challengeId2Proto[id] = [protoId, stage];
+            ++protoId;
         }
         this.pilOut.numChallenges = Array.from(countByStage, x => x ?? 0);
+        console.log(this.pilOut.numChallenges);
     }
     setConstantCols(cols, rows, periodic) {
         const property = periodic ? 'periodicCols':'fixedCols';
@@ -438,6 +444,59 @@ module.exports = class ProtoOut {
             airConstraints.push(payload);
         }
     }
+    addHints(hints, packed, options) {
+        const subproofId = options.subproofId ?? false;
+        const airId = options.airId ?? false;
+        for (const hint of hints) {
+            let payload = {name: hint.name};
+            if (subproofId !== false) {
+                payload.subproofId = subproofId;
+                payload.airId = airId;
+            }
+            console.log(hint);
+            const res = this.toHintField(hint.data, {...options, hints, packed})
+            console.log(util.inspect(res, false, null, true));
+            payload.hintFields = Array.isArray(res) ? res: [res];
+
+            // TODO
+            // const debugLine = hints.getDebugInfo(hint, packed, options);
+            this.pilOut.hints.push(payload);
+        }
+    }
+    toHintField(hdata, options = {}) {
+        const path = options.path ?? '';
+
+        if (typeof hdata === 'object' && hdata.constructor.name === 'ExpressionId') {
+            const expressionId = options.hints.getPackedExpressionId(hdata.id, options.packed, options);
+            if (expressionId === false) {
+                return { operand: options.hints.expressions.get(hdata.id).packAlone(options.packed, options) };
+            }
+            return { operand: { expression: { idx: expressionId } }};
+        }
+        if (Array.isArray(hdata)) {
+            let result = [];
+            for (let index = 0; index < hdata.length; ++index) {
+                result.push(this.toHintField(hdata[index], {...options, path: path + '[' + index + ']'}));
+            }
+            return { hintFieldArray: { hintFields: Array.isArray(result) ? result : [result] }};
+        }
+        if (typeof hdata === 'bigint' || typeof hdata === 'number') {
+            return { operand: {constant: { value: this.bint2buf(BigInt(hdata))}} }
+        }
+        if (typeof hdata === 'string') {
+            return { stringValue: hdata };
+        }
+        if (typeof hdata === 'object' && hdata.constructor.name === 'Object') {
+            let result = [];
+            for (const name in hdata) {
+                const value = this.toHintField(hdata[name], {...options, path: path + '.' + name});
+                result.push({...value, name});
+            }
+            return { hintFieldArray: { hintFields: Array.isArray(result) ? result : [result] }};
+        }
+        console.log(hdata);
+        throw new Error(`Invalid hint-data (type:${typeof data}) on cloneHint of ${path}`);
+    }
     bint2uint8(value, bytes = 0) {
         let result = new Uint8Array(this.uint8size);
         for (let index = 0; index < this.uint8size; ++index) {
@@ -488,15 +547,15 @@ module.exports = class ProtoOut {
             offset += 8;
         }
         while ((buf.length - offset) >= 4) {
-            value = (value << 32n) + (offset ? buf.readBigUInt32BE(offset):buf.readBigInt32BE(offset));
+            value = (value << 32n) + (offset ? BigInt(buf.readUInt32BE(offset)) :BigInt(buf.readInt32BE(offset)));
             offset += 4;
         }
         while ((buf.length - offset) >= 2) {
-            value = (value << 16n) + (offset ? buf.readBigUInt16BE(offset):buf.readBigInt16BE(offset));
+            value = (value << 16n) + (offset ? BigInt(buf.readUInt16BE(offset)) : BigInt(buf.readInt16BE(offset)));
             offset += 2;
         }
         while ((buf.length - offset) >= 1) {
-            value += (value << 8n) + (offset ? buf.readBigUInt8(offset):buf.readBigInt8(offset));
+            value += (value << 8n) + (offset ? BigInt(buf.readUInt8(offset)) : BigInt(buf.readInt8(offset)));
             offset += 1;
         }
         return value;

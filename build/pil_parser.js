@@ -86,58 +86,58 @@ performAction: function anonymous(yytext, yyleng, yylineno, yy, yystate /* actio
 var $0 = $$.length - 1;
 switch (yystate) {
 case 1:
- this.$ = $$[$0-2]; return this.$; 
+ this.$ = $$[$0-2]; return this.$;
 break;
 case 2:
- this.$ = [...$$[$0-2], $$[$0]] 
+ this.$ = [...$$[$0-2], $$[$0]]
 break;
 case 3:
- this.$ = [] 
+ this.$ = []
 break;
 case 6: case 7: case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15: case 16: case 17: case 28: case 30: case 52: case 53: case 63: case 98: case 99: case 100: case 101: case 102: case 103: case 104: case 105: case 107: case 108: case 111: case 112: case 113: case 114: case 115: case 116: case 117: case 118: case 119: case 120: case 130: case 131: case 132: case 133: case 135: case 136: case 138: case 141: case 160: case 166: case 167: case 168: case 191: case 241: case 255: case 306: case 337:
- this.$ = $$[$0] 
+ this.$ = $$[$0]
 break;
 case 18:
- this.$ = { type: 'use', name: $$[$0].name } 
+ this.$ = { type: 'use', name: $$[$0].name }
 break;
 case 19:
- this.$ = { type: 'container', name: $$[$0].name, alias: false, statements: false } 
+ this.$ = { type: 'container', name: $$[$0].name, alias: false, statements: false }
 break;
 case 20:
- this.$ = { type: 'container', name: $$[$0-2].name, alias: $$[$0], statements: false } 
+ this.$ = { type: 'container', name: $$[$0-2].name, alias: $$[$0], statements: false }
 break;
 case 21:
- this.$ = { type: 'container', name: $$[$0-3].name, alias: false, statements: $$[$0-1].statements } 
+ this.$ = { type: 'container', name: $$[$0-3].name, alias: false, statements: $$[$0-1].statements }
 break;
 case 22:
- this.$ = { type: 'container', name: $$[$0-5].name, alias: $$[$0-3], statements: $$[$0-1].statements } 
+ this.$ = { type: 'container', name: $$[$0-5].name, alias: $$[$0-3], statements: $$[$0-1].statements }
 break;
 case 23:
- this.$ = { type: 'proof', statements: $$[$0-1].statements } 
+ this.$ = { type: 'proof', statements: $$[$0-1].statements }
 break;
 case 24: case 38: case 40: case 165:
- this.$ = $$[$0]; 
+ this.$ = $$[$0];
 break;
 case 25: case 41:
- this.$ = $$[$0-1]; 
+ this.$ = $$[$0-1];
 break;
 case 27: case 121: case 142: case 152: case 315:
- this.$ = $$[$0-1] 
+ this.$ = $$[$0-1]
 break;
 case 29:
- this.$ = $$[$0-1]; this.$.statements.push($$[$0]); 
+ this.$ = $$[$0-1]; this.$.statements.push($$[$0]);
 break;
 case 31:
- this.$ = { ...$$[$0-1], statements: [ ...$$[$0-1].statements, $$[$0] ] } 
+ this.$ = { ...$$[$0-1], statements: [ ...$$[$0-1].statements, $$[$0] ] }
 break;
 case 32: case 33:
- this.$ = { ...$$[$0-2], statements: [ ...$$[$0-2].statements, $$[$0-1] ] } 
+ this.$ = { ...$$[$0-2], statements: [ ...$$[$0-2].statements, $$[$0-1] ] }
 break;
 case 34: case 97: case 212:
- this.$ = { statements: [$$[$0]] } 
+ this.$ = { statements: [$$[$0]] }
 break;
 case 35: case 36:
- this.$ = { statements: [$$[$0-1]] } 
+ this.$ = { statements: [$$[$0-1]] }
 break;
 case 45:
  this.$ = { boundary: 'first' }
@@ -149,25 +149,25 @@ case 47:
  this.$ = { boundary: 'frame' }
 break;
 case 48:
- this.$ = { type: 'code', statements: $$[$0] }; 
+ this.$ = { type: 'code', statements: $$[$0] };
 break;
 case 49:
- this.$ = { type: 'when', statements: $$[$0-1], expression: $$[$0-2] } 
+ this.$ = { type: 'when', statements: $$[$0-1], expression: $$[$0-2] }
 break;
 case 50:
- this.$ = { ...$$[$0-1], type: "when", statements: $$[$0] } 
+ this.$ = { ...$$[$0-1], type: "when", statements: $$[$0] }
 break;
 case 51:
- this.$ = { type: 'metadata', data: $$[$0-1] } 
+ this.$ = { type: 'metadata', data: $$[$0-1] }
 break;
 case 54:
- this.$ = { type: 'scope_definition', ...$$[$0-1] }; 
+ this.$ = { type: 'scope_definition', ...$$[$0-1] };
 break;
 case 55:
- this.$ = {private: false, funcname: $$[$0]} 
+ this.$ = {private: false, funcname: $$[$0]}
 break;
 case 56:
- this.$ = {private: true, funcname: $$[$0]} 
+ this.$ = {private: true, funcname: $$[$0]}
 break;
 case 57:
  this.$ = { ...$$[$0-10], type: 'function_definition', final: false, ...$$[$0-8], returns: $$[$0-4], ...$$[$0-1] }
@@ -188,402 +188,402 @@ case 62:
  this.$ = { ...$$[$0-6], type: 'function_definition', final: 'subproof', ...$$[$0-4], returns: false, ...$$[$0-1] }
 break;
 case 64:
- this.$ =  $$[$0-2]; this.$.vargs = true 
+ this.$ =  $$[$0-2]; this.$.vargs = true
 break;
 case 65:
  this.$ = { args: [], varargs: false }
 break;
 case 66:
- this.$ = { args: [], varargs: false } 
+ this.$ = { args: [], varargs: false }
 break;
 case 67:
- this.$ = $$[$0-2]; this.$.args.push($$[$0]) 
+ this.$ = $$[$0-2]; this.$.args.push($$[$0])
 break;
 case 68:
- this.$ = { args: [ $$[$0] ] } 
+ this.$ = { args: [ $$[$0] ] }
 break;
 case 69:
- this.$ = { type: $$[$0-1].type, name: $$[$0], reference: false, dim: 0 } 
+ this.$ = { type: $$[$0-1].type, name: $$[$0], reference: false, dim: 0 }
 break;
 case 70:
- this.$ = { type: $$[$0-1].type, name: $$[$0], reference: true, dim: 0 } 
+ this.$ = { type: $$[$0-1].type, name: $$[$0], reference: true, dim: 0 }
 break;
 case 71:
- this.$ = { type: $$[$0-2].type, name: $$[$0-1], reference: false, dim: $$[$0].dim } 
+ this.$ = { type: $$[$0-2].type, name: $$[$0-1], reference: false, dim: $$[$0].dim }
 break;
 case 72:
- this.$ = { type: $$[$0-2].type, name: $$[$0-1], reference: true, dim: $$[$0].dim } 
+ this.$ = { type: $$[$0-2].type, name: $$[$0-1], reference: true, dim: $$[$0].dim }
 break;
 case 73:
- this.$ = { type: 'int' } 
+ this.$ = { type: 'int' }
 break;
 case 74:
- this.$ = { type: 'fe' } 
+ this.$ = { type: 'fe' }
 break;
 case 75:
- this.$ = { type: 'expr' } 
+ this.$ = { type: 'expr' }
 break;
 case 76:
- this.$ = { type: 'int', const: true } 
+ this.$ = { type: 'int', const: true }
 break;
 case 77:
- this.$ = { type: 'fe', const: true } 
+ this.$ = { type: 'fe', const: true }
 break;
 case 78:
- this.$ = { type: 'expr', const: true } 
+ this.$ = { type: 'expr', const: true }
 break;
 case 79:
- this.$ = { type: 'witness' } 
+ this.$ = { type: 'witness' }
 break;
 case 80:
- this.$ = { type: 'fixed' } 
+ this.$ = { type: 'fixed' }
 break;
 case 81:
- this.$ = { type: 'challenge' } 
+ this.$ = { type: 'challenge' }
 break;
 case 82:
- this.$ = { type: 'string' } 
+ this.$ = { type: 'string' }
 break;
 case 83:
- this.$ = { type: 'string', const: true } 
+ this.$ = { type: 'string', const: true }
 break;
 case 84:
- this.$ = { type: 'proof' } 
+ this.$ = { type: 'proof' }
 break;
 case 85:
- this.$ = { type: 'subproof' } 
+ this.$ = { type: 'subproof' }
 break;
 case 86:
- this.$ = { type: 'air' } 
+ this.$ = { type: 'air' }
 break;
 case 87:
- this.$ = { type: 'public' } 
+ this.$ = { type: 'public' }
 break;
 case 88:
- this.$ = { type: 'publicTable' } 
+ this.$ = { type: 'publicTable' }
 break;
 case 89:
- this.$ = { type: 'function' } 
+ this.$ = { type: 'function' }
 break;
 case 90:
- this.$ = {returns: [...$$[$0-2], $$[$0]]}  
+ this.$ = {returns: [...$$[$0-2], $$[$0]]}
 break;
 case 91:
- this.$.returns = [$$[$0]] 
+ this.$.returns = [$$[$0]]
 break;
 case 92:
- this.$ = {dim: $$[$0-2].dim + 1} 
+ this.$ = {dim: $$[$0-2].dim + 1}
 break;
 case 93:
- this.$ = {dim: 1} 
+ this.$ = {dim: 1}
 break;
 case 94:
- this.$ = { type: $$[$0].type, dim: 0 } 
+ this.$ = { type: $$[$0].type, dim: 0 }
 break;
 case 95:
- this.$ = { type: $$[$0-1].type, dim: $$[$0].dim } 
+ this.$ = { type: $$[$0-1].type, dim: $$[$0].dim }
 break;
 case 96: case 211:
- this.$ = $$[$0-2]; this.$.statements.push($$[$0]); 
+ this.$ = $$[$0-2]; this.$.statements.push($$[$0]);
 break;
 case 106:
- this.$ = { type: 'code', statements: $$[$0] } 
+ this.$ = { type: 'code', statements: $$[$0] }
 break;
 case 109:
- this.$ = { type: 'expr', expr: $$[$0] } 
+ this.$ = { type: 'expr', expr: $$[$0] }
 break;
 case 110:
- this.$ = { type: 'constraint', left: $$[$0-2], right: $$[$0] } 
+ this.$ = { type: 'constraint', left: $$[$0-2], right: $$[$0] }
 break;
 case 122:
- this.$ = $$[$0-2]; this.$.data[$$[$0]] = $$[$02] 
+ this.$ = $$[$0-2]; this.$.data[$$[$0]] = $$[$02]
 break;
 case 123:
- this.$ = $$[$0-4]; this.$.data[$$[$0-2]] = $$[$0] 
+ this.$ = $$[$0-4]; this.$.data[$$[$0-2]] = $$[$0]
 break;
 case 124:
- this.$ = $$[$0-2]; this.$.data[$$[$0]] = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, name: $$[$0] }) 
+ this.$ = $$[$0-2]; this.$.data[$$[$0]] = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, name: $$[$0] })
 break;
 case 125:
- this.$ = {data: {}}; this.$.data[$$[$0-2]] = $$[$0] 
+ this.$ = {data: {}}; this.$.data[$$[$0-2]] = $$[$0]
 break;
 case 126:
- this.$ = {data: {}}; this.$.data[$$[$0]] = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, name: $$[$0] }) 
+ this.$ = {data: {}}; this.$.data[$$[$0]] = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, name: $$[$0] })
 break;
 case 127: case 154: case 222: case 243: case 248:
- this.$ = $$[$0-2]; this.$.values.push($$[$0]) 
+ this.$ = $$[$0-2]; this.$.values.push($$[$0])
 break;
 case 128:
- this.$ = { values: [ $$[$0] ]} 
+ this.$ = { values: [ $$[$0] ]}
 break;
 case 129:
- this.$ = { op: 'call', function: $$[$0-3], arguments: $$[$0-1].values } 
+ this.$ = { op: 'call', function: $$[$0-3], arguments: $$[$0-1].values }
 break;
 case 134:
- this.$ = { type: 'delayed_function_call', event: $$[$0-5], scope: $$[$0-4], function: $$[$0-3], arguments: $$[$0-1].values } 
+ this.$ = { type: 'delayed_function_call', event: $$[$0-5], scope: $$[$0-4], function: $$[$0-3], arguments: $$[$0-1].values }
 break;
 case 137:
- this.$ = {...$$[$0], ...$$[$01]} 
+ this.$ = {...$$[$0], ...$$[$01]}
 break;
 case 139:
- this.$ = { type: 'continue' } 
+ this.$ = { type: 'continue' }
 break;
 case 140:
- this.$ = { type: 'break' } 
+ this.$ = { type: 'break' }
 break;
 case 143:
- this.$ = { type: 'for', init: $$[$0-6], condition: $$[$0-4], increment: $$[$0-2].statements, statements: $$[$0] } 
+ this.$ = { type: 'for', init: $$[$0-6], condition: $$[$0-4], increment: $$[$0-2].statements, statements: $$[$0] }
 break;
 case 144:
- this.$ = { type: 'for_in', init: $$[$0-4], list: $$[$0-2], statements: $$[$0] } 
+ this.$ = { type: 'for_in', init: $$[$0-4], list: $$[$0-2], statements: $$[$0] }
 break;
 case 145:
- this.$ = { type: 'while', condition: $$[$0-2], statements: $$[$0] } 
+ this.$ = { type: 'while', condition: $$[$0-2], statements: $$[$0] }
 break;
 case 146: case 147:
- this.$ = { type: 'do', condition: $$[$0-1], statements: $$[$0-4] } 
+ this.$ = { type: 'do', condition: $$[$0-1], statements: $$[$0-4] }
 break;
 case 148:
- this.$ = { ...$$[$0-1], type: 'once', statements: $$[$0] } 
+ this.$ = { ...$$[$0-1], type: 'once', statements: $$[$0] }
 break;
 case 149:
- this.$ = $$[$0-4] 
+ this.$ = $$[$0-4]
 break;
 case 150:
- this.$ = {type:'if', conditions: [{type: 'if', expression: $$[$0-2], statements: $$[$0] }] } 
+ this.$ = {type:'if', conditions: [{type: 'if', expression: $$[$0-2], statements: $$[$0] }] }
 break;
 case 151:
- this.$ = { type:'if', conditions: [{type: 'if', expression: $$[$0-4], statements: $$[$0-2] }, {type: 'else', statements: $$[$0]}]} 
+ this.$ = { type:'if', conditions: [{type: 'if', expression: $$[$0-4], statements: $$[$0-2] }, {type: 'else', statements: $$[$0]}]}
 break;
 case 153:
- this.$ = $$[$0-3]; this.$.cases.push({ else: true, statements: $$[$0-1] }) 
+ this.$ = $$[$0-3]; this.$.cases.push({ else: true, statements: $$[$0-1] })
 break;
 case 155:
- this.$ = $$[$0-4]; this.$.values.push({ from: $$[$0-2], to: $$[$0] }) 
+ this.$ = $$[$0-4]; this.$.values.push({ from: $$[$0-2], to: $$[$0] })
 break;
 case 156:
- this.$ = { values: [$$[$0]] } 
+ this.$ = { values: [$$[$0]] }
 break;
 case 157:
- this.$ = { values: [{ from: $$[$0-2], to: $$[$0] }] } 
+ this.$ = { values: [{ from: $$[$0-2], to: $$[$0] }] }
 break;
 case 158:
- this.$ = $$[$0-4]; this.$.cases.push({condition: $$[$0-2], statements: $$[$0] }) 
+ this.$ = $$[$0-4]; this.$.cases.push({condition: $$[$0-2], statements: $$[$0] })
 break;
 case 159:
- this.$ = {cases: [{ condition: $$[$0-2], statements: $$[$0] }]} 
+ this.$ = {cases: [{ condition: $$[$0-2], statements: $$[$0] }]}
 break;
 case 161:
- this.$ = { ...$$[$0], type: 'variable_increment', pre: 1n, post: 0n } 
+ this.$ = { ...$$[$0], type: 'variable_increment', pre: 1n, post: 0n }
 break;
 case 162:
- this.$ = { ...$$[$0], type: 'variable_increment', pre: -1n, post: 0n } 
+ this.$ = { ...$$[$0], type: 'variable_increment', pre: -1n, post: 0n }
 break;
 case 163:
- this.$ = { ...$$[$0-1], type: 'variable_increment', pre: 0n, post: 1n } 
+ this.$ = { ...$$[$0-1], type: 'variable_increment', pre: 0n, post: 1n }
 break;
 case 164:
- this.$ = { ...$$[$0-1], type: 'variable_increment', pre: 0n, post: -1n } 
+ this.$ = { ...$$[$0-1], type: 'variable_increment', pre: 0n, post: -1n }
 break;
 case 169:
- this.$ = {...$$[$0], const: false} 
+ this.$ = {...$$[$0], const: false}
 break;
 case 170:
- this.$ = {...$$[$0], const: true } 
+ this.$ = {...$$[$0], const: true }
 break;
 case 171:
- this.$ = { type: 'variable_declaration', vtype: 'int', items: $$[$0].items } 
+ this.$ = { type: 'variable_declaration', vtype: 'int', items: $$[$0].items }
 break;
 case 172:
- this.$ = { type: 'variable_declaration', vtype: 'fe', items: $$[$0].items } 
+ this.$ = { type: 'variable_declaration', vtype: 'fe', items: $$[$0].items }
 break;
 case 173:
- this.$ = { type: 'variable_declaration', vtype: 'expr', items: $$[$0].items } 
+ this.$ = { type: 'variable_declaration', vtype: 'expr', items: $$[$0].items }
 break;
 case 174:
- this.$ = { type: 'variable_declaration', vtype: 'string', items: $$[$0].items } 
+ this.$ = { type: 'variable_declaration', vtype: 'string', items: $$[$0].items }
 break;
 case 175:
- this.$ = { type: 'variable_declaration', vtype: 'function', items: $$[$0].items } 
+ this.$ = { type: 'variable_declaration', vtype: 'function', items: $$[$0].items }
 break;
 case 176:
- this.$ = { type: 'variable_declaration', vtype: 'int', items: [$$[$0-2]], init: [$$[$0]] } 
+ this.$ = { type: 'variable_declaration', vtype: 'int', items: [$$[$0-2]], init: [$$[$0]] }
 break;
 case 177:
- this.$ = { type: 'variable_declaration', vtype: 'fe', items: [$$[$0-2]], init: [$$[$0]] } 
+ this.$ = { type: 'variable_declaration', vtype: 'fe', items: [$$[$0-2]], init: [$$[$0]] }
 break;
 case 178:
- this.$ = { type: 'variable_declaration', vtype: 'expr', items: [$$[$0-2]], init: [$$[$0]] } 
+ this.$ = { type: 'variable_declaration', vtype: 'expr', items: [$$[$0-2]], init: [$$[$0]] }
 break;
 case 179:
- this.$ = { type: 'variable_declaration', vtype: 'string', items: [$$[$0-2]], init: [$$[$0]] } 
+ this.$ = { type: 'variable_declaration', vtype: 'string', items: [$$[$0-2]], init: [$$[$0]] }
 break;
 case 180:
- this.$ = { type: 'variable_declaration', vtype: 'function', items: [$$[$0-2]], init: [$$[$0]] } 
+ this.$ = { type: 'variable_declaration', vtype: 'function', items: [$$[$0-2]], init: [$$[$0]] }
 break;
 case 181:
- this.$ = { type: 'variable_declaration', vtype: 'container', items: [$$[$0-2]], init: [$$[$0]] } 
+ this.$ = { type: 'variable_declaration', vtype: 'container', items: [$$[$0-2]], init: [$$[$0]] }
 break;
 case 182:
- this.$ = { type: 'variable_declaration', vtype: 'int', items: $$[$0-5].items, init: $$[$0-1] } 
+ this.$ = { type: 'variable_declaration', vtype: 'int', items: $$[$0-5].items, init: $$[$0-1] }
 break;
 case 183:
- this.$ = { type: 'variable_declaration', vtype: 'fe', items: $$[$0-5].items, init: $$[$0-1] } 
+ this.$ = { type: 'variable_declaration', vtype: 'fe', items: $$[$0-5].items, init: $$[$0-1] }
 break;
 case 184:
- this.$ = { type: 'variable_declaration', vtype: 'expr', items: $$[$0-5].items, init: $$[$0-1] } 
+ this.$ = { type: 'variable_declaration', vtype: 'expr', items: $$[$0-5].items, init: $$[$0-1] }
 break;
 case 185:
- this.$ = { type: 'variable_declaration', vtype: 'string', items: $$[$0-5].items, init: $$[$0-1] } 
+ this.$ = { type: 'variable_declaration', vtype: 'string', items: $$[$0-5].items, init: $$[$0-1] }
 break;
 case 186:
- this.$ = { type: 'variable_declaration', vtype: 'container', items: $$[$0-5].items, init: $$[$0-1] } 
+ this.$ = { type: 'variable_declaration', vtype: 'container', items: $$[$0-5].items, init: $$[$0-1] }
 break;
 case 187:
- this.$ = { dim: 1, lengths: [null]} 
+ this.$ = { dim: 1, lengths: [null]}
 break;
 case 188:
- this.$ = { dim: 1, lengths: [$$[$0-1]]} 
+ this.$ = { dim: 1, lengths: [$$[$0-1]]}
 break;
 case 189:
- this.$ = $$[$0-2]; ++this.$.dim; this.$.lengths.push(null) 
+ this.$ = $$[$0-2]; ++this.$.dim; this.$.lengths.push(null)
 break;
 case 190:
- this.$ = $$[$0-3]; ++this.$.dim; this.$.lengths.push($$[$0-1]) 
+ this.$ = $$[$0-3]; ++this.$.dim; this.$.lengths.push($$[$0-1])
 break;
 case 192: case 339:
- this.$ = { ...$$[$0-1], ...$$[$0] } 
+ this.$ = { ...$$[$0-1], ...$$[$0] }
 break;
 case 193:
- this.$ = $$[$0-2]; this.$.items.push({...$$[$0], _d_:1}); 
+ this.$ = $$[$0-2]; this.$.items.push({...$$[$0], _d_:1});
 break;
 case 194:
- this.$ = {items: [{...$$[$0], _d_:2}]} 
+ this.$ = {items: [{...$$[$0], _d_:2}]}
 break;
 case 195:
- this.$ = { type: 'return', value: null } 
+ this.$ = { type: 'return', value: null }
 break;
 case 196:
- this.$ = { type: 'return', value: $$[$0] } 
+ this.$ = { type: 'return', value: $$[$0] }
 break;
 case 197:
- this.$ = { type: 'return', values: $$[$0-1] } 
+ this.$ = { type: 'return', values: $$[$0-1] }
 break;
 case 198:
- this.$ = { type: 'assign' } 
+ this.$ = { type: 'assign' }
 break;
 case 199:
- this.$ = { type: 'increment' } 
+ this.$ = { type: 'increment' }
 break;
 case 200:
- this.$ = { type: 'substract' } 
+ this.$ = { type: 'substract' }
 break;
 case 201:
- this.$ = { type: 'product' } 
+ this.$ = { type: 'product' }
 break;
 case 202:
- this.$ = $$[$0-2]; this.$.names.push($$[$0-2]) 
+ this.$ = $$[$0-2]; this.$.names.push($$[$0-2])
 break;
 case 203:
- this.$ = $$[$0-1]; this.$.names.push({ type: 'ignore' }) 
+ this.$ = $$[$0-1]; this.$.names.push({ type: 'ignore' })
 break;
 case 204:
- this.$ = { names: [$$[$0]] } 
+ this.$ = { names: [$$[$0]] }
 break;
 case 205:
- this.$ = $$[$0-2] 
+ this.$ = $$[$0-2]
 break;
 case 206:
- this.$ = $$[$0-4]; this.$.names.push({ type: 'ignore' }) 
+ this.$ = $$[$0-4]; this.$.names.push({ type: 'ignore' })
 break;
 case 207:
- this.$ = {type: 'assign', name: $$[$0-2], value: $$[$0] }  
+ this.$ = {type: 'assign', name: $$[$0-2], value: $$[$0] }
 break;
 case 208:
- this.$ = {type: 'assign', name: $$[$0-4], value: $$[$0-2] } 
+ this.$ = {type: 'assign', name: $$[$0-4], value: $$[$0-2] }
 break;
 case 209:
- this.$ = { type: 'assign', assign: $$[$0-1].type, name: $$[$0-2], value: $$[$0] } 
+ this.$ = { type: 'assign', assign: $$[$0-1].type, name: $$[$0-2], value: $$[$0] }
 break;
 case 210:
- this.$ = { type: 'assign', name: $$[$0-2], value: $$[$0] } 
+ this.$ = { type: 'assign', name: $$[$0-2], value: $$[$0] }
 break;
 case 213:
- this.$ = { type: 'include', file: $$[$0] } 
+ this.$ = { type: 'include', file: $$[$0] }
 break;
 case 214:
- this.$ = { stage: $$[$0-1] } 
+ this.$ = { stage: $$[$0-1] }
 break;
 case 215:
- this.$ = { stage: DEFAULT_STAGE } 
+ this.$ = { stage: DEFAULT_STAGE }
 break;
 case 216:
- this.$ = { type: 'string', value: $$[$0] } 
+ this.$ = { type: 'string', value: $$[$0] }
 break;
 case 217:
- this.$ = { type: 'string', template: true, value: $$[$0] } 
+ this.$ = { type: 'string', template: true, value: $$[$0] }
 break;
 case 218:
- this.$ = {type: 'sequence', values: $$[$0-1].values} 
+ this.$ = {type: 'sequence', values: $$[$0-1].values}
 break;
 case 219:
- this.$ = {type: 'sequence', values: [{type: 'padding_seq', value: $$[$0-2]}] } 
+ this.$ = {type: 'sequence', values: [{type: 'padding_seq', value: $$[$0-2]}] }
 break;
 case 220:
- this.$ = {type: 'sequence', values: [{type: 'repeat_seq', value: $$[$0-3], times: $$[$0]}]} 
+ this.$ = {type: 'sequence', values: [{type: 'repeat_seq', value: $$[$0-3], times: $$[$0]}]}
 break;
 case 221:
- this.$ = {type: 'sequence', values: [{type: 'padding_seq', value: {type: 'repeat_seq', value: $$[$0-4], times: $$[$0-1]}}]} 
+ this.$ = {type: 'sequence', values: [{type: 'padding_seq', value: {type: 'repeat_seq', value: $$[$0-4], times: $$[$0-1]}}]}
 break;
 case 223:
- this.$ = $$[$0-4]; this.$.values.push({type: 'repeat_seq', value: $$[$0-2], times: $$[$0]}) 
+ this.$ = $$[$0-4]; this.$.values.push({type: 'repeat_seq', value: $$[$0-2], times: $$[$0]})
 break;
 case 224:
- this.$ = $$[$0-4]; this.$.values.push({type: 'arith_seq', t1: this.$.values.pop(), t2: $$[$0-2], tn: $$[$0]}) 
+ this.$ = $$[$0-4]; this.$.values.push({type: 'arith_seq', t1: this.$.values.pop(), t2: $$[$0-2], tn: $$[$0]})
 break;
 case 225:
- this.$ = $$[$0-4]; this.$.values.push({type: 'geom_seq', t1: this.$.values.pop(), t2: $$[$0-2], tn: $$[$0]}) 
+ this.$ = $$[$0-4]; this.$.values.push({type: 'geom_seq', t1: this.$.values.pop(), t2: $$[$0-2], tn: $$[$0]})
 break;
 case 226:
  this.$ = $$[$0-8]; this.$.values.push({type: 'arith_seq', t1: this.$.values.pop(),
                                    t2: {type: 'repeat_seq', value: $$[$0-6], times: $$[$0-4]},
-                                   tn: {type: 'repeat_seq', value: $$[$0-2], times: $$[$0]}}) 
+                                   tn: {type: 'repeat_seq', value: $$[$0-2], times: $$[$0]}})
 break;
 case 227:
  this.$ = $$[$0-8]; this.$.values.push({type: 'geom_seq', t1: this.$.values.pop(),
                                    t2: {type: 'repeat_seq', value: $$[$0-6], times: $$[$0-4]},
-                                   tn: {type: 'repeat_seq', value: $$[$0-2], times: $$[$0]}}) 
+                                   tn: {type: 'repeat_seq', value: $$[$0-2], times: $$[$0]}})
 break;
 case 228:
- this.$ = $$[$0-3]; this.$.values.push({type: 'arith_seq', t1: this.$.values.pop(), t2: $$[$0-1], tn: false}) 
+ this.$ = $$[$0-3]; this.$.values.push({type: 'arith_seq', t1: this.$.values.pop(), t2: $$[$0-1], tn: false})
 break;
 case 229:
- this.$ = $$[$0-3]; this.$.values.push({type: 'geom_seq', t1: this.$.values.pop(), t2: $$[$0-1], tn: false}) 
+ this.$ = $$[$0-3]; this.$.values.push({type: 'geom_seq', t1: this.$.values.pop(), t2: $$[$0-1], tn: false})
 break;
 case 230:
  this.$ = $$[$0-5]; this.$.values.push({type: 'arith_seq', t1: this.$.values.pop(),
                                    t2: {type: 'repeat_seq', value: $$[$0-3], times: $$[$0-1]},
-                                   tn: false}) 
+                                   tn: false})
 break;
 case 231:
  this.$ = $$[$0-5]; this.$.values.push({type: 'geom_seq', t1: this.$.values.pop(),
                                    t2: {type: 'repeat_seq', value: $$[$0-3], times: $$[$0-1]},
-                                   tn: false}) 
+                                   tn: false})
 break;
 case 232:
- this.$ = { type: 'seq_list', values: [$$[$0]] } 
+ this.$ = { type: 'seq_list', values: [$$[$0]] }
 break;
 case 233:
- this.$ = { type: 'seq_list', values: [{type: 'repeat_seq', value: $$[$0-2], times: $$[$0]}] } 
+ this.$ = { type: 'seq_list', values: [{type: 'repeat_seq', value: $$[$0-2], times: $$[$0]}] }
 break;
 case 234:
- this.$ = {type: 'repeat_seq', value: $$[$0-2], times: $$[$0]} 
+ this.$ = {type: 'repeat_seq', value: $$[$0-2], times: $$[$0]}
 break;
 case 235:
- this.$ = {type: 'range_seq', from: $$[$0-2], to: $$[$0]} 
+ this.$ = {type: 'range_seq', from: $$[$0-2], to: $$[$0]}
 break;
 case 236:
- this.$ = {type: 'range_seq', from: $$[$0-4], to: $$[$0-2], times: $$[$0]} 
+ this.$ = {type: 'range_seq', from: $$[$0-4], to: $$[$0-2], times: $$[$0]}
 break;
 case 237:
  this.$ = {type: 'range_seq', from: $$[$0-4], to: $$[$0], times: $$[$0-2]}
@@ -592,301 +592,301 @@ case 238:
  this.$ = {type: 'range_seq', from: $$[$0-6], to: $$[$0-2], times: $$[$0-4], toTimes: $$[$0]}
 break;
 case 239:
- this.$ = {type: 'padding_seq', value: $$[$0-1]} 
+ this.$ = {type: 'padding_seq', value: $$[$0-1]}
 break;
 case 240:
- this.$ = {type: 'seq_list', values:  [$$[$0-1]]} 
+ this.$ = {type: 'seq_list', values:  [$$[$0-1]]}
 break;
 case 242:
- this.$ = {values: []} 
+ this.$ = {values: []}
 break;
 case 244:
- this.$ = $$[$0-4]; this.$.values.push({ type: 'expression_list', values: $$[$0-1].values }) 
+ this.$ = $$[$0-4]; this.$.values.push({ type: 'expression_list', values: $$[$0-1].values })
 break;
 case 245:
- this.$ = { type: 'expression_list', values: $$[$0-1].values } 
+ this.$ = { type: 'expression_list', values: $$[$0-1].values }
 break;
 case 246:
- this.$ = { type: 'expression_list', values: [$$[$0]] } 
+ this.$ = { type: 'expression_list', values: [$$[$0]] }
 break;
 case 247:
- this.$ = $$[$0-3]; this.$.values.push({ type: 'append', value: $$[$0] }) 
+ this.$ = $$[$0-3]; this.$.values.push({ type: 'append', value: $$[$0] })
 break;
 case 249:
- this.$ = { type: 'expression_list',  values: [{ type: 'append', value: $$[$0]}] } 
+ this.$ = { type: 'expression_list',  values: [{ type: 'append', value: $$[$0]}] }
 break;
 case 250:
- this.$ = { type: 'expression_list',  values: [$$[$0]] } 
+ this.$ = { type: 'expression_list',  values: [$$[$0]] }
 break;
 case 251:
- this.$ = { dim: 1, lengths: [null] } 
+ this.$ = { dim: 1, lengths: [null] }
 break;
 case 252:
- this.$ = { dim: 1, lengths: [$$[$0-1]] } 
+ this.$ = { dim: 1, lengths: [$$[$0-1]] }
 break;
 case 253:
- this.$ = { ...$$[$0-2], dim: $$[$0-2].dim + 1, lengths: [...$$[$0-2].lengths, null] } 
+ this.$ = { ...$$[$0-2], dim: $$[$0-2].dim + 1, lengths: [...$$[$0-2].lengths, null] }
 break;
 case 254:
- this.$ = { ...$$[$0-3], dim: $$[$0-3].dim + 1, lengths: [...$$[$0-3].lengths, $$[$0-1]] } 
+ this.$ = { ...$$[$0-3], dim: $$[$0-3].dim + 1, lengths: [...$$[$0-3].lengths, $$[$0-1]] }
 break;
 case 256:
- this.$ = {...$$[$0-1], ...$$[$0]} 
+ this.$ = {...$$[$0-1], ...$$[$0]}
 break;
 case 257: case 345: case 347: case 351: case 352:
- this.$ = { name: $$[$0] } 
+ this.$ = { name: $$[$0] }
 break;
 case 258:
- this.$ = { name: $$[$0], reference: true } 
+ this.$ = { name: $$[$0], reference: true }
 break;
 case 259:
- this.$ = { name: $$[$0], template: true } 
+ this.$ = { name: $$[$0], template: true }
 break;
 case 260:
- this.$ = { name: 'air.'+$$[$0] } 
+ this.$ = { name: 'air.'+$$[$0] }
 break;
 case 261:
- this.$ = { name: 'air.'+$$[$0], template: true } 
+ this.$ = { name: 'air.'+$$[$0], template: true }
 break;
 case 262:
- this.$ = { items: [ ...$$[$0-2].items, $$[$0] ] } 
+ this.$ = { items: [ ...$$[$0-2].items, $$[$0] ] }
 break;
 case 263:
- this.$ = { items: [$$[$0]] } 
+ this.$ = { items: [$$[$0]] }
 break;
 case 264:
- this.$ = { type: 'col_declaration', items: $$[$0].items, stage: $$[$0-1].stage }; 
+ this.$ = { type: 'col_declaration', items: $$[$0].items, stage: $$[$0-1].stage };
 break;
 case 265:
- this.$ = { type: 'col_declaration', items: [$$[$0-2]], stage: $$[$0-3].stage, init: $$[$0] } 
+ this.$ = { type: 'col_declaration', items: [$$[$0-2]], stage: $$[$0-3].stage, init: $$[$0] }
 break;
 case 266:
- this.$ = { type: 'witness_col_declaration', items: $$[$0].items, stage: $$[$0-1].stage } 
+ this.$ = { type: 'witness_col_declaration', items: $$[$0].items, stage: $$[$0-1].stage }
 break;
 case 267:
- this.$ = { type: 'fixed_col_declaration', items: $$[$0].items, stage: $$[$0-1].stage } 
+ this.$ = { type: 'fixed_col_declaration', items: $$[$0].items, stage: $$[$0-1].stage }
 break;
 case 268:
- this.$ = { type: 'fixed_col_declaration', items: [$$[$0-2]], stage: $$[$0-3].stage, init: $$[$0] } 
+ this.$ = { type: 'fixed_col_declaration', items: [$$[$0-2]], stage: $$[$0-3].stage, init: $$[$0] }
 break;
 case 269:
- this.$ = { type: 'fixed_col_declaration',  items: [$$[$0-2]], stage: $$[$0-3].stage, sequence: $$[$0] } 
+ this.$ = { type: 'fixed_col_declaration',  items: [$$[$0-2]], stage: $$[$0-3].stage, sequence: $$[$0] }
 break;
 case 270:
- this.$ = { type: 'challenge_declaration', items: $$[$0].items, stage: $$[$0-1].stage } 
+ this.$ = { type: 'challenge_declaration', items: $$[$0].items, stage: $$[$0-1].stage }
 break;
 case 271:
- this.$ = { type: 'public_declaration', items: [$$[$0-2]], init: $$[$0] } 
+ this.$ = { type: 'public_declaration', items: [$$[$0-2]], init: $$[$0] }
 break;
 case 272:
- this.$ = { type: 'public_declaration', items: $$[$0].items } 
+ this.$ = { type: 'public_declaration', items: $$[$0].items }
 break;
 case 273:
- this.$ = { type: 'public_table_declaration', aggregateType: $$[$0-12], aggregateFunction: $$[$0-10], name: $$[$0-6], args: $$[$0-8], cols: $$[$0-4], rows: $$[$0-1]} 
+ this.$ = { type: 'public_table_declaration', aggregateType: $$[$0-12], aggregateFunction: $$[$0-10], name: $$[$0-6], args: $$[$0-8], cols: $$[$0-4], rows: $$[$0-1]}
 break;
 case 274:
- this.$ = { type: 'public_table_declaration', aggregateType: $$[$0-10], aggregateFunction: $$[$0-8], name: $$[$0-6], args: [], cols: $$[$0-4], rows: $$[$0-1]} 
+ this.$ = { type: 'public_table_declaration', aggregateType: $$[$0-10], aggregateFunction: $$[$0-8], name: $$[$0-6], args: [], cols: $$[$0-4], rows: $$[$0-1]}
 break;
 case 275:
- this.$ = { type: 'proof_value_declaration', items: $$[$0].items } 
+ this.$ = { type: 'proof_value_declaration', items: $$[$0].items }
 break;
 case 276:
- this.$ = { type: 'subproof_value_declaration', aggregateType: $$[$0-2], items: $$[$0].items } 
+ this.$ = { type: 'subproof_value_declaration', aggregateType: $$[$0-2], items: $$[$0].items }
 break;
 case 277:
- this.$ = { type: 'subproof_definition', aggregate: true, name: $$[$0-6], rows: $$[$0-4], statements: $$[$0-1].statements } 
+ this.$ = { type: 'subproof_definition', aggregate: true, name: $$[$0-6], rows: $$[$0-4], statements: $$[$0-1].statements }
 break;
 case 278:
- this.$ = { type: 'subproof_definition', aggregate: false, name: $$[$0-6], rows: $$[$0-4], statements: $$[$0-1].statements } 
+ this.$ = { type: 'subproof_definition', aggregate: false, name: $$[$0-6], rows: $$[$0-4], statements: $$[$0-1].statements }
 break;
 case 279:
- this.$ = { type: 'subproof_block', aggregate: false, name: $$[$0-3], statements: $$[$0-1].statements } 
+ this.$ = { type: 'subproof_block', aggregate: false, name: $$[$0-3], statements: $$[$0-1].statements }
 break;
 case 280:
- this.$ = { type: 'constant_definition', name: $$[$0-2], value: $$[$0] } 
+ this.$ = { type: 'constant_definition', name: $$[$0-2], value: $$[$0] }
 break;
 case 281:
- this.$ = { type: "constant_definition", name: $$[$0-3], sequence: $$[$0], ...$$[$0-2] } 
+ this.$ = { type: "constant_definition", name: $$[$0-3], sequence: $$[$0], ...$$[$0-2] }
 break;
 case 282:
- this.$ = $$[$0-2].insert('eq', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('eq', ExpressionFactory.fromObject($$[$0]))
 break;
 case 283:
- this.$ = $$[$0-2].insert('ne', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('ne', ExpressionFactory.fromObject($$[$0]))
 break;
 case 284:
- this.$ = $$[$0-2].insert('lt', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('lt', ExpressionFactory.fromObject($$[$0]))
 break;
 case 285:
- this.$ = $$[$0-2].insert('gt', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('gt', ExpressionFactory.fromObject($$[$0]))
 break;
 case 286:
- this.$ = $$[$0-2].insert('le', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('le', ExpressionFactory.fromObject($$[$0]))
 break;
 case 287:
- this.$ = $$[$0-2].insert('ge', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('ge', ExpressionFactory.fromObject($$[$0]))
 break;
 case 288:
- this.$ = $$[$0-2].insert('in', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('in', ExpressionFactory.fromObject($$[$0]))
 break;
 case 289:
- this.$ = $$[$0-2].insert('is', ExpressionFactory.fromObject({op: 'type', vtype: $$[$0].type, dim: $$[$0].dim})); 
+ this.$ = $$[$0-2].insert('is', ExpressionFactory.fromObject({op: 'type', vtype: $$[$0].type, dim: $$[$0].dim}));
 break;
 case 290:
- this.$ = $$[$0-2].insert('and', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('and', ExpressionFactory.fromObject($$[$0]))
 break;
 case 291:
- this.$ = $$[$0-4].insert('if', ExpressionFactory.fromObjects($$[$0-2], $$[$0])) 
+ this.$ = $$[$0-4].insert('if', ExpressionFactory.fromObjects($$[$0-2], $$[$0]))
 break;
 case 292:
- this.$ = $$[$0-2].insert('band', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('band', ExpressionFactory.fromObject($$[$0]))
 break;
 case 293:
- this.$ = $$[$0-2].insert('bor', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('bor', ExpressionFactory.fromObject($$[$0]))
 break;
 case 294:
- this.$ = $$[$0-2].insert('bxor', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('bxor', ExpressionFactory.fromObject($$[$0]))
 break;
 case 295:
- this.$ = $$[$0-2].insert('or', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('or', ExpressionFactory.fromObject($$[$0]))
 break;
 case 296:
- this.$ = $$[$0-2].insert('shl', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('shl', ExpressionFactory.fromObject($$[$0]))
 break;
 case 297:
- this.$ = $$[$0-2].insert('shr', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('shr', ExpressionFactory.fromObject($$[$0]))
 break;
 case 298:
- this.$ = $$[$0-1].insert('not') 
+ this.$ = $$[$0-1].insert('not')
 break;
 case 299:
- this.$ = $$[$0-2].insert('add', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('add', ExpressionFactory.fromObject($$[$0]))
 break;
 case 300:
- this.$ = $$[$0-2].insert('sub', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('sub', ExpressionFactory.fromObject($$[$0]))
 break;
 case 301:
- this.$ = $$[$0-2].insert('mul', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('mul', ExpressionFactory.fromObject($$[$0]))
 break;
 case 302:
- this.$ = $$[$0-2].insert('mod', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('mod', ExpressionFactory.fromObject($$[$0]))
 break;
 case 303:
- this.$ = $$[$0-2].insert('div', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('div', ExpressionFactory.fromObject($$[$0]))
 break;
 case 304:
- this.$ = $$[$0-2].insert('intdiv', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('intdiv', ExpressionFactory.fromObject($$[$0]))
 break;
 case 305:
- this.$ = $$[$0-2].insert('pow', ExpressionFactory.fromObject($$[$0])) 
+ this.$ = $$[$0-2].insert('pow', ExpressionFactory.fromObject($$[$0]))
 break;
 case 307:
- this.$ = $$[$0].insert('neg') 
+ this.$ = $$[$0].insert('neg')
 break;
 case 308:
- this.$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$$[$0] }) 
+ this.$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$$[$0] })
 break;
 case 309:
- this.$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$$[$0], inc: 'pre'}) 
+ this.$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$$[$0], inc: 'pre'})
 break;
 case 310:
- this.$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$$[$0], dec: 'pre'}) 
+ this.$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$$[$0], dec: 'pre'})
 break;
 case 311:
- this.$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$$[$0-1], inc: 'post'}) 
+ this.$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$$[$0-1], inc: 'post'})
 break;
 case 312:
- this.$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$$[$0-1], dec: 'post'}) 
+ this.$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$$[$0-1], dec: 'post'})
 break;
 case 313:
- this.$ = ExpressionFactory.fromObject({ type: 'expr', op: 'number', value: BigInt($$[$0])}) 
+ this.$ = ExpressionFactory.fromObject({ type: 'expr', op: 'number', value: BigInt($$[$0])})
 break;
 case 314:
- this.$ = ExpressionFactory.fromObject({...$$[$0], op: 'string'}) 
+ this.$ = ExpressionFactory.fromObject({...$$[$0], op: 'string'})
 break;
 case 316: case 318:
- this.$ = ExpressionFactory.fromObject({...$$[$0]}) 
+ this.$ = ExpressionFactory.fromObject({...$$[$0]})
 break;
 case 317:
- this.$ = ExpressionFactory.fromObject({position: $$[$0], op: 'positional_param'}) 
+ this.$ = ExpressionFactory.fromObject({position: $$[$0], op: 'positional_param'})
 break;
 case 319:
- this.$ = { op: 'cast', cast: 'int', value: $$[$0-1]} 
+ this.$ = { op: 'cast', cast: 'int', value: $$[$0-1]}
 break;
 case 320:
- this.$ = { op: 'cast', cast: 'fe', value: $$[$0-1] } 
+ this.$ = { op: 'cast', cast: 'fe', value: $$[$0-1] }
 break;
 case 321:
- this.$ = { op: 'cast', cast: 'expr', value: $$[$0-1] } 
+ this.$ = { op: 'cast', cast: 'expr', value: $$[$0-1] }
 break;
 case 322:
- this.$ = { op: 'cast', cast: 'col', value: $$[$0-1] } 
+ this.$ = { op: 'cast', cast: 'col', value: $$[$0-1] }
 break;
 case 323:
- this.$ = { op: 'cast', cast: 'string', value: $$[$0-1] } 
+ this.$ = { op: 'cast', cast: 'string', value: $$[$0-1] }
 break;
 case 324:
- this.$ = { ...$$[$0-3], op: 'cast', cast: 'int', value: $$[$0-1] } 
+ this.$ = { ...$$[$0-3], op: 'cast', cast: 'int', value: $$[$0-1] }
 break;
 case 325:
- this.$ = { ...$$[$0-3], op: 'cast', cast: 'fe', value: $$[$0-1] } 
+ this.$ = { ...$$[$0-3], op: 'cast', cast: 'fe', value: $$[$0-1] }
 break;
 case 326:
- this.$ = { ...$$[$0-3], op: 'cast', cast: 'expr', value: $$[$0-1] } 
+ this.$ = { ...$$[$0-3], op: 'cast', cast: 'expr', value: $$[$0-1] }
 break;
 case 327:
- this.$ = { ...$$[$0-3], op: 'cast', cast: 'col', value: $$[$0-1] } 
+ this.$ = { ...$$[$0-3], op: 'cast', cast: 'col', value: $$[$0-1] }
 break;
 case 328:
- this.$ = { ...$$[$0-3], op: 'cast', cast: 'string', value: $$[$0-1] } 
+ this.$ = { ...$$[$0-3], op: 'cast', cast: 'string', value: $$[$0-1] }
 break;
 case 329:
- this.$ = { ...$$[$0-1], next:1 } 
+ this.$ = { ...$$[$0-1], next:1 }
 break;
 case 330:
- this.$ = { ...$$[$0-2], next:$$[$0] } 
+ this.$ = { ...$$[$0-2], next:$$[$0] }
 break;
 case 331:
- this.$ = { ...$$[$0-4], next:$$[$0-1] } 
+ this.$ = { ...$$[$0-4], next:$$[$0-1] }
 break;
 case 332:
- this.$ = { ...$$[$0-2], next: ExpressionFactory.fromObject({position: $$[$0], op: 'positional_param'}) } 
+ this.$ = { ...$$[$0-2], next: ExpressionFactory.fromObject({position: $$[$0], op: 'positional_param'}) }
 break;
 case 333:
- this.$ = { ...$$[$0], prior:1 } 
+ this.$ = { ...$$[$0], prior:1 }
 break;
 case 334:
- this.$ = { ...$$[$0], prior:$$[$0-2] } 
+ this.$ = { ...$$[$0], prior:$$[$0-2] }
 break;
 case 335:
- this.$ = { ...$$[$0], prior:$$[$0-3] } 
+ this.$ = { ...$$[$0], prior:$$[$0-3] }
 break;
 case 336:
- this.$ = { ...$$[$0], prior: ExpressionFactory.fromObject({position: $$[$0-2], op: 'positional_param'}) } 
+ this.$ = { ...$$[$0], prior: ExpressionFactory.fromObject({position: $$[$0-2], op: 'positional_param'}) }
 break;
 case 338:
- this.$ = { ...$$[$0], dim: 0 } 
+ this.$ = { ...$$[$0], dim: 0 }
 break;
 case 340:
- this.$ = { dim: $$[$0-3].dim + 1, indexes: [...$$[$0-3].indexes, $$[$0-1]] } 
+ this.$ = { dim: $$[$0-3].dim + 1, indexes: [...$$[$0-3].indexes, $$[$0-1]] }
 break;
 case 341:
- this.$ = { dim: 1, indexes: [$$[$0-1]]} 
+ this.$ = { dim: 1, indexes: [$$[$0-1]]}
 break;
 case 342:
- this.$ = { name: 'air.' + $$[$0].name } 
+ this.$ = { name: 'air.' + $$[$0].name }
 break;
 case 343:
- this.$ = { name: 'subproof.' + $$[$0].name } 
+ this.$ = { name: 'subproof.' + $$[$0].name }
 break;
 case 344:
- this.$ = { name: 'proof.' + $$[$0].name } 
+ this.$ = { name: 'proof.' + $$[$0].name }
 break;
 case 346: case 348:
- this.$ = { name: $$[$0-2] + '.' + $$[$0].name } 
+ this.$ = { name: $$[$0-2] + '.' + $$[$0].name }
 break;
 case 349: case 350:
- this.$ = { name: $$[$0-2].name + '.' + $$[$0] } 
+ this.$ = { name: $$[$0-2].name + '.' + $$[$0] }
 break;
 }
 },
@@ -1395,211 +1395,211 @@ options: {},
 performAction: function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {
 var YYSTATE=YY_START;
 switch($avoiding_name_collisions) {
-case 0: /* skip whitespace */ 
+case 0: /* skip whitespace */
 break;
-case 1: /* console.log("MULTILINE COMMENT: "+yy_.yytext); */  
+case 1: /* console.log("MULTILINE COMMENT: "+yy_.yytext); */
 break;
-case 2: /* console.log("SINGLE LINE COMMENT: "+yy_.yytext); */ 
+case 2: /* console.log("SINGLE LINE COMMENT: "+yy_.yytext); */
 break;
-case 3: return 74; 
+case 3: return 74;
 break;
-case 4: return 75; 
+case 4: return 75;
 break;
-case 5: return 76; 
+case 5: return 76;
 break;
-case 6: return 25; 
+case 6: return 25;
 break;
-case 7: return 'DECLARE'; 
+case 7: return 'DECLARE';
 break;
-case 8: return 22; 
+case 8: return 22;
 break;
-case 9: return 26; 
+case 9: return 26;
 break;
-case 10: return 137; 
+case 10: return 137;
 break;
-case 11: return 107; 
+case 11: return 107;
 break;
-case 12: return 161; 
+case 12: return 161;
 break;
-case 13: return 83; 
+case 13: return 83;
 break;
-case 14: return 82; 
+case 14: return 82;
 break;
-case 15: return 154 
+case 15: return 154
 break;
-case 16: return 73 
+case 16: return 73
 break;
-case 17: return 79 
+case 17: return 79
 break;
-case 18: return 80 
+case 18: return 80
 break;
-case 19: return 62 
+case 19: return 62
 break;
-case 20: return 95 
+case 20: return 95
 break;
-case 21: return 32 
+case 21: return 32
 break;
-case 22: return 70 
+case 22: return 70
 break;
-case 23: return 71 
+case 23: return 71
 break;
-case 24: return 72 
+case 24: return 72
 break;
-case 25: return 78 
+case 25: return 78
 break;
-case 26: return 77 
+case 26: return 77
 break;
-case 27: return 104 
+case 27: return 104
 break;
-case 28: return 108 
+case 28: return 108
 break;
-case 29: return 109 
+case 29: return 109
 break;
-case 30: return 101 
+case 30: return 101
 break;
-case 31: return 100 
+case 31: return 100
 break;
-case 32: return 113 
+case 32: return 113
 break;
-case 33: return 'ELSEIF' 
+case 33: return 'ELSEIF'
 break;
-case 34: return 114 
+case 34: return 114
 break;
-case 35: return 111 
+case 35: return 111
 break;
-case 36: return 119 
+case 36: return 119
 break;
-case 37: return 116 
+case 37: return 116
 break;
-case 38: return 46 
+case 38: return 46
 break;
-case 39: return 153 
+case 39: return 153
 break;
-case 40: return 140 
+case 40: return 140
 break;
-case 41: return 110 
+case 41: return 110
 break;
-case 42: return 96 
+case 42: return 96
 break;
-case 43: return 54 
+case 43: return 54
 break;
-case 44: return 61 
+case 44: return 61
 break;
-case 45: return 53 
+case 45: return 53
 break;
-case 46: return 129 
+case 46: return 129
 break;
-case 47: return 42 
+case 47: return 42
 break;
-case 48: return 43 
+case 48: return 43
 break;
-case 49: return 44 
+case 49: return 44
 break;
-case 50: return 146 
+case 50: return 146
 break;
-case 51: return 147 
+case 51: return 147
 break;
-case 52: return 65 
+case 52: return 65
 break;
-case 53: return 118 
+case 53: return 118
 break;
-case 54: yy_.yytext = yy_.yytext.replace(/\_/g, ""); return 141; 
+case 54: yy_.yytext = yy_.yytext.replace(/\_/g, ""); return 141;
 break;
-case 55: yy_.yytext = yy_.yytext.slice(1,-1); return 142; 
+case 55: yy_.yytext = yy_.yytext.slice(1,-1); return 142;
 break;
-case 56: yy_.yytext = yy_.yytext.slice(1,-1); return 143; 
+case 56: yy_.yytext = yy_.yytext.slice(1,-1); return 143;
 break;
-case 57: return 27; 
+case 57: return 27;
 break;
-case 58: yy_.yytext = yy_.yytext.slice(1); return 68; 
+case 58: yy_.yytext = yy_.yytext.slice(1); return 68;
 break;
-case 59: yy_.yytext = yy_.yytext.slice(1); return 50; 
+case 59: yy_.yytext = yy_.yytext.slice(1); return 50;
 break;
-case 60: yy_.yytext = yy_.yytext.slice(1); return 178; 
+case 60: yy_.yytext = yy_.yytext.slice(1); return 178;
 break;
-case 61: return 177; 
+case 61: return 177;
 break;
-case 62: return 121; 
+case 62: return 121;
 break;
-case 63: return 123; 
+case 63: return 123;
 break;
-case 64: return 131; 
+case 64: return 131;
 break;
-case 65: return 132; 
+case 65: return 132;
 break;
-case 66: return 133; 
+case 66: return 133;
 break;
-case 67: return 171; 
+case 67: return 171;
 break;
-case 68: return 172; 
+case 68: return 172;
 break;
-case 69: return 173; 
+case 69: return 173;
 break;
-case 70: return "'"; 
+case 70: return "'";
 break;
-case 71: return "?"; 
+case 71: return "?";
 break;
-case 72: return "%"; 
+case 72: return "%";
 break;
-case 73: return "\\\\"; 
+case 73: return "\\\\";
 break;
-case 74: return "/"; 
+case 74: return "/";
 break;
-case 75: return 8; 
+case 75: return 8;
 break;
-case 76: return 64; 
+case 76: return 64;
 break;
-case 77: return 151; 
+case 77: return 151;
 break;
-case 78: return 162; 
+case 78: return 162;
 break;
-case 79: return 167; 
+case 79: return 167;
 break;
-case 80: return 164; 
+case 80: return 164;
 break;
-case 81: return 165; 
+case 81: return 165;
 break;
-case 82: return 166; 
+case 82: return 166;
 break;
-case 83: return 168; 
+case 83: return 168;
 break;
-case 84: return 169; 
+case 84: return 169;
 break;
-case 85: return 159; 
+case 85: return 159;
 break;
-case 86: return 160; 
+case 86: return 160;
 break;
-case 87: return 157; 
+case 87: return 157;
 break;
-case 88: return 158; 
+case 88: return 158;
 break;
-case 89: return 86; 
+case 89: return 87;
 break;
-case 90: return 156; 
+case 90: return 156;
 break;
-case 91: return 155; 
+case 91: return 155;
 break;
-case 92: return 127; 
+case 92: return 127;
 break;
-case 93: return 47; 
+case 93: return 47;
 break;
-case 94: return 49; 
+case 94: return 49;
 break;
-case 95: return 57; 
+case 95: return 57;
 break;
-case 96: return 59; 
+case 96: return 59;
 break;
-case 97: return 29; 
+case 97: return 29;
 break;
-case 98: return 31; 
+case 98: return 31;
 break;
-case 99: return '::'; 
+case 99: return '::';
 break;
-case 100: return 56; 
+case 100: return 56;
 break;
-case 101: return 170; 
+case 101: return 170;
 break;
-case 102: return 6; 
+case 102: return 6;
 break;
 case 103: console.log("INVALID: " + yy_.yytext); return 'INVALID'
 break;

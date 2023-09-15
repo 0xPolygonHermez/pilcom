@@ -4,26 +4,33 @@ const fs = require("fs");
 const version = require("../package").version;
 const tty = require('tty');
 
-const { importPolynomials } = require("./binfiles.js");
-
 const { compile, verifyPil, newConstantPolsArray, newCommitPolsArray } = require("../index");
 
 const { F1Field } = require("ffjavascript");
+const { getRoots } = require("./utils");
 
 const argv = require("yargs")
     .version(version)
-    .usage("main_pilverifier.js <commit.bin> -p <input.pil> [-j <input_pil.json>] -c <constant.bin> [-u <publics.json>]")
+    .usage("main_pilverifier.js <commit.bin> -p <input.pil> [-j <input_pil.json>] -c <constant.bin> [-u <publics.json>] [--field]")
     .alias("p", "pil")
     .alias("j", "pil-json")
     .alias("c", "constant")
     .alias("P", "config")
     .alias("v", "verbose")
     .alias("u", "publics")
+    .string("field")
     .argv;
 
 async function run() {
 
-    const F = new F1Field("0xFFFFFFFF00000001");
+    let F;
+    if(argv.field) {
+        F = new F1Field(argv.field);
+        if(F.p === 18446744069414584321n) F.w = getRoots(F);
+    } else {
+        F = new F1Field("0xFFFFFFFF00000001");
+        F.w = getRoots(F);
+    }
 
     let commitFile;
     if (argv._.length == 0) {
@@ -61,8 +68,8 @@ async function run() {
 
     const n = pil.references[Object.keys(pil.references)[0]].polDeg;
 
-    const constPols =  newConstantPolsArray(pil);
-    const cmPols =  newCommitPolsArray(pil);
+    const constPols =  newConstantPolsArray(pil, F);
+    const cmPols =  newCommitPolsArray(pil, F);
 
     await constPols.loadFromFile(constantFile);
     await cmPols.loadFromFile(commitFile);
@@ -86,8 +93,3 @@ run().then(()=> {
     console.log(err.stack);
     process.exit(1);
 });
-
-exports.log2 = function log2( V )
-{
-    return( ( ( V & 0xFFFF0000 ) !== 0 ? ( V &= 0xFFFF0000, 16 ) : 0 ) | ( ( V & 0xFF00FF00 ) !== 0 ? ( V &= 0xFF00FF00, 8 ) : 0 ) | ( ( V & 0xF0F0F0F0 ) !== 0 ? ( V &= 0xF0F0F0F0, 4 ) : 0 ) | ( ( V & 0xCCCCCCCC ) !== 0 ? ( V &= 0xCCCCCCCC, 2 ) : 0 ) | ( ( V & 0xAAAAAAAA ) !== 0 ) );
-}

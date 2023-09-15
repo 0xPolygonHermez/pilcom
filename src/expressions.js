@@ -3,6 +3,7 @@ const LabelRanges = require('./label_ranges.js');
 const Expression = require('./expression.js');
 const WitnessCol = require('./expression_items/witness_col.js');
 const NonRuntimeEvaluable = require('./non_runtime_evaluable.js');
+
 module.exports = class Expressions {
     constructor () {
         this.expressions = [];
@@ -340,6 +341,7 @@ module.exports = class Expressions {
         for (let id = 0; id < this.expressions.length; ++id) {
             if (typeof this.packedIds[id] !== 'undefined') continue;    // already packed
             const packedId = this.expressions[id].pack(container, options);
+            // packedId === false, means directly was a alone term.
             this.packedIds[id] = packedId;
         }
     }

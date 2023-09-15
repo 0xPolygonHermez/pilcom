@@ -1,79 +1,153 @@
+const { F1Field, BigBuffer: BigBufferFr } = require("ffjavascript");
 const fs= require("fs");
+const fastFile = require("fastfile");
+const { BigBuffer } = require("./bigbuffer");
+const { getRoots } = require("./utils");
 
-function newConstantPolsArray(pil) {
-    const pa = new PolsArray(pil, "constant");
+
+function setValueMultiArray(arr, indexes, value) {
+    if (indexes.length === 1) {
+        arr[indexes[0]] = value;
+    } else {
+        const nextIndex = indexes[0];
+        if (!Array.isArray(arr[nextIndex])) arr[nextIndex] = [];
+        setValueMultiArray(arr[nextIndex], indexes.slice(1), value);
+    } 
+}
+
+function newConstantPolsArray(pil, F) {
+    if(!F) F = new F1Field("0xFFFFFFFF00000001");
+    if(F.p === 18446744069414584321n) F.w = getRoots(F);
+	
+    const fixedSymbols = [];
+    for (const polRef in pil.references) {
+        const polInfo = pil.references[polRef];
+        if(polInfo.type !== "constP") continue;
+        if(!polInfo.isArray) {
+            fixedSymbols.push({name: polRef, id: polInfo.id, idx: []});
+        } else {
+            for(let i=0; i < polInfo.len; ++i) {
+                fixedSymbols.push({name: polRef, id: polInfo.id+i, idx: [i]});
+            }
+        }
+    }
+
+    const degree = pil.references[Object.keys(pil.references)[0]].polDeg;
+    const pa = new PolsArray(fixedSymbols, degree, "constant", F);
     return pa;
 }
 
-function newCommitPolsArray(pil) {
-    const pa = new PolsArray(pil, "commit");
+function newCommitPolsArray(pil, F) {
+    if(!F) F = new F1Field("0xFFFFFFFF00000001");
+    if(F.p === 18446744069414584321n) F.w = getRoots(F);
+
+    const witnessSymbols = [];
+    for (const polRef in pil.references) {
+        const polInfo = pil.references[polRef];
+        if(polInfo.type !== "cmP") continue;
+        if(!polInfo.isArray) {
+            witnessSymbols.push({name: polRef, id: polInfo.id, idx: []});
+        } else {
+            for(let i=0; i < polInfo.len; ++i) {
+                witnessSymbols.push({name: polRef, id: polInfo.id+i, idx: [i]});
+            }
+        }
+    }
+
+    const degree = pil.references[Object.keys(pil.references)[0]].polDeg;
+    const pa = new PolsArray(witnessSymbols, degree, "commit", F);
+    return pa;
+}
+
+function generateMultiArrayIndexes(symbols, name, lengths, polId, indexes) {
+    if (indexes.length === lengths.length) {
+        symbols.push({ name, idx: indexes, id: polId });
+        return polId + 1;
+    }
+
+    for (let i = 0; i < lengths[indexes.length]; i++) {
+        polId = generateMultiArrayIndexes(symbols, name, lengths, polId, [...indexes, i]);
+    }
+
+    return polId; 
+}
+
+function newConstantPolsArrayPil2(symbols, degree, F) {
+    if(!F) F = new F1Field("0xFFFFFFFF00000001");
+    if(F.p === 18446744069414584321n) F.w = getRoots(F);
+
+    const fixedSymbols = [];
+    for (let i = 0; i < symbols.length; ++i) {
+        if(symbols[i].type !== 1) continue;
+        if(symbols[i].stage !== 0) throw new Error("Constant pols must be defined in stage 0");
+        if(!symbols[i].dim) {
+            fixedSymbols.push({name: symbols[i].name, id: symbols[i].id, idx: []});
+        } else {
+            generateMultiArrayIndexes(fixedSymbols, symbols[i].name, symbols[i].lengths, symbols[i].id, []);
+        }
+    }
+
+    const pa = new PolsArray(fixedSymbols, degree, "constant", F);
+    return pa;
+}
+
+function newCommitPolsArrayPil2(symbols, degree, F) {
+    if(!F) F = new F1Field("0xFFFFFFFF00000001");
+    if(F.p === 18446744069414584321n) F.w = getRoots(F);
+
+    const witnessSymbols = [];
+    for (let i = 0; i < symbols.length; ++i) {
+        if(symbols[i].type !== 3 || symbols[i].stage !== 1) continue;
+        if(!symbols[i].dim) {
+            witnessSymbols.push({name: symbols[i].name, id: symbols[i].id, idx: []});
+        } else {
+            generateMultiArrayIndexes(witnessSymbols, symbols[i].name, symbols[i].lengths, symbols[i].id, []);
+        }
+    }
+
+    const pa = new PolsArray(witnessSymbols, degree, "commit", F);
     return pa;
 }
 
 module.exports.newConstantPolsArray = newConstantPolsArray;
 module.exports.newCommitPolsArray = newCommitPolsArray;
 
+module.exports.newConstantPolsArrayPil2 = newConstantPolsArrayPil2;
+module.exports.newCommitPolsArrayPil2 = newCommitPolsArrayPil2;
 
 class PolsArray {
-    constructor(pil, type) {
-        if (type == "commit") {
-            this.$$nPols = pil.nCommitments;
-        } else if (type == "constant") {
-            this.$$nPols = pil.nConstants;
-        } else {
-            throw new Error("need to specify if you want commited or constant pols")
-        }
-
+    constructor(symbols, degree, type, F) {
+        if (type != "commit" && type != "constant") throw new Error("need to specify if you want commited or constant pols");
+        
         this.$$def = {};
         this.$$defArray = [];
         this.$$array = [];
-        for (let refName in pil.references) {
-            if (pil.references.hasOwnProperty(refName)) {
-                const ref = pil.references[refName];
-                if ((ref.type == "cmP" && type == "commit") ||
-                    (ref.type == "constP" && type == "constant")) {
-                    const [nameSpace, namePol] = refName.split(".");
-                    if (!this[nameSpace]) this[nameSpace] = {};
-                    if (!this.$$def[nameSpace]) this.$$def[nameSpace] = {};
 
-                    if (ref.isArray) {
-                        this[nameSpace][namePol] = [];
-                        this.$$def[nameSpace][namePol] = [];
-                        for (let i=0; i<ref.len; i++) {
-                            const polProxy = new Array(ref.polDeg);
-//                            const polProxy = createPolProxy(this, ref.id + i, ref.polDeg);
-                            this[nameSpace][namePol][i] = polProxy;
-                            this.$$defArray[ref.id + i] = {
-                                name: refName,
-                                id: ref.id + i,
-                                idx: i,
-                                elementType: ref.elementType,
-                                polDeg: ref.polDeg
-                            }
-                            this.$$def[nameSpace][namePol][i] = this.$$defArray[ref.id + i];
-                            this.$$array[ref.id+i] = polProxy;
-                        }
-                    } else {
-                        const polProxy = new Array(ref.polDeg);
-                        // const polProxy = createPolProxy(this, ref.id, ref.polDeg);
-                        this[nameSpace][namePol] = polProxy;
-                        this.$$defArray[ref.id] = {
-                            name: refName,
-                            id: ref.id,
-                            elementType: ref.elementType,
-                            polDeg: ref.polDeg
-                        }
-                        this.$$def[nameSpace][namePol] = this.$$defArray[ref.id];
-                        this.$$array[ref.id] = polProxy;
-                    }
-                }
+        this.F = F;
+        for(let i = 0; i < symbols.length; ++i) {
+            const symbol = symbols[i];
+            const name = symbol.name;
+            const [nameSpace, namePol] = name.split(".");
+            if (!this[nameSpace]) this[nameSpace] = {};
+            if (!this.$$def[nameSpace]) this.$$def[nameSpace] = {};
+            const polProxy = new Array(degree);
+            this.$$defArray[symbol.id] = {
+                name: name,
+                id: symbol.id,
+                polDeg: degree
+            }
+            this.$$array[symbol.id] = polProxy;
+            if (symbol.idx.length > 0) {
+                if(!this[nameSpace][namePol]) this[nameSpace][namePol] = [];
+                if(!this.$$def[nameSpace][namePol]) this.$$def[nameSpace][namePol] = [];
+                setValueMultiArray(this[nameSpace][namePol], symbol.idx, polProxy);
+                setValueMultiArray(this.$$def[nameSpace][namePol], symbol.idx, this.$$defArray[symbol.id])
+            } else {
+                this[nameSpace][namePol] = polProxy;
+                this.$$def[nameSpace][namePol] = this.$$defArray[symbol.id];
             }
         }
-        for (let i=0; i<this.$$nPols; i++) {
-            if (!this.$$defArray[i]) {
-                throw new Error("Invalid pils sequence");
-            }
-        }
+        
         this.$$nPols = this.$$defArray.length;
         if (this.$$defArray.length>0) {
             this.$$n = this.$$defArray[0].polDeg;
@@ -143,12 +217,11 @@ class PolsArray {
         await fd.close();
     }
 
-    writeToBuff(buff, pos) {
+    writeToBuff(buff) {
         if (typeof buff == "undefined") {
             const constBuffBuff = new ArrayBuffer(this.$$n*this.$$nPols*8);
             buff = new BigUint64Array(constBuffBuff);
         }
-        const buff64 = new BigUint64Array(buff.buffer, buff.byteOffset + pos, this.$$n*this.$$nPols);
         let p=0;
         for (let i=0; i<this.$$n; i++) {
             for (let j=0; j<this.$$nPols; j++) {
@@ -158,16 +231,183 @@ class PolsArray {
         return buff;
     }
 
-    writeToBigBuffer(buff, pos) {
+    writeToBigBuffer(buff, nPols) {
+        if(!nPols) nPols = this.$$nPols;
         if (typeof buff == "undefined") {
-            buff = new BigBuffer(constBuffBuff);
+            buff = new BigBuffer(this.$$n*this.$$nPols);
         }
         let p=0;
         for (let i=0; i<this.$$n; i++) {
             for (let j=0; j<this.$$nPols; j++) {
-                buff.setElement(p++, (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + 0xffffffff00000001n) : this.$$array[j][i]);
+                const value = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
+                buff.setElement(p++, value);
+                
+            }
+            for(let i = this.$$nPols; i < nPols; ++i) buff.setElement(p++, 0n);
+        }
+        return buff;
+    }
+
+    async loadFromFileFr(fileName, Fr) {
+
+        if(Fr.p !== this.F.p) throw new Error("Curve Prime doesn't match");
+        const fd = await fastFile.readExisting(fileName);
+
+        const MaxBuffSize = 1024*1024*256; 
+        const totalSize = this.$$nPols*this.$$n*this.F.n8;
+
+        console.log(`Reading buffer with total size ${totalSize/1024/1024/8}...`);
+
+        const buff = await fd.read(totalSize);
+
+        console.log("Buffer read. Storing values...")
+
+        let i=0;
+        let j=0;
+        for(let k = 0; k < totalSize; k += this.F.n8) {
+            if(k%MaxBuffSize == 0) console.log(`Storing ${fileName}.. ${k/1024/1024/8} of ${totalSize/1024/1024/8}`);
+            this.$$array[i++][j] = BigInt(Fr.toString(buff.slice(k, k+this.F.n8)));
+            if (i==this.$$nPols) {
+                i=0;
+                j++;
             }
         }
+
+        console.log("File loaded.")
+
+        await fd.close();
+    }
+
+    async writeBuffer(fd, values, pos, Fr) {
+        const n8r = this.F.n8;
+        const buff = new Uint8Array(values.length*n8r);
+
+        for(let k = 0; k < values.length; ++k) {
+            buff.set(Fr.e(values[k]), k*n8r);
+        }
+
+        await fd.write(buff, pos);
+    }
+
+    async saveToFileFr(fileName, Fr) {
+        if(Fr.p !== this.F.p) throw new Error("Curve Prime doesn't match");
+        const fd =await fastFile.createOverride(fileName);
+
+        const n8r = this.F.n8;
+
+        const MaxBuffSize = 1024*1024*256; 
+        const totalSize = this.$$nPols*this.$$n*n8r;
+
+        const buff = new Uint8Array(totalSize);
+
+        let p = 0;
+        for (let i=0; i<this.$$n; i++) {
+            for (let j=0; j<this.$$nPols; j++) {
+                if(p%MaxBuffSize == 0) console.log(`saving ${fileName}.. ${p/1024/1024/8} of ${totalSize/1024/1024/8}`);
+                const v = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
+                buff.set(Fr.e(v), p);
+                p += n8r;            
+            }
+        }
+
+        console.log("Writting buffer...")
+        
+        await fd.write(buff);
+
+        console.log("File written.")
+
+        await fd.close();
+    }
+
+    async loadFromFileFrLE(fileName) {
+
+        const fd =await fs.promises.open(fileName, "r");
+
+        const MaxBuffSize = 1024*1024*256;  //  256Mb
+        const totalSize = this.$$nPols*this.$$n*this.F.n8;
+        const buff = new Uint8Array((Math.min(totalSize, MaxBuffSize)));
+
+        let i=0;
+        let j=0;
+        let p=0;
+        let n;
+        for (let k=0; k<totalSize; k+= n) {
+            console.log(`loading ${fileName}.. ${k/1024/1024/8} of ${totalSize/1024/1024/8}` );
+            n = Math.min(buff.length, totalSize-k);
+            const res = await fd.read({buffer: buff, offset: 0, position: p, length: n});
+            if (n != res.bytesRead) {
+                console.log(`n: ${n} bytesRead: ${res.bytesRead} div: ${res.bytesRead}`);
+                return;
+            }
+            n = res.bytesRead;
+            p += n;
+            for (let l=0; l<n; l+=this.F.n8) {
+                this.$$array[i++][j] = this.F.fromRprLE(buff, l);
+                if (i==this.$$nPols) {
+                    i=0;
+                    j++;
+                }
+            }
+        }
+
+        await fd.close();
+
+    }
+
+    async saveToFileFrLE(fileName) {
+
+        const fd =await fs.promises.open(fileName, "w+");
+
+        const MaxBuffSize = 1024*1024*256;  //  256Mb
+        const totalSize = this.$$nPols*this.$$n*this.F.n8;
+        const buff = new Uint8Array(Math.min(totalSize, MaxBuffSize));
+        let p=0;
+        let k=0;
+        for (let i=0; i<this.$$n; i++) {
+            for (let j=0; j<this.$$nPols; j++) {
+                const element = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
+                this.F.toRprLE(buff, p, element);
+                p += this.F.n8;
+
+                if(p == buff.length) {
+                    console.log(`writting ${fileName}.. ${k/1024/1024/8} of ${totalSize/1024/1024/8}` );
+                    await fd.write(buff);
+                    p=0;
+                    ++k;
+                }
+            }
+        }
+
+	    if (p) {
+            const buff8 = new Uint8Array(buff.buffer, 0, p);
+            await fd.write(buff8);
+        }
+
+        await fd.close();
+    }
+
+    async writeToBigBufferFr(buff, Fr, nPols) {
+        if(!nPols) nPols = this.$$nPols;
+        if(Fr.p !== this.F.p) throw new Error("Curve Prime doesn't match");
+
+        const n8r = this.F.n8;
+
+        if (typeof buff == "undefined") {
+            buff = new BigBufferFr(this.$$n*this.$$nPols*n8r); 
+        }
+        let p=0;
+        for (let i=0; i<this.$$n; i++) {
+            for (let j=0; j<this.$$nPols; j++) {
+                const value = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
+                buff.set(Fr.e(value), p);
+                p += n8r;
+            }
+            for(let i = this.$$nPols; i < nPols; ++i) {
+                buff.set(Fr.zero, p);
+                p += n8r;
+            }
+        }
+
         return buff;
     }
 }

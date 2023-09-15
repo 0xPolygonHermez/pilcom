@@ -73,7 +73,7 @@ frame                                       { return 'FRAME' }
 \`[^`]+\`                                   { yytext = yytext.slice(1,-1); return 'TEMPLATE_STRING'; }
 [a-zA-Z_][a-zA-Z$_0-9]*                     { return 'IDENTIFIER'; }
 \&[a-zA-Z_][a-zA-Z$_0-9]*                   { yytext = yytext.slice(1); return 'REFERENCE'; }
-\@[a-zA-Z_][a-zA-Z$_0-9]*                   { yytext = yytext.slice(1); return 'METADATA'; }
+\@[a-zA-Z_][a-zA-Z$_0-9]*                   { yytext = yytext.slice(1); return 'HINT'; }
 \$[0-9][0-9]*                               { yytext = yytext.slice(1); return 'POSITIONAL_PARAM'; }
 \*\*                                        { return 'POW'; }
 \+\+                                        { return 'INC'; }
@@ -127,6 +127,7 @@ frame                                       { return 'FRAME' }
 %left CS
 %nonassoc EMPTY
 %nonassoc NUMBER
+%nonassoc POSITIONAL_PARAM
 %nonassoc NON_DELIMITED_STATEMENT
 %right IF_NO_ELSE ELSE
 %right NO_STAGE STAGE
@@ -155,6 +156,8 @@ frame                                       { return 'FRAME' }
 %left "'"
 %left '.'
 %right INC DEC UMINUS UPLUS '!'
+%left INC_LEFT DEC_LEFT
+%left NEXT
 
 %nonassoc '('
 
@@ -373,10 +376,16 @@ statement_closed
         { $$ = { type: 'when', statements: $4, expression: $3 } }
 
     | WHEN when_boundary non_delimited_statement
-        { $$ = { ...$2, type: "when", statements: $3 } }
+        { $$ = { ...$2, type: 'when', statements: $3 } }
 
-    | METADATA '{' data_object '}'
-        { $$ = { type: 'metadata', data: $3 } }
+    | HINT '{' data_object '}'
+       { $$ = { type: 'hint', name: $1, data: $3 } }
+
+    | HINT '[' data_array ']'
+        { $$ = { type: 'hint', name: $1, data: $3 }}
+
+    | HINT expression CS
+       { $$ = { type: 'hint', name: $1, data: $2 }}
 
     | function_definition
         { $$ = $1 }
@@ -616,7 +625,7 @@ data_value
         { $$ = $2 }
 
     | '[' data_array ']'
-        { $$ = $1; $$.data[$3] = $5 }
+        { $$ = $2 }
     ;
 
 data_object
@@ -627,7 +636,7 @@ data_object
         { $$ = $1; $$.data[$3] = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, name: $3 }) }
 
     | IDENTIFIER ':' data_value
-        { $$ = {data: {}}; $$.data[$1] = $3 }
+        { $$ = { type: 'object', data: {}}; $$.data[$1] = $3 }
 
     | IDENTIFIER
         { $$ = {data: {}}; $$.data[$1] = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, name: $1 }) }
@@ -635,10 +644,10 @@ data_object
 
 data_array
     : data_array ',' data_value
-        { $$ = $1; $$.values.push($3) }
+        { $$ = $1; $$.data.push($3) }
 
     | data_value
-        { $$ = { values: [ $1 ]} }
+        { $$ = { type: 'array', data: [ $1 ] } }
     ;
 
 function_call
@@ -1301,10 +1310,10 @@ expression
     | DEC name_id
         { $$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$2, dec: 'pre'}) }
 
-    | name_id INC
+    | name_id INC %prec INC_LEFT
         { $$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$1, inc: 'post'}) }
 
-    | name_id DEC
+    | name_id DEC %prec DEC_LEFT
         { $$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$1, dec: 'post'}) }
 
     | NUMBER %prec EMPTY
@@ -1362,11 +1371,11 @@ casting
     ;
 
 name_id
-    : name_optional_index "'" %prec LOWER_PREC
+    : name_optional_index "'" %prec NEXT
         { $$ = { ...$1, next:1 } }
 
     | name_optional_index "'" NUMBER
-        { $$ = { ...$1, next:$3 } }
+        { $$ = { ...$1, next: Number($3) } }
 
     | name_optional_index "'" '(' expression ')'
         { $$ = { ...$1, next:$4 } }
@@ -1378,7 +1387,7 @@ name_id
         { $$ = { ...$2, prior:1 } }
 
     | NUMBER "'" name_optional_index
-        { $$ = { ...$3, prior:$1 } }
+        { $$ = { ...$3, prior: Number($1) } }
 
     | '(' expression ')' "'" name_optional_index
         { $$ = { ...$5, prior:$2 } }
@@ -1386,15 +1395,15 @@ name_id
     | POSITIONAL_PARAM "'" name_optional_index
         { $$ = { ...$3, prior: ExpressionFactory.fromObject({position: $1, op: 'positional_param'}) } }
 
-    | name_optional_index
+    | name_optional_index %prec EMPTY
         { $$ = $1 }
     ;
 
 name_optional_index
-    : name_reference
+    : name_reference %prec EMPTY
         { $$ = { ...$1, dim: 0 } }
 
-    | name_reference array_index
+    | name_reference array_index %prec EMPTY
         { $$ = { ...$1, ...$2 } }
     ;
 
