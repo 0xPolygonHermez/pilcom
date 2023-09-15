@@ -8,56 +8,58 @@ private function init_challenges() {
 }
 
 function multiset_require(int opid, expr cols[]) {
-    piop_update(0, opid, 1, cols);
+    piop_update(0, 0, opid, 1, cols);
 }
 
 function multiset_provide(int opid, expr cols[]) {
-    piop_update(1, opid, 1, cols);
+    piop_update(1, 0, opid, 1, cols);
 }
 
 function multiset_require(int opid, expr sel, expr cols[]) {
-    piop_update(0, opid, sel, cols);
+    piop_update(0, 0, opid, sel, cols);
 }
 
 function multiset_provide(int opid, expr sel, expr cols[]) {
-    piop_update(1, opid, sel, cols);
+    piop_update(1, 0, opid, sel, cols);
 }
 
 function lookup_require(int opid, expr cols[]) {
-    piop_update(0, opid, 1, cols);
+    piop_update(0, 1, opid, 1, cols);
 }
 
 function lookup_provide(int opid, expr cols[]) {
-    piop_update(1, opid, 1, cols);
+    piop_update(1, 1, opid, 1, cols);
 }
 
-function lookup_require(int opid, expr sel, expr cols[]) {
-    piop_update(0, opid, sel, cols);
+// Right now, we assume that the user provides the multiplicity counter.
+// However, we could let the user to only give us the selector and the columns, and we compute the multiplicity counter.
+function lookup_require(int opid, expr mul_count, expr cols[]) {
+    piop_update(0, 1, opid, mul_count, cols);
 }
 
-function lookup_provide(int opid, expr sel, expr cols[]) {
-    piop_update(1, opid, sel, cols);
+function lookup_provide(int opid, expr mul_count, expr cols[]) {
+    piop_update(1, 1, opid, mul_count, cols);
 }
 
 // To support vector range checks, we would need to compute a table of all permutations of the range [min,max-1].
 function range_check(int opid, expr cols[], int min, int max) {
     for (int i = 0; i < length(cols); ++i) {
-        piop_update(0, opid, 1, cols[i]);
+        piop_update(0, 1, opid, 1, cols[i]);
     }
     
     col fixed RANGE = [min,min+1,..+..,max-1]; // QUESTION: Does this still work if max - min > N?
-    col witness mul_count = compute_multiplicity(cols, RANGE);
-    piop_update(1, opid, mul_count, RANGE);
+    col witness mul_count = compute_multiplicities(cols, RANGE);
+    piop_update(1, 1, opid, mul_count, RANGE);
 }
 
 function range_check(int opid, expr sels[], expr cols[], int min, int max) {
     for (int i = 0; i < length(cols); ++i) {
-        piop_update(0, opid, sels[i], cols[i]);
+        piop_update(0, 1, opid, sels[i], cols[i]);
     }
     
     col fixed RANGE = [min,min+1,..+..,max-1];
-    col witness mul_count = compute_multiplicity(cols, RANGE);
-    piop_update(1, opid, mul_count, RANGE);
+    col witness mul_count = compute_multiplicities(cols, RANGE);
+    piop_update(1, 1, opid, mul_count, RANGE);
 }
 
 // QUESTION: Can the following O(n³) algorithm be implemented faster?
@@ -67,7 +69,7 @@ function range_check(int opid, expr sels[], expr cols[], int min, int max) {
  * @param cols
  * @param range
  */
-private function compute_multiplicity(expr cols[], expr range) {
+private function compute_multiplicities(expr cols[], expr range) {
     expr mul_count[length(range)] = 0; // [0,0,...,0]
     for (int i = 0; i < length(range); ++i) {
         for (int j = 0; j < length(cols); ++j) {
@@ -88,7 +90,7 @@ private function compute_multiplicity(expr cols[], expr range) {
  * @param cols_count number of columns of the PIOP check
  * @param provide 1 if provide, 0 if require
  */
-private function check_opid_and_cols(int opid, int cols_count, int provide) {
+private function check_opid_and_cols(int provide, int type, int opid, int cols_count) {
 
     if (cols_count < 1) {
         error(`The number of columns of PIOP #${opid} must be at least 1`);
@@ -110,6 +112,7 @@ private function check_opid_and_cols(int opid, int cols_count, int provide) {
         // FIX: dynamic arrays not ready
         expr gsum_require_sel[100];
         expr gsum_require[100];
+        expr gsum_provide_type[100];
         expr gsum_provide_sel[100];
         expr gsum_provide[100];
     }
@@ -157,13 +160,14 @@ private function compress_cols(int opid, expr cols[]): expr {
 /**
  * Given columns C₀,...,Cₙ₋₁, and multiplicity counter M, it 1] defines the constraints at the air level, 2] updates the values at the subproof level, and 3] updates the constraints at the proof level.
  * @param provide boolean indicating if updating a provide or a require
+ * @param type if 1, it is a lookup or a range check; if 0, it is a multiset
  * @param opid (unique) identifier of the PIOP
  * @param sel selector of the PIOP
  * @param cols columns of the PIOP
  */
-private function piop_update(int provide, int opid, expr sel, expr cols[]) {
+private function piop_update(int provide, int type, int opid, expr sel, expr cols[]) {
     // verify if correct opid and cols
-    check_opid_and_cols(opid, length(cols), provide);
+    check_opid_and_cols(provide, type, opid, length(cols));
 
     init_challenges();
 
@@ -173,6 +177,7 @@ private function piop_update(int provide, int opid, expr sel, expr cols[]) {
     use air.std.piop;
     if (provide) {
         // adding all sums of provide called in this air
+        gasum_provide_type[] = type;
         gsum_provide_sel[] = sel;
         gsum_provide[] = cols_compressed;
     } else {
@@ -181,19 +186,20 @@ private function piop_update(int provide, int opid, expr sel, expr cols[]) {
         gsum_require[] = cols_compressed;
     }
 
-    // 1] computes the multiplicity counter for lookups and range checks
-    on final air compute_multiplicity_lookup_range();
+    // QUESTION: Should the user provide the multiplicity counter? Or we should compute it?
+    // 0] computes the multiplicity counter for lookups and range checks
+    // on final air compute_multiplicities_lookup_range();
 
-    // 2] look for repeated provide/require's in both lookups and range checks and, if found, optimize
+    // 1] look for repeated provide/require's in both lookups and range checks and, if found, optimize
     on final air lookup_range_provide_batch();
 
-    // 3] define constraints at the air level
+    // 2] define constraints at the air level
     on final air PIOP_air();
 
-    // 4] update values at the subproof level
+    // 3] update values at the subproof level
     on final subproof PIOP_subproof();
 
-    // 5] update constraints at the proof level
+    // 4] update constraints at the proof level
     on final proof PIOP_proof();
 }
 
@@ -206,8 +212,9 @@ private function lookup_range_provide_batch() {
 
     for (int i = 0; i < len; ++i) {
         for (int j = 0; j < len; ++j) {
+            if (i == j) continue;
             // It two provides are the same, add their multiplicity counters to one and remove the other
-            if (i != j && gsum_provide[i] == gsum_provide[j]) {
+            if (gsum_provide[j] == gsum_provide[i] && gsum_provide_type[j] == 1) {
                 gsum_provide_sel[i] = gsum_provide_sel[i] + gsum_provide_sel[j];
 
                 gsum_provide[j] = gsum_provide[len-1];
