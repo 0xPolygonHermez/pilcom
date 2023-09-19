@@ -78,7 +78,14 @@ module.exports = class Indexable {
     // get expression item to add in a expression
     getItem(id, properties) {
         let res = this.values[id];
+        if (typeof res.getItem === 'function') {
+            return res.getItem();
+        }
         if (this.expressionItemClass && (res instanceof this.expressionItemClass) === false) {
+            if (typeof res.value !== 'undefined' && res.value instanceof this.expressionItemClass) {
+                return res.value.clone();
+            }
+            // REVIEW, empty properties
             properties = properties ?? {};
             res = new this.expressionItemClass(id);
             for (const property in properties) {
@@ -109,10 +116,9 @@ module.exports = class Indexable {
         return this.values.length;
     }
     set(id, value) {
-        console.log(this.values[id]);
-        console.log(value);
-        if (this.values[id] && this.values[id].constructor) console.log(this.values[id].constructor.name)
-        this.values[id].setValue(value);
+        const item = this.get(id);
+        assertLog(item !== null && typeof item.setValue === 'function', {type: this.type, definition: this.definitionClass, item: item});
+        item.setValue(value);
 /*
         if (typeof this.cls === 'function') {
             if ((value instanceof this.cls) === false) {

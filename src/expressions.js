@@ -9,7 +9,6 @@ module.exports = class Expressions {
         this.expressions = [];
         this.packedIds = [];
         this.labelRanges = new LabelRanges();
-        Expression.setParent(this);
     }
     clone() {
         let cloned = Object.assign(Object.create(Object.getPrototypeOf(this)), this);

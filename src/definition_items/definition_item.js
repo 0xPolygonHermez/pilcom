@@ -54,8 +54,11 @@ module.exports = class DefinitionItem {
         this.id = id;
         this.label = properties.label;
     }
+    toString(options) {
+        return `${this.label}()`;
+    }
     dump(options) {
-        return `${this.constructor.name}()`;
+        return this.toString(options);
     }
     get type() {
         console.log(this);

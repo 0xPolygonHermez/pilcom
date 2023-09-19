@@ -5,7 +5,7 @@ module.exports = class Println extends Function {
     }
     mapArguments(s) {
         let texts = [];
-        for (const arg of s.arguments) {
+        for (const arg of s.args) {
             if (typeof arg === 'string') {
                 texts.push(arg);
                 continue;

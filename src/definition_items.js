@@ -13,6 +13,7 @@ const Subproofval = require("./definition_items/subproofval.js");
 const ValueItem = require("./definition_items/value_item.js");
 const WitnessCol = require("./definition_items/witness_col.js");
 const FixedCol = require("./definition_items/fixed_col.js");
+const Expression = require("./definition_items/expression.js");
 
 module.exports = {
     DefinitionItem,
@@ -29,5 +30,6 @@ module.exports = {
     StringValue,
     Subproofval,
     ValueItem,
-    WitnessCol
+    WitnessCol,
+    Expression
 }

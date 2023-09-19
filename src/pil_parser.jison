@@ -633,13 +633,13 @@ data_object
         { $$ = $1; $$.data[$3] = $5 }
 
     | data_object ',' IDENTIFIER
-        { $$ = $1; $$.data[$3] = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, name: $3 }) }
+        { $$ = $1; $$.data[$3] = ExpressionFactory.fromObject({type: 'reference', next: false, name: $3 }) }
 
     | IDENTIFIER ':' data_value
         { $$ = { type: 'object', data: {}}; $$.data[$1] = $3 }
 
     | IDENTIFIER
-        { $$ = {data: {}}; $$.data[$1] = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, name: $1 }) }
+        { $$ = {data: {}}; $$.data[$1] = ExpressionFactory.fromObject({type: 'reference', next: false, name: $1 }) }
     ;
 
 data_array
@@ -652,7 +652,7 @@ data_array
 
 function_call
     : name_optional_index '(' multiple_expression_list ')'
-        { $$ = { op: 'call', function: $1, arguments: $3.values } }
+        { $$ = { type: 'call', function: $1, args: $3.values } }
     ;
 
 delayed_function_event
@@ -675,7 +675,7 @@ defined_scopes
 
 delayed_function_call
     : ON delayed_function_event defined_scopes name_optional_index '(' multiple_expression_list ')'
-        { $$ = { type: 'delayed_function_call', event: $2, scope: $3, function: $4, arguments: $6.values } }
+        { $$ = { type: 'delayed_function_call', event: $2, scope: $3, function: $4, args: $6.values } }
     ;
 
 
@@ -1245,7 +1245,7 @@ expression
         { $$ = $1.insert('in', ExpressionFactory.fromObject($3)) }
 
     | expression IS return_type %prec IS
-        { $$ = $1.insert('is', ExpressionFactory.fromObject({op: 'type', vtype: $3.type, dim: $3.dim})); }
+        { $$ = $1.insert('is', ExpressionFactory.fromObject({type: 'istype', vtype: $3.type, dim: $3.dim})); }
 
     | expression AND expression %prec AND
         { $$ = $1.insert('and', ExpressionFactory.fromObject($3)) }
@@ -1302,25 +1302,25 @@ expression
         { $$ = $2.insert('neg') }
 
     | name_id
-        { $$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$1 }) }
+        { $$ = ExpressionFactory.fromObject({ type: 'reference', next: false, ...$1 }) }
 
     | INC name_id
-        { $$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$2, inc: 'pre'}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'reference', next: false, ...$2, inc: 'pre'}) }
 
     | DEC name_id
-        { $$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$2, dec: 'pre'}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'reference', next: false, ...$2, dec: 'pre'}) }
 
     | name_id INC %prec INC_LEFT
-        { $$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$1, inc: 'post'}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'reference', next: false, ...$1, inc: 'post'}) }
 
     | name_id DEC %prec DEC_LEFT
-        { $$ = ExpressionFactory.fromObject({ type: 'expr', op: 'reference', next: false, ...$1, dec: 'post'}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'reference', next: false, ...$1, dec: 'post'}) }
 
     | NUMBER %prec EMPTY
-        { $$ = ExpressionFactory.fromObject({ type: 'expr', op: 'number', value: BigInt($1)}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'number', value: BigInt($1)}) }
 
     | flexible_string %prec EMPTY
-        { $$ = ExpressionFactory.fromObject({...$1, op: 'string'}) }
+        { $$ = ExpressionFactory.fromObject({...$1, type: 'string'}) }
 
     | '(' expression ')'
         { $$ = $2 }
@@ -1329,7 +1329,7 @@ expression
         { $$ = ExpressionFactory.fromObject({...$1}) }
 
     | POSITIONAL_PARAM
-        { $$ = ExpressionFactory.fromObject({position: $1, op: 'positional_param'}) }
+        { $$ = ExpressionFactory.fromObject({position: $1, type: 'positional_param'}) }
 
     | casting
         { $$ = ExpressionFactory.fromObject({...$1}) }
@@ -1340,34 +1340,34 @@ expression
 
 casting
     : INT '(' expression ')'
-        { $$ = { op: 'cast', cast: 'int', value: $3} }
+        { $$ = { type: 'cast', cast: 'int', value: $3} }
 
     | FE '(' expression ')'
-        { $$ = { op: 'cast', cast: 'fe', value: $3 } }
+        { $$ = { type: 'cast', cast: 'fe', value: $3 } }
 
     | EXPR '(' expression ')'
-        { $$ = { op: 'cast', cast: 'expr', value: $3 } }
+        { $$ = { type: 'cast', cast: 'expr', value: $3 } }
 
     | COL '(' expression ')'
-        { $$ = { op: 'cast', cast: 'col', value: $3 } }
+        { $$ = { type: 'cast', cast: 'col', value: $3 } }
 
     | T_STRING '(' expression ')'
-        { $$ = { op: 'cast', cast: 'string', value: $3 } }
+        { $$ = { type: 'cast', cast: 'string', value: $3 } }
 
     | INT type_array '(' expression ')'
-        { $$ = { ...$2, op: 'cast', cast: 'int', value: $4 } }
+        { $$ = { ...$2, type: 'cast', cast: 'int', value: $4 } }
 
     | FE type_array '(' expression ')'
-        { $$ = { ...$2, op: 'cast', cast: 'fe', value: $4 } }
+        { $$ = { ...$2, type: 'cast', cast: 'fe', value: $4 } }
 
     | EXPR type_array '(' expression ')'
-        { $$ = { ...$2, op: 'cast', cast: 'expr', value: $4 } }
+        { $$ = { ...$2, type: 'cast', cast: 'expr', value: $4 } }
 
     | COL type_array '(' expression ')'
-        { $$ = { ...$2, op: 'cast', cast: 'col', value: $4 } }
+        { $$ = { ...$2, type: 'cast', cast: 'col', value: $4 } }
 
     | T_STRING type_array '(' expression ')'
-        { $$ = { ...$2, op: 'cast', cast: 'string', value: $4 } }
+        { $$ = { ...$2, type: 'cast', cast: 'string', value: $4 } }
     ;
 
 name_id
@@ -1381,7 +1381,7 @@ name_id
         { $$ = { ...$1, next:$4 } }
 
     | name_optional_index "'" POSITIONAL_PARAM
-        { $$ = { ...$1, next: ExpressionFactory.fromObject({position: $3, op: 'positional_param'}) } }
+        { $$ = { ...$1, next: ExpressionFactory.fromObject({position: $3, type: 'positional_param'}) } }
 
     | "'" name_optional_index %prec LOWER_PREC
         { $$ = { ...$2, prior:1 } }
@@ -1393,7 +1393,7 @@ name_id
         { $$ = { ...$5, prior:$2 } }
 
     | POSITIONAL_PARAM "'" name_optional_index
-        { $$ = { ...$3, prior: ExpressionFactory.fromObject({position: $1, op: 'positional_param'}) } }
+        { $$ = { ...$3, prior: ExpressionFactory.fromObject({position: $1, type: 'positional_param'}) } }
 
     | name_optional_index %prec EMPTY
         { $$ = $1 }

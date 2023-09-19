@@ -1,7 +1,7 @@
 const {assert, assertLog} = require('../assert.js');
 const ValueItem = require("./value_item.js");
 
-module.exports = class IntValue extends ValueItem {
+class IntValue extends ValueItem {
     constructor (value = 0n) {
         if (value instanceof IntValue) {
             value = value.value;
@@ -38,4 +38,79 @@ module.exports = class IntValue extends ValueItem {
     asNumber() {
         return Number(this.value);
     }
+    asBool() {
+        return Number(this.value) != 0;
+    }
+    asStringItem() {
+        return new ValueItem.StringValue(this.asString());
+    }
+    asString() {
+        return this.value.toString();
+    }
+    operatorAdd(valueB) {
+        return new IntValue(this.asInt() + valueB.asInt());
+    }
+    operatorSub(valueB) {
+        return new IntValue(this.asInt() - valueB.asInt());
+    }
+    operatorMul(valueB) {
+        return new IntValue(this.asInt() * valueB.asInt());
+    }
+    operatorDiv(valueB) {
+        return new IntValue(this.asInt() / valueB.asInt());
+    }
+    operatorMod(valueB) {
+        return new IntValue(this.asInt() % valueB.asInt());
+    }
+    operatorNeg() {
+        return new IntValue(-this.asInt());
+    }
+    operatorShl(valueB) {
+        return new IntValue(this.asInt() << valueB.asInt());
+    }
+    operatorShr(valueB) {
+        return new IntValue(this.asInt() >> valueB.asInt());
+    }
+    operatorBand(valueB) {
+        return new IntValue(this.asInt() & valueB.asInt());
+    }
+    operatorBor(valueB) {
+        return new IntValue(this.asInt() | valueB.asInt());
+    }
+    operatorBxor(valueB) {
+        return new IntValue(this.asInt() ^ valueB.asInt());
+    }
+    operatorNot() {
+        return new IntValue(this.asInt() ? 0n : 1n);
+    }
+    operatorGt(valueB) {
+        return new IntValue(this.asInt() > valueB.asInt() ? 1n : 0n);
+    }
+    operatorGe(valueB) {
+        return new IntValue(this.asInt() >= valueB.asInt() ? 1n : 0n);
+    }
+    operatorLt(valueB) {
+        return new IntValue(this.asInt() < valueB.asInt() ? 1n : 0n);
+    }
+    operatorLe(valueB) {
+        return new IntValue(this.asInt() <= valueB.asInt() ? 1n : 0n);
+    }
+    operatorNe(valueB) {
+        return new IntValue(this.asInt() == valueB.asInt() ? 0n : 1n);
+    }
+    operatorAnd(valueB) {
+        return new IntValue((this.asInt() && valueB.asInt()) ? 1n : 0n);
+    }
+    operatorOr(valueB) {
+        return new IntValue((this.asInt() || valueB.asInt()) ? 1n : 0n);
+    }
+    operatorPow(valueB) {
+        return new IntValue(this.asInt()**valueB.asInt());
+    }
+    operatorEq(valueB) {
+        return new IntValue(this.asInt() == valueB.asInt() ? 1:0);
+    }
 }
+
+ValueItem.registerClass('IntValue', IntValue);
+module.exports = IntValue;

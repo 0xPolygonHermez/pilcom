@@ -26,6 +26,7 @@ module.exports = class Assign {
         return this.assignType(type, name, indexes, value);
     }
     assignType(type, name, indexes, value) {
+        console.log(type);
         switch (type) {
             case 'int': return this.assignTypeInt(name, indexes, value, type);
             case 'expr': return this.assignTypeExpr(name, indexes, value, type);

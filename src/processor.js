@@ -58,7 +58,7 @@ module.exports = class Processor {
         this.fes = new Variables('fe', DefinitionItems.FeValue, ExpressionItems.FeValue);
         this.references.register('fe', this.fes);
 
-        this.strings = new Variables('string', DefinitionItems.StringValue, ExpressionItems.FeValue);
+        this.strings = new Variables('string', DefinitionItems.StringValue, ExpressionItems.StringValue);
         this.references.register('string', this.strings);
 
         this.exprs = new Variables('expr', DefinitionItems.Expression, Expression);
@@ -136,6 +136,7 @@ module.exports = class Processor {
             const builtInCls = require(__dirname + '/builtin/'+ filename);
             const builtInObj = new builtInCls(this);
             this.builtIn[builtInObj.name] = builtInObj;
+            this.references.declare(builtInObj.name, 'function', [], [], builtInObj);
         }
     }
     insideFunction() {
@@ -259,8 +260,8 @@ module.exports = class Processor {
             console.log(st);
             this.error(st, `Invalid statement (without type)`);
         }
-        // console.log(`## DEBUG ## ${this.executeCounter}.${this.executeStatementCounter} ${st.debug}` );
         const method = ('exec_'+st.type).replace(/[-_][a-z]/g, (group) => group.slice(-1).toUpperCase());
+        console.log(`## DEBUG ## ${this.executeCounter}.${this.executeStatementCounter} ${method} ${st.debug}` );
         if (!(method in this)) {
             console.log('==== ERROR ====');
                 this.error(st, `Invalid statement type: ${st.type}`);
@@ -282,6 +283,26 @@ module.exports = class Processor {
         this.scope.pushInstanceType('proof');
         this.execute(st.statements);
         this.scope.popInstanceType();
+    }
+    executeFunctionCall(name, callinfo) {
+        const func = this.builtIn[name] ?? this.references.get(name);
+        console.log(callinfo);
+
+        if (func) {
+            this.callstack.push(name);
+            ++this.functionDeep;
+            this.scope.push();
+            console.log(func.constructor.name);
+            const mapInfo = func.mapArguments(callinfo);
+            this.references.pushVisibilityScope();
+            const res = func.exec(callinfo, mapInfo);
+            this.references.popVisibilityScope();
+            this.scope.pop();
+            --this.functionDeep;
+            this.callstack.pop();
+            return res;
+        }
+        this.error({}, `Undefined function ${name}`);
     }
     execCall(st) {
         const name = st.function.name;
@@ -689,7 +710,7 @@ module.exports = class Processor {
             return false;
         }
         for (const fname in this.delayedCalls[scope][event]) {
-            this.execCall({ op: 'call', function: {name: fname}, arguments: [] });
+            this.execCall({ op: 'call', function: {name: fname}, args: [] });
         }
     }
     execWitnessColDeclaration(s) {
@@ -761,7 +782,7 @@ module.exports = class Processor {
         const scope = s.scope;
         const fname = s.function.name;
         const event = s.event;
-        if (s.arguments.length > 0) {
+        if (s.args.length > 0) {
             throw new Error('delayed function call arguments are not yet supported');
         }
         if (event !== 'final') {
@@ -782,6 +803,7 @@ module.exports = class Processor {
         this.delayedCalls[scope][event][fname].sourceRefs.push(this.context.sourceRef);
     }
     execExpr(s) {
+        console.log(s.expr);
         this.expressions.eval(s.expr);
     }
     decodeNameAndLengths(s) {
@@ -892,15 +914,21 @@ module.exports = class Processor {
             let initValue = null;
             if (init) {
                 console.log(s.vtype);
-                if (s.vtype === 'expr') {
-                    // s.init[index].expr.dump('INIT1 '+name);
-                    console.log(s.init[index]);
-                    initValue = s.init[index].eval();
-                    console.log(initValue);
-                    // initValue.dump('INIT2 '+name);
-                }
-                else {
-                    initValue = new ExpressionItems.IntValue(this.expressions.e2value(s.init[index]));
+                switch (s.vtype) {
+                    case 'expr':
+                        // s.init[index].expr.dump('INIT1 '+name);
+                        console.log(s.init[index]);
+                        initValue = s.init[index].eval();
+                        console.log(initValue);
+                        // initValue.dump('INIT2 '+name);
+                        break;
+                    case 'int':
+                        console.log(s);
+                        initValue = new ExpressionItems.IntValue(this.expressions.e2value(s.init[index]));
+                        break;
+                    case 'string':
+                        initValue = new ExpressionItems.StringValue(this.expressions.e2value(s.init[index]));
+                        break;
                 }
             }
             console.log(initValue);

@@ -1,5 +1,6 @@
 const {assert, assertLog} = require('../assert.js');
 const ValueItem = require("./value_item.js");
+const ExpressionItem = require('../expression_items/int_value.js');
 
 module.exports = class IntValue extends ValueItem {
     constructor (value = 0n) {
@@ -30,6 +31,9 @@ module.exports = class IntValue extends ValueItem {
         if (value instanceof IntValue) {
             return value.value;
         }
+    }
+    getItem() {
+        return new ExpressionItem(this.value);
     }
     asInt() {
         return this.value;

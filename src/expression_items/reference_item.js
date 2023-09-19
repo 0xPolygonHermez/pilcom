@@ -8,7 +8,7 @@ module.exports = class ReferenceItem extends RuntimeItem {
     }
     dump(options) {
         const [pre,post] = this.getNextStrings();
-        return `ReferenceItem(${pre}${this.name}${this.indexes.length > 0 ? '['+this.indexes.join(',')+']':''}${post})`;
+        return `${pre}${this.name}${this.indexes.length > 0 ? '['+this.indexes.join(',')+']':''}${post}`;
     }
     clone() {
         return new ReferenceItem(this.name, this.indexes, this.next);

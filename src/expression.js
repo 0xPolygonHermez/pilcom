@@ -1,22 +1,11 @@
 const util = require('util');
 const {cloneDeep} = require('lodash');
 const {assert} = require("chai");
+const ExpressionOperationsInfo = require('./expression_operations_info.js');
 const NonRuntimeEvaluable = require('./non_runtime_evaluable.js');
-const PilItem = require('./pil_item.js');
-const ReferenceItem = require("./expression_items/reference_item.js");
-const StackItem = require("./expression_items/stack_item.js");
-const ExpressionItem = require("./expression_items/expression_item.js");
-const ValueItem = require("./expression_items/value_item.js");
-const IntValue = require("./expression_items/int_value.js");
-const FeValue = require("./expression_items/fe_value.js");
-const ProofItem = require("./expression_items/proof_item.js");
-const Subproofval = require("./expression_items/subproofval.js");
-const Proofval = require("./expression_items/proofval.js");
-const WitnessCol = require("./expression_items/witness_col.js");
-const RuntimeItem = require("./expression_items/runtime_item.js");
-const FixedCol = require("./expression_items/fixed_col.js");
-const Public = require("./expression_items/public.js");
-const Challenge = require("./expression_items/challenge.js");
+const ExpressionItems = require("./expression_items.js");
+const ExpressionItem = ExpressionItems.ExpressionItem;
+const ExpressionOperatorMethods = require('./expression_operator_methods.js');
 const Context = require('./context.js');
 const OP_VALUE = 'value';
 const OP_ID_REF = 'idref';
@@ -39,42 +28,14 @@ module.exports = class Expression extends ExpressionItem {
     // value (bingint)
     // offset (number)
 
-    static parent;
+    static operatorsToMethodCache = {};
+    static operators = ExpressionOperatorMethods;
     static context;
-    // TODO: add all operations as if,
-    static operations = {
-        mul:  { type: 'arith',   label: '*',  prec:  96, args: 2, handle: (a, b) => a * b,  handleFr: (Fr, a, b) => Fr.mul(a, b)},
-        add:  { type: 'arith',   label: '+',  prec:  10, args: 2, handle: (a, b) => a + b,  handleFr: (Fr, a, b) => Fr.add(a, b)},
-        sub:  { type: 'arith',   label: '-',  prec:  11, args: 2, handle: (a, b) => a - b,  handleFr: (Fr, a, b) => Fr.sub(a, b)},
-        pow:  { type: 'arith',   label: '**', prec:  98, args: 2, handle: (a, b) => a ** b, handleFr: (Fr, a, b) => Fr.pow(a, b)},
-        neg:  { type: 'arith',   label: '-',  prec: 102, args: 1, handle: (a) => -a,        handleFr: (Fr, a) => Fr.neg(a, b)},
-        div:  { type: 'arith',   label: '/',  prec:  94, args: 2, handle: (a, b) => a / b},
-        mod:  { type: 'arith',   label: '%',  prec:  92, args: 1, handle: (a, b) => a % b},
-        gt:   { type: 'cmp',     label: '>',  prec:  76, args: 2, handle: (a, b) => (a > b  ? 1n : 0n)},
-        ge:   { type: 'cmp',     label: '>=', prec:  72, args: 2, handle: (a, b) => (a >= b ? 1n : 0n)},
-        lt:   { type: 'cmp',     label: '<',  prec:  78, args: 2, handle: (a, b) => (a < b  ? 1n : 0n)},
-        le:   { type: 'cmp',     label: '<=', prec:  74, args: 2, handle: (a, b) => (a <= b ? 1n : 0n)},
-        eq:   { type: 'cmp',     label: '==', prec:  66, args: 2, handle: (a, b) => (a == b ? 1n : 0n)},
-        ne:   { type: 'cmp',     label: '!=', prec:  64, args: 2, handle: (a, b) => (a != b ? 1n : 0n)},
-        and:  { type: 'logical', label: '&&', prec:  46, args: 2, handle: (a, b) => (a && b ? 1n : 0n)},
-        or:   { type: 'logical', label: '||', prec:  44, args: 2, handle: (a, b) => (a || b ? 1n : 0n)},
-        shl:  { type: 'bit',     label: '<<', prec:  86, args: 2, handle: (a, b) => (a << b ? 1n : 0n)},
-        shr:  { type: 'bit',     label: '>>', prec:  84, args: 2, handle: (a, b) => (a >> b ? 1n : 0n)},
-        band: { type: 'bit',     label: '&',  prec:  58, args: 2, handle: (a, b) => (a & b  ? 1n : 0n)},
-        bor:  { type: 'bit',     label: '|',  prec:  56, args: 2, handle: (a, b) => (a | b  ? 1n : 0n)},
-        bxor: { type: 'bit',     label: '^',  prec:  54, args: 2, handle: (a, b) => (a ^ b  ? 1n : 0n)},
-        not:  { type: 'logical', label: '!',  prec: 100, args: 1, handle: (a) => (a ? 0n : 1n)},
-    }
 
     constructor () {
-
         super();
         this.stack = [];
         this.fixedRowAccess = false;
-    }
-
-    static setParent (parent) {
-        Expression.parent = parent;
     }
 
     get isExpression() {
@@ -85,6 +46,9 @@ module.exports = class Expression extends ExpressionItem {
         cloned.fixedRowAccess = this.fixedRowAccess;
         cloned.pushStack(this);
         return cloned;
+    }
+    emptyClone() {
+        return new Expression();
     }
 
     pushStack(e) {
@@ -179,7 +143,7 @@ module.exports = class Expression extends ExpressionItem {
         // TODO: review if best place?
         // TODO: review if next/prior
         // return (this.isAlone() && this.stack[0].operands[0].type === OP_RUNTIME && this.stack[0].operands[0].op === 'reference' );
-        return (this.isAlone() && this.stack[0].operands[0] instanceof ReferenceItem);
+        return (this.isAlone() && this.stack[0].operands[0] instanceof ExpressionItems.ReferenceItem);
     }
 
     // OP_VALUE (value)
@@ -217,7 +181,7 @@ module.exports = class Expression extends ExpressionItem {
         return this.stack.some(st => this.isRuntimeStackPos(st));
     }
     isRuntimeStackPos(st) {
-        return ((st.op !== false &&  NATIVE_OPS.indexOf(st.op) < 0) || st.operands.some(operand  => operand instanceof RuntimeItem));
+        return ((st.op !== false &&  NATIVE_OPS.indexOf(st.op) < 0) || st.operands.some(operand  => operand instanceof ExpressionItems.RuntimeItem));
     }
 /*    isRuntimeOperand(ope) {
         return (ope.type === OP_RUNTIME);
@@ -240,7 +204,7 @@ module.exports = class Expression extends ExpressionItem {
             }
             // let operandA = aIsEmpty ? [] : [{type: OP_STACK, offset: 1}];
             // this.stack.push({op, operands: [...operandA, b.cloneAlone()]});
-            let operandA = aIsEmpty ? [] : [new StackItem(1)];
+            let operandA = aIsEmpty ? [] : [new ExpressionItems.StackItem(1)];
             this.stack.push({op, operands: [...operandA, b.cloneAlone()]});
             return this;
         }
@@ -248,10 +212,10 @@ module.exports = class Expression extends ExpressionItem {
         // !aIsAlone (aIsEmpty?) && !bIsAlone
         const count = this.pushStack(b);
         if (aIsEmpty) {
-            this.stack.push({op, operands: [new StackItem(1)]});
+            this.stack.push({op, operands: [new ExpressionItems.StackItem(1)]});
             return this;
         }
-        this.stack.push({op, operands: [new StackItem(count + 1), new StackItem(1)]});
+        this.stack.push({op, operands: [new ExpressionItems.StackItem(count + 1), new ExpressionItems.StackItem(1)]});
         return this;
     }
 
@@ -357,7 +321,7 @@ module.exports = class Expression extends ExpressionItem {
         }
     }
     evaluateRuntime(op, deeply = false) {
-        let res = Expression.parent.evalRuntime(op, this, deeply);
+        let res = Context.expressions.evalRuntime(op, this, deeply);
         return res;
     }
     instanceValues() {
@@ -449,7 +413,7 @@ module.exports = class Expression extends ExpressionItem {
         let stackResults = this.evaluateOperands(options);
         // this.instanceExpressions(options);
         this.evaluateFullStack(stackResults, options);
-        console.log('====[ RESULT ]====> ', stackResults[0][0]);
+        console.log('====[ RESULT ]====> ', stackResults[0][0], this.stack.length);
         return stackResults[this.stack.length-1][0];
     }
     evaluateFullStack(stackResults, options) {
@@ -502,30 +466,78 @@ module.exports = class Expression extends ExpressionItem {
             value = null;
         } else if (st.op === false) {
             value = values[0];
-        } else if (values.some(value => value instanceof ProofItem)) {
+        } else if (values.some(value => value instanceof ExpressionItems.ProofItem)) {
             value = null;
         } else {
+            console.log(st.op);
+            console.log(values);
             value = this.applyOperation(st.op, values);
+            console.log(value);
         }
         results[0] = value;
         return value;
     }
+    /**
+     * get method name used to calculate an operation between types.
+     * @param {string} operation - operation to apply on operators
+     * @param {string[]|false} types - types of operators
+     * */
+    operatorToMethod(operation, types) {
+        const key = 'operator_' + operation + (types === false ? '' : '_' +types.slice(1).join('_'));
+        let method = Expression.operatorsToMethodCache[key];
+        if (!method) {
+            method = key.replace(/(\_\w)/g, x => x[1].toUpperCase());
+            Expression.operatorsToMethodCache[key] = method;
+        }
+        return method;
+    }
+    /**
+     * apply operation over operands values
+     * @param {string} operation - operation to apply on operators
+     * @param {string[]|false} values - array of ExpressionItems
+     * */
     applyOperation(operation, values) {
-        const opfunc = Expression.operations[operation] ?? false;
-        if (opfunc === false) {
-            throw new Error(`NOT FOUND OPERATION (${operation})`);
+        const operationInfo = ExpressionOperationsInfo.get(operation);
+
+        if (operationInfo === false) {
+            throw new Error(`Operation ${operation} not was defined`);
         }
-        let value;
-        try {
-            console.log(values);
-            const intvalues = values.map(x => x.getValue());
-            console.log(intvalues);
-            value = opfunc.handle.apply(this, intvalues);
-        } catch (e) {
-            console.log([{op: operation},...values]);
-            throw e;
+
+        if (operationInfo.args !== values.length) {
+            throw new Error(`Invalid number of arguments on operation ${operation}, received ${values.length} values but was expected ${operationInfo.args}`);
         }
-        return new IntValue(value);
+
+        // assert all values must be an ExpressionItem
+        values.map(value => assert(value instanceof ExpressionItem));
+
+        let types = values.map(x => x.constructor.name);
+
+        // if number of values was less than 2 (means 1, always was equals)
+        const equals = values.length < 2 ? true : types.every(x => x === types[0]);
+        let reversed = false;
+        let methods = [];
+
+        while (true) {
+            const method = this.operatorToMethod(operation,  (equals ? false : types));
+            methods.push(method);
+            console.log(`########### (${values[0].constructor.name}) METHOD ${method} ###########`);
+            console.log(values[0].__prototype__);
+            if (typeof values[0][method] === 'function') {
+                // instance call, first value (operand) is "this", arguments rest of values (operands)
+                return values[0][method](...values.slice(1));
+            } else if (values[0].constructor.operators && typeof values[0].constructor.operators[method] === 'function') {
+                // static call with all values (operands)
+                return values[0].constructor.operators[method](...values);
+            }
+            if (equals || !operationInfo.commutative || operationInfo.args != 2 || reversed) {
+                break;
+            }
+            values = values.reverse();
+            types = types.reverse();
+            reversed = true;
+        }
+
+        throw new Error(`Operation ${operation} not was defined by types ${types.join(',')} [${methods.join(', ')}]`);
     }
     evaluateValue(value, options) {
         console.log(value);
@@ -538,15 +550,22 @@ module.exports = class Expression extends ExpressionItem {
         if (value instanceof Expression) {
             value.dump();
         }
-        assert(value instanceof ExpressionItem);
-        if (value instanceof StackItem) {
+        assert(value instanceof ExpressionItems.ExpressionItem);
+        if (value instanceof ExpressionItems.StackItem) {
             return null;
-        } else if (value instanceof ValueItem) {
+        } else if (value instanceof ExpressionItems.ValueItem) {
             return value;
-        } else if (value instanceof ProofItem) {
+        } else if (value instanceof ExpressionItems.ProofItem) {
             return null;
-        } else if (value instanceof ReferenceItem) {
-            let res = Context.runtime.eval(value, {});
+        } else if (value instanceof ExpressionItems.ReferenceItem) {
+            const res = Context.runtime.eval(value, {});
+            console.log(value);
+            console.log(res);
+            return res;
+        } else if (value instanceof ExpressionItems.FunctionCall) {
+            console.log(util.inspect(value, false, 10, true));
+            const res = value.eval();
+            console.log(res);
             return res;
         } else {
             console.log(value);
@@ -646,7 +665,7 @@ module.exports = class Expression extends ExpressionItem {
             return stackResults[pos][0];
         }
 
-        if (stackResults[pos][1].some(x => !(x instanceof IntValue))) {
+        if (stackResults[pos][1].some(x => !(x instanceof ExprecloneDeepssionItems.IntValue))) {
             return null;
         }
 
@@ -733,18 +752,15 @@ module.exports = class Expression extends ExpressionItem {
         }
 
         // this.simplifyRuntimeToValue(st);
-        const firstValue = st.operands[0] instanceof ValueItem ? st.operands[0].getValue() : false;
-        const secondValue = (st.operands.length > 1 && st.operands[1] instanceof ValueItem) ? st.operands[1].getValue() : false;
+        const firstValue = st.operands[0] instanceof ExpressionItems.ValueItem ? st.operands[0].getValue() : false;
+        const secondValue = (st.operands.length > 1 && st.operands[1] instanceof ExpressionItems.ValueItem) ? st.operands[1].getValue() : false;
 
         // [op,v1,v2] ==> [v1 op v2]
         if (firstValue !== false && secondValue !== false) {
             assert(!firstValue || (!firstValue.next && !firstValue.__next));
             assert(!secondValue || (!secondValue.next && !secondValue.__next));
-            const res = this.calculate(st);
-            if (res === null) return false;
-            // TODO: operations with FE ?
-            console.log(res);
-            st.operands = new IntValue(res);
+            const res = this.applyOperation(st.op, st.operands);
+            st.operands = [res];
             st.op = false;
             return true;
         }
@@ -823,7 +839,7 @@ module.exports = class Expression extends ExpressionItem {
                 const ope = st.operands[0];
                 // two situations, for alone stack reference, use its reference and it must
                 // be purged
-                translate[istack] = ope instanceof StackItem ? [true, translate[ope.getAbsolutePos(istack)][1]] : [true, istack];
+                translate[istack] = ope instanceof ExpressionItems.StackItem ? [true, translate[ope.getAbsolutePos(istack)][1]] : [true, istack];
                 continue;
             }
 
@@ -832,7 +848,7 @@ module.exports = class Expression extends ExpressionItem {
             // foreach operand if it's a stack reference, must be replaced by
             // new reference or by copy of reference if it was alone (no operation)
             for (let iope = 0; iope < st.operands.length; ++iope) {
-                if ((st.operands[iope] instanceof StackItem) === false) continue;
+                if ((st.operands[iope] instanceof ExpressionItems.StackItem) === false) continue;
                 const absolutePos = st.operands[iope].getAbsolutePos(istack);
                 const [purge, newAbsolutePos] = translate[absolutePos];
                 assert(absolutePos < istack);
@@ -905,7 +921,7 @@ module.exports = class Expression extends ExpressionItem {
         return Expression.parent.evaluateReference(e);
     }
 /*    evaluateRuntime(e) {
-        // function_call op:'call' function: arguments:
+        // function_call op:'call' function: args:
         // positional_param op:'positional_param' position:
         // casting op:'cast' cast: value: dim: ??
     }*/
@@ -985,34 +1001,35 @@ module.exports = class Expression extends ExpressionItem {
         }
         return this.stackPosToString(top ,0, {...options, dumpToString: true});
     }
-    stackPosToString(pos, pprec, options) {
+    stackPosToString(pos, parentPrecedence, options) {
         const st = this.stack[pos];
         if (typeof st === 'undefined') {
             console.log(pos);
             console.log(this.stack);
         }
         if (st.op === false) {
-            return this.operandToString(st.operands[0], pos, pprec, options);
+            return this.operandToString(st.operands[0], pos, parentPrecedence, options);
         }
-        const opinfo = Expression.operations[st.op];
+        const operationInfo = ExpressionOperationsInfo.get(st.op);
+        const operationLabel = operationInfo.label;
         let res;
         if (st.operands.length === 1) {
-            res = Expression.operations[st.op].label + this.operandToString(st.operands[0], pos, opinfo.prec, options);
+            res = operationLabel + this.operandToString(st.operands[0], pos, operationInfo.precedence, options);
 
         } else if (st.operands.length === 2) {
-            res = this.operandToString(st.operands[0], pos, opinfo.prec, options) + ' ' + Expression.operations[st.op].label + ' ' +
-                  this.operandToString(st.operands[1], pos, opinfo.prec, options);
+            res = this.operandToString(st.operands[0], pos, operationInfo.precedence, options) + ' ' + operationLabel + ' ' +
+                  this.operandToString(st.operands[1], pos, operationInfo.precedence, options);
         } else {
             TODO_EXIT
         }
-        if (pprec > opinfo.prec) {
+        if (parentPrecedence > operationInfo.precedence) {
             res = '(' + res + ')';
         }
         return res;
     }
-    operandToString(ope, pos, pprec, options) {
-        if (ope instanceof StackItem) {
-            return this.stackPosToString(pos-ope.offset, pprec, options);
+    operandToString(ope, pos, parentPrecedence, options) {
+        if (ope instanceof ExpressionItems.StackItem) {
+            return this.stackPosToString(pos-ope.offset, parentPrecedence, options);
         }
         return ope.dump(options);
 /*
@@ -1080,11 +1097,11 @@ module.exports = class Expression extends ExpressionItem {
     }
 
     operandPack(container, ope, pos, options) {
-        if (ope instanceof ValueItem) {
+        if (ope instanceof ExpressionItems.ValueItem) {
             container.pushConstant(ope.value);
-        } else if (ope instanceof ProofItem) {
+        } else if (ope instanceof ExpressionItems.ProofItem) {
             this.referencePack(container, ope, options);
-        } else if (ope instanceof StackItem) {
+        } else if (ope instanceof ExpressionItems.StackItem) {
             const eid = this.stackPosPack(container, pos-ope.getOffset(), options);
             if (eid !== false) {        // eid === false => alone operand
                 container.pushExpression(eid);
@@ -1102,30 +1119,30 @@ module.exports = class Expression extends ExpressionItem {
         const id = ope.getId();
         const def = Context.references.getDefinitionByItem(ope);
         assert(def !== false);
-        if (ope instanceof WitnessCol) {
+        if (ope instanceof ExpressionItems.WitnessCol) {
             // container.pushWitnessCol(id, next ?? 0, stage ?? 1)
             console.log(ope);
             // CURRENT ERROR: in this scope definition not available.
             console.log(def);
             container.pushWitnessCol(id, ope.getNext(), def.stage);
 
-        } else if (ope instanceof FixedCol) {
+        } else if (ope instanceof ExpressionItems.FixedCol) {
             // container.pushFixedCol(id, next ?? 0);
             container.pushFixedCol(id, ope.getNext());
 
-        } else if (ope instanceof Public) {
+        } else if (ope instanceof ExpressionItems.Public) {
             // container.pushPublicValue(id)
             container.pushPublicValue(id);
 
-        } else if (ope instanceof Challenge) {
+        } else if (ope instanceof ExpressionItems.Challenge) {
             // container.pushChallenge(id, stage ?? 1);
             container.pushChallenge(id, ope.getStage());
 
-        } else if (ope instanceof Proofval) {
+        } else if (ope instanceof ExpressionItems.Proofval) {
             // container.pushProofValue(id)
             container.pushProofValue(id);
 
-        } else if (ope instanceof Subproofval) {
+        } else if (ope instanceof ExpressionItems.Subproofval) {
             // container.pushSubproofValue(id)
             container.pushSubproofValue(id);
         } else {
@@ -1138,5 +1155,46 @@ module.exports = class Expression extends ExpressionItem {
             return res.instance(true);
         }
         return res;
+    }
+    asBool() {
+        this.dump();
+        let res = this.eval();
+        res.dump();
+        if (res instanceof Expression) {
+            res = res.getAloneOperand();
+        }
+        assert((res instanceof Expression) === false);
+        if (typeof res.asBool === 'function') {
+            return res.asBool();
+        }
+        console.log(res);
+        EXIT_HERE;
+    }
+    asIntItem() {
+        return new ExpressionItems.IntValue(this.asInt());
+    }
+    asInt() {
+        let res = this.eval();
+        assert((res instanceof Expression) === false);
+        if (typeof res.asInt === 'function') {
+            return res.asInt();
+        }
+        console.log(res);
+        EXIT_HERE;
+    }
+    asString() {
+        return this.toString();
+    }
+    asStringItem() {
+        return new ExpressionItems.StringValue(this.asString());
+    }
+    getValue() {
+        return this.eval();
+    }
+    operatorAddExpressionIntValue(valueA, valueB) {
+        EXIT_HERE;
+    }
+    operatorAdd(valueA, valueB) {
+        EXIT_HERE;
     }
 }

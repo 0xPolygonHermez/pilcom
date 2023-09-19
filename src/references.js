@@ -396,7 +396,7 @@ module.exports = class References {
     isVisible(def) {
         return !def.scopeId || def.type === 'constant' || def.scopeId >= this.visibilityScope; // || def.scopeId <= Context.scope.getScopeId('air');
     }
-    getReference(name, defaultValue) {
+    getReference(name, defaultValue, debug = {}) {
         // if more than one name is sent, use the first one (mainName). Always first name it's directly
         // name defined on source code, second optionally could be name with subproof, because as symbol is
         // stored with full name.

@@ -1,5 +1,4 @@
 const {assert} = require("chai");
-
 module.exports = class Context {
     static _instance = null;
 

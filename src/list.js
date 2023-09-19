@@ -1,3 +1,4 @@
+const Context = require('./context.js');
 const Router = require("./router.js");
 const Expression = require("./expression.js");
 
@@ -61,7 +62,7 @@ module.exports = class List {
     _extendAppendReferences(e) {
         console.log("=================  appendReferences ==================");
         let values = [];
-        const info = Expression.parent.getReferenceInfo(e.value);
+        const info = Context.expressions.getReferenceInfo(e.value);
         let element = e.value.instance().getAloneOperand();
         if (!element.array || element.array.dim < 1) {
             throw new Error(`Could not extend and append a non array element`)

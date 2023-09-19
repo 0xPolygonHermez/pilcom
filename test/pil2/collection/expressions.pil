@@ -1,0 +1,14 @@
+subproof ExpressionTest(2**16) {
+    int k = 10;
+    expr a = 1;
+    string s = "1";
+
+
+    assert(k == 10);
+    assert(a == 1);
+    assert(string(1) == "1");
+    assert(string(a) == "1");
+    assert(string(a) == s);
+
+    a = a + 1;
+}

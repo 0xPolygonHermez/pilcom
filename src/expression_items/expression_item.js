@@ -56,8 +56,17 @@
 module.exports = class ExpressionItem {
     static _classToManager = {};
 
-    dump(options) {
+    constructor(debug = {}) {
+        this.debug = debug;
+    }
+    static registerClass(name, cls) {
+        ExpressionItem[name] = cls;
+    }
+    toString(options) {
         return `${this.constructor.name}()`;
+    }
+    dump(options) {
+        return this.toString(options);
     }
     get type() {
         console.log(this);

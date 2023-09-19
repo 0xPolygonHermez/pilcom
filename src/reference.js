@@ -48,10 +48,11 @@ module.exports = class Reference {
     }
     getItem(indexes, options = {}) {
         if (Array.isArray(indexes) && indexes.length === 0) {
-            console.log(this.instance);
-            return this.instance.getItem(this.locator);
+            const res = this.instance.getItem(this.locator);
+            console.log(res);
+            return res;
         }
-        console.log(indexes, indexes === [], this);
+        console.log(indexes, this);
         console.log(indexes, options);
         EXIT_HERE_TODO;
     }
