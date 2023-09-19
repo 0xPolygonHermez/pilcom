@@ -24,6 +24,17 @@ module.exports = class References {
         console.log(instance.constructor.name);
         return instance.get ? instance.get(instance.id): false;
     }
+/*    getDefinition(name, indexes) {
+        const reference = this.getReference(name);
+        const id = reference.getId(indexes);
+    }*/
+    getArray(name, indexes) {
+        const reference = this.getReference(name);
+        if (!reference.array) {
+            return false;
+        }
+        return reference.array.applyIndexes(indexes);
+    }
     getNameScope(name) {
         const nameInfo = this.decodeName(name);
         return nameInfo.scope;
@@ -219,8 +230,9 @@ module.exports = class References {
         return this.getTypeDefinition(type).instance.getLabel(id, {type, ...options});
     }
     getTypeR(name, indexes, options) {
-        const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        return [instance.getType(info.locator + info.offset), info.reference, info.array ?? false];
+        const reference = this.getReference(name);
+        const item = reference.getItem(indexes);
+        return [item, reference.isReference];
     }
     getItem(name, indexes, options) {
 
@@ -396,6 +408,13 @@ module.exports = class References {
     isVisible(def) {
         return !def.scopeId || def.type === 'constant' || def.scopeId >= this.visibilityScope; // || def.scopeId <= Context.scope.getScopeId('air');
     }
+    /**
+     *
+     * @param {string|string[]} name
+     * @param {*} defaultValue
+     * @param {Object} debug
+     * @returns {Reference}
+     */
     getReference(name, defaultValue, debug = {}) {
         // if more than one name is sent, use the first one (mainName). Always first name it's directly
         // name defined on source code, second optionally could be name with subproof, because as symbol is

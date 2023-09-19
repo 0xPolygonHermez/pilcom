@@ -47,6 +47,11 @@ class IntValue extends ValueItem {
     asString() {
         return this.value.toString();
     }
+    asExpressionItem() {
+        let res = new ValueItem.Expression();
+        res._set(this);
+        return res;
+    }
     operatorAdd(valueB) {
         return new IntValue(this.asInt() + valueB.asInt());
     }

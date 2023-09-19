@@ -7,23 +7,26 @@ module.exports = class Assign {
     }
 
     assign (name, indexes, value) {
-        // console.log(value.stack[0].operands[0]);
+        value = this.getValue(value);
+        assert(value !== null);
+        return this.#assign(name, indexes, value);
+    }
+    getValue(value) {
         const _value = value.eval();
         if (typeof _value !== 'undefined' && _value !== null) {
-            value = _value;
+            return _value;
         }
-        assert(value !== null);
-        return this.__assign(name, indexes, value);
+        return value;
     }
-    __assign(name, indexes, value) {
-        const [type, reference, array] = Context.references.getTypeR(name, indexes);
-        console.log([type, reference, array]);
-        const dim = (array && array.dim) ? array.dim : 0;
+    #assign (name, indexes, value) {
+        const array = Context.references.getArray(name, indexes);
+        const dim = array.dim ?? 0;
         if (dim > 0) {
+            // array asignation as array or subarray copy
             return this.assignArray(name, indexes, value, array);
         }
-        // console.log([name, type, reference, array]);
-        return this.assignType(type, name, indexes, value);
+
+        return Context.references.set(name, indexes, value);
     }
     assignType(type, name, indexes, value) {
         console.log(type);
@@ -51,7 +54,7 @@ module.exports = class Assign {
             _indexes.push(index);
             value.pushAloneIndex(index);
             if (level + 1 === leftArray.dim) {
-                this.__assign(name, _indexes, value.evaluateAloneReference());
+                this.#assign(name, _indexes, value.evaluateAloneReference());
             } else {
                 this.assignArrayLevel(level+1, name, _indexes, value, leftArray, rightArray);
             }

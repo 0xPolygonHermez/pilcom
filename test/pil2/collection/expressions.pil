@@ -11,4 +11,7 @@ subproof ExpressionTest(2**16) {
     assert(string(a) == s);
 
     a = a + 1;
+    dump(a);
+    a = a * 10;
+    dump(a);
 }

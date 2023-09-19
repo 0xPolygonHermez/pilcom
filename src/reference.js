@@ -1,6 +1,11 @@
 const {assert, assertLog} = require('./assert.js');
 const {MultiArray} = require("./multi_array.js");
-module.exports = class Reference {
+
+/**
+ * @property {MultiArray} array
+ */
+
+class Reference {
 
     constructor (name, type, isReference, array, id, instance, scopeId, properties) {
         this.name = name;
@@ -57,3 +62,5 @@ module.exports = class Reference {
         EXIT_HERE_TODO;
     }
 }
+
+module.exports = Reference;

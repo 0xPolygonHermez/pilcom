@@ -17,7 +17,7 @@ const VALID_NATIVE_OPS = [false, ...NATIVE_OPS];
 
 class ExpressionStackEvaluating {};
 class InstanceArray extends Error {};
-module.exports = class Expression extends ExpressionItem {
+class Expression extends ExpressionItem {
 
     // op (string)
     // operands (array)
@@ -482,7 +482,7 @@ module.exports = class Expression extends ExpressionItem {
      * @param {string} operation - operation to apply on operators
      * @param {string[]|false} types - types of operators
      * */
-    operatorToMethod(operation, types) {
+    operatorToMethod(operation, types = false) {
         const key = 'operator_' + operation + (types === false ? '' : '_' +types.slice(1).join('_'));
         let method = Expression.operatorsToMethodCache[key];
         if (!method) {
@@ -516,28 +516,69 @@ module.exports = class Expression extends ExpressionItem {
         const equals = values.length < 2 ? true : types.every(x => x === types[0]);
         let reversed = false;
         let methods = [];
+        const onlyOneLoop = equals || !operationInfo.commutative || operationInfo.args != 2;
+
+        // In this block try to found and operator method using types without transformations.
+        // First search on class of first operand, if not found search on class of second operand (*)
+        // (*) only if two operands and operation is commutative
 
         while (true) {
             const method = this.operatorToMethod(operation,  (equals ? false : types));
             methods.push(method);
-            console.log(`########### (${values[0].constructor.name}) METHOD ${method} ###########`);
-            console.log(values[0].__prototype__);
-            if (typeof values[0][method] === 'function') {
-                // instance call, first value (operand) is "this", arguments rest of values (operands)
-                return values[0][method](...values.slice(1));
-            } else if (values[0].constructor.operators && typeof values[0].constructor.operators[method] === 'function') {
-                // static call with all values (operands)
-                return values[0].constructor.operators[method](...values);
+            const [executed, result] = this.applyOperatorMethod(method, values);
+            if (executed) {
+                return result;
             }
-            if (equals || !operationInfo.commutative || operationInfo.args != 2 || reversed) {
+            if (onlyOneLoop) {
                 break;
+            }
+            // onlyOneLoop === false => two loops, on second loop applies reverse again to
+            // restore original values and types, also restore value of reversed
+            values = values.reverse();
+            types = types.reverse();
+            reversed = !reversed;
+            if (reversed == false) {
+                break;
+            }
+        }
+
+        // If not equals, in this block try to cast second operand to class of first operand, after that
+        // First search on class of first operand, if not found, try to cast first operand to class of second
+        // operand and search on class of second operand (*)
+        // (*) only if two operands and operation is commutative
+        while (!equals && operationInfo.args == 2) {
+            const casting = 'as'+types[0]+'Item';
+            if (typeof values[1][casting] === 'function') {
+                const method = this.operatorToMethod(operation);
+                methods.push(method);
+                const [executed, result] = this.applyOperatorMethod(method, [values[0], values[1][casting]()]);
+                if (executed) {
+                    return result;
+                }
+                if (onlyOneLoop) {
+                    break;
+                }
             }
             values = values.reverse();
             types = types.reverse();
-            reversed = true;
+            reversed = !reversed;
+            if (reversed == false) {
+                break;
+            }
         }
 
         throw new Error(`Operation ${operation} not was defined by types ${types.join(',')} [${methods.join(', ')}]`);
+    }
+    applyOperatorMethod (method, values) {
+        console.log(`########### (${values[0].constructor.name}) METHOD ${method} ###########`);
+        if (typeof values[0][method] === 'function') {
+            // instance call, first value (operand) is "this", arguments rest of values (operands)
+            return [true, values[0][method](...values.slice(1))];
+        } else if (values[0].constructor.operators && typeof values[0].constructor.operators[method] === 'function') {
+            // static call with all values (operands)
+            return [true, values[0].constructor.operators[method](...values)];
+        }
+        return [false, false];
     }
     evaluateValue(value, options) {
         console.log(value);
@@ -1198,3 +1239,6 @@ module.exports = class Expression extends ExpressionItem {
         EXIT_HERE;
     }
 }
+
+ExpressionItem.registerClass('Expression', Expression);
+module.exports = Expression;

@@ -10,11 +10,18 @@ module.exports = class ExpressionOperatorMethods {
         res.simplify();
         return res;
     }
-    static operatorAdd(valueA, valueB) {
+    static #do(operation, valueA, valueB) {
         let res = valueA.clone();
-        res.insert('add', valueB);
+        res.insert(operation, valueB);
         res.simplify();
         return res;
+    }
+
+    static operatorAdd(valueA, valueB) {
+        return this.#do('add', valueA, valueB);
+    }
+    static operatorMul(valueA, valueB) {
+        return this.#do('mul', valueA, valueB);
     }
     static operatorEqIntValue(valueA, valueB) {
         let res = valueA.eval();
