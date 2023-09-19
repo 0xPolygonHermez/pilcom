@@ -90,7 +90,7 @@ private function check_multiset_opid_and_cols(int opid, int cols_count, int prov
  * @param cols array of columns of the argument
  * @return S·([opid + C₁·α + C₂·α² + ... + Cₙ·αⁿ] + β - 1) + 1
  */
-function multiset_prepare_cols(int opid, expr sel, expr cols[]): expr {
+private function multiset_prepare_cols(int opid, expr sel, expr cols[]): expr {
     expr cols_compressed = 0;
     for (int icol = length(cols) - 1; icol >= 0; --icol) {
         cols_compressed = (cols_compressed + cols[icol]) * std_alpha;
@@ -113,7 +113,7 @@ function multiset_prepare_cols(int opid, expr sel, expr cols[]): expr {
  * @param sel selector of the argument
  * @param cols columns of the argument
  */
-function multiset_update(int provide, int opid, expr sel, expr cols[]) {
+private function multiset_update(int provide, int opid, expr sel, expr cols[]) {
     // verify if correct opid and cols
     check_multiset_opid_and_cols(opid, length(cols), provide);
 
@@ -282,7 +282,7 @@ private function check_lookup_opid_and_cols(int opid, int cols_count, int provid
  * @param cols columns of the argument
  * @return S·[opid + C₁·α + C₂·α² + ... + Cₙ·αⁿ]
  */
-function lookup_prepare_cols (int opid, expr sel, expr cols[]): expr {
+private function lookup_prepare_cols (int opid, expr sel, expr cols[]): expr {
     expr cols_compressed = 0;
     for (int icol = length(cols) - 1; icol >= 0; --icol) {
         cols_compressed = (cols_compressed + cols[icol]) * std_alpha;
@@ -305,7 +305,7 @@ function lookup_prepare_cols (int opid, expr sel, expr cols[]): expr {
  * @param sel selector of the argument
  * @param cols columns of the argument
  */
-function lookup_update_provide(int opid, expr selP, expr colsP[]) {
+private function lookup_update_provide(int opid, expr selP, expr colsP[]) {
     // verify if correct opid and cols
     check_lookup_opid_and_cols(opid, length(colsP), 1);
 
@@ -325,7 +325,7 @@ function lookup_update_provide(int opid, expr selP, expr colsP[]) {
     // define constraints at the air level
     on final air lookup_air();
 }
-function lookup_update_require(int opid, expr selR, expr colsR[]) {
+private function lookup_update_require(int opid, expr selR, expr colsR[]) {
     // verify if correct opid and cols
     check_lookup_opid_and_cols(opid, length(colsR), 0);
 
@@ -353,7 +353,7 @@ private function lookup_air() {
 
     use air.std.lookup;
 
-    @lookup_check {h1: h1, h2: h2, colsT: gprod_provide, colsF: gprod_require, gprod};
+    @lookup_check {h1: h1, h2: h2, colsF: gprod_require, colsT: gprod_provide, prod: gprod};
 
     // Define h1,h2 polynomials
     col witness h1 stage(2);
@@ -506,7 +506,7 @@ private function check_connection_opid_and_cols(int opid, int cols_count, int pr
  * @param sel selector of the argument
  * @param cols columns of the argument
  */
-function connection_update_provide(int opid, expr colsP[]) {
+private function connection_update_provide(int opid, expr colsP[]) {
     // verify if correct opid and cols
     check_connection_opid_and_cols(opid, length(colsP), 1);
 
@@ -523,7 +523,8 @@ function connection_update_provide(int opid, expr colsP[]) {
     // define constraints at the air level
     on final air connection_air();
 }
-function connection_update_require(int opid, expr colsR[]) {
+
+private function connection_update_require(int opid, expr colsR[]) {
     // verify if correct opid and cols
     check_connection_opid_and_cols(opid, length(colsR), 1);
 

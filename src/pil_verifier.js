@@ -393,10 +393,3 @@ function getConnectionMap(F, N, nk) {
     cacheConnectionMaps[kc] = m;
     return m;
 }
-
-
-
-
-
-
-
