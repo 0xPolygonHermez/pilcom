@@ -65,18 +65,17 @@
 
 
 ```
-    challenge alfa stage 2;
+challenge alfa stage 2;
 
+pol commit z stage 1;
 
-    pol commit z stage 1;
+pol commit a;  // equivalent to `pol commit a stage 1`
 
-    pol commit a;  // equivalent to `pol commit a stage 1`
+// Optional
+pol commit z[10] stage 3;
 
-    // Optional
-    pol commit z[10] stage 3;
-
-    // Optional (Not in first version)
-    challenge ys[12]{0..31} stage 3;
+// Optional (Not in first version)
+challenge ys[12]{0..31} stage 3;
 
 ````
 
@@ -89,25 +88,25 @@ pol is committed at stage 2 (it is available from this stage)
 ## Conditionals constraints
 
 ```
-    // Proposal 1
-    (1- L1) { b*c === a };
+// Proposal 1
+(1- L1) { b*c === a };
 
-    // Proposal 2  THE GOOD ONE
-    when L1 { a === a'; };
-    when 1-L1 { a === b*c; };
+// Proposal 2  THE GOOD ONE
+when L1 { a === a'; };
+when 1-L1 { a === b*c; };
 
-    d == e*f' when 1- LLAST
+d == e*f' when 1- LLAST
 
-    defaultwhen 1-LLAST
+defaultwhen 1-LLAST
 
-    when L1 {
-        a === a';
-        b === b';
-    };
+when L1 {
+    a === a';
+    b === b';
+};
 
-    // Actual way
-    L1* (a' -a) === 0;
-    (1-L1)* (b*c -a) === 0;
+// Actual way
+L1* (a' -a) === 0;
+(1-L1)* (b*c -a) === 0;
 
 ```
 selector binary.
@@ -263,7 +262,6 @@ namespace Ninetoone subproof keccak
 
 ## Prior and next N
 ```
-
 <n>'<pol>
 <pol>'<n>
 
@@ -302,27 +300,28 @@ m0[7]' = (1-RESET) * m0[7] + FACTOR'28 * inM[0];
 for (var i=0; i<7; ++i {
     m0[i]' === (1-RESET) * m0[i] + FACTOR'(i*4) * inM[0];
 })
-
 ```
 
 ## Range checks
 
+```
+sel { a } in [0..255];
 
-  sel { a } in [0..255];
-
-  a in [0..255];
-  b in [0..255];
+a in [0..255];
+b in [0..255];
+```
 
 ## Connect
 
+```
+setIdentity(S[0],S[1],S[2]);  // setIdentity is a buildin function
 
-    setIdentity(S[0],S[1],S[2]);  // setIdentity is a buildin function
-
-    function connect(ref S1, var p1, ref S2, var p2) {
-        var tmp = S1[p1];
-        S1[p1] = S2[p2];
-        S2[p2] = tmp;
-    }
+function connect(ref S1, var p1, ref S2, var p2) {
+    var tmp = S1[p1];
+    S1[p1] = S2[p2];
+    S2[p2] = tmp;
+}
+```
 
 
 ## Constant Optimizations
@@ -338,12 +337,13 @@ prime
 
 
 ## NOTES
+
 - constants could be change with N, in subproof could define multiple N needs to compute all for each N.
 - expressions could change if has an variable or reference inside.
 
 ## NOTES builtin
-degree(expression)
 
+degree(expression)
 
 ### template expressions
 
@@ -365,7 +365,6 @@ assert(params(e) == 1);
 
 e = e(col2);        // e = a * col0 + b * col1 + col2
 assert(params(e) == 0);
-
 ```
 
 expression(param0, param1, param2) = internally is a clone and param0, ....
