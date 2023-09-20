@@ -2,7 +2,7 @@ const {assert, assertLog} = require("../assert.js");
 const RuntimeItem = require("./runtime_item.js");
 const StringValueItem = require("../expression_items/string_value.js");
 
-module.exports = class StringValue extends RuntimeItem {
+class StringValue extends RuntimeItem {
     constructor (id, properties) {
         super(id, properties);
         const value = properties.value ?? '';
@@ -32,3 +32,5 @@ module.exports = class StringValue extends RuntimeItem {
         return new StringValueItem(this.value);
     }
 }
+
+module.exports = StringValue;

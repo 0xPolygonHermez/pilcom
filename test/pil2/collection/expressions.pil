@@ -14,4 +14,7 @@ subproof ExpressionTest(2**16) {
     dump(a);
     a = a * 10;
     dump(a);
+    s = s + "hello";
+    s = s + k;
+    s = s + a;
 }

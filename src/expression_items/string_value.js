@@ -32,7 +32,9 @@ class StringValue extends RuntimeItem {
     operatorEq(valueB) {
         return new RuntimeItem.IntValue(this.asString() === valueB.asString() ? 1:0);
     }
-
+    operatorAdd(valueB) {
+        return new StringValue(this.asString() + valueB.asString());
+    }
 }
 
 RuntimeItem.registerClass('StringValue', StringValue);

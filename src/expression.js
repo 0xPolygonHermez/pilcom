@@ -14,9 +14,8 @@ const OP_RUNTIME = 'runtime';
 const NATIVE_REFS = ['witness', 'fixed', 'public', 'challenge', 'subproofvalue', 'proofvalue', 'publictable'];
 const NATIVE_OPS = ['add', 'sub', 'mul', 'neg'];
 const VALID_NATIVE_OPS = [false, ...NATIVE_OPS];
+const Exceptions = require('./exceptions.js');
 
-class ExpressionStackEvaluating {};
-class InstanceArray extends Error {};
 class Expression extends ExpressionItem {
 
     // op (string)
@@ -524,7 +523,7 @@ class Expression extends ExpressionItem {
 
         while (true) {
             const method = this.operatorToMethod(operation,  (equals ? false : types));
-            methods.push(method);
+            methods.push(`${types[0]}.${method}`);
             const [executed, result] = this.applyOperatorMethod(method, values);
             if (executed) {
                 return result;
@@ -547,10 +546,10 @@ class Expression extends ExpressionItem {
         // operand and search on class of second operand (*)
         // (*) only if two operands and operation is commutative
         while (!equals && operationInfo.args == 2) {
-            const casting = 'as'+types[0]+'Item';
+            const casting = this.castingItemMethod(types[0]);
             if (typeof values[1][casting] === 'function') {
                 const method = this.operatorToMethod(operation);
-                methods.push(method);
+                methods.push(`${types[0]}.${method}`);
                 const [executed, result] = this.applyOperatorMethod(method, [values[0], values[1][casting]()]);
                 if (executed) {
                     return result;
@@ -568,6 +567,12 @@ class Expression extends ExpressionItem {
         }
 
         throw new Error(`Operation ${operation} not was defined by types ${types.join(',')} [${methods.join(', ')}]`);
+    }
+    castingItemMethod(type) {
+        if (type === 'StringValue' || type === 'IntValue') {
+            type = type.slice(0, -5);
+        }
+        return 'as'+type+'Item';
     }
     applyOperatorMethod (method, values) {
         console.log(`########### (${values[0].constructor.name}) METHOD ${method} ###########`);
@@ -1038,9 +1043,9 @@ class Expression extends ExpressionItem {
     toString(options) {
         let top = this.stack.length-1;
         if (top < 0) {
-            return '(empty expression)';
+            return '(Expression => String)';
         }
-        return this.stackPosToString(top ,0, {...options, dumpToString: true});
+        return '(Expression => String)'+this.stackPosToString(top ,0, {...options, dumpToString: true});
     }
     stackPosToString(pos, parentPrecedence, options) {
         const st = this.stack[pos];
@@ -1215,16 +1220,29 @@ class Expression extends ExpressionItem {
         return new ExpressionItems.IntValue(this.asInt());
     }
     asInt() {
+        const res = this.asIntDefault();
+        if (res === false) {
+            throw new Exceptions.CannotBeCastToType('int');
+        }
+        return res;
+    }
+    asIntItemDefault(defaultValue = false) {
+        return new ExpressionItems.IntValue(this.asIntDefault(defaultValue));
+    }
+    asIntDefault(defaultValue = false) {
         let res = this.eval();
         assert((res instanceof Expression) === false);
         if (typeof res.asInt === 'function') {
             return res.asInt();
         }
-        console.log(res);
-        EXIT_HERE;
+        return defaultValue;
     }
     asString() {
-        return this.toString();
+        const value = this.eval();
+        if (typeof value.asString === 'function') {
+            return value.asString();
+        }
+        throw new Exceptions.CannotBeCastToType('string');
     }
     asStringItem() {
         return new ExpressionItems.StringValue(this.asString());
