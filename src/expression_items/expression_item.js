@@ -53,14 +53,37 @@
     ArrayOf (multiarray, [ExpressionItem]) = List
 
 */
+const Exceptions = require('../exceptions.js');
 module.exports = class ExpressionItem {
     static _classToManager = {};
 
     constructor(debug = {}) {
         this.debug = debug;
+        this.indexes = false;
     }
     static registerClass(name, cls) {
         ExpressionItem[name] = cls;
+    }
+    get dim () {
+        return Array.isArray(this.indexes) ? this.indexes.length : 0;
+    }
+    popArrayIndex () {
+        if (this.indexes === false) {
+            throw new Error(`try to add index to non-indexable element`);
+        }
+        if (typeof this.indexes === 'undefined') {
+            this.indexes = [];
+        }
+        this.indexes.push(ExpressionItem.IntValue(index));
+    }
+    pushArrayIndex () {
+        if (this.indexes === false) {
+            throw new Error(`try to add an index to non-indexable element`);
+        }
+        if (this.dim < 1) {
+            throw new Error(`try to remove an index from element without indexes`);
+        }
+        return this.indexes.pop();
     }
     toString(options) {
         return `${this.constructor.name}()`;
@@ -88,5 +111,18 @@ module.exports = class ExpressionItem {
     getManager() {
         console.log(['GET_MANAGER', this.constructor.name]);
         return ExpressionItem._classToManager[this.constructor.name];
+    }
+    _asDefault(method, defaultValue = false) {
+        try {
+            return method.apply(this, [defaultValue]);
+        } catch (e) {
+            if (e instanceof Exceptions.CannotBeCastToType) {
+                return defaultValue;
+            }
+            throw e;
+        }
+    }
+    eval(options = {}) {
+        throw new Error(`eval not defined for class ${this.constructor.name}`);
     }
 }

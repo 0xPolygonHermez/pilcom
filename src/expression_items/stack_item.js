@@ -21,4 +21,7 @@ module.exports = class StackItem extends ExpressionItem {
     dump(options) {
         return `StackItem(${this.offset})`;
     }
+    eval(options = {}) {
+
+    }
 }

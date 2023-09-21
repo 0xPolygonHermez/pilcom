@@ -1,4 +1,5 @@
 const RuntimeItem = require("./runtime_item.js");
+const Context = require('../context.js');
 module.exports = class ReferenceItem extends RuntimeItem {
     constructor (name, indexes = [], next = 0) {
         super();
@@ -12,5 +13,12 @@ module.exports = class ReferenceItem extends RuntimeItem {
     }
     clone() {
         return new ReferenceItem(this.name, this.indexes, this.next);
+    }
+    eval(options = {}) {
+        console.log(this);
+        const item = Context.references.getItem(this.name, this.indexes);
+        // TODO: next
+        console.log(item);
+        return item;
     }
 }

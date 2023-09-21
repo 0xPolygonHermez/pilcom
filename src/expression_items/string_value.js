@@ -35,6 +35,9 @@ class StringValue extends RuntimeItem {
     operatorAdd(valueB) {
         return new StringValue(this.asString() + valueB.asString());
     }
+    eval(options = {}) {
+        return this.clone();
+    }
 }
 
 RuntimeItem.registerClass('StringValue', StringValue);

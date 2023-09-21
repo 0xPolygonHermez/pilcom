@@ -26,4 +26,7 @@ module.exports = class ValueItem extends ExpressionItem {
     asStringType() {
         return new ExpressionItem.StringValue(this.asString());
     }
+    eval(options = {}) {
+        return this.clone();
+    }
 }

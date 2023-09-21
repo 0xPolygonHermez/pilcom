@@ -20,7 +20,8 @@ class MultiArray {
             }
         }
     }
-    getIndexesOffset(indexes) {
+    // review
+    __getIndexesOffset(indexes) {
         return this.getIndexesTypedOffset(indexes).offset;
     }
     offsetToIndexesString(offset) {
@@ -50,6 +51,15 @@ class MultiArray {
             dup.array = res.array;
         }
         return dup;
+    }
+    locatorIndexesApply(locatorId, indexes) {
+        console.log([locatorId, indexes, this.dim, this.lengths]);
+        const [offset, dims] = this.getIndexesOffset(indexes);
+        console.log([offset, dims]);
+        if ((this.dim - dims) > 0) {
+            throw new Error('');
+        }
+        return locatorId + offset;
     }
     getIndexesOffset(indexes) {
         if (indexes === null || typeof indexes === 'undefined') {

@@ -52,14 +52,15 @@ class Reference {
         return this.instance.get(this.getId(indexes));
     }
     getItem(indexes, options = {}) {
-        if (Array.isArray(indexes) && indexes.length === 0) {
-            const res = this.instance.getItem(this.locator);
-            console.log(res);
-            return res;
+        console.log(indexes);
+        let locator = this.locator;
+        if (Array.isArray(indexes) && indexes.length > 0) {
+            const evaluatedIndexes = indexes.map(x => x.asInt());
+            locator = this.array.locatorIndexesApply(this.locator, evaluatedIndexes);
         }
-        console.log(indexes, this);
-        console.log(indexes, options);
-        EXIT_HERE_TODO;
+        const res = this.instance.getItem(this.locator);
+        console.log(res);
+        return res;
     }
 }
 

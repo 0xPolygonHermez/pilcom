@@ -913,7 +913,7 @@ module.exports = class Processor {
             const scope = s.scope ?? false;
             let initValue = null;
             if (init) {
-                console.log(s.vtype);
+                console.log([name, s.vtype, Context.sourceRef]);
                 switch (s.vtype) {
                     case 'expr':
                         // s.init[index].expr.dump('INIT1 '+name);

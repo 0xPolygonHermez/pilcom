@@ -1,9 +1,15 @@
 subproof ExpressionTest(2**16) {
+
+    col fixed x[4];
+    expr ex = x[0] + 2 * x[1] + 4 * x[2] + 2 ** 3 * x[3];
+    ex === 0;
+
     int k = 10;
     expr a = 1;
     string s = "1";
 
 
+    ex === 0;
     assert(k == 10);
     assert(a == 1);
     assert(string(1) == "1");
