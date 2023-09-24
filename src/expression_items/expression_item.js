@@ -54,12 +54,13 @@
 
 */
 const Exceptions = require('../exceptions.js');
-module.exports = class ExpressionItem {
+class ExpressionItem {
     static _classToManager = {};
 
     constructor(debug = {}) {
         this.debug = debug;
         this.indexes = false;
+        this._ns_ = 'ExpressionItem';
     }
     static registerClass(name, cls) {
         ExpressionItem[name] = cls;
@@ -126,3 +127,5 @@ module.exports = class ExpressionItem {
         throw new Error(`eval not defined for class ${this.constructor.name}`);
     }
 }
+
+module.exports = ExpressionItem;

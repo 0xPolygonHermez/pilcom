@@ -887,6 +887,7 @@ module.exports = class Processor {
         }
         console.log(`\x1B[1;36;44m${prefix}CONSTRAINT      > ${expr.toString({hideClass:true, hideLabel:false})} === 0 (${this.sourceRef})\x1B[0m`);
         console.log(`\x1B[1;36;44m${prefix}CONSTRAINT (RAW)> ${expr.toString({hideClass:true, hideLabel:true})} === 0 (${this.sourceRef})\x1B[0m`);
+        EXIT_HERE;
     }
     execVariableIncrement(s) {
         // REVIEW used only inside loop (increment) in other cases was an expression

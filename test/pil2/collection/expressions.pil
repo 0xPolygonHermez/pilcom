@@ -1,7 +1,8 @@
 subproof ExpressionTest(2**16) {
 
-    col fixed x[4];
+    col witness x[4],y;
     expr ex = x[0] + 2 * x[1] + 4 * x[2] + 2 ** 3 * x[3];
+    x[0] + 2 * x[1] + 3 * x[2] + 5 * y === 0;
     ex === 0;
 
     int k = 10;

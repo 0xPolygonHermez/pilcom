@@ -56,9 +56,11 @@ class Reference {
         let locator = this.locator;
         if (Array.isArray(indexes) && indexes.length > 0) {
             const evaluatedIndexes = indexes.map(x => x.asInt());
+            console.log(evaluatedIndexes);
             locator = this.array.locatorIndexesApply(this.locator, evaluatedIndexes);
         }
-        const res = this.instance.getItem(this.locator);
+        console.log(locator);
+        const res = this.instance.getItem(locator);
         console.log(res);
         return res;
     }

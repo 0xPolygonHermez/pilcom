@@ -18,6 +18,7 @@ const ArrayOf = require("./expression_items/array_of.js");
 const FixedCol = require("./expression_items/fixed_col.js");
 const FunctionCall = require("./expression_items/function_call.js");
 const ParamItem = require("./expression_items/param_item.js");
+const NonRuntimeEvaluableItem = require('./expression_items/non_runtime_evaluable_item.js');
 
 module.exports = {
     ExpressionItem,
@@ -39,5 +40,6 @@ module.exports = {
     WitnessCol,
     ArrayOf,
     FunctionCall,
-    ParamItem
+    ParamItem,
+    NonRuntimeEvaluableItem
 }

@@ -29,4 +29,7 @@ module.exports = class ValueItem extends ExpressionItem {
     eval(options = {}) {
         return this.clone();
     }
+    toString() {
+        return `${this.value}`;
+    }
 }

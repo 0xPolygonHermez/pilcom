@@ -21,6 +21,7 @@ module.exports = class FunctionCall extends RuntimeItem {
     clone() {
         let cloned = new FunctionCall(this.name, this.args, this.indexes);
         cloned.funcdef = this.funcdef;
+        return cloned;
     }
     eval(options) {
         const definition = Context.references.get(this.name, options);

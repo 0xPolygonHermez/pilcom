@@ -1,5 +1,6 @@
 const Function = require("../function.js");
 const Context = require('../context.js');
+const ExpressionItems = require('../expression_items.js')
 module.exports = class Dump extends Function {
     constructor (parent) {
         super(parent, {funcname: 'dump'});
@@ -12,5 +13,6 @@ module.exports = class Dump extends Function {
     }
     exec(s, mapInfo) {
         mapInfo.dump();
+        return new ExpressionItems.IntValue(0n);
     }
 }

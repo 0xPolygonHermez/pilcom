@@ -22,5 +22,11 @@ module.exports = class ProofItem extends ExpressionItem {
         const label = options.label ? options.label : `${defaultType}@${this.id}`;
         return `${pre}${label}${post}`;
     }
+    eval(options) {
+        return this.clone();
+    }
+    runtimeEvaluable() {
+        return false;
+    }
 }
 

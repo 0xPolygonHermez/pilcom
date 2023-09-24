@@ -1,5 +1,6 @@
 const Function = require("../function.js");
 const Context = require('../context.js');
+const ExpressionItems = require('../expression_items.js')
 module.exports = class Assert extends Function {
     constructor (parent) {
         super(parent, {funcname: 'assert'});
@@ -15,7 +16,7 @@ module.exports = class Assert extends Function {
         if (!arg0) {
             throw new Error(`Assert fails ${arg0} on ${Context.sourceRef}`);
         }
-        return 0n;
+        return new ExpressionItems.IntValue(0n);
     }
     exec(s, mapInfo) {
         console.log('############### ASSERT (exec) ########################');

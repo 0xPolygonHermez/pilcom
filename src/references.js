@@ -238,11 +238,14 @@ module.exports = class References {
 
         assert(typeof name === 'string' || (Array.isArray(name) && name.length > 0));
 
+        console.log(indexes);
         indexes = indexes ?? [];
         options = options ?? {};
 
         console.log(name);
         const reference = this.getReference(name);
+        console.log(reference);
+        console.log(indexes);
         const item = reference.getItem(indexes);
         console.log(item);
 

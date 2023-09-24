@@ -4,5 +4,8 @@ module.exports = class RuntimeItem extends ExpressionItem {
     constructor(debug = {}) {
         super(debug);
     }
+    runtimeEvaluable() {
+        return true;
+    }
 }
 

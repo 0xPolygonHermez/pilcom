@@ -47,4 +47,7 @@ module.exports = class FixedCol extends ProofItem {
         }
         return cloned;
     }
+    toString() {
+        return `FixedCol@${this.id}`;
+    }
 }

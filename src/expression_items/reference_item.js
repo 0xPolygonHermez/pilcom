@@ -18,6 +18,7 @@ module.exports = class ReferenceItem extends RuntimeItem {
         console.log(this);
         const item = Context.references.getItem(this.name, this.indexes);
         // TODO: next
+        console.log(`REFERENCE ${this.name} [${this.indexes.join('][')}]`)
         console.log(item);
         return item;
     }
