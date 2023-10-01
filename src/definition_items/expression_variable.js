@@ -1,6 +1,6 @@
-const RuntimeItem = require("./runtime_item.js");
+const Variable = require("./variable.js");
 const ExpressionClass = require('../expression.js');
-module.exports = class Expression extends RuntimeItem {
+module.exports = class ExpressionVariable extends Variable {
     constructor (id, properties = {}) {
         super(id, properties);
         this.value = new ExpressionClass();
@@ -11,6 +11,7 @@ module.exports = class Expression extends RuntimeItem {
             this.value = value.clone();
             return;
         }
+        console.log(value);
         this.value._set(value);
         this.value.dump('setValue');
     }

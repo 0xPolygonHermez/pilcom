@@ -1,35 +1,33 @@
 const DefinitionItem = require("./definition_items/definition_item.js");
-const FeValue = require("./definition_items/fe_value.js");
-const IntValue = require("./definition_items/int_value.js");
+const FeVariable = require("./definition_items/fe_variable.js");
+const IntVariable = require("./definition_items/int_variable.js");
 const ProofItem = require("./definition_items/proof_item.js");
 const Proofval = require("./definition_items/proofval.js");
 const Challenge = require("./definition_items/challenge.js");
 const Public = require("./definition_items/public.js");
 const Publictable = require("./definition_items/publictable.js");
-const ReferenceItem = require("./definition_items/reference_item.js");
 const RuntimeItem = require("./definition_items/runtime_item.js");
-const StringValue = require("./definition_items/string_value.js");
+const StringVariable = require("./definition_items/string_variable.js");
 const Subproofval = require("./definition_items/subproofval.js");
-const ValueItem = require("./definition_items/value_item.js");
+const Variable = require("./definition_items/variable.js");
 const WitnessCol = require("./definition_items/witness_col.js");
 const FixedCol = require("./definition_items/fixed_col.js");
-const Expression = require("./definition_items/expression.js");
+const ExpressionVariable = require("./definition_items/expression_variable.js");
 
 module.exports = {
     DefinitionItem,
-    FeValue,
+    FeVariable,
     FixedCol,
-    IntValue,
+    IntVariable,
     ProofItem,
     Proofval,
     Challenge,
     Public,
     Publictable,
-    ReferenceItem,
     RuntimeItem,
-    StringValue,
+    StringVariable,
     Subproofval,
-    ValueItem,
+    Variable,
     WitnessCol,
-    Expression
+    ExpressionVariable
 }

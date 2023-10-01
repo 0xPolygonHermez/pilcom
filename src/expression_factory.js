@@ -5,6 +5,7 @@ const {ReferenceItem, IntValue, StringValue,
     FunctionCall} = require("./expression_items.js");
 const Router = require("./router.js");
 const {assert, assertLog} = require('./assert');
+const RowOffset = require('./expression_items/row_offset.js');
 module.exports = class ExpressionFactory {
 
     // pre function to delete property op only used by routing
@@ -21,9 +22,9 @@ module.exports = class ExpressionFactory {
 
         assert(obj.type !== 'object' && obj.type !== 'objects');
         if (obj.dim === 0) delete obj.dim;
-        if (obj.next === 0 || obj.next === false) delete obj.next;
 
         console.log(obj);
+        const type = obj.type;
         let item = ExpressionFactory.router.go(obj);
 
         let unknownProperties = [];
@@ -35,7 +36,10 @@ module.exports = class ExpressionFactory {
 
         if (unknownProperties.length > 0) {
             console.log(obj);
-            throw new Error(`Invalid properties: ${unknownProperties.join(',')} on ${obj.debug}`);
+            throw new Error(`Invalid properties: ${unknownProperties.join(',')} / ${type} on ${obj.debug}`);
+        }
+        if (type === 'row_offset') {
+            return item;
         }
         let expr = new Expression();
         expr._set(item);
@@ -49,12 +53,15 @@ module.exports = class ExpressionFactory {
         return expressions;
     }
     static fromReference(obj) {
-        let res = new ReferenceItem(obj.name, obj.indexes ?? [], (obj.next ?? 0) - (obj.prior ?? 0));
+        if (obj.rowOffset) {
+            console.log('ROWOFFSET.FROMREFERENCE');
+            console.log(obj.rowOffset);
+        }
+        let res = new ReferenceItem(obj.name, obj.indexes ?? [], obj.rowOffset);
         delete obj.name;
         delete obj.indexes;
         delete obj.dim;
-        delete obj.next;
-        delete obj.prior;
+        delete obj.rowOffset;
         return res;
     }
     static fromNumber(obj) {
@@ -84,6 +91,18 @@ module.exports = class ExpressionFactory {
         delete obj.name;
         delete obj.cast;
         delete obj.value;
+        console.log(res);
+        return res;
+    }
+    static fromRowOffset(obj) {
+        if (obj.current && obj.current.rowOffset) {
+            // TODO: ERROR more than rowOffset for same element.
+            EXIT_HERE;
+        }
+        let res = RowOffset.factory(obj.value, obj.prior ?? false);
+        delete obj.current;
+        delete obj.value;
+        delete obj.prior;
         console.log(res);
         return res;
     }

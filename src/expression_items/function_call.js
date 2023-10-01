@@ -18,12 +18,14 @@ module.exports = class FunctionCall extends RuntimeItem {
         const args = '(' + this.args.map(x => x.toString()).join(',') +')';
         return this.name + args + indexes;
     }
-    clone() {
-        let cloned = new FunctionCall(this.name, this.args, this.indexes);
-        cloned.funcdef = this.funcdef;
-        return cloned;
+    cloneInstance() {
+        return new FunctionCall(this.name, this.args, this.indexes);
     }
-    eval(options) {
+    cloneUpdate(source) {
+        super.cloneUpdate(source);
+        this.funcdef = source.funcdef;
+    }
+    evalInside(options) {
         const definition = Context.references.get(this.name, options);
         const res = Context.processor.executeFunctionCall(this.name, this);
         console.log(res);

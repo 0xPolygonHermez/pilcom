@@ -17,8 +17,10 @@ module.exports = class ValueItem extends ExpressionItem {
     dump() {
         return `${this.constructor.name}(${this.value})`;
     }
-    clone() {
-        return new ValueItem(this.value);
+    cloneInstance() {
+        const cloned = new ValueItem(this.value);
+        cloned.clonenNonConstructorProperties(this);
+
     }
     asString() {
         return this.value.toString();

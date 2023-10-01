@@ -60,10 +60,15 @@ class ExpressionItem {
     constructor(debug = {}) {
         this.debug = debug;
         this.indexes = false;
+        this.label = '';
         this._ns_ = 'ExpressionItem';
     }
     static registerClass(name, cls) {
         ExpressionItem[name] = cls;
+    }
+    setLabel (label) {
+        console.log(['SETLABEL', label]);
+        this.label = label;
     }
     get dim () {
         return Array.isArray(this.indexes) ? this.indexes.length : 0;
@@ -99,11 +104,9 @@ class ExpressionItem {
     getNext() {
         return this.next ?? 0;
     }
-    getNextStrings(options) {
-        const next = this.getNext(options);
-        const pre = next < 0 ? (next < -1 ? `${-next}'`:"'"):'';
-        const post = next > 0 ? (next > 1 ? `'${next}`:"'"):'';
-        return [pre,post];
+    getRowOffsetStrings(options) {
+        if (!this.rowOffset) return ['',''];
+        return this.rowOffset.getStrings();
     }
     static setManager(cls, manager) {
         console.log(['SET_MANAGER', cls.name]);
@@ -123,8 +126,50 @@ class ExpressionItem {
             throw e;
         }
     }
-    eval(options = {}) {
+    get rowOffset() {
+        return this._rowOffset;
+    }
+    set rowOffset(value) {
+        if (!value.isZero()) console.log(['ROWOFFSET.SET', value]);
+        this._rowOffset = value;
+    }
+    clone() {
+        let cloned = this.cloneInstance();
+        cloned.cloneUpdate(this);
+        return cloned;
+    }
+    cloneUpdate(source) {
+        if (source.indexes) {
+            this.indexes = source.indexes.map(index => (typeof index === 'object' && typeof index.clone === 'function') ? index.clone() : index);
+        }
+        if (source.label) {
+            this.label = source.label;
+        }
+    }
+    evalInside(options = {}) {
         throw new Error(`eval not defined for class ${this.constructor.name}`);
+    }
+    evalPrior(options) {
+        if (!this.rowOffset || !this.rowOffset.isPriorRows()) {
+            return false;
+        }
+        console.log(['ROWOFFSET.EVALPRIOR', this.rowOffset.value]);
+        return this.rowOffset.value;
+    }
+    evalNext(options) {
+        if (!this.rowOffset || !this.rowOffset.isNextRows()) {
+            return false;
+        }
+        console.log(['ROWOFFSET.EVALNEXT', this.rowOffset.value]);
+        return this.rowOffset.value;
+    }
+    eval(options) {
+        let results = {};
+        const _options = options ? {...options, results} : {results};
+        results.prior = this.evalPrior(options);
+        results.inside = this.evalInside(options);
+        results.next = this.evalNext(options);
+        return results.final ? results.final : results.inside;
     }
 }
 

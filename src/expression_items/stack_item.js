@@ -15,7 +15,7 @@ module.exports = class StackItem extends ExpressionItem {
     getAbsolutePos(currentPos) {
         return currentPos - this.offset;
     }
-    clone() {
+    cloneInstance() {
         return new StackItem(this.offset);
     }
     dump(options) {

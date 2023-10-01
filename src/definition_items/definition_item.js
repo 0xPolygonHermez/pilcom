@@ -51,6 +51,7 @@
 */
 module.exports = class DefinitionItem {
     constructor (id, properties = {}) {
+        this.definition = true;
         this.id = id;
         this.label = properties.label;
     }

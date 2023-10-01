@@ -4,7 +4,7 @@ module.exports = class Proofval extends ProofItem {
     constructor (id) {
         super(id);
     }
-    clone() {
+    cloneItem() {
         return new Proofval(this.id);
     }
 }

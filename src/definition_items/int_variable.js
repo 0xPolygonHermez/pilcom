@@ -1,11 +1,11 @@
 const {assert, assertLog} = require('../assert.js');
-const ValueItem = require("./value_item.js");
+const Variable = require("./variable.js");
 const ExpressionItem = require('../expression_items/int_value.js');
 
-module.exports = class IntValue extends ValueItem {
+class IntVariable extends Variable {
     constructor (value = 0n) {
-        if (value instanceof IntValue) {
-            value = value.value;
+        if (typeof value === 'object' && typeof value.asInt === 'function') {
+            value = value.asInt();
         }
         if (typeof value === 'number') {
             value = BigInt(value);
@@ -42,3 +42,4 @@ module.exports = class IntValue extends ValueItem {
         return Number(this.value);
     }
 }
+module.exports = IntVariable;

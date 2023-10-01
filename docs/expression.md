@@ -14,7 +14,7 @@ And next?
 |fe||
 |col witness||
 |col fixed||
-|col (im)||
+|expression||
 |challenge||
 |public||
 |air value||
@@ -25,4 +25,21 @@ And next?
 - **instance()** make a copy of expression, where __runtime values and expressions__ (variables, eq, be) are replaced
 - **evaluate()** calculate a single value (int, fe, bool) without replacing runtime values and expressions. For example, a condition on loop, etc..
 
-
+```mermaid
+classDiagram
+ExpressionItem <-- RuntimeItem
+ExpressionItem <-- ProofItem
+RuntimeItem <-- ReferenceItem
+RuntimeItem <-- ExpressionReference
+RuntimeItem <-- ValueItem
+RuntimeItem <-- StringValue
+RuntimeItem <-- FunctionCall
+ProofItem <-- Challenge
+ProofItem <-- ProofVal
+ProofItem <-- FixedCol
+ProofItem <-- WitnessCol
+ProofItem <-- Public
+ProofItem <-- SubproofVal
+ValueItem <-- IntValue
+ValueItem <-- FeValue
+``````

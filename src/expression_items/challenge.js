@@ -3,7 +3,7 @@ module.exports = class Challenge extends ProofItem {
     constructor (id) {
         super(id);
     }
-    clone() {
+    cloneInstance() {
         return new Challenge(this.id);
     }
 }

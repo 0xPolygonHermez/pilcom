@@ -1,6 +1,5 @@
-const ExpressionItem = require("./definition_item.js");
-
-module.exports = class ValueItem extends ExpressionItem {
+const RuntimeItem = require("./runtime_item.js");
+module.exports = class Variable extends RuntimeItem {
     static directValue = true;
     constructor (value) {
         super();

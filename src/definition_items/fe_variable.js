@@ -1,12 +1,12 @@
 const LabelRanges = require("../label_ranges.js");
-const ValueItem = require("./value_item.js");
+const Variable = require("./variable.js");
 
-module.exports = class FeValue extends ValueItem {
+module.exports = class FeVariable extends Variable {
     constructor (value = 0n) {
         super(value);
     }
     clone() {
-        return new FeValue(this.value);
+        return new FeVariable(this.value);
     }
     asInt() {
         return this.value;

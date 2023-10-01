@@ -16,7 +16,7 @@ module.exports = class ParamItem extends RuntimeItem {
     dump(options) {
         return '$'+this.id;
     }
-    clone() {
+    cloneInstance() {
         return new ParamItem(this.id);
     }
 }

@@ -13,7 +13,7 @@ module.exports = class ProofItem extends ExpressionItem {
         return manager.getLabel(this.id, options);
     }
     dump(options) {
-        const [pre,post] = this.getNextStrings();
+        const [pre,post] = this.getRowOffsetStrings();
         options = options ?? {};
         const defaultType = options.type ? options.type : this.constructor.name;
         if (!options.label && !options.hideLabel && options.dumpToString) {
@@ -27,6 +27,22 @@ module.exports = class ProofItem extends ExpressionItem {
     }
     runtimeEvaluable() {
         return false;
+    }
+    cloneUpdate(source) {
+        console.log(['PROOFITEM.CLONEUPDATE', source.rowOffset]);
+        super.cloneUpdate(source);
+        if (source.rowOffset) {
+            this.rowOffset = source.rowOffset.clone();
+        }
+    }
+    toString(options) {
+        const [next, prior] = this.getRowOffsetStrings();
+        console.log(['ROWOFFSET.TOSTRING', next, prior, this.label, this.constructor.name, this.rowOffset]);
+        let label = (options.hideClass ? '' : this.constructor.name + '::') + this.label;
+        if (options.hideLabel || !this.label) {
+            label = this.constructor.name + '@' + this.id;
+        }
+        return next + label + prior;
     }
 }
 

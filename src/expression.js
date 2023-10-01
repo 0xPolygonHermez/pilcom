@@ -16,6 +16,8 @@ const NATIVE_OPS = ['add', 'sub', 'mul', 'neg'];
 const VALID_NATIVE_OPS = [false, ...NATIVE_OPS];
 const Exceptions = require('./exceptions.js');
 
+// TODO: StackPos as class
+
 function assertExpressionItem(value, info) {
     return assertReturnInstanceOf(value, ExpressionItem, info);
 }
@@ -39,11 +41,10 @@ class Expression extends ExpressionItem {
         this.stack = [];
         this.fixedRowAccess = false;
     }
-
     get isExpression() {
         return true;
     }
-    clone() {
+    cloneInstance() {
         let cloned = new Expression();
         cloned.fixedRowAccess = this.fixedRowAccess;
         cloned.pushStack(this);
@@ -59,7 +60,13 @@ class Expression extends ExpressionItem {
         }
         const count = e.stack.length;
         for (let index = 0; index < count; ++index) {
-            this.stack.push(this.cloneStackPos(e.stack[index]));
+            let stackPos = e.stack[index];
+            console.log(stackPos);
+            e.dumpStackPos(stackPos);
+            let clonedStackPos = this.cloneStackPos(stackPos);
+            e.dumpStackPos(stackPos);
+            this.dumpStackPos(clonedStackPos);
+            this.stack.push(clonedStackPos);
         }
         return count;
     }
@@ -135,6 +142,7 @@ class Expression extends ExpressionItem {
         if (this.stack.length) {
             throw new Error(`Set only could be used with empty stack`);
         }
+        console.log(operand);
         this.stack.push({op: false, operands: [assertExpressionItem(operand.clone())]});
     }
 /*
@@ -307,6 +315,7 @@ class Expression extends ExpressionItem {
     }
     instanceValues() {
         assert(false);
+        /*
         for (let se of this.stack) {
             for (let index = 0; index < se.operands.length; ++index) {
                 if (se.operands[index].type !== OP_RUNTIME) continue;
@@ -347,7 +356,7 @@ class Expression extends ExpressionItem {
 //                value.dump();
                 throw new Error('Invalid value');
             }
-        }
+        }*/
     }
     getReference() {
         if (!this.isAlone()) {
@@ -362,7 +371,7 @@ class Expression extends ExpressionItem {
     }
     isArray() {
         // only a reference could be and array.
-        if (!this.isReference() || this.stack[0].operands[0].next || this.stack[0].operands[0].prior) return false;
+        if (!this.isReference() || this.stack[0].operands[0].rowOffset) return false;
 
         let ref = this.getReference();
         console.log(ref);
@@ -664,27 +673,8 @@ class Expression extends ExpressionItem {
                 // when evaluates single operands, StackItem is a reference to stack position
                 // and it could be evaluated when all operands are left-to-right evaluated
                 if (operand instanceof ExpressionItems.StackItem) continue;
+                const result = operand.eval(options);
 
-                let next = 0;
-                // if no prior defined priorValue was 0
-                let priorValue = operand.prior ? this.evaluateValueAsNumber(operand.prior, options) : 0n;
-
-                let result = assertExpressionItem(this.evaluateValue(operand, options), operand);
-                console.log(['RESULT', result]);
-                let indexes = operand.indexes ? this.evaluateValuesAsNumbers(operand.indexes, options) : [];
-                if (indexes.length) {
-                    // TODO: fixed access
-                    result = assertExpressionItem(this.getArrayResult(result, indexes, options));
-                }
-                // if no prior defined nextValue was 0
-                console.log(operand.next);
-                let nextValue = operand.next ? this.evaluateValueAsNumber(operand.next, options) : 0n;
-
-                // prior and next are excl
-                if (priorValue && nextValue) {
-                    throw new Error(`prior and next for same operand it's ambiguous`);
-                }
-                next = nextValue - priorValue;
                 if (options.instance && result !== null) {
                     console.log (result);
                     st.operands[operandIndex] = assertExpressionItem(result);
@@ -717,6 +707,7 @@ class Expression extends ExpressionItem {
     // this method instance the expression references to include them inside
     // TODO: view how these affects to optimization.
     instanceExpressions(options) {
+        EXIT_HERE;
 /*        let pos = 0;
         while (pos < this.stack.length) {
             let nextPos = true;
@@ -758,7 +749,7 @@ class Expression extends ExpressionItem {
         // this method instance the expression references to include them inside
     // TODO: view how these affects to optimization.
     instanceExpressions(options) {
-
+        EXIT_HERE;
         // assert(ope.__value instanceof Expression === false);
         /*
         if (ope.__value instanceof Expression) {
@@ -816,8 +807,8 @@ class Expression extends ExpressionItem {
 
         // [op,v1,v2] ==> [v1 op v2]
         if (firstValue !== false && secondValue !== false) {
-            assert(!firstValue || (!firstValue.next && !firstValue.__next));
-            assert(!secondValue || (!secondValue.next && !secondValue.__next));
+            assert(!firstValue || !firstValue.rowOffset);
+            assert(!secondValue || !secondValue.rowOffset);
             const res = this.applyOperation(st.op, st.operands);
             st.operands = [assertExpressionItem(res)];
             st.op = false;
@@ -826,7 +817,7 @@ class Expression extends ExpressionItem {
 
         // [neg,value] ==> [false,-value]
         if (st.op === 'neg' && firstValue !== false) {
-            assert(!firstValue.next && !firstValue.__next);
+            assert(!firstValue.rowOffset);
             st.op = false;
             st.operands[0].setValue(-st.operands[0].getValue());
             assert(st.operands[0] instanceof ExpressionItem);
@@ -967,16 +958,18 @@ class Expression extends ExpressionItem {
         title = title + ' ' + this.getCaller();
         console.log(`\x1B[38;5;214m|==========> ${title} <==========|\x1B[0m`);
         for (let index = stack.length-1; index >=0; --index) {
-            const st = stack[index];
-            const stackValue = st[stackProperty];
-            const operationInfo = (stackValue && typeof stackValue.dump === 'function') ? stackValue.dump() : stackValue;
-            let info =`\x1B[38;5;214m#${index} ${stackValue}`;
-            for (const operand of st[operandsProperty]) {
-                const operandInfo = this.dumpOperand(operand, index);
-                info = info + ' [\x1B[38;5;76m' + operandInfo +'\x1B[38;5;214m]';
-            }
-            console.log(info+'\x1B[0m');
+            this.dumpStackPos(stack[index], index, stackProperty, operandsProperty);
         }
+    }
+    dumpStackPos(stackPos, index = false, stackProperty = 'op', operandsProperty = 'operands') {
+        const stackValue = stackPos[stackProperty];
+        const operationInfo = (stackValue && typeof stackValue.dump === 'function') ? stackValue.dump() : stackValue;
+        let info =`\x1B[38;5;214m#${index === false?'':index} ${stackValue}`;
+        for (const operand of stackPos[operandsProperty]) {
+            const operandInfo = this.dumpOperand(operand, index);
+            info = info + ' [\x1B[38;5;76m' + operandInfo +'\x1B[38;5;214m]';
+        }
+        console.log(info+'\x1B[0m');
     }
     dumpOperand(op, pos) {
         const cType = '\x1B[38;5;76m';
@@ -986,36 +979,7 @@ class Expression extends ExpressionItem {
             return op.dump({cType, cProp, cValue, pos});
         }
         if (op === null) return 'null';
-
-        switch (op.type) {
-            case OP_VALUE:
-                return `${cType}VALUE ${cValue}${op.value}`;
-            case OP_ID_REF:
-                // refType, [offset], next
-                const next = op.next ? `${cProp}next:${cValue}${op.next}`:'';
-                return `${cType}ID_REF ${cProp}refType:${cValue}${op.refType} ${cProp}id:${cValue}${op.id}${next}`;
-            case OP_STACK:
-                return `${cType}STACK ${cProp}pos:${cValue}${pos - op.offset}[-${op.offset}]`;
-            case OP_RUNTIME:
-                let props = ''
-                for (const prop in op) {
-                    if (prop === '__yystate' || prop === 'debug' || prop === 'type') continue;
-                    props = props + ` ${cProp}${prop}:${cValue}${op[prop]}`;
-                }
-                return `${cType}RUNTIME${props}`;
-        }
-        return `\x1B[1;31m¿¿${op.constructor.name ?? op.type}??\x1B[0m`;
-    }
-    // TODO: cache of next
-    instanceNext(next) {
-        let _next = this.instance();
-    }
-    updateOperandNext(op, next) {
-        assert(op.type != RUNTIME);
-
-        if (op.type === OP_ID_REF) {
-            op.next += next;
-        }
+        EXIT_HERE;
     }
     toString(options) {
         let top = this.stack.length-1;
@@ -1056,34 +1020,6 @@ class Expression extends ExpressionItem {
             return this.stackPosToString(pos-ope.offset, parentPrecedence, options);
         }
         return ope.toString(options);
-/*
-        switch (ope.type) {
-
-            case OP_VALUE:
-                return ope.value.toString();
-            case OP_ID_REF:
-                // refType, [offset], next
-                let res = (Expression.parent && (!options || !options.hideLabel))? Expression.parent.getLabel(ope.refType, ope.id, options) : false;
-                if (!res) {
-                    res = `${ope.refType}@${ope.id}`;
-                }
-                if (ope.next < 0) res = `${ope.next==-1?'':-ope.next}'${res}`;
-                if (ope.next > 0) res = `${res}'${ope.next==1?'':ope.next}`;
-                return res;
-            case OP_STACK:
-                if ((pos - ope.offset ) < 0) {
-                    console.log(`invalid offset ${pos - ope.offset} pos:${pos} offset:${ope.offset}`);
-                }
-                return this.stackPosToString(pos-ope.offset, pprec, options);
-            case OP_RUNTIME:
-                if (ope.op === 'reference' && ope.name) {
-                    return `RUNTIME{${ope.name}}`
-                }
-                return `RUNTIME{${ope.op}(${ope.name??''})}`;
-                //console.log(ope);
-
-        }*/
-
     }
     resolve() {
         const res = this.eval();

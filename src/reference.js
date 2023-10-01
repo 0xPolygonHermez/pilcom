@@ -38,6 +38,7 @@ class Reference {
     set (value, indexes = []) {
         assert(value !== null); // to detect obsolete legacy uses
         const id = this.getId(indexes);
+        assert(id !== null);
         this.instance.set(id, value);
     }
     static getArrayAndSize(lengths) {
@@ -52,15 +53,22 @@ class Reference {
         return this.instance.get(this.getId(indexes));
     }
     getItem(indexes, options = {}) {
-        console.log(indexes);
+        console.log(['GETITEM', indexes, options]);
         let locator = this.locator;
+        let label = options.label;
         if (Array.isArray(indexes) && indexes.length > 0) {
             const evaluatedIndexes = indexes.map(x => x.asInt());
-            console.log(evaluatedIndexes);
+            if (label) label = label + '['+evaluatedIndexes.join('],[')+']';
             locator = this.array.locatorIndexesApply(this.locator, evaluatedIndexes);
         }
         console.log(locator);
         const res = this.instance.getItem(locator);
+        if (locator == 0 && res.constructor.name == 'WitnessCol' && !label) {
+            EXIT_HERE;
+        }
+        if (label) res.setLabel(label);
+        else res.setLabel('___');
+
         console.log(res);
         return res;
     }

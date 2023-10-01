@@ -37,17 +37,19 @@ module.exports = class FixedCol extends ProofItem {
             EXIT_HERE;
         }
     }
-    clone() {
-        let cloned = new FixedCol(this.id);
-        cloned.rows = this.rows;
-        cloned.values = [...this.values];
-        cloned.fullFilled = this.fullFilled;
-        if (this.sequence) {
-            cloned.sequence = this.sequence.clone();
-        }
-        return cloned;
+    cloneInstance() {
+        return new FixedCol(this.id);
     }
-    toString() {
-        return `FixedCol@${this.id}`;
+    cloneUpdate(source) {
+        super.cloneUpdate(source);
+        if (source.rowOffset) {
+            console.log('CLONE.ROWOFFSET');
+        }
+        this.rows = source.rows;
+        this.values = [...source.values];
+        this.fullFilled = source.fullFilled;
+        if (source.sequence) {
+            this.sequence = source.sequence.clone();
+        }
     }
 }

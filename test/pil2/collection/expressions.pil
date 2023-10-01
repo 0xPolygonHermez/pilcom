@@ -1,8 +1,15 @@
 subproof ExpressionTest(2**16) {
 
-    col witness x[4],y;
+    col witness x[4],z;
+    col fixed Y[100];
+    expr a = 5 * Y[99];
+    a = a + 100;
+    a = a + 200;
+    a === 0;
+    5 * Y[99]' + x[1] + 2 * x[0] + 3 * x[2] +  18 * z === x[1];
+    /*
     expr ex = x[0] + 2 * x[1] + 4 * x[2] + 2 ** 3 * x[3];
-    x[0] + 2 * x[1] + 3 * x[2] + 5 * y === 0;
+
     ex === 0;
 
     int k = 10;
@@ -23,5 +30,5 @@ subproof ExpressionTest(2**16) {
     dump(a);
     s = s + "hello";
     s = s + k;
-    s = s + a;
+    s = s + a;*/
 }

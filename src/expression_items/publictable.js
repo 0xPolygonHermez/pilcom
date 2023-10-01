@@ -6,7 +6,7 @@ module.exports = class PublicTable extends ProofItem {
     getId() {
         return this.id;
     }
-    clone() {
+    cloneInstance() {
         return new PublicTable(this.id);
     }
 }

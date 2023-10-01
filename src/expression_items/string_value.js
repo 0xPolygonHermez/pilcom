@@ -26,7 +26,7 @@ class StringValue extends RuntimeItem {
     asStringItem() {
         return this.clone();
     }
-    clone() {
+    cloneInstance() {
         return new StringValue(this.value);
     }
     operatorEq(valueB) {

@@ -242,11 +242,8 @@ module.exports = class References {
         indexes = indexes ?? [];
         options = options ?? {};
 
-        console.log(name);
         const reference = this.getReference(name);
-        console.log(reference);
-        console.log(indexes);
-        const item = reference.getItem(indexes);
+        const item = reference.getItem(indexes, {label: name});
         console.log(item);
 
 

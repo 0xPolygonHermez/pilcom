@@ -3,7 +3,7 @@ module.exports = class Subproofval extends ProofItem {
     constructor (id, stage) {
         super(id, stage);
     }
-    clone() {
+    cloneInstance() {
         return new Subproofval(this.id, this.stage);
     }
 }

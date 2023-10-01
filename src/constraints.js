@@ -46,7 +46,8 @@ module.exports = class Constraints {
             console.log('\x1B[31mWARNING: accessing fixed row acces\x1b[0m');
         }
         const id = this.constraints.length;
-        if (right.eval() !== 0n) {
+        console.log(right.eval());
+        if (right.asIntDefault(false) !== 0n) {
             left.insert('sub', right);
         }
         // left.simplify();

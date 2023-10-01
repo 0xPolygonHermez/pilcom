@@ -117,7 +117,7 @@ module.exports = class Indexable {
     }
     set(id, value) {
         const item = this.get(id);
-        assertLog(item !== null && typeof item.setValue === 'function', {type: this.type, definition: this.definitionClass, item: item});
+        assertLog(item !== null && typeof item.setValue === 'function', {type: this.type, definition: this.definitionClass, id, item: item});
         item.setValue(value);
 /*
         if (typeof this.cls === 'function') {

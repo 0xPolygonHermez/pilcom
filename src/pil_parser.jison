@@ -61,6 +61,7 @@ return                                      { return 'RETURN' }
 first                                       { return 'FIRST' }
 last                                        { return 'LAST' }
 frame                                       { return 'FRAME' }
+debugger                                    { return 'DEBUGGER' }
 
 \.\.\+\.\.                                  { return 'DOTS_ARITH_SEQ' }
 \.\.\*\.\.                                  { return 'DOTS_GEOM_SEQ' }
@@ -253,6 +254,8 @@ top_level_block
     | variable_declaration
         { $$ = $1 }
 
+    | DEBUGGER
+        { $$ = { type: 'debugger' }}
     ;
 
 use_directive
@@ -633,13 +636,13 @@ data_object
         { $$ = $1; $$.data[$3] = $5 }
 
     | data_object ',' IDENTIFIER
-        { $$ = $1; $$.data[$3] = ExpressionFactory.fromObject({type: 'reference', next: false, name: $3 }) }
+        { $$ = $1; $$.data[$3] = ExpressionFactory.fromObject({type: 'reference', name: $3 }) }
 
     | IDENTIFIER ':' data_value
         { $$ = { type: 'object', data: {}}; $$.data[$1] = $3 }
 
     | IDENTIFIER
-        { $$ = {data: {}}; $$.data[$1] = ExpressionFactory.fromObject({type: 'reference', next: false, name: $1 }) }
+        { $$ = {data: {}}; $$.data[$1] = ExpressionFactory.fromObject({type: 'reference', name: $1 }) }
     ;
 
 data_array
@@ -734,6 +737,9 @@ codeblock_closed
 
     | IF '(' expression ')' non_delimited_statement ELSE non_delimited_statement
         { $$ = { type:'if', conditions: [{type: 'if', expression: $3, statements: $5 }, {type: 'else', statements: $7}]} }
+
+    | DEBUGGER
+        { $$ = { type: 'debugger' }}
     ;
 
 case_body
@@ -1302,19 +1308,19 @@ expression
         { $$ = $2.insert('neg') }
 
     | name_id
-        { $$ = ExpressionFactory.fromObject({ type: 'reference', next: false, ...$1 }) }
+        { $$ = ExpressionFactory.fromObject({ type: 'reference', ...$1 }) }
 
     | INC name_id
-        { $$ = ExpressionFactory.fromObject({ type: 'reference', next: false, ...$2, inc: 'pre'}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'reference', ...$2, inc: 'pre'}) }
 
     | DEC name_id
-        { $$ = ExpressionFactory.fromObject({ type: 'reference', next: false, ...$2, dec: 'pre'}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'reference', ...$2, dec: 'pre'}) }
 
     | name_id INC %prec INC_LEFT
-        { $$ = ExpressionFactory.fromObject({ type: 'reference', next: false, ...$1, inc: 'post'}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'reference', ...$1, inc: 'post'}) }
 
     | name_id DEC %prec DEC_LEFT
-        { $$ = ExpressionFactory.fromObject({ type: 'reference', next: false, ...$1, dec: 'post'}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'reference', ...$1, dec: 'post'}) }
 
     | NUMBER %prec EMPTY
         { $$ = ExpressionFactory.fromObject({ type: 'number', value: BigInt($1)}) }
@@ -1372,28 +1378,30 @@ casting
 
 name_id
     : name_optional_index "'" %prec NEXT
-        { $$ = { ...$1, next:1 } }
+        { $$ = { ...$1, rowOffset: ExpressionFactory.fromObject({type: 'row_offset', value: 1, current: $1 }) } }
 
     | name_optional_index "'" NUMBER
-        { $$ = { ...$1, next: Number($3) } }
+        { $$ = { ...$1, rowOffset: ExpressionFactory.fromObject({type: 'row_offset', value: Number($3), current: $1 }) } }
 
     | name_optional_index "'" '(' expression ')'
-        { $$ = { ...$1, next:$4 } }
+        { $$ = { ...$1, rowOffset: ExpressionFactory.fromObject({type: 'row_offset', value: $4, current: $1 }) } }
 
     | name_optional_index "'" POSITIONAL_PARAM
-        { $$ = { ...$1, next: ExpressionFactory.fromObject({position: $3, type: 'positional_param'}) } }
+        { $$ = { ...$1, rowOffset: ExpressionFactory.fromObject({type: 'row_offset', current: $1,
+                                        value: ExpressionFactory.fromObject({position: $3, type: 'positional_param'})}) } }
 
     | "'" name_optional_index %prec LOWER_PREC
-        { $$ = { ...$2, prior:1 } }
+        { $$ = { ...$2, rowOffset: ExpressionFactory.fromObject({type: 'row_offset', value: 1, prior: true, current: $2 }) } }
 
     | NUMBER "'" name_optional_index
-        { $$ = { ...$3, prior: Number($1) } }
+        { $$ = { ...$3, rowOffset: ExpressionFactory.fromObject({type: 'row_offset', value: Number($1), prior: true, current: $3 }) } }
 
     | '(' expression ')' "'" name_optional_index
-        { $$ = { ...$5, prior:$2 } }
+        { $$ = { ...$5, rowOffset: ExpressionFactory.fromObject({type: 'row_offset', value: $2, prior: true, current: $5 }) } }
 
     | POSITIONAL_PARAM "'" name_optional_index
-        { $$ = { ...$3, prior: ExpressionFactory.fromObject({position: $1, type: 'positional_param'}) } }
+        { $$ = { ...$3, rowOffset: ExpressionFactory.fromObject({type: 'row_offset', current: $3, prior: true,
+                                        value: ExpressionFactory.fromObject({position: $1, type: 'positional_param'})}) } }
 
     | name_optional_index %prec EMPTY
         { $$ = $1 }

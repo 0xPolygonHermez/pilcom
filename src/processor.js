@@ -52,19 +52,19 @@ module.exports = class Processor {
         this.airId = 0;
         this.subproofId = 0;
 
-        this.ints = new Variables('int', DefinitionItems.IntValue, ExpressionItems.IntValue);
+        this.ints = new Variables('int', DefinitionItems.IntVariable, ExpressionItems.IntValue);
         this.references.register('int', this.ints);
 
-        this.fes = new Variables('fe', DefinitionItems.FeValue, ExpressionItems.FeValue);
+        this.fes = new Variables('fe', DefinitionItems.FeVariable, ExpressionItems.FeValue);
         this.references.register('fe', this.fes);
 
-        this.strings = new Variables('string', DefinitionItems.StringValue, ExpressionItems.StringValue);
+        this.strings = new Variables('string', DefinitionItems.StringVariable, ExpressionItems.StringValue);
         this.references.register('string', this.strings);
 
-        this.exprs = new Variables('expr', DefinitionItems.Expression, Expression);
+        this.exprs = new Variables('expr', DefinitionItems.ExpressionVariable, Expression);
         this.references.register('expr', this.exprs);
 
-        this.subexprs = new Variables('subexpr', DefinitionItems.Expression, Expression);
+        this.subexprs = new Variables('subexpr', DefinitionItems.ExpressionVariable, Expression);
         this.references.register('subexpr', this.subexprs);
 
         // this.lexprs = new Variables('lexpr', Expression);
@@ -661,6 +661,10 @@ module.exports = class Processor {
             this.references.set('BITS', [], air.bits);
             this.references.set('__SUBPROOF__', [], subproofName);
 
+/*            this.references.set('N', [], new ExpressionItems.IntValue(air.rows));
+            this.references.set('BITS', [], new ExpressionItems.IntValue(air.bits));
+            this.references.set('__SUBPROOF__', [], new ExpressionItems.StringValue(subproofName));*/
+
             this.context.push(false, subproofName);
             this.scope.pushInstanceType('air');
             subproof.airStart();
@@ -732,6 +736,9 @@ module.exports = class Processor {
             }
             this.declareFullReference(colname, 'fixed', lengths, {global}, seq);
         }
+    }
+    execDebugger(s) {
+        debugger;
     }
     execColDeclaration(s) {
         // intermediate column
@@ -869,12 +876,10 @@ module.exports = class Processor {
 
         assertLog(s.left instanceof Expression, s.left);
         assertLog(s.right instanceof Expression, s.right);
-        console.log(s.left);
-        console.log(s.right);
+        console.log('############# CONSTRAINT-LEFT ##################');
+        console.log(util.inspect(s.left, false, 12, true));
         const left = s.left.instance();
-        console.log(left);
         const right = s.right.instance();
-        console.log(right);
         if (scopeType === 'air') {
             id = this.constraints.define(s.left.instance(true), s.right.instance(true),false,this.sourceRef);
             expr = this.constraints.getExpr(id);
@@ -919,7 +924,8 @@ module.exports = class Processor {
                     case 'expr':
                         // s.init[index].expr.dump('INIT1 '+name);
                         console.log(s.init[index]);
-                        initValue = s.init[index].eval();
+                        // initValue = s.init[index].eval();
+                        initValue = s.init[index].instance();
                         console.log(initValue);
                         // initValue.dump('INIT2 '+name);
                         break;

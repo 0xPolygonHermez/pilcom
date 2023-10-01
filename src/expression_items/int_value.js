@@ -19,7 +19,7 @@ class IntValue extends ValueItem {
         assert(typeof value === 'bigint');
         this.value = value;
     }
-    clone() {
+    cloneInstance() {
         return new IntValue(this.value);
     }
     static castTo(value) {

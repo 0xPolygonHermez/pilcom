@@ -9,7 +9,7 @@ module.exports = class ArrayOf extends RuntimeItem {
         this.rtype = type;
         this.instance = instance;
     }
-    clone() {
+    cloneInstance() {
         return new ArrayOf(this.baseCls, this.id, this.rtype, this. instance);
     }
 }

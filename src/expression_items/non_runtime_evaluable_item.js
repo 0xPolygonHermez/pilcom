@@ -10,7 +10,7 @@ class NonRuntimeEvaluableItem extends ExpressionItem {
     static get () {
         return NonRuntimeEvaluableItem._singletonInstance;
     }
-    clone() {
+    cloneInstance() {
         return NonRuntimeEvaluableItem._singletonInstance;
     }
     eval(options) {

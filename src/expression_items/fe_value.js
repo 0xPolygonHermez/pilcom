@@ -5,7 +5,7 @@ module.exports = class FeValue extends ValueItem {
     constructor (value = 0n) {
         super(value);
     }
-    clone() {
+    cloneInstance() {
         return new FeValue(this.value);
     }
     asInt() {
