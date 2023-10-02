@@ -158,14 +158,14 @@ module.exports = class References {
         }
         return [scopeId, false];
     }
-    declare (name, type, lengths = [], data = null, initValue = null) {
+    declare (name, type, lengths = [], options = null, initValue = null) {
 
         assert(typeof name === 'string');
         assert(!name.includes('::object'));
         assert(!name.includes('.object'));
 
         const nameInfo = this.decodeName(name);
-        console.log(`DECLARE_REFERENCE ${name} ==> ${nameInfo.name} ${type} []${lengths.length} scope:${nameInfo.scope} #${Context.scope.deep} ${initValue}`, data);
+        console.log(`DECLARE_REFERENCE ${name} ==> ${nameInfo.name} ${type} []${lengths.length} scope:${nameInfo.scope} #${Context.scope.deep} ${initValue}`, options);
 
         let [array, size] = Reference.getArrayAndSize(lengths);
 
@@ -188,11 +188,19 @@ module.exports = class References {
 
         const instance = this.getTypeInstance(finalType);
 
+        /* take constant property from options, the rest is data information */
+        const constProperty = options.const ?? false;
+        console.log(['CONST ', constProperty, name]);
+        let data = {...options};
+        delete data.const;
+
+        const refProperties = {container, scope, isStatic: nameInfo.isStatic, data, const: constProperty};
+
+
         // TODO: reserve need array for labels?
         const id = isReference ? null : instance.reserve(size, nameInfo.name, array, data);
 
-        const reference = new Reference(nameInfo.name, type, isReference, array, id, instance, scopeId,
-                                        {container, scope, isStatic: nameInfo.isStatic, data});
+        const reference = new Reference(nameInfo.name, type, isReference, array, id, instance, scopeId, refProperties);
         console.log(container, reference);
 
         if (container) {
@@ -243,7 +251,7 @@ module.exports = class References {
         options = options ?? {};
 
         const reference = this.getReference(name);
-        const item = reference.getItem(indexes, {label: name});
+        const item = reference.getItem(indexes, {...options, label: name});
         console.log(item);
 
 

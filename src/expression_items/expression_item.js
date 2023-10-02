@@ -97,6 +97,9 @@ class ExpressionItem {
     dump(options) {
         return this.toString(options);
     }
+    dumpItem(options) {
+        return this.dump(options);
+    }
     get type() {
         console.log(this);
         throw new Error(`FATAL: use type obsolete-property`)

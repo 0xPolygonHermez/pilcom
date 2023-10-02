@@ -75,6 +75,10 @@ module.exports = class Indexable {
         }
         return res;
     }
+    getConstItem(id, properties) {
+        // by default getConstItem return same as getItem but with property const = true.
+        return this.getItem(id, {...properties, const: true});
+    }
     // get expression item to add in a expression
     getItem(id, properties) {
         let res = this.values[id];

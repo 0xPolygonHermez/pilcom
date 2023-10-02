@@ -16,8 +16,10 @@ class Reference {
         this.locator = id;
         this.scopeId = scopeId;
         this.instance = instance;
+        this.initialized = false;
         for (const property in properties) {
             assert(typeof this[property] === 'undefined');
+            if (property === 'const') console.log(['CONST ********', properties[property]]);
             this[property] = properties[property];
         }
     }
@@ -28,18 +30,46 @@ class Reference {
         if (!this.array) return false;
         return this.array.isValidIndexes(indexes);
     }
-
+    markAsInitialized(indexes = []) {
+        if (indexes.length === 0 || !this.array) {
+            assert(this.initialized === false);
+            this.initialized = true;
+        }
+        else {
+            this.array.markAsInitialized(indexes);
+        }
+    }
+    isInitialized(indexes = []) {
+        return  (indexes.length === 0 || !this.array) ? this.initialized : this.array.isInitialized(indexes);
+    }
     getId(indexes = []) {
         return  (indexes.length === 0 || !this.array) ? this.locator : this.array.getIndexesOffset(indexes);
     }
-    init (value, indexes = []) {
-        return this.set(value, indexes);
-    }
     set (value, indexes = []) {
         assert(value !== null); // to detect obsolete legacy uses
+        if (!this.isInitialized(indexes)) {
+            return this.#doInit(value, indexes);
+        }
+        const id = this.getId(indexes);
+        if (this.const) {
+            // TODO: more info
+            throw new Error('setting a const element');
+        }
+        this.instance.set(id, value);
+    }
+    #doInit(value, indexes) {
         const id = this.getId(indexes);
         assert(id !== null);
         this.instance.set(id, value);
+        this.markAsInitialized(indexes);
+    }
+    init (value, indexes = []) {
+        assert(value !== null); // to detect obsolete legacy uses
+        if (this.isInitialized(indexes)) {
+            // TODO: more info
+            throw new Error('value initialized');
+        }
+        this.#doInit(value, indexes);
     }
     static getArrayAndSize(lengths) {
         // TODO: dynamic arrays, call to factory, who decides?
@@ -62,7 +92,8 @@ class Reference {
             locator = this.array.locatorIndexesApply(this.locator, evaluatedIndexes);
         }
         console.log(locator);
-        const res = this.instance.getItem(locator);
+        const res = options.const ? this.instance.getItem(locator, options) : this.instance.getConstItem(locator, options);
+        console.log(['GETITEM', res.constructor.name, res.definition, this.const]);
         if (locator == 0 && res.constructor.name == 'WitnessCol' && !label) {
             EXIT_HERE;
         }

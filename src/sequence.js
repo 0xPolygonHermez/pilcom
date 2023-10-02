@@ -382,7 +382,7 @@ module.exports = class Sequence {
             // console.log('SETTING POST COUNT '+count);
         }
         return count;
-    }
+    }seq
     e2num(e) {
         if (typeof e === 'bigint' || typeof e === 'number') {
             return e;
@@ -402,11 +402,12 @@ module.exports = class Sequence {
         return {type: vdata.type, value: vdata.values[offset] };
     } */
     toString() {
-        return this.values.join(',');
+        return this.#values.toString();
     }
     toNumber(value) {
+        console.log(value);
         let nvalue = Number(value);
-        if (nvalue === NaN || !isNaN(value)) {
+        if (nvalue === NaN || isNaN(nvalue)) {
             throw new Error(`Invalid number ${value}`);
         }
         return nvalue;

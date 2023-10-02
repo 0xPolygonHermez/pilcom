@@ -99,9 +99,11 @@ class Expression extends ExpressionItem {
             this.stack[index + delta] = this.stack[index];
         }
         for (let index = 0; index < delta; ++index) {
-            this.stack[index + stackIndex] = expressionToInsert.stack[index].clone();
+            console.log(index);
+            console.log(expressionToInsert.stack[index]);
+            this.stack[index + stackIndex] = this.cloneStackPos(expressionToInsert.stack[index]);
         }
-        this.fixedRowAccess = this.fixedRowAccess || e.fixedRowAccess;
+        this.fixedRowAccess = this.fixedRowAccess || expressionToInsert.fixedRowAccess;
         return 1;
     }
     cloneAlone() {
@@ -382,19 +384,15 @@ class Expression extends ExpressionItem {
     // in stackResults[pos][1] contains a results array of this stack position operands
     instance() {
         console.log(Context.sourceRef);
-        if (Context.sourceRef === 'expressions.pil:5:4:5:12') {
-//            EXIT_HERE;
-        }
         this.dump("#############");
         let cloned = this.clone();
         const options = {instance: true}
         let stackResults = cloned.evaluateOperands(options);
         // cloned.extendExpressions(options);
         cloned.evaluateFullStack(stackResults, options);
-        cloned.dump();
-        console.log('SIMPLIFY');
+        cloned.dump('PRE-SIMPLIFY');
         cloned.simplify();
-        cloned.dump("#############");
+        cloned.dump('POST-SIMPLIFY');
         // console.log(stackResults);
         // cloned.dumpStackResults(stackResults, '');
         return cloned;
@@ -533,9 +531,16 @@ class Expression extends ExpressionItem {
             if (typeof values[1][casting] === 'function') {
                 const method = this.operatorToMethod(operation);
                 methods.push(`${types[0]}.${method}`);
-                const [executed, result] = this.applyOperatorMethod(method, [values[0], values[1][casting]()]);
-                if (executed) {
-                    return result;
+                try {
+                    const [executed, result] = this.applyOperatorMethod(method, [values[0], values[1][casting]()]);
+                    if (executed) {
+                        return result;
+                    }
+                }
+                catch (e) {
+                    if (e instanceof Exceptions.CannotBeCastToType === false) {
+                        throw e;
+                    }
                 }
                 if (onlyOneLoop) {
                     break;
@@ -676,8 +681,16 @@ class Expression extends ExpressionItem {
                 const result = operand.eval(options);
 
                 if (options.instance && result !== null) {
-                    console.log (result);
-                    st.operands[operandIndex] = assertExpressionItem(result);
+                    if (result instanceof Expression) {
+                        this.dump('THIS BEFORE INSERTSTACK');
+                        result.dump('RESULT BEFORE INSERTSTACK');
+                        const stackOffset = this.insertStack(result.instance(), stpos);
+                        console.log(stackOffset);
+                        st.operands[operandIndex] = new ExpressionItems.StackItem(stackOffset);
+                        this.dump('THIS AFTER INSERTSTACK');
+                    } else {
+                        st.operands[operandIndex] = assertExpressionItem(result);
+                    }
                 }
             }
         }
@@ -948,23 +961,33 @@ class Expression extends ExpressionItem {
         }
         return caller;
     }
+    static dumpScope = null;
     dump(title) {
-        return this.dumpStack(`DUMP (${title ?? ''})`, this.stack);
+        const previousDumpScope = Expression.dumpScope;
+        Expression.dumpScope = Expression.dumpScope === null ? '' : Expression.dumpScope + '    ';
+        const res = this.dumpStack(`DUMP (${title ?? ''})`, this.stack);
+        Expression.dumpScope = previousDumpScope;
+        return res;
+    }
+    dumpItem(options) {
+        return 'Expression('+this.toString(options)+')';
     }
     dumpStackResults(stackResults, title = '') {
-        return this.dumpStack(`STACK RESULTS (${title ?? ''})`, stackResults, 0, 1);
+        return this.dumpStack(`STACK RESULTS (${title ?? ''})`, stackResults, {stackProperty: 0, operandsProperty: 1});
     }
-    dumpStack(title, stack, stackProperty = 'op', operandsProperty = 'operands') {
+    dumpStack(title, stack, options = {} ) {
         title = title + ' ' + this.getCaller();
-        console.log(`\x1B[38;5;214m|==========> ${title} <==========|\x1B[0m`);
+        console.log((Expression.dumpScope ?? '') + `\x1B[38;5;214m|==========> ${title} <==========|\x1B[0m`);
         for (let index = stack.length-1; index >=0; --index) {
-            this.dumpStackPos(stack[index], index, stackProperty, operandsProperty);
+            this.dumpStackPos(stack[index], index, options);
         }
     }
-    dumpStackPos(stackPos, index = false, stackProperty = 'op', operandsProperty = 'operands') {
+    dumpStackPos(stackPos, index = false, options = {}) {
+        const stackProperty = options.stackProperty ?? 'op';
+        const operandsProperty = options.operandsProperty ?? 'operands';
         const stackValue = stackPos[stackProperty];
         const operationInfo = (stackValue && typeof stackValue.dump === 'function') ? stackValue.dump() : stackValue;
-        let info =`\x1B[38;5;214m#${index === false?'':index} ${stackValue}`;
+        let info = (Expression.dumpScope ?? '') + `\x1B[38;5;214m#${index === false?'':index} ${stackValue}`;
         for (const operand of stackPos[operandsProperty]) {
             const operandInfo = this.dumpOperand(operand, index);
             info = info + ' [\x1B[38;5;76m' + operandInfo +'\x1B[38;5;214m]';
@@ -975,8 +998,9 @@ class Expression extends ExpressionItem {
         const cType = '\x1B[38;5;76m';
         const cProp = '\x1B[38;5;250m';
         const cValue = '\x1B[38;5;40m';
+        const options = {cType, cProp, cValue, pos};
         if (op instanceof ExpressionItem) {
-            return op.dump({cType, cProp, cValue, pos});
+            return op.dumpItem(options);
         }
         if (op === null) return 'null';
         EXIT_HERE;
@@ -989,35 +1013,36 @@ class Expression extends ExpressionItem {
         const res = this.stackPosToString(top ,0, {...options, dumpToString: true});
         return res;
     }
-    stackPosToString(pos, parentPrecedence, options) {
+    stackPosToString(pos, parentOperation, options) {
         const st = this.stack[pos];
         if (typeof st === 'undefined') {
             console.log(pos);
             console.log(this.stack);
         }
+        const parentPrecedence = ExpressionOperationsInfo.get(parentOperation).precedence;
         if (st.op === false) {
-            return this.operandToString(st.operands[0], pos, parentPrecedence, options);
+            return this.operandToString(st.operands[0], pos, st.op, options);
         }
         const operationInfo = ExpressionOperationsInfo.get(st.op);
         const operationLabel = operationInfo.label;
         let res;
         if (st.operands.length === 1) {
-            res = operationLabel + this.operandToString(st.operands[0], pos, operationInfo.precedence, options);
+            res = operationLabel + this.operandToString(st.operands[0], pos, st.op, options);
 
         } else if (st.operands.length === 2) {
-            res = this.operandToString(st.operands[0], pos, operationInfo.precedence, options) + ' ' + operationLabel + ' ' +
-                  this.operandToString(st.operands[1], pos, operationInfo.precedence, options);
+            res = this.operandToString(st.operands[0], pos, st.op, options) + ' ' + operationLabel + ' ' +
+                  this.operandToString(st.operands[1], pos, st.op, options);
         } else {
             TODO_EXIT
         }
-        if (parentPrecedence > operationInfo.precedence) {
+        if (parentPrecedence > operationInfo.precedence || parentOperation === 'sub') {
             res = '(' + res + ')';
         }
         return res;
     }
-    operandToString(ope, pos, parentPrecedence, options) {
+    operandToString(ope, pos, parentOperation, options) {
         if (ope instanceof ExpressionItems.StackItem) {
-            return this.stackPosToString(pos-ope.offset, parentPrecedence, options);
+            return this.stackPosToString(pos-ope.offset, parentOperation, options);
         }
         return ope.toString(options);
     }
@@ -1067,12 +1092,6 @@ class Expression extends ExpressionItem {
     }
     getValue() {
         return this.eval();
-    }
-    operatorAddExpressionIntValue(valueA, valueB) {
-        EXIT_HERE;
-    }
-    operatorAdd(valueA, valueB) {
-        EXIT_HERE;
     }
     hasRuntimes() {
         return this.stack.some(stackPos => stackPos.operands.some(operand => operand.isRuntime()));

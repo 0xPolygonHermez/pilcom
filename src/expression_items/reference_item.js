@@ -1,6 +1,7 @@
 const RuntimeItem = require("./runtime_item.js");
 const Context = require('../context.js');
 const RowOffset = require('./row_offset.js');
+const ExpressionItem = require('./expression_item.js');
 module.exports = class ReferenceItem extends RuntimeItem {
     constructor (name, indexes = [], rowOffset) {
         super();
@@ -29,7 +30,7 @@ module.exports = class ReferenceItem extends RuntimeItem {
         return cloned;
     }
     evalInside(options = {}) {
-        console.log('EVALINSIDE '+this.name);
+        console.log(['EVALINSIDE '+this.name, options]);
         console.log(this.rowOffset);
         console.log(this);
         if (this.rowOffset.value) {

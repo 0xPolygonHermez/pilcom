@@ -1,19 +1,21 @@
 const Expression = require("./expression.js");
 const Context = require('./context.js');
 const {assert, assertLog} = require('./assert.js');
+const NonRuntimeEvaluableItem = require('./expression_items/non_runtime_evaluable_item.js');
 
 module.exports = class Assign {
     constructor () {
     }
-
     assign (name, indexes, value) {
+        console.log(value);
         value = this.getValue(value);
+        console.log(value);
         assert(value !== null);
         return this.#assign(name, indexes, value);
     }
     getValue(value) {
         const _value = value.eval();
-        if (typeof _value !== 'undefined' && _value !== null) {
+        if (typeof _value !== 'undefined' && _value !== null && (_value instanceof NonRuntimeEvaluableItem) === false) {
             return _value;
         }
         return value;
@@ -25,7 +27,7 @@ module.exports = class Assign {
             // array asignation as array or subarray copy
             return this.assignArray(name, indexes, value, array);
         }
-
+        console.log(value);
         return Context.references.set(name, indexes, value);
     }
     assignType(type, name, indexes, value) {

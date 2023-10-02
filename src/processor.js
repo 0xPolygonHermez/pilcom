@@ -64,9 +64,6 @@ module.exports = class Processor {
         this.exprs = new Variables('expr', DefinitionItems.ExpressionVariable, Expression);
         this.references.register('expr', this.exprs);
 
-        this.subexprs = new Variables('subexpr', DefinitionItems.ExpressionVariable, Expression);
-        this.references.register('subexpr', this.subexprs);
-
         // this.lexprs = new Variables('lexpr', Expression);
         // this.references.register('lexpr', this.lexprs);
 
@@ -331,6 +328,17 @@ module.exports = class Processor {
         const indexes = this.decodeIndexes(st.name.indexes)
         const names = this.context.getNames(st.name.name);
         console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> EXEC-ASSIGN <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<');
+        if (st.value.type === 'sequence') {
+            const sequence = new Sequence(this, st.value, ExpressionItems.IntValue.castTo(this.references.get('N')));
+            sequence.extend();
+            console.log(sequence.size);
+            console.log(sequence.toString());
+            EXIT_HERE;
+        }
+        console.log(st.value);
+        st.value.dump('@@@@@@@@@@@@@@@@@@');
+        const expr2 = st.value.instance();
+        expr2.dump('@^^@------/');
         if (st.name.reference) {
             assert(indexes.length === 0);
             const assignedValue = st.value.instance();
@@ -876,10 +884,9 @@ module.exports = class Processor {
 
         assertLog(s.left instanceof Expression, s.left);
         assertLog(s.right instanceof Expression, s.right);
-        console.log('############# CONSTRAINT-LEFT ##################');
-        console.log(util.inspect(s.left, false, 12, true));
         const left = s.left.instance();
         const right = s.right.instance();
+        left.dump();
         if (scopeType === 'air') {
             id = this.constraints.define(s.left.instance(true), s.right.instance(true),false,this.sourceRef);
             expr = this.constraints.getExpr(id);
@@ -892,7 +899,6 @@ module.exports = class Processor {
         }
         console.log(`\x1B[1;36;44m${prefix}CONSTRAINT      > ${expr.toString({hideClass:true, hideLabel:false})} === 0 (${this.sourceRef})\x1B[0m`);
         console.log(`\x1B[1;36;44m${prefix}CONSTRAINT (RAW)> ${expr.toString({hideClass:true, hideLabel:true})} === 0 (${this.sourceRef})\x1B[0m`);
-        EXIT_HERE;
     }
     execVariableIncrement(s) {
         // REVIEW used only inside loop (increment) in other cases was an expression
@@ -904,6 +910,7 @@ module.exports = class Processor {
     }
     execVariableDeclaration(s) {
         console.log('VARIABLE DECLARATION '+this.context.sourceRef+' init:'+s.init);
+        console.log(s);
         const init = typeof s.init !== 'undefined';
 //         console.log(s);
         const count = s.items.length;
@@ -920,6 +927,11 @@ module.exports = class Processor {
             let initValue = null;
             if (init) {
                 console.log([name, s.vtype, Context.sourceRef]);
+                if (s.init[index] instanceof Expression) {
+                    s.init[index].dump(`+++++++ INIT VARIABLE ${name} ++++++++++`);
+                    const expr2 = s.init[index].instance();
+                    expr2.dump(`+++++++ INIT VARIABLE INSTANCED ${name} ++++++++++`);
+                }
                 switch (s.vtype) {
                     case 'expr':
                         // s.init[index].expr.dump('INIT1 '+name);
@@ -939,7 +951,7 @@ module.exports = class Processor {
                 }
             }
             console.log(initValue);
-            this.references.declare(name, s.vtype, lengths, { scope, sourceRef }, initValue);
+            this.references.declare(name, s.vtype, lengths, { scope, sourceRef, const: s.const ?? false }, initValue);
             // if (initValue !== null) this.references.set(name, [], initValue);
         }
     }

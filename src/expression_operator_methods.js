@@ -23,6 +23,9 @@ module.exports = class ExpressionOperatorMethods {
     static operatorMul(valueA, valueB) {
         return this.#do('mul', valueA, valueB);
     }
+    static operatorSub(valueA, valueB) {
+        return this.#do('sub', valueA, valueB);
+    }
     static operatorEqIntValue(valueA, valueB) {
         let res = valueA.eval();
         return new ExpressionItem.IntValue(res.asInt() === valueB.asInt() ? 1n : 0n);

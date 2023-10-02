@@ -11,6 +11,7 @@ module.exports = class ExpressionVariable extends Variable {
             this.value = value.clone();
             return;
         }
+        console.log(this);
         console.log(value);
         this.value._set(value);
         this.value.dump('setValue');

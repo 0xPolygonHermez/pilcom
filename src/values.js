@@ -46,4 +46,7 @@ module.exports = class Values {
     getValue(irow) {
         return this.#values[irow];
     }
+    toString() {
+        return this.#values.join();
+    }
 }
