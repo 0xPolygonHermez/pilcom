@@ -80,11 +80,11 @@ module.exports = class ExpressionPack {
             console.log(ope);
             // CURRENT ERROR: in this scope definition not available.
             console.log(def);
-            container.pushWitnessCol(id, ope.getNext(), def.stage);
+            container.pushWitnessCol(id, ope.getRowOffset(), def.stage);
 
         } else if (ope instanceof ExpressionItems.FixedCol) {
             // container.pushFixedCol(id, next ?? 0);
-            container.pushFixedCol(id, ope.getNext());
+            container.pushFixedCol(id, ope.getRowOffset());
 
         } else if (ope instanceof ExpressionItems.Public) {
             // container.pushPublicValue(id)

@@ -107,8 +107,8 @@ class ExpressionItem {
         console.log(this);
         throw new Error(`FATAL: use type obsolete-property`)
     }
-    getNext() {
-        return this.next ?? 0;
+    getRowOffset() {
+        return this.rowOffset ? this.rowOffset.value : 0;
     }
     getRowOffsetStrings(options) {
         if (!this.rowOffset) return ['',''];
