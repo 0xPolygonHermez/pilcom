@@ -27,8 +27,13 @@ module.exports = class Constraints {
         return (typeof this.constraints[id] != 'undefined');
     }
 
-    getPackedExpressionId(id, container, options) {
-        return Context.expressions.getPackedExpressionId(id, container, options);
+    getPackedExpressionId(id, container, options = {}) {
+        console.log(Context.expressions);
+        console.log(options);
+        console.log(id);
+        console.log(options.expressions ?? Context.expressions);
+        const res = (options.expressions ?? Context.expressions).getPackedExpressionId(id, container, options);
+        return res;
     }
     define(left, right, boundery, sourceRef) {
         console.log(left, right);
@@ -80,8 +85,11 @@ module.exports = class Constraints {
     }
     getDebugInfo(index, packed, options) {
         const constraint = this.constraints[index];
+        console.log(constraint);
         const eid = constraint.exprId;
-        const peid = Context.expressions.getPackedExpressionId(eid);
+        // const peid = Context.expressions.getPackedExpressionId(eid);
+        const peid = this.getPackedExpressionId(eid, packed, options);
+        console.log(peid);
         let info = `INFO ${index}: ${eid} ${peid} ${constraint.sourceRef}`
         options = options ?? {};
 

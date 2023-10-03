@@ -1,5 +1,5 @@
-const ExpressionItem = require("./definition_item.js");
-module.exports = class ProofItem extends ExpressionItem {
+const DefinitionItem = require("./definition_item.js");
+module.exports = class ProofItem extends DefinitionItem {
     constructor (id) {
         super();
         this.id = id;

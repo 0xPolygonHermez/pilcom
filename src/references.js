@@ -14,15 +14,16 @@ module.exports = class References {
         this.visibilityStack = [];
         this.containers = new Containers(this);
     }
-    getDefinitionByItem(item) {
+    getDefinitionByItem(item, options) {
         let instance = null;
-        console.log(this.types);
-        for (const type in this.types) {
-            instance = this.types[type].instance ?? {};
-            if (instance.expressionItemClass === item.constructor) break;
+        const instances = [...(options.instances ?? []), ...Object.values(this.types).map(x => x.instance)];
+        for (const _instance of instances) {
+            if (_instance.expressionItemClass === item.constructor) {
+                instance = _instance;
+                break;
+            }
         }
-        console.log(instance.constructor.name);
-        return instance.get ? instance.get(instance.id): false;
+        return instance.get ? instance.get(item.id): false;
     }
 /*    getDefinition(name, indexes) {
         const reference = this.getReference(name);
@@ -64,12 +65,12 @@ module.exports = class References {
             instance
         }
     }
-    clearType(type) {
+    clearType(type, label) {
         const typeInfo = this.types[type];
         if (typeof typeInfo === 'undefined') {
             throw new Error(`type ${type} not registered`);
         }
-        typeInfo.instance.clear();
+        typeInfo.instance.clear(label);
         // TODO: remove references
         for (const name in this.references) {
             if (this.references[name].type !== type) continue;

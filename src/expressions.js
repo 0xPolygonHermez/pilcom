@@ -4,7 +4,7 @@ const Expression = require('./expression.js');
 const WitnessCol = require('./expression_items/witness_col.js');
 const NonRuntimeEvaluable = require('./non_runtime_evaluable.js');
 const ExpressionPack = require('./expression_pack.js');
-
+const Context = require('./context.js');
 module.exports = class Expressions {
     constructor () {
         this.expressions = [];
@@ -341,15 +341,17 @@ module.exports = class Expressions {
         this.packedIds = [];
         for (let id = 0; id < this.expressions.length; ++id) {
             if (typeof this.packedIds[id] !== 'undefined') continue;    // already packed
-            const packedId = this.expressionPack.set(this.expressions[id]).pack(container, options);
+            this.expressions[id].dump('PACK-EXPRESSION ');
+            this.expressionPack.set(this.expressions[id]);
+            this.packedIds[id] = this.expressionPack.pack(container, options);
             // packedId === false, means directly was a alone term.
-            this.packedIds[id] = packedId;
         }
     }
     getPackedExpressionId(id, container, options) {
+        console.log(id, this.packedIds, this.packedIds[id]);
         if (container && typeof this.packedIds[id] === 'undefined') {
-            const packedId = this.expressionPack.set(this.expressions[id]).pack(container, options);
-            this.packedIds[id] = packedId;
+            this.expressionPack.set(this.expressions[id]);
+            this.packedIds[id] = this.expressionPack.pack(container, options);
         }
         return this.packedIds[id];
     }
@@ -362,7 +364,7 @@ module.exports = class Expressions {
             this.expressions[index].dump(`EXPRESSION ${index} # ${name}`, 3);
         }
     }
-    clear() {
+    clear(label = '') {
         this.expressions = [];
         this.packedIds = [];
         this.labelRanges = new LabelRanges();

@@ -33,7 +33,8 @@ module.exports = class Indexable {
 
         return cloned;
     }
-    clear() {
+    clear(label = '') {
+        console.log(`CLEARING ${label} (${this.type})`);
         this.values = [];
         this.labelRanges = new LabelRanges();
     }

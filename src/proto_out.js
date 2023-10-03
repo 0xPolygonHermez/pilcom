@@ -413,10 +413,11 @@ module.exports = class ProtoOut {
             this.pilOut.constraints.push(payload);
         }
     }
-    setConstraints(constraints, packed, options) {
+    setConstraints(constraints, packed, options = {}) {
         let airConstraints = this.setupAirProperty('constraints');
         for (const [index, constraint] of constraints.keyValues()) {
             let payload;
+            console.log([index, constraint]);
             const debugLine = constraints.getDebugInfo(index, packed, options);
             const packedExpressionId = constraints.getPackedExpressionId(constraint.exprId, packed, options);
             switch (constraint.boundery) {

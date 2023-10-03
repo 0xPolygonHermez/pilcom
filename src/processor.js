@@ -188,17 +188,17 @@ module.exports = class Processor {
                 const bits = log2(Number(air.rows));
                 proto.setAir(airName, air.rows);
                 proto.setFixedCols(air.fixeds);
+                proto.setWitnessCols(air.witness);
                 // expression: constraint, hint, operand (expression)
                 let packed = new PackedExpressions();
                 // this.expressions.pack(packed);
-                air.expressions.pack(packed);
+                air.expressions.pack(packed, {instances: [air.fixeds, air.witness]});
                 proto.setConstraints(air.constraints, packed,
                     { labelsByType: {
                         witness: air.witness.labelRanges,
-                        fixed: air.fixeds.labelRanges,
-                    }
-                });
-                proto.setWitnessCols(air.witness);
+                        fixed: air.fixeds.labelRanges },
+                      expressions: air.expressions
+                    });
                 proto.setSymbolsFromLabels(air.witness.labelRanges, 'witness', {airId, subproofId});
                 proto.setSymbolsFromLabels(air.fixeds.labelRanges, 'fixed', {airId, subproofId});
                 proto.setExpressions(packed);
@@ -691,7 +691,7 @@ module.exports = class Processor {
             air.constraints.expressions = air.expressions;
             air.hints = this.hints.clone();
             air.hints.expressions = air.expressions;
-            this.clearAirScope();
+            this.clearAirScope(airName);
             this.constraints = new Constraints(this.Fr, this.expressions);
             this.scope.popInstanceType(['witness', 'fixed', 'im']);
             this.context.pop();
@@ -706,10 +706,10 @@ module.exports = class Processor {
     finalAirScope() {
         this.callDelayedFunctions('air', 'final');
     }
-    clearAirScope() {
-        this.references.clearType('fixed');
-        this.references.clearType('witness');
-        this.expressions.clear();
+    clearAirScope(label = '') {
+        this.references.clearType('fixed', label);
+        this.references.clearType('witness', label);
+        this.expressions.clear(label);
     }
     finalSubproofScope() {
         this.callDelayedFunctions('subproof', 'final');

@@ -1,5 +1,8 @@
 const {assert, assertLog} = require('./assert.js');
 const Exceptions = require('./exceptions.js');
+const ExpressionItems = require('./expression_items.js');
+const Context = require('./context.js');
+const { DefinitionItem } = require('./definition_items.js');
 
 module.exports = class ExpressionPack {
     constructor() {
@@ -7,6 +10,7 @@ module.exports = class ExpressionPack {
     }
     set(expression) {
         this.expression = expression;
+        return this;
     }
     packAlone(container, options) {
         this.operandPack(container, this.expression.getAloneOperand(), 0, options);
@@ -64,8 +68,13 @@ module.exports = class ExpressionPack {
         // container.pushExpression(Expression.parent.getPackedExpressionId(id, container, options));
         // break;
         const id = ope.getId();
-        const def = Context.references.getDefinitionByItem(ope);
-        assert(def !== false);
+        console.log(options);
+        const def = Context.references.getDefinitionByItem(ope, options);
+        console.log(ope);
+        console.log(def);
+        assert(typeof def === 'object')
+        console.log(def instanceof ExpressionItems.ExpressionItem, DefinitionItem.prototype.constructor.name, Object.getPrototypeOf(def.constructor).name);
+        assert(def instanceof DefinitionItem);
         if (ope instanceof ExpressionItems.WitnessCol) {
             // container.pushWitnessCol(id, next ?? 0, stage ?? 1)
             console.log(ope);
@@ -83,7 +92,7 @@ module.exports = class ExpressionPack {
 
         } else if (ope instanceof ExpressionItems.Challenge) {
             // container.pushChallenge(id, stage ?? 1);
-            container.pushChallenge(id, ope.getStage());
+            container.pushChallenge(id, def.stage);
 
         } else if (ope instanceof ExpressionItems.Proofval) {
             // container.pushProofValue(id)
