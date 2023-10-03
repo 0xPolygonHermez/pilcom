@@ -158,7 +158,7 @@ module.exports = class References {
         }
         return [scopeId, false];
     }
-    declare (name, type, lengths = [], options = null, initValue = null) {
+    declare (name, type, lengths = [], options = {}, initValue = null) {
 
         assert(typeof name === 'string');
         assert(!name.includes('::object'));
@@ -251,8 +251,8 @@ module.exports = class References {
         options = options ?? {};
 
         const reference = this.getReference(name);
-        const item = reference.getItem(indexes, {...options, label: name});
-        console.log(item);
+        // TODO: if reference is a 'reference' check if name is correct
+        const item = reference.getItem(indexes, {...options, label: reference.name});
 
 
         if (options.preDelta) {

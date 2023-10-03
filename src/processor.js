@@ -251,7 +251,7 @@ module.exports = class Processor {
         const __executeStatementCounter = this.executeStatementCounter++;
         this.traceLog(`[TRACE] #${__executeStatementCounter} ${st.debug ?? ''} (DEEP:${this.scope.deep})`, '38;5;75');
 
-        this.sourceRef = st.debug ?? '';
+        this.sourceRef = st.debug.split(':').slice(0,2).join(':') ?? '';
 
         if (typeof st.type === 'undefined') {
             console.log(st);

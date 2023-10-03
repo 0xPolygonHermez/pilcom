@@ -38,9 +38,9 @@ module.exports = class ProofItem extends ExpressionItem {
     toString(options) {
         const [next, prior] = this.getRowOffsetStrings();
         // console.log(['ROWOFFSET.TOSTRING', next, prior, this.label, this.constructor.name, this.rowOffset]);
-        let label = (options.hideClass ? '' : this.constructor.name + '::') + this.label;
+        let label = (options.hideClass ? '' : this.getTag() + '::') + this.label;
         if (options.hideLabel || !this.label) {
-            label = this.constructor.name + '@' + this.id;
+            label = this.getTag() + '@' + this.id;
         }
         return next + label + prior;
     }

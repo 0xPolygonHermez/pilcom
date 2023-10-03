@@ -92,13 +92,16 @@ class ExpressionItem {
         return this.indexes.pop();
     }
     toString(options) {
-        return `${this.constructor.name}()`;
+        return this.getTag() + '(' + this.label + ')';
     }
     dump(options) {
         return this.toString(options);
     }
     dumpItem(options) {
         return this.dump(options);
+    }
+    getTag() {
+        return this.constructor.name;
     }
     get type() {
         console.log(this);

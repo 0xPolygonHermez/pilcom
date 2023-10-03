@@ -7,6 +7,9 @@ module.exports = class WitnessCol extends ProofItem {
         super(id);
         console.log('CONSTRUCTOR_WITNESS', id, this.id);
     }
+    getTag() {
+        return 'witness';
+    }
     cloneInstance() {
         return new WitnessCol(this.id);
     }

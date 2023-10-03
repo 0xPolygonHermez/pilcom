@@ -14,6 +14,9 @@ module.exports = class FixedCol extends ProofItem {
     isPeriodic() {
         return this.rows > 0;
     }
+    getTag() {
+        return 'fixed';
+    }
     getValue(row) {
         if (this.sequence === null) {
             return this.values[row]

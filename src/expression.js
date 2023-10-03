@@ -1035,7 +1035,7 @@ class Expression extends ExpressionItem {
         } else {
             TODO_EXIT
         }
-        if (parentPrecedence > operationInfo.precedence || parentOperation === 'sub') {
+        if (parentPrecedence > operationInfo.precedence || (parentOperation === 'sub' && st.op !== 'mul')) {
             res = '(' + res + ')';
         }
         return res;

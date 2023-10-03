@@ -6,6 +6,9 @@ module.exports = class Public extends ProofItem {
     getId() {
         return this.id;
     }
+    getTag() {
+        return 'public';
+    }
     cloneInstance() {
         return new Public(this.id);
     }

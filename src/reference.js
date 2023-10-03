@@ -94,9 +94,6 @@ class Reference {
         console.log(locator);
         const res = options.const ? this.instance.getItem(locator, options) : this.instance.getConstItem(locator, options);
         console.log(['GETITEM', res.constructor.name, res.definition, this.const]);
-        if (locator == 0 && res.constructor.name == 'WitnessCol' && !label) {
-            EXIT_HERE;
-        }
         if (label) res.setLabel(label);
         else res.setLabel('___');
 

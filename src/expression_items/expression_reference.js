@@ -5,4 +5,8 @@ module.exports = class ExpressionReference extends RuntimeItem {
         this.id = id;
         this.value = value;
     }
+    getTag() {
+        return 'im';
+    }
+
 }
