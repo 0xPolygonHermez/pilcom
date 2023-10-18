@@ -1,7 +1,7 @@
 const Context = require('./context.js');
 const Router = require("./router.js");
 const Expression = require("./expression.js");
-
+const {ExpressionList} = require('./expression_items.js');
 module.exports = class List {
 
     // TODO: Review compiler estructures
@@ -30,6 +30,14 @@ module.exports = class List {
         if (e instanceof Expression) {
             return this._extendExpr(e);
         }
+        if (e instanceof ExpressionList) {
+            let res = [];
+            for (const item of e.items) {
+                res.push(this._resolve(item));
+            }
+            return res;
+        }
+        console.log(e);
         return this.router.go(e);
     }
     _extendAppend(e) {

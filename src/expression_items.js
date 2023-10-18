@@ -1,4 +1,5 @@
 const ExpressionItem = require("./expression_items/expression_item.js");
+const ExpressionList = require("./expression_items/expression_list.js");
 const ExpressionReference = require("./expression_items/expression_reference.js");
 const FeValue = require("./expression_items/fe_value.js");
 const IntValue = require("./expression_items/int_value.js");
@@ -10,6 +11,7 @@ const Publictable = require("./expression_items/publictable.js");
 const ReferenceItem = require("./expression_items/reference_item.js");
 const RuntimeItem = require("./expression_items/runtime_item.js");
 const StackItem = require("./expression_items/stack_item.js");
+const StringTemplate = require("./expression_items/string_template.js");
 const StringValue = require("./expression_items/string_value.js");
 const Subproofval = require("./expression_items/subproofval.js");
 const ValueItem = require("./expression_items/value_item.js");
@@ -22,6 +24,7 @@ const NonRuntimeEvaluableItem = require('./expression_items/non_runtime_evaluabl
 
 module.exports = {
     ExpressionItem,
+    ExpressionList,
     ExpressionReference,
     FeValue,
     FixedCol,
@@ -34,6 +37,7 @@ module.exports = {
     ReferenceItem,
     RuntimeItem,
     StackItem,
+    StringTemplate,
     StringValue,
     Subproofval,
     ValueItem,

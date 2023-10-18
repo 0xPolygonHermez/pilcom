@@ -415,7 +415,8 @@ module.exports = class References {
         return reference;
     }
     isVisible(def) {
-        return !def.scopeId || def.type === 'constant' || def.scopeId >= this.visibilityScope; // || def.scopeId <= Context.scope.getScopeId('air');
+        return !def.scopeId || def.type === 'constant' || def.type === 'function' ||
+                def.scopeId >= this.visibilityScope; // || def.scopeId <= Context.scope.getScopeId('air');
     }
     /**
      *
@@ -461,13 +462,13 @@ module.exports = class References {
         }
         if (!reference) {
             if (typeof defaultValue !== 'undefined') return defaultValue;
-            throw new Error(`Reference ${names.join(',')} not found`);
+            throw new Error(`Reference ${names.join(',')} not found on ${Context.sourceRef}`);
         }
 
         // constants are visible inside functions
         if (this.isVisible(reference) === false) {
             if (typeof defaultValue !== 'undefined') return defaultValue;
-            throw new Error(`Reference ${names.join(',')} not visible from current scope`);
+            throw new Error(`Reference ${names.join(',')} not visible from current scope ${Context.sourceRef}`);
         }
         return reference;
     }
@@ -546,7 +547,9 @@ module.exports = class References {
         assert(value !== null); // to detect obsolete legacy uses
 
         // getReference produce an exception if name not found
-        this.getReference(name).set(value, indexes);
+        const reference = this.getReference(name);
+        console.log(reference);
+        reference.set(value, indexes);
     }
 
     unset(name) {

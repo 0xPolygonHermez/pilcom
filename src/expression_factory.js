@@ -1,8 +1,8 @@
 const util = require('util');
 const {cloneDeep} = require('lodash');
 const Expression = require("./expression.js");
-const {ReferenceItem, IntValue, StringValue,
-    FunctionCall} = require("./expression_items.js");
+const {ReferenceItem, IntValue, StringValue, StringTemplate,
+    FunctionCall, ExpressionList} = require("./expression_items.js");
 const Router = require("./router.js");
 const {assert, assertLog} = require('./assert');
 const RowOffset = require('./expression_items/row_offset.js');
@@ -13,6 +13,7 @@ module.exports = class ExpressionFactory {
 
     static fromObject(obj) {
         if (obj instanceof Expression) {
+            console.log('#########', Object.keys(obj).includes('type'));
             return obj;
         }
         console.log(obj);
@@ -41,27 +42,39 @@ module.exports = class ExpressionFactory {
         if (type === 'row_offset') {
             return item;
         }
+        if (item instanceof ExpressionList) {
+            return item;
+        }
         let expr = new Expression();
         expr._set(item);
         return expr;
     }
     static fromObjects(objs) {
         let expressions = [];
-        for (const obj of objects) {
+        for (const obj of objs) {
             expressions.push(ExpressionFactory.fromObject(obj));
         }
         return expressions;
+    }
+    static fromExpressionList(obj) {
+        const elist = new ExpressionList(this.fromObjects(obj.values));
+        delete obj.values;
+        return elist;
     }
     static fromReference(obj) {
         if (obj.rowOffset) {
             console.log('ROWOFFSET.FROMREFERENCE');
             console.log(obj.rowOffset);
         }
+        console.log(obj);
         let res = new ReferenceItem(obj.name, obj.indexes ?? [], obj.rowOffset);
         delete obj.name;
         delete obj.indexes;
         delete obj.dim;
         delete obj.rowOffset;
+
+        // TODO
+        delete obj.inc;
         return res;
     }
     static fromNumber(obj) {
@@ -70,12 +83,19 @@ module.exports = class ExpressionFactory {
         return res;
     }
     static fromString(obj) {
-        let res = new StringValue(obj.value);
+        let res;
+        if (obj.template) {
+            res = new StringTemplate(obj.value);
+            delete obj.template;
+        }
+        else {
+            res = new StringValue(obj.value);
+        }
         delete obj.value;
         return res;
     }
     static fromCall(obj) {
-        console.log('CALL');
+        console.log(`##### CALL ${obj.function.name} ${obj.debug}`);
         console.log(util.inspect(obj, false, 10, true));
         let res = new FunctionCall(obj.function.name, obj.args ?? [], obj.indexes ?? [], {
             name: obj.function.name.debug});

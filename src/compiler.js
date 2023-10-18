@@ -12,6 +12,7 @@ const Indexable = require("./indexable.js");
 const Ids = require("./ids.js");
 const Constraints = require("./constraints.js");
 const Processor = require("./processor.js");
+const Context = require("./context.js");
 const { mainModule } = require("process");
 
 
@@ -108,6 +109,7 @@ console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1
             const first = _$[$$.length - 1 - parserStateInfo[yystate][1]];
             const last = _$[$$.length - 1];
             const sourceRef = `${compiler.relativeFileName}:${last.last_line}`;
+            Context.processor.sourceRef = sourceRef;
 //            if (sourceRef === 'mem_align.pil:48') {
 /*            if (sourceRef === 'sequence.pil:5') {
                 console.log(arguments);

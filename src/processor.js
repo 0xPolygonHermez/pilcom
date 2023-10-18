@@ -38,6 +38,7 @@ const util = require('util');
 
 module.exports = class Processor {
     constructor (Fr, parent) {
+        this.sourceRef = '(processor constructor)';
         this.compiler = parent;
         this.trace = true;
         this.Fr = Fr;
@@ -117,9 +118,12 @@ module.exports = class Processor {
         this.functionDeep = 0;
         this.callstack = []; // TODO
         this.breakpoints = ['expr.pil:26'];
+        this.sourceRef = '(built-in-class)';
         this.loadBuiltInClass();
         this.scopeType = 'proof';
         this.currentSubproof = false;
+
+        this.sourceRef = '(init)';
     }
     loadBuiltInClass() {
         const filenames = fs.readdirSync(__dirname + '/builtin');
@@ -150,12 +154,15 @@ module.exports = class Processor {
             assert(bits === this.log2(value+1n));
             // if (value > 0n) console.log([value-1n, bits, this.log2(value-1n)]);
         }
+        this.sourceRef = '(start-execution)';
         // TODO: use a constant
         this.references.declare('N', 'int', [], { global: true, sourceRef: this.sourceRef });
         this.references.declare('BITS', 'int', [], { global: true, sourceRef: this.sourceRef });
         this.references.declare('__SUBPROOF__', 'string', [], { global: true, sourceRef: this.sourceRef });
         this.scope.pushInstanceType('proof');
+        this.sourceRef = '(execution)';
         this.execute(statements);
+        this.sourceRef = '(subproof-execution)';
         this.executeSubproofs();
         this.finalProofScope();
         this.scope.popInstanceType();

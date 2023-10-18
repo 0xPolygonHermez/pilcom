@@ -1,11 +1,17 @@
-
+const {assert, assertLog} = require('./assert.js');
 class MultiArray {
     constructor (lengths, debug) {
         this.debug = debug || '';
         this.initOffsets(lengths);
+        this.initialized = [];
+    }
+    toDebugString() {
+        return '['+ this.lengths.join(',')+']';
     }
     clone() {
-        return new MultiArray(this.lengths, this.debug);
+        const cloned = new MultiArray(this.lengths, this.debug);
+        cloned.initialized = [...this.initialized];
+        return cloned;
     }
     checkIndexes(indexes) {
         if (indexes === null || typeof indexes === 'undefined') {
@@ -19,6 +25,10 @@ class MultiArray {
                 throw Error(`Invalid index ${indexes[i]} on index ${i}`); // TODO: extra debug info
             }
         }
+    }
+    getLocator(baseLocator, indexes = []) {
+        const offset = this.indexesToOffset(indexes);
+        return baseLocator + offset;
     }
     // review
     __getIndexesOffset(indexes) {
@@ -61,9 +71,16 @@ class MultiArray {
         }
         return locatorId + offset;
     }
+    indexesToOffset(indexes) {
+        assert(indexes && Array.isArray(indexes));
+        const [offset, dim] = this.getIndexesOffset(indexes);
+        assert(this.offsets.length === indexes.length);
+        return offset;
+    }
     getIndexesOffset(indexes) {
         if (indexes === null || typeof indexes === 'undefined') {
             // TODO: review
+            EXIT_HERE;
             return {offset: 0, array: this.createSubArray(this.offsets.length)};
         }
         let offset = 0;
@@ -116,6 +133,14 @@ class MultiArray {
     }
     getLength(dim = 0) {
         return this.lengths[dim] ?? 0;
+    }
+    isInitialized(indexes) {
+        const offset = this.indexesToOffset(indexes);
+        return this.initialized[offset] ?? false;
+    }
+    markAsInitialized(indexes) {
+        const offset = this.indexesToOffset(indexes);
+        this.initialized[offset] = true;
     }
 }
 

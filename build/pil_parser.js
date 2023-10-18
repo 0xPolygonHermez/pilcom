@@ -323,10 +323,10 @@ case 129:
  this.$ = { type: 'array', data: [ $$[$0] ] } 
 break;
 case 130:
- this.$ = { type: 'call', function: $$[$0-3], args: $$[$0-1].values } 
+ this.$ = { type: 'call', function: $$[$0-3], args: $$[$0-1] } 
 break;
 case 135:
- this.$ = { type: 'delayed_function_call', event: $$[$0-5], scope: $$[$0-4], function: $$[$0-3], args: $$[$0-1].values } 
+ this.$ = { type: 'delayed_function_call', event: $$[$0-5], scope: $$[$0-4], function: $$[$0-3], args: $$[$0-1] } 
 break;
 case 138:
  this.$ = {...$$[$0], ...$$[$01]} 
@@ -364,7 +364,7 @@ break;
 case 155:
  this.$ = $$[$0-3]; this.$.cases.push({ else: true, statements: $$[$0-1] }) 
 break;
-case 156: case 224: case 245: case 250:
+case 156: case 224: case 250:
  this.$ = $$[$0-2]; this.$.values.push($$[$0]) 
 break;
 case 157:
@@ -607,16 +607,20 @@ case 242:
  this.$ = {type: 'seq_list', values:  [$$[$0-1]]} 
 break;
 case 244:
- this.$ = {values: []} 
+ this.$ = ExpressionFactory.fromObject({ type: 'expression_list', values: [] }); console.log('C', this.$) 
+break;
+case 245:
+ this.$ = $$[$0-2]; console.log(this.$); this.$.pushItem(ExpressionFactory.fromObject($$[$0])); 
 break;
 case 246:
- this.$ = $$[$0-4]; this.$.values.push({ type: 'expression_list', values: $$[$0-1].values }) 
+ this.$ = $$[$0-4]; this.$.pushItem(ExpressionFactory.fromObject({ type: 'expression_list', values: $$[$0-1].values })); 
 break;
 case 247:
- this.$ = { type: 'expression_list', values: $$[$0-1].values } 
+ this.$ = ExpressionFactory.fromObject({ type: 'expression_list', values:
+                    [ExpressionFactory.fromObject({ type: 'expression_list', values: [$$[$0-1].values]})]}); console.log('A',this.$) 
 break;
 case 248:
- this.$ = { type: 'expression_list', values: [$$[$0]] } 
+ this.$ = ExpressionFactory.fromObject({ type: 'expression_list', values: [$$[$0]] }); console.log('B',this.$) 
 break;
 case 249:
  this.$ = $$[$0-3]; this.$.values.push({ type: 'append', value: $$[$0] }) 
@@ -766,7 +770,7 @@ case 299:
  this.$ = $$[$0-2].insert('shr', ExpressionFactory.fromObject($$[$0])) 
 break;
 case 300:
- this.$ = $$[$0-1].insert('not') 
+ this.$ = $$[$0].insert('not') 
 break;
 case 301:
  this.$ = $$[$0-2].insert('add', ExpressionFactory.fromObject($$[$0])) 

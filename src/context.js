@@ -25,6 +25,9 @@ module.exports = class Context {
     static get sourceRef() {
         return this._instance._processor.sourceRef;
     }
+    static get sourceTag() {
+        return this._instance._processor.sourceRef.split('/').slice(-2).join('/');
+    }
     static get processor() {
         return this._instance._processor;
     }

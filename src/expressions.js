@@ -119,6 +119,8 @@ module.exports = class Expressions {
             case 'idref': return this._evalIdref(operand);
             case 'reference': return this._evalReference(operand, expr, deeply);
         }
+        console.log(operand);
+        return operand.eval();
         throw new Error(`Invalid runtime operation ${op}`);
     }
     _evalString(e) {

@@ -43,7 +43,8 @@ class Reference {
         return  (indexes.length === 0 || !this.array) ? this.initialized : this.array.isInitialized(indexes);
     }
     getId(indexes = []) {
-        return  (indexes.length === 0 || !this.array) ? this.locator : this.array.getIndexesOffset(indexes);
+        console.log(`getId ${this.name} ${Array.isArray(indexes) ? '[' + indexes.join(',') + ']':indexes} ${this.array ? this.array.toDebugString():''}`);
+        return  (indexes.length === 0 || !this.array) ? this.locator : this.array.getLocator(this.locator, indexes);
     }
     set (value, indexes = []) {
         assert(value !== null); // to detect obsolete legacy uses
@@ -60,6 +61,8 @@ class Reference {
     #doInit(value, indexes) {
         const id = this.getId(indexes);
         assert(id !== null);
+        console.log(this.name, id, this.instance.type);
+        console.log(value);
         this.instance.set(id, value);
         this.markAsInitialized(indexes);
     }

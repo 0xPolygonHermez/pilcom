@@ -655,7 +655,7 @@ data_array
 
 function_call
     : name_optional_index '(' multiple_expression_list ')'
-        { $$ = { type: 'call', function: $1, args: $3.values } }
+        { $$ = { type: 'call', function: $1, args: $3 } }
     ;
 
 delayed_function_event
@@ -678,7 +678,7 @@ defined_scopes
 
 delayed_function_call
     : ON delayed_function_event defined_scopes name_optional_index '(' multiple_expression_list ')'
-        { $$ = { type: 'delayed_function_call', event: $2, scope: $3, function: $4, args: $6.values } }
+        { $$ = { type: 'delayed_function_call', event: $2, scope: $3, function: $4, args: $6 } }
     ;
 
 
@@ -1072,19 +1072,20 @@ sequence
 
 multiple_expression_list
     : %empty    %prec EMPTY
-        { $$ = {values: []} }
+        { $$ = ExpressionFactory.fromObject({ type: 'expression_list', values: [] }); console.log('C', $$) }
 
     | multiple_expression_list ',' expression %prec ','
-        { $$ = $1; $$.values.push($3) }
+        { $$ = $1; console.log($$); $$.pushItem(ExpressionFactory.fromObject($3)); }
 
     | multiple_expression_list ',' '[' expression_list ']' %prec ','
-        { $$ = $1; $$.values.push({ type: 'expression_list', values: $4.values }) }
+        { $$ = $1; $$.pushItem(ExpressionFactory.fromObject({ type: 'expression_list', values: $4.values })); }
 
     | '[' expression_list ']' %prec NO_EMPTY
-        { $$ = { type: 'expression_list', values: $2.values } }
+        { $$ = ExpressionFactory.fromObject({ type: 'expression_list', values:
+                    [ExpressionFactory.fromObject({ type: 'expression_list', values: [$2.values]})]}); console.log('A',$$) }
 
     | expression
-        { $$ = { type: 'expression_list', values: [$1] } }
+        { $$ = ExpressionFactory.fromObject({ type: 'expression_list', values: [$1] }); console.log('B',$$) }
     ;
 
 expression_list
@@ -1278,7 +1279,7 @@ expression
         { $$ = $1.insert('shr', ExpressionFactory.fromObject($3)) }
 
     | '!' expression %prec '!'
-        { $$ = $1.insert('not') })
+        { $$ = $2.insert('not') })
 
     | expression '+' expression %prec '+'
         { $$ = $1.insert('add', ExpressionFactory.fromObject($3)) }

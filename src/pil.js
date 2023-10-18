@@ -17,6 +17,8 @@ const argv = require("yargs")
     .alias("f", "includePathFirst")
     .argv;
 
+Error.stackTraceLimit = Infinity;
+
 async function run() {
     let inputFile;
     if (argv._.length == 0) {

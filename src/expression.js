@@ -176,26 +176,35 @@ class Expression extends ExpressionItem {
 /*    isRuntimeOperand(ope) {
         return (ope.type === OP_RUNTIME);
     }*/
-    insertOne (op, b) {
-        assert(b instanceof Expression);
+    insertOne (op, b = false) {
+        assert(b === false || b instanceof Expression);
         const aIsEmpty = this.stack.length === 0;
-        const bIsEmpty = b.stack.length === 0;
+        const bIsEmpty = b === false || b.stack.length === 0;
 
-        if (bIsEmpty) {
+        if (bIsEmpty && op !== 'not') {
             throw new Error(`insert without operands`);
         }
         const aIsAlone = this.isAlone();
-        const bIsAlone = b.isAlone();
+        const bIsAlone = b === false || b.isAlone();
         if (bIsAlone) {    // aIsAlone => !aIsEmpty
             if (aIsAlone) {
                 this.stack[0].op = op;
-                this.stack[0].operands.push(b.cloneAlone());
+                // if b is false => unary operand, no second operand to add
+                if (b !== false) {
+                    this.stack[0].operands.push(b.cloneAlone());
+                }
                 return this;
             }
             // let operandA = aIsEmpty ? [] : [{type: OP_STACK, offset: 1}];
             // this.stack.push({op, operands: [...operandA, b.cloneAlone()]});
             let operandA = aIsEmpty ? [] : [new ExpressionItems.StackItem(1)];
-            this.stack.push({op, operands: [...operandA, b.cloneAlone()]});
+
+            const stackPos = {op, operands: operandA};
+            // if b is false => unary operand, no second operand to add
+            if (b !== false) {
+                stackPos.operands.push(b.cloneAlone());
+            }
+            this.stack.push(stackPos);
             return this;
         }
 
@@ -260,15 +269,25 @@ class Expression extends ExpressionItem {
         return this;
     }
     evaluateAloneReference() {
+        this.dump();
         assert(this.isAlone());
         let operand = this.getAloneOperand();
-        if (operand.type === OP_RUNTIME || operand.op === 'reference') {
-            const res = this.evaluateRuntime(operand, true);
-            if (!(res instanceof Expression)) {
+        if (operand instanceof ExpressionItems.RuntimeItem || operand instanceof ExpressionItems.ReferenceItem) {
+            console.log(operand);
+            const res = operand.eval();
+            console.log(res);
+            console.log(operand.toString());
+            console.log(this.toString());
+            return res;
+/*            const res = this.evaluateRuntime(operand, true);
+            console.log(operand);
+            console.log(res);
+            EXIT_HERE;*/
+/*            if (!(res instanceof Expression)) {
                 operand.__value = res;
-            }
+            }*/
         }
-        return operand.__value;
+        return operand;
     }
     assertInstanced() {
         assert(false);

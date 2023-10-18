@@ -9,8 +9,6 @@ module.exports = class ReferenceItem extends RuntimeItem {
         this.indexes = indexes.map(index => index.clone());
         // TODO: next as expression
         this.rowOffset = RowOffset.factory(rowOffset);
-        console.log(['CONSTRUCTOR.REFERENCE '+this.name, this.rowOffset, this.indexes.length > 0 ? this.indexes[0].asInt():'']);
-        console.log(this.rowOffset);
     }
     set locator (value) {
         throw new Error(`setting locator on reference ${this.name} ${this.indexes.length}`);
