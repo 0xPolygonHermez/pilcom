@@ -1,16 +1,16 @@
 constant MAX_MULTISET_IDS = 100;
 
-function multiset_require(int id, expr sel, expr cols[]) {
+function multiset_assumes(int id, expr sel, expr cols[]) {
     multiset(0, id, sel, cols);
 }
 
-function multiset_provide(int id, expr sel, expr cols[]) {
+function multiset_proves(int id, expr sel, expr cols[]) {
     multiset(1, id, sel, cols);
 }
 
-function multiset(int provides, int id, expr sel, expr cols[]) {
+function multiset(int proves, int id, expr sel, expr cols[]) {
     // verify if correct id and cols
-    check_multiset_id_and_cols(id, length(cols), provides);
+    check_multiset_id_and_cols(id, length(cols), proves);
 
     init_multiset_challenges(0);
 
@@ -25,12 +25,12 @@ function multiset(int provides, int id, expr sel, expr cols[]) {
 
     expr cols_selected = multiset_prepare_cols(id, sel, cols);
 
-    if (provides) {
-        // adding all products of provides called in this subair
-        multiset_gprod_provides = multiset_gprod_provides * cols_selected;
+    if (proves) {
+        // adding all products of proves called in this subair
+        multiset_gprod_proves = multiset_gprod_proves * cols_selected;
     } else {
-        // adding all products of requires called in this subair
-        multiset_gprod_requires = multiset_gprod_requires * cols_selected;
+        // adding all products of assumes called in this subair
+        multiset_gprod_assumes = multiset_gprod_assumes * cols_selected;
     }
 
     on final air multiset_air_constraints();
@@ -43,7 +43,7 @@ function multiset(int provides, int id, expr sel, expr cols[]) {
 
 function aggregate_function ( publictable tb, int id ) : expr {
     // verify if correct id and cols
-    check_multiset_id_and_cols(id, length(cols), provides);
+    check_multiset_id_and_cols(id, length(cols), proves);
 
     init_multiset_challenges(0);
 
@@ -85,15 +85,15 @@ private function multiset_push_id (int id) {
     multiset_ids[multiset_count++] = id;
 }
 
-private function check_multiset_id_and_cols(int id, int _cols, int provides)
+private function check_multiset_id_and_cols(int id, int _cols, int proves)
 {
     proof int multiset_count;
     proof int multiset_ids[MAX_MULTISET_IDS];
 
     scope persistent proof `std.multiset.${id}` {
         scope int multiset_cols;
-        scope int multiset_provides;
-        scope int multiset_requires;
+        scope int multiset_proves;
+        scope int multiset_assumes;
 
         if (_cols < 1) {
             error(`number of cols of multiset #${id} must be greater than 0`);
@@ -107,16 +107,16 @@ private function check_multiset_id_and_cols(int id, int _cols, int provides)
             error(`number of cols of multiset #${id} must be ${multiset_cols}`);
         }
 
-        if (provides == 1) {
-            ++multiset_provides;
+        if (proves == 1) {
+            ++multiset_proves;
         } else {
-            ++multiset_requires;
+            ++multiset_assumes;
         }
 
         proof expr multiset_air_gprod = 1;
         subproof value aggregate(prod) multiset_subair_gprod;
-        air expr multiset_gprod_requires = 1;
-        air expr multiset_gprod_provides = 1;
+        air expr multiset_gprod_assumes = 1;
+        air expr multiset_gprod_proves = 1;
     }
 }
 
@@ -125,16 +125,16 @@ private function multiset_air_constraints() {
     // TODO: allow use defined constants as stage id.
     col witness stage(3) gprod;
 
-    //                     (requires_selected + std_gamma)
+    //                     (assumes_selected + std_gamma)
     //  gprod === 'gprod * ----------------------------
-    //                     (provides_selected + std_gamma)
+    //                     (proves_selected + std_gamma)
 
 
     col fixed L1 = [1,0...]; // compiler optimize and only exists one L1
 
     col previous_gprod = 'gprod * (1 - L1) + L1;  // L1 == 1 ? 1 : 'gprod
 
-    grod * multiset_gprod_provides === previous_gprod * multiset_gprod_requires;
+    grod * multiset_gprod_proves === previous_gprod * multiset_gprod_assumes;
 
     L1' * (gprod - multiset_subproof_gprod) === 0;
 }
@@ -155,11 +155,11 @@ private function check_multiset_was_complete() {
     for (int index = 0; index < multiset_count; ++index) {
         int id = multiset_ids[index];
         scope persistent proof `std.multiset.${id}` {
-            if (multiset_requires == 0) {
-                error(`multiset #${id} defined without requires`);
+            if (multiset_assumes == 0) {
+                error(`multiset #${id} defined without assumes`);
             }
-            if (multiset_provides == 0) {
-                error(`multiset #${id} defined without provides`);
+            if (multiset_proves == 0) {
+                error(`multiset #${id} defined without proves`);
             }
         }
     }

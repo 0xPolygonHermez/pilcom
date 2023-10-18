@@ -102,44 +102,44 @@ function connection_update_multiple_cells(int opid, expr cols[], int rows[][]) {
 function connection_connect(int opid) {
     use proof.std.connect.`id${opid}`;
 
-    connection_update_require(opid, map_cols, 0);
-    connection_update_provide(opid, map_cols, SIDs);
+    connection_update_assumes(opid, map_cols, 0);
+    connection_update_proves(opid, map_cols, SIDs);
 }
 
-// 2] Interface where the user knows both the inputs (placed in require) and the
-//    permutation (placed in provide) of the argument.
-function connection_require(int opid, expr cols[]) {
+// 2] Interface where the user knows both the inputs (placed in assumes) and the
+//    permutation (placed in proves) of the argument.
+function connection_assumes(int opid, expr cols[]) {
     check_opid_and_cols(opid, length(cols), 0, 1);
 
     use proof.std.connect.`id${opid}`;
 
     tmpR = cols;
 
-    if (provide == 1) {
-        connection_update_provide(opid, cols, tmpP);
+    if (proves == 1) {
+        connection_update_proves(opid, cols, tmpP);
     }
-    connection_update_require(opid, cols, 1);
+    connection_update_assumes(opid, cols, 1);
 }
 
-function connection_provide(int opid, expr cols[]) {
+function connection_proves(int opid, expr cols[]) {
     check_opid_and_cols(opid, length(cols), 1, 1);
 
     use proof.std.connect.`id${opid}`;
 
-    if (require == 1) {
-        connection_update_provide(opid, tmpR, cols);
+    if (assumes == 1) {
+        connection_update_proves(opid, tmpR, cols);
     } else {
         tmpP = cols;
     }
 }
 
 /**
- * Verifies the number of columns of same connect check (require, provide) is the same.
+ * Verifies the number of columns of same connect check (assumes, proves) is the same.
  * @param opid (unique) identifier of the connect check
  * @param cols_count number of columns of the connect check
- * @param provide 1 if provide, 0 if require
+ * @param proves 1 if proves, 0 if assumes
  */
-private function check_opid_and_cols(int opid, int cols_count, int provide, int is_second_interface) {
+private function check_opid_and_cols(int opid, int cols_count, int proves, int is_second_interface) {
 
     if (cols_count < 1) {
         error(`The number of columns of connect #${opid} must be at least 1`);
@@ -153,19 +153,19 @@ private function check_opid_and_cols(int opid, int cols_count, int provide, int 
 
     container air.std.connect {
         // FIX: dynamic arrays not ready
-        expr gsum_require[100];
-        expr gsum_provide[100];
+        expr gsum_assumes[100];
+        expr gsum_proves[100];
     }
 
     container proof.std.connect.`id${opid}` alias connid {
         int cols_num;
-        int provide = 0;
-        int require = 0;
+        int proves = 0;
+        int assumes = 0;
 
         expr SIDs[];
         expr map_cols[]; // Used in connection_init()
 
-        // Used in connection_require() and connection_provide()
+        // Used in connection_assumes() and connection_proves()
         expr tmpR[];
         expr tmpP[];
     }
@@ -181,16 +181,16 @@ private function check_opid_and_cols(int opid, int cols_count, int provide, int 
     }
 
     if (is_second_interface) {
-        if (provide) {
-            if (connid.provide > 0) {
-                error(`Connection #${opid} provide was called previously`);
+        if (proves) {
+            if (connid.proves > 0) {
+                error(`Connection #${opid} proves was called previously`);
             }
-            ++connid.provide;
+            ++connid.proves;
         } else {
-            if (connid.require > 0) {
-                error(`Connection #${opid} require was called previously`);
+            if (connid.assumes > 0) {
+                error(`Connection #${opid} assumes was called previously`);
             }
-            ++connid.require;
+            ++connid.assumes;
         }
     } else {
         // Create a mapping of indexes to set an order of the columns the first time it is called
@@ -212,9 +212,9 @@ private function check_opid_and_cols(int opid, int cols_count, int provide, int 
 /**
  * Given columns C₀,...,Cₙ₋₁, it computes the polynomial Cᵢ(X) + alpha·kᵢ·X + beta
  * @param opid (unique) identifier of the connection
- * @param colsR require columns of the connection
+ * @param colsR assumes columns of the connection
  */
-private function connection_update_require(int opid, expr colsR[], int is_second_interface) {
+private function connection_update_assumes(int opid, expr colsR[], int is_second_interface) {
     init_challenges();
 
     use proof.std.connect.`id${opid}`;
@@ -231,7 +231,7 @@ private function connection_update_require(int opid, expr colsR[], int is_second
     }
 
     for (int icol = 0; icol < length(colsR); ++icol) {
-        air.std.connect.gsum_require[] = colsR[icol] + std_alpha*SIDs[icol] + std_beta;
+        air.std.connect.gsum_assumes[] = colsR[icol] + std_alpha*SIDs[icol] + std_beta;
     }
 
     // define constraints at the air level
@@ -241,14 +241,14 @@ private function connection_update_require(int opid, expr colsR[], int is_second
 /**
  * Given columns C₀,...,Cₙ₋₁, and C'₀,...,C'ₙ₋₁, it computes the polynomial Cᵢ(X) + alpha·C'ᵢ(X) + beta
  * @param opid (unique) identifier of the connection
- * @param colsR require columns of the connection
- * @param colsP provide columns of the connection
+ * @param colsR assumes columns of the connection
+ * @param colsP proves columns of the connection
  */
-private function connection_update_provide(int opid, expr colsR[], expr colsP[]) {
+private function connection_update_proves(int opid, expr colsR[], expr colsP[]) {
     init_challenges();
 
     for (int icol = 0; icol < length(colsP); ++icol) {
-        air.std.connect.gsum_provide[] = colsR[icol] + std_alpha*colsP[icol] + std_beta;
+        air.std.connect.gsum_proves[] = colsR[icol] + std_alpha*colsP[icol] + std_beta;
     }
 
     // define constraints at the air level
@@ -268,13 +268,13 @@ private function connection_air() {
 
     expr LHS = 1;
     expr RHS1 = 0;
-    for (int i = 0; i < length(gsum_require); ++i) {
-        LHS = LHS * gsum_require[i];
+    for (int i = 0; i < length(gsum_assumes); ++i) {
+        LHS = LHS * gsum_assumes[i];
 
         expr tmp = 1;
-        for (int j = 0; j < length(gsum_require); ++j) {
+        for (int j = 0; j < length(gsum_assumes); ++j) {
             if (j != i) {
-                tmp = tmp * gsum_require[j];
+                tmp = tmp * gsum_assumes[j];
             }
         }
         RHS1 = RHS1 + tmp;
@@ -282,14 +282,14 @@ private function connection_air() {
 
     expr RHS2a = LHS;
     expr RHS2b = 0;
-    for (int i = 0; i < length(gsum_provide); ++i) {
-        LHS = LHS * gsum_provide[i];
-        RHS1 = RHS1 * gsum_provide[i];
+    for (int i = 0; i < length(gsum_proves); ++i) {
+        LHS = LHS * gsum_proves[i];
+        RHS1 = RHS1 * gsum_proves[i];
 
         expr tmp = 1;
-        for (int j = 0; j < length(gsum_provide); ++j) {
+        for (int j = 0; j < length(gsum_proves); ++j) {
             if (j != i) {
-                tmp = tmp * gsum_provide[j];
+                tmp = tmp * gsum_proves[j];
             }
         }
         RHS2b = RHS2b + tmp;
@@ -304,14 +304,14 @@ private function connection_air() {
     L1' * gsum === 0;
 }
 
-// It checks wheter there is some connection check without either provide or require
+// It checks wheter there is some connection check without either proves or assumes
 private function check_connection_was_completed() {
     for (int opid in proof.std.connect.opids) {
-        if (proof.std.connect.`id${opid}`.require == 0) {
-            error(`Connection #${opid} defined without require`);
+        if (proof.std.connect.`id${opid}`.assumes == 0) {
+            error(`Connection #${opid} defined without assumes`);
         }
-        if (proof.std.connect.`id${opid}`.provide == 0) {
-            error(`Connection #${opid} defined without provide`);
+        if (proof.std.connect.`id${opid}`.proves == 0) {
+            error(`Connection #${opid} defined without proves`);
         }
     }
 }

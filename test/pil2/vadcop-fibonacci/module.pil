@@ -11,12 +11,12 @@ subproof Module(2**16) {
     x === q * mod + x_mod;
 
 
-    // multiset_provide(MODULE_ID, 1, [x, x_mod])
+    // multiset_proves(MODULE_ID, 1, [x, x_mod])
 
 
     // * cols compressed
-    // gsum_provide_mul_count[0] = 1;
-    // gsum_provide[0] = ((x_mod * std_alpha + x) * std_alpha) + MODULE_ID + std_beta
+    // gsum_proves_mul_count[0] = 1;
+    // gsum_proves[0] = ((x_mod * std_alpha + x) * std_alpha) + MODULE_ID + std_beta
 
 
     col witness stage(2) gsum;
@@ -24,10 +24,10 @@ subproof Module(2**16) {
     // LHS = 1
     // RHS1 = 0
 
-    // * LHS = LHS * gsum_provide[i];
+    // * LHS = LHS * gsum_proves[i];
     // LHS = ((x_mod * std_alpha + x) * std_alpha) + MODULE_ID + std_beta;
 
-    // * RHS1 = RHS1 + gsum_provide_mul_count[i];
+    // * RHS1 = RHS1 + gsum_proves_mul_count[i];
     // RHS1 = 1;
 
     // * RHS2a = LHS;
