@@ -452,7 +452,7 @@ A is expr[]                                 // return if A is an array of expres
 
 
 
-// custom data  provides extra information to nexts steps (backend)
+// custom data  proves extra information to nexts steps (backend)
 function lookup_check (expr selF, expr colsF[], expr selT, expr colsT[]) {
     @lookup_check [selF, colsF, selT, colsT];
 }
@@ -603,12 +603,12 @@ subair aggregate Main(2**23, 2**25) {
 
     // here are defined cols and constraints of Main
 
-    // define all rows required from Main
+    // define all rows assumed from Main
     // KECCAK_ID identifier of this multiset.
     // hashK + hashK1 is the selector
     // addr, op[0], op[1], op[2], op[3] are involved cols
     multiset
-    multiset_require(KECCAK_ID, hashK + hashK1, [addr,op0, op1, op2, op3]);
+    multiset_assumes(KECCAK_ID, hashK + hashK1, [addr,op0, op1, op2, op3]);
 }
 
 
@@ -618,26 +618,26 @@ subair aggregate Keccak(2**23, 2**25) {
 
     // here are defined cols and constraints of HashK
 
-    // define all rows provided from HashK
+    // define all rows provesd from HashK
     // crLatch * r8valid is the selector
     // addr, crVC[0], crVC[1], crVC[2], crVC[3] are involved cols
-    multiset_provide(KECCAK_ID, crLatch * r8valid, [addr, crVC[0], crVC[1], crVC[2], crVC[3]);
+    multiset_proves(KECCAK_ID, crLatch * r8valid, [addr, crVC[0], crVC[1], crVC[2], crVC[3]);
 }
 
 
-connect_require(CONNECT_ID, [addr, op0, op1, op2, op3]);
+connect_assumes(CONNECT_ID, [addr, op0, op1, op2, op3]);
 connect_add(CONNECT_ID, addr, offset + 23, op3, offset + 26);  // crea les columnes fixed, + permuta => final instance connect_final
 connect_add(CONNECT_ID, op3, offset + 17, op1, offset + 105);  // permuta
-// final => connect_provide(CONNECT_ID, [_addr, _op0,...])
+// final => connect_proves(CONNECT_ID, [_addr, _op0,...])
 
-int connect_id = connect_require([addr, op0, op1, op2, op3]);
+int connect_id = connect_assumes([addr, op0, op1, op2, op3]);
 connect_add(connect_id, addr, offset + 23, op3, offset + 26);  // crea les columnes fixed, + permuta => final instance connect_final
 connect_add(connect_id, op3, offset + 17, op1, offset + 105);  // permuta
 
 
 
-connect_require(CONNECT_ID, [addr, op0, op1, op2, op3]);
-connect_provide(CONNECT_ID, [addr, op[0], op[1], op[2], op[3]]);
+connect_assumes(CONNECT_ID, [addr, op0, op1, op2, op3]);
+connect_proves(CONNECT_ID, [addr, op[0], op[1], op[2], op[3]]);
 
 
 function init_coset_constants(int len) {
@@ -696,7 +696,7 @@ private function init_connect_ks (int len) {
 object o = new connect([addr, op0, op1, op2, op3]);
 o.add(addr, offset + 23, op3, offset + 26);
 
-connect_require(CONNECT_ID, [addr, op0, op1, op2, op3]);
+connect_assumes(CONNECT_ID, [addr, op0, op1, op2, op3]);
 connect_add(CONNECT_ID, addr, offset + 23, op3, offset + 26);  // crea les columnes fixed, + permuta => final instance connect_final
 connect_add(CONNECT_ID, op3, offset + 17, op1, offset + 105);  // permuta
 
@@ -721,7 +721,7 @@ private function init_connect_constants(int len): col fixed [] {
     return CONNECT_CONSTANTS;
 }
 
-function connect_require(int id, expr cols[]) {
+function connect_assumes(int id, expr cols[]) {
     constant len = length(cols);
 
     scope air CONNECT_SCOPE,id {
@@ -777,7 +777,7 @@ function connect_add(int id, expr col_a, int row_a, expr col_b, int row_b) {
 
 private function connect_final(int id) {
     scope CONNECT_SCOPE, id {
-        connect_provide(id, connect_cols_exp);
+        connect_proves(id, connect_cols_exp);
     }
 }
 
@@ -901,7 +901,7 @@ expression of 10240 operations = 360K (expressions) + 320K (results)
 */
 
 
-// function to verify that number of columns of same multiset (requires, provides)
+// function to verify that number of columns of same multiset (assumes, proves)
 // was the same.
 
     scope `myscope` {

@@ -72,7 +72,7 @@ async function run() {
                 let [constraint, type] = findConstraintByType(air.constraints[k], constraintOrg);
                 const expressionIdx = constraint.expressionIdx.idx;
 
-                // For now, assume the ope is binary (lhs + rhs)
+                // For now, assumes the ope is binary (lhs + rhs)
                 constraintOrg[type].push(constraintConstruction(expressionIdx) + ' === 0');
 
                 function constraintConstruction(idx) {

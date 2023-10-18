@@ -33,6 +33,6 @@ subproof Arith(2**16) {
     result * (1 - result) === 0;
     (result'-result) * (1-CLK) === 0;
 
-    multiset_provide(ARITH_ID, result * CLK'9, [...a,...b,...c,...d]);
-    multiset_require(BYTE4_ID, result, [byte4col]);
+    multiset_proves(ARITH_ID, result * CLK'9, [...a,...b,...c,...d]);
+    multiset_assumes(BYTE4_ID, result, [byte4col]);
 }

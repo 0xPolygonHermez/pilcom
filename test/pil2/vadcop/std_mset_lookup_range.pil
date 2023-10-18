@@ -7,37 +7,37 @@ private function init_challenges() {
     }
 }
 
-function multiset_require(int opid, expr cols[]) {
+function multiset_assumes(int opid, expr cols[]) {
     piop_update(0, 0, opid, 1, cols);
 }
 
-function multiset_provide(int opid, expr cols[]) {
+function multiset_proves(int opid, expr cols[]) {
     piop_update(1, 0, opid, 1, cols);
 }
 
-function multiset_require(int opid, expr sel, expr cols[]) {
+function multiset_assumes(int opid, expr sel, expr cols[]) {
     piop_update(0, 0, opid, sel, cols);
 }
 
-function multiset_provide(int opid, expr sel, expr cols[]) {
+function multiset_proves(int opid, expr sel, expr cols[]) {
     piop_update(1, 0, opid, sel, cols);
 }
 
-function lookup_require(int opid, expr cols[]) {
+function lookup_assumes(int opid, expr cols[]) {
     piop_update(0, 1, opid, 1, cols);
 }
 
-function lookup_provide(int opid, expr cols[]) {
+function lookup_proves(int opid, expr cols[]) {
     piop_update(1, 1, opid, 1, cols);
 }
 
-// Right now, we assume that the user provides the multiplicity counter.
+// Right now, we assumes that the user proves the multiplicity counter.
 // However, we could let the user to only give us the selector and the columns, and we compute the multiplicity counter.
-function lookup_require(int opid, expr mul_count, expr cols[]) {
+function lookup_assumes(int opid, expr mul_count, expr cols[]) {
     piop_update(0, 1, opid, mul_count, cols);
 }
 
-function lookup_provide(int opid, expr mul_count, expr cols[]) {
+function lookup_proves(int opid, expr mul_count, expr cols[]) {
     piop_update(1, 1, opid, mul_count, cols);
 }
 
@@ -85,12 +85,12 @@ private function compute_multiplicities(expr cols[], expr range) {
 }
 
 /**
- * Verifies the number of columns of same PIOP check (require, provide) is the same.
+ * Verifies the number of columns of same PIOP check (assumes, proves) is the same.
  * @param opid (unique) identifier of the PIOP check
  * @param cols_count number of columns of the PIOP check
- * @param provide 1 if provide, 0 if require
+ * @param proves 1 if proves, 0 if assumes
  */
-private function check_opid_and_cols(int provide, int type, int opid, int cols_count) {
+private function check_opid_and_cols(int proves, int type, int opid, int cols_count) {
 
     if (cols_count < 1) {
         error(`The number of columns of PIOP #${opid} must be at least 1`);
@@ -110,17 +110,17 @@ private function check_opid_and_cols(int provide, int type, int opid, int cols_c
 
     container air.std.piop {
         // FIX: dynamic arrays not ready
-        expr gsum_require_sel[100];
-        expr gsum_require[100];
-        expr gsum_provide_type[100];
-        expr gsum_provide_sel[100];
-        expr gsum_provide[100];
+        expr gsum_assumes_sel[100];
+        expr gsum_assumes[100];
+        expr gsum_proves_type[100];
+        expr gsum_proves_sel[100];
+        expr gsum_proves[100];
     }
 
     container proof.std.piop.`id${opid}` alias piopid {
         int cols;
-        int provide = 0;
-        int require = 0;
+        int proves = 0;
+        int assumes = 0;
     }
 
     if (piopid.cols == 0) {
@@ -133,10 +133,10 @@ private function check_opid_and_cols(int provide, int type, int opid, int cols_c
         error(`The number of columns of PIOP #${opid} must be ${piopid.cols}`);
     }
 
-    if (provide) {
-        ++piopid.provide;
+    if (proves) {
+        ++piopid.proves;
     } else {
-        ++piopid.require;
+        ++piopid.assumes;
     }
 }
 
@@ -159,15 +159,15 @@ private function compress_cols(int opid, expr cols[]): expr {
 
 /**
  * Given columns C₀,...,Cₙ₋₁, and multiplicity counter M, it 1] defines the constraints at the air level, 2] updates the values at the subproof level, and 3] updates the constraints at the proof level.
- * @param provide boolean indicating if updating a provide or a require
+ * @param proves boolean indicating if updating a proves or a assumes
  * @param type if 1, it is a lookup or a range check; if 0, it is a multiset
  * @param opid (unique) identifier of the PIOP
  * @param sel selector of the PIOP
  * @param cols columns of the PIOP
  */
-private function piop_update(int provide, int type, int opid, expr sel, expr cols[]) {
+private function piop_update(int proves, int type, int opid, expr sel, expr cols[]) {
     // verify if correct opid and cols
-    check_opid_and_cols(provide, type, opid, length(cols));
+    check_opid_and_cols(proves, type, opid, length(cols));
 
     init_challenges();
 
@@ -175,23 +175,23 @@ private function piop_update(int provide, int type, int opid, expr sel, expr col
     expr cols_compressed = compress_cols(opid, cols);
 
     use air.std.piop;
-    if (provide) {
-        // adding all sums of provide called in this air
-        gasum_provide_type[] = type;
-        gsum_provide_sel[] = sel;
-        gsum_provide[] = cols_compressed;
+    if (proves) {
+        // adding all sums of proves called in this air
+        gasum_proves_type[] = type;
+        gsum_proves_sel[] = sel;
+        gsum_proves[] = cols_compressed;
     } else {
-        // adding all sums of require called in this air
-        gsum_require_sel[] = sel;
-        gsum_require[] = cols_compressed;
+        // adding all sums of assumes called in this air
+        gsum_assumes_sel[] = sel;
+        gsum_assumes[] = cols_compressed;
     }
 
-    // QUESTION: Should the user provide the multiplicity counter? Or we should compute it?
+    // QUESTION: Should the user proves the multiplicity counter? Or we should compute it?
     // 0] computes the multiplicity counter for lookups and range checks
     // on final air compute_multiplicities_lookup_range();
 
-    // 1] look for repeated provide/require's in both lookups and range checks and, if found, optimize
-    on final air lookup_range_provide_batch();
+    // 1] look for repeated proves/assumes's in both lookups and range checks and, if found, optimize
+    on final air lookup_range_proves_batch();
 
     // 2] define constraints at the air level
     on final air PIOP_air();
@@ -204,23 +204,23 @@ private function piop_update(int provide, int type, int opid, expr sel, expr col
 }
 
 // QUESTION: Can the following O(n²) algorithm be implemented faster?
-// Given the provides, it "merges" the repeated ones through their associated multiplicity counters.
-private function lookup_range_provide_batch() {
+// Given the proves, it "merges" the repeated ones through their associated multiplicity counters.
+private function lookup_range_proves_batch() {
     use air.std.piop;
 
-    int len = length(gsum_provide);
+    int len = length(gsum_proves);
 
     for (int i = 0; i < len; ++i) {
         for (int j = 0; j < len; ++j) {
             if (i == j) continue;
-            // It two provides are the same, add their multiplicity counters to one and remove the other
-            if (gsum_provide[j] == gsum_provide[i] && gsum_provide_type[j] == 1) {
-                gsum_provide_sel[i] = gsum_provide_sel[i] + gsum_provide_sel[j];
+            // It two proves are the same, add their multiplicity counters to one and remove the other
+            if (gsum_proves[j] == gsum_proves[i] && gsum_proves_type[j] == 1) {
+                gsum_proves_sel[i] = gsum_proves_sel[i] + gsum_proves_sel[j];
 
-                gsum_provide[j] = gsum_provide[len-1];
-                gsum_provide_sel[j] = gsum_provide_sel[len-1];
-                gsum_provide.pop(); // QUESTION: Will array pop be implemented?
-                gsum_provide_sel.pop(); 
+                gsum_proves[j] = gsum_proves[len-1];
+                gsum_proves_sel[j] = gsum_proves_sel[len-1];
+                gsum_proves.pop(); // QUESTION: Will array pop be implemented?
+                gsum_proves_sel.pop(); 
             }
         }
     }
@@ -239,25 +239,25 @@ private function PIOP_air() {
 
     expr LHS = 1;
     expr RHS1 = 0;
-    for (int i = 0; i < length(gsum_provide); ++i) {
-        LHS = LHS * gsum_provide[i];
+    for (int i = 0; i < length(gsum_proves); ++i) {
+        LHS = LHS * gsum_proves[i];
 
-        expr tmp = gsum_provide_sel[i];
-        for (int j = 0; j < length(gsum_provide); ++j) {
-            if (j != i) tmp = tmp * gsum_provide[j];
+        expr tmp = gsum_proves_sel[i];
+        for (int j = 0; j < length(gsum_proves); ++j) {
+            if (j != i) tmp = tmp * gsum_proves[j];
         }
         RHS1 = RHS1 + tmp;
     }
 
     expr RHS2a = LHS;
     expr RHS2b = 0;
-    for (int i = 0; i < length(gsum_require); ++i) {
-        LHS = LHS * gsum_require[i];
-        RHS1 = RHS1 * gsum_require[i];
+    for (int i = 0; i < length(gsum_assumes); ++i) {
+        LHS = LHS * gsum_assumes[i];
+        RHS1 = RHS1 * gsum_assumes[i];
 
-        expr tmp = gsum_require_sel[i];
-        for (int j = 0; j < length(gsum_require); ++j) {
-            if (j != i) tmp = tmp * gsum_require[j];
+        expr tmp = gsum_assumes_sel[i];
+        for (int j = 0; j < length(gsum_assumes); ++j) {
+            if (j != i) tmp = tmp * gsum_assumes[j];
         }
         RHS2b = RHS2b + tmp;
     }
@@ -281,11 +281,11 @@ private function PIOP_proof() {
 
 private function check_was_completed() {
     for (int opid in proof.std.piop.opids) {
-        if (proof.std.piop.`id${opid}`.require == 0) {
-            error(`PIOP #${opid} defined without require`);
+        if (proof.std.piop.`id${opid}`.assumes == 0) {
+            error(`PIOP #${opid} defined without assumes`);
         }
-        if (proof.std.piop.`id${opid}`.provide == 0) {
-            error(`PIOP #${opid} defined without provide`);
+        if (proof.std.piop.`id${opid}`.proves == 0) {
+            error(`PIOP #${opid} defined without proves`);
         }
     }
 }
