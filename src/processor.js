@@ -290,43 +290,31 @@ module.exports = class Processor {
     }
     executeFunctionCall(name, callinfo) {
         const func = this.builtIn[name] ?? this.references.get(name);
+        console.log(`CALL ${name}`);
         console.log(callinfo);
 
         if (func) {
-            this.callstack.push(name);
+            const mapInfo = func.mapArguments(callinfo);
+            this.callstack.push(mapInfo.scall ?? name);
             ++this.functionDeep;
             this.scope.push();
-            console.log(func.constructor.name);
-            const mapInfo = func.mapArguments(callinfo);
             this.references.pushVisibilityScope();
             const res = func.exec(callinfo, mapInfo);
             this.references.popVisibilityScope();
             this.scope.pop();
             --this.functionDeep;
             this.callstack.pop();
+            console.log(`END CALL ${name}`)
             return res;
         }
         this.error({}, `Undefined function ${name}`);
     }
     execCall(st) {
         const name = st.function.name;
-        const func = this.builtIn[name] ?? this.references.get(name);
-
-        if (func) {
-            this.callstack.push(st.debug);
-            ++this.functionDeep;
-            this.scope.push();
-            console.log(func.constructor.name);
-            const mapInfo = func.mapArguments(st);
-            this.references.pushVisibilityScope();
-            const res = func.exec(st, mapInfo);
-            this.references.popVisibilityScope();
-            this.scope.pop();
-            --this.functionDeep;
-            this.callstack.pop();
-            return res;
-        }
-        this.error(st, `Undefined function ${name}`);
+        console.log(`CALL (EXEC) ${name}`);
+        const res = this.executeFunctionCall(name, st);
+        console.log(`END CALL (EXEC) ${name}`);
+        return res;
     }
     execAssign(st) {
         // type: number(int), fe, string, col, challenge, public, prover,
@@ -335,7 +323,8 @@ module.exports = class Processor {
         const indexes = this.decodeIndexes(st.name.indexes)
         const names = this.context.getNames(st.name.name);
         console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> EXEC-ASSIGN <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<');
-        if (st.value.type === 'sequence') {
+//        if (st.value.type === 'sequence') {
+        if (st.value instanceof ExpressionItems.ExpressionList) {
             const sequence = new Sequence(this, st.value, ExpressionItems.IntValue.castTo(this.references.get('N')));
             sequence.extend();
             console.log(sequence.size);
@@ -865,13 +854,7 @@ module.exports = class Processor {
         }
         const res = this.references.declare(name, type, lengths, data);
         if (initValue !== null) {
-            if (type === 'fixed') {
-                console.log('FIXED-SET', initValue.getValue(0), initValue.getValue(1));
-            }
             this.references.set(name, [], initValue);
-            if (type === 'fixed') {
-                console.log('FIXED-SET', this.fixeds.values[0]);
-            }
         }
         return res;
     }
@@ -934,31 +917,40 @@ module.exports = class Processor {
             let initValue = null;
             if (init) {
                 console.log([name, s.vtype, Context.sourceRef]);
-                if (s.init[index] instanceof Expression) {
-                    s.init[index].dump(`+++++++ INIT VARIABLE ${name} ++++++++++`);
-                    const expr2 = s.init[index].instance();
-                    expr2.dump(`+++++++ INIT VARIABLE INSTANCED ${name} ++++++++++`);
-                }
                 switch (s.vtype) {
                     case 'expr':
                         // s.init[index].expr.dump('INIT1 '+name);
                         console.log(s.init[index]);
                         // initValue = s.init[index].eval();
-                        initValue = s.init[index].instance();
+                        console.log('CALL #2.1');
+                        initValue = s.init[index].eval();
+                        console.log('CALL #2.1E');
                         console.log(initValue);
+                        console.log('CALL #2.1F');
                         // initValue.dump('INIT2 '+name);
                         break;
                     case 'int':
                         console.log(s);
-                        initValue = new ExpressionItems.IntValue(this.expressions.e2value(s.init[index]));
+                        console.log('CALL #2.2');
+                        console.log(s.init[index]);
+                        const _v = s.init[index].eval();
+                        console.log(_v);
+                        console.log('CALL #2.2E');
+                        initValue = new ExpressionItems.IntValue(_v);
+                        console.log('CALL #2.2F');
                         break;
                     case 'string':
+                        console.log('CALL #2.3');
                         initValue = new ExpressionItems.StringValue(this.expressions.e2value(s.init[index]));
+                        console.log('CALL #2.3E');
                         break;
                 }
             }
+            console.log('CALL #_3');
             console.log(initValue);
+            console.log('CALL #3');
             this.references.declare(name, s.vtype, lengths, { scope, sourceRef, const: s.const ?? false }, initValue);
+            console.log('CALL #3E');
             // if (initValue !== null) this.references.set(name, [], initValue);
         }
     }
@@ -1022,6 +1014,8 @@ module.exports = class Processor {
             throw new Error('Return is called out of function scope');
         }
         const res = s.value.instance();
+        console.log(res);
+        console.log(res.eval());
         this.traceLog(`[RETURN.END  ${sourceRef}] ${this.scope.deep}`);
         return new ReturnCmd(res);
     }

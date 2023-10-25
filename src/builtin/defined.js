@@ -1,5 +1,5 @@
 const Function = require("../function.js");
-const {MultiArray, ErrorIndexOutOfRange} = require("../multi_array.js");
+const MultiArray = require("../multi_array.js");
 
 module.exports = class Defined extends Function {
     constructor (parent) {

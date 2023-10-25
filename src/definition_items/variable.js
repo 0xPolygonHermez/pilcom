@@ -1,9 +1,8 @@
 const RuntimeItem = require("./runtime_item.js");
 module.exports = class Variable extends RuntimeItem {
     static directValue = true;
-    constructor (value) {
-        super();
-        this.value = value;
+    constructor (id, properties = {}) {
+        super(id, properties);
     }
     getValue() {
         return this.value;
@@ -11,8 +10,8 @@ module.exports = class Variable extends RuntimeItem {
     setValue(value) {
         this.value = value;
     }
-    dump() {
-        return `${this.constructor.name}(${this.value})`;
+    toString(options) {
+        return `*${this.constructor.name}(${this.value})[${this.value ? this.value.constructor.name : '??'}]`;
     }
     clone() {
         return new ValueItem(this.value);

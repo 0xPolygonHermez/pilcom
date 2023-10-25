@@ -1,16 +1,38 @@
 const {assert, assertLog} = require('./assert.js');
 class MultiArray {
-    constructor (lengths, debug) {
-        this.debug = debug || '';
+    static ErrorIndexOutOfRange = class extends Error {
+    }
+    constructor (lengths, options = {}) {
+        // baseOffset is accumulated offset, means parentOffset + new offset.
+        this.baseOffset = options.baseOffset ?? 0;
         this.initOffsets(lengths);
-        this.initialized = [];
+
+        // if parentInitizalized means need to extract
+        if (options.parentInitialized) {
+            // calculate relative offset from parent because initialized contains only
+            // parent initialized values.
+            const offset = this.baseOffset - options.parentOffset ?? 0;
+            this.initialized = options.parentInitialized.slice(offset, offset + this.size);
+        } else {
+            this.initialized = options.initialized ?? [];
+        }
     }
     toDebugString() {
         return '['+ this.lengths.join(',')+']';
     }
     clone() {
-        const cloned = new MultiArray(this.lengths, this.debug);
-        cloned.initialized = [...this.initialized];
+        const cloned = new MultiArray(this.lengths, {
+            baseOffset: this.baseOffset,
+            initialized: [...this.initialized]});
+        return cloned;
+    }
+    createSubArray(indexes, locatorOffset) {
+        const [offset, dims] = this.getIndexesOffset(indexes);
+        const dim = this.offsets.length - dims;
+        const cloned = new MultiArray(this.lengths.slice(-dim), {
+            baseOffset: this.baseOffset + offset + locatorOffset,
+            parentOffset: this.baseOffset,
+            parentInitialized: this.initialized });
         return cloned;
     }
     checkIndexes(indexes) {
@@ -48,10 +70,7 @@ class MultiArray {
         }
         return indexes;
     }
-    createSubArray(dim) {
-        return new MultiArray(this.lengths.slice(-dim));
-    }
-    applyIndex(obj, indexes) {
+    applyIndexes(obj, indexes) {
         const res = this.getIndexesTypedOffset(indexes);
         let dup = obj.clone()
         if (dup.id) {
@@ -62,12 +81,15 @@ class MultiArray {
         }
         return dup;
     }
+    isFullIndexed(indexes) {
+        return (indexes.length === this.dim);
+    }
     locatorIndexesApply(locatorId, indexes) {
         console.log([locatorId, indexes, this.dim, this.lengths]);
         const [offset, dims] = this.getIndexesOffset(indexes);
         console.log([offset, dims]);
         if ((this.dim - dims) > 0) {
-            throw new Error('');
+            throw new Error(`ERROR ON ARRAY ${offset} ${dims} ${this.dim}`);
         }
         return locatorId + offset;
     }
@@ -89,7 +111,7 @@ class MultiArray {
             if (Number(indexes[idim]) >= this.lengths[idim]) return [false, idim];
             offset += this.offsets[idim] * Number(indexes[idim]);
         }
-        return [offset, dims];
+        return [offset + this.baseOffset, dims];
     }
     isValidIndexes(indexes) {
         const [offset, dims] = this.getIndexesOffset(indexes);
@@ -107,6 +129,7 @@ class MultiArray {
         if (dim === 0) {
             return {offset, array: false};
         }
+        EXIT_HERE;
         // return {offset, dim, lengths: dim ? this.lengths.slice(-dim):[], array: this.createSubArray(dim)};
         return {offset, array: this.createSubArray(dim)};
     }
@@ -144,8 +167,4 @@ class MultiArray {
     }
 }
 
-class ErrorIndexOutOfRange extends Error {
-
-}
-
-module.exports = { MultiArray, ErrorIndexOutOfRange };
+module.exports = MultiArray;

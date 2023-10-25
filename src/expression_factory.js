@@ -13,10 +13,10 @@ module.exports = class ExpressionFactory {
 
     static fromObject(obj) {
         if (obj instanceof Expression) {
-            console.log('#########', Object.keys(obj).includes('type'));
+            // console.log('#########', Object.keys(obj).includes('type'));
             return obj;
         }
-        console.log(obj);
+        // console.log(obj);
         assertLog(typeof obj === 'object', obj);
         assertLog(typeof obj.op === 'undefined', obj);
         obj = {...obj};
@@ -24,7 +24,7 @@ module.exports = class ExpressionFactory {
         assert(obj.type !== 'object' && obj.type !== 'objects');
         if (obj.dim === 0) delete obj.dim;
 
-        console.log(obj);
+        // console.log(obj);
         const type = obj.type;
         let item = ExpressionFactory.router.go(obj);
 
@@ -62,11 +62,11 @@ module.exports = class ExpressionFactory {
         return elist;
     }
     static fromReference(obj) {
-        if (obj.rowOffset) {
-            console.log('ROWOFFSET.FROMREFERENCE');
-            console.log(obj.rowOffset);
-        }
-        console.log(obj);
+        // if (obj.rowOffset) {
+        //     console.log('ROWOFFSET.FROMREFERENCE');
+        //     console.log(obj.rowOffset);
+        // }
+        // console.log(obj);
         let res = new ReferenceItem(obj.name, obj.indexes ?? [], obj.rowOffset);
         delete obj.name;
         delete obj.indexes;
@@ -95,11 +95,11 @@ module.exports = class ExpressionFactory {
         return res;
     }
     static fromCall(obj) {
-        console.log(`##### CALL ${obj.function.name} ${obj.debug}`);
-        console.log(util.inspect(obj, false, 10, true));
+        // console.log(`##### CALL ${obj.function.name} ${obj.debug}`);
+        // console.log(util.inspect(obj, false, 10, true));
         let res = new FunctionCall(obj.function.name, obj.args ?? [], obj.indexes ?? [], {
             name: obj.function.name.debug});
-        console.log(res);
+        // console.log(res);
         delete obj.function;
         delete obj.indexes;
         delete obj.dim;
@@ -111,7 +111,7 @@ module.exports = class ExpressionFactory {
         delete obj.name;
         delete obj.cast;
         delete obj.value;
-        console.log(res);
+        // console.log(res);
         return res;
     }
     static fromRowOffset(obj) {
@@ -123,7 +123,7 @@ module.exports = class ExpressionFactory {
         delete obj.current;
         delete obj.value;
         delete obj.prior;
-        console.log(res);
+        // console.log(res);
         return res;
     }
     // TODO: positionalParams

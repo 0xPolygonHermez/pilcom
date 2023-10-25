@@ -41,6 +41,7 @@ module.exports = class ReferenceItem extends RuntimeItem {
         // TODO: next
         console.log(`REFERENCE ${this.name} [${this.indexes.join('][')}]`)
         console.log(item);
-        return item;
+        console.log(item.eval());
+        return item.eval();
     }
 }

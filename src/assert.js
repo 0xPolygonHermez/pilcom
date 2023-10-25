@@ -8,7 +8,6 @@ function assertLog(condition, info) {
 }
 
 function assertReturnInstanceOf(value, cls, info) {
-    console.log([value, info]);
     _assert(value instanceof cls);
     return value;
 }

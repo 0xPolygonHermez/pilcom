@@ -1,5 +1,6 @@
 const ProofStageItem = require("./proof_stage_item.js");
 const {assert, assertLog} = require('../assert.js');
+const WitnessColItem = require('../expression_items/witness_col.js')
 module.exports = class WitnessCol extends ProofStageItem {
     constructor (id, stage = 1) {
         assert(typeof id !== 'undefined');
@@ -10,5 +11,8 @@ module.exports = class WitnessCol extends ProofStageItem {
         let cloned = new WitnessCol(this.id, this.stage);
         console.log('CLONE_WITNESS:', this, cloned);
         return cloned;
+    }
+    get value () {
+        return new WitnessColItem(this.id);
     }
 }

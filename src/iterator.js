@@ -42,7 +42,7 @@ module.exports = class Iterator {
     }
 
     getValue() {
-        return this.reference.array.applyIndex(this.reference, [this.index]);
+        return this.reference.array.applyIndexes(this.reference, [this.index]);
     }
 
     *[Symbol.iterator]() {

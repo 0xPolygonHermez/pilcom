@@ -21,14 +21,17 @@ module.exports = class Assign {
         return value;
     }
     #assign (name, indexes, value) {
-        const array = Context.references.getArray(name, indexes);
+        // const array = Context.references.getArray(name, indexes);
+        const reference = Context.references.getReference(name);
+        return reference.set(value, indexes);
+        /*
         const dim = array.dim ?? 0;
         if (dim > 0) {
             // array asignation as array or subarray copy
             return this.assignArray(name, indexes, value, array);
         }
         console.log(value);
-        return Context.references.set(name, indexes, value);
+        return Context.references.set(name, indexes, value);*/
     }
     assignType(type, name, indexes, value) {
         console.log(type);

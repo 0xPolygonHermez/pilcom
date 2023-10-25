@@ -1,5 +1,5 @@
 const {assert, assertLog} = require('./assert.js');
-const {MultiArray} = require("./multi_array.js");
+const MultiArray = require("./multi_array.js");
 const Expression = require("./expression.js");
 const {ExpressionItem, ArrayOf} = require("./expression_items.js");
 const Reference = require('./reference.js');
@@ -34,7 +34,7 @@ module.exports = class References {
         if (!reference.array) {
             return false;
         }
-        return reference.array.applyIndexes(indexes);
+        return reference.array.applyIndexes(reference, indexes);
     }
     getNameScope(name) {
         const nameInfo = this.decodeName(name);
@@ -146,7 +146,6 @@ module.exports = class References {
         return false;
     }
     prepareScope(nameInfo, type, existingReference) {
-
         if (nameInfo.isStatic) {
             return [Context.scope.declare(nameInfo.name, type, false, nameInfo.scope), nameInfo.scope];
         }
@@ -159,14 +158,14 @@ module.exports = class References {
         }
         return [scopeId, false];
     }
-    declare (name, type, lengths = [], options = {}, initValue = null) {
-
+    declare(name, type, lengths = [], options = {}, initValue = null) {
+        console.log(`declare(${name},${type},[${lengths.join(',')}])`);
         assert(typeof name === 'string');
         assert(!name.includes('::object'));
         assert(!name.includes('.object'));
 
         const nameInfo = this.decodeName(name);
-        console.log(`DECLARE_REFERENCE ${name} ==> ${nameInfo.name} ${type} []${lengths.length} scope:${nameInfo.scope} #${Context.scope.deep} ${initValue}`, options);
+        console.log(`DECLARE_REFERENCE ${name} ==> ${nameInfo.name} ${type} []${lengths.length} scope:${nameInfo.scope} #${Context.scope.deep} ${initValue}[type: ${initValue instanceof Object ? initValue.constructor.name : typeof initValue}]`, options);
 
         let [array, size] = Reference.getArrayAndSize(lengths);
 
@@ -211,7 +210,8 @@ module.exports = class References {
         }
 
         if (initValue !== null) {
-            console.log(initValue);
+            if (initValue && typeof initValue.toString === 'function') console.log(initValue.toString());
+            else console.log(initValue);
             reference.init(initValue);
         }
         return id;
@@ -548,10 +548,8 @@ module.exports = class References {
 
         // getReference produce an exception if name not found
         const reference = this.getReference(name);
-        console.log(reference);
         reference.set(value, indexes);
     }
-
     unset(name) {
         let def = this.references[name];
         if (def.array) delete def.array;

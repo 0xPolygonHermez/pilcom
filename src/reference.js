@@ -1,5 +1,6 @@
 const {assert, assertLog} = require('./assert.js');
-const {MultiArray} = require("./multi_array.js");
+const MultiArray = require("./multi_array.js");
+const ArrayOf = require('./expression_items/array_of.js');
 
 /**
  * @property {MultiArray} array
@@ -46,10 +47,37 @@ class Reference {
         console.log(`getId ${this.name} ${Array.isArray(indexes) ? '[' + indexes.join(',') + ']':indexes} ${this.array ? this.array.toDebugString():''}`);
         return  (indexes.length === 0 || !this.array) ? this.locator : this.array.getLocator(this.locator, indexes);
     }
-    set (value, indexes = []) {
+    set (value, indexes = [], options = {}) {
+        console.log(indexes);
+        console.log(`set(${this.name}, [${indexes.join(',')}]`);
         assert(value !== null); // to detect obsolete legacy uses
+        if (!this.array || this.array.isFullIndexed(indexes)) {
+            return this.setOneItem(value, indexes, options);
+        }
+        this.setArrayLevel(0, indexes, value, options);
+        // At this point, it's a array initilization
+    }
+    setArrayLevel(level, indexes, value, options = {}) {
+        console.log(`setArrayLevel(${this.name} ${level}, [${indexes.join(',')}]`);
+        const len = this.array.lengths[level];
+        for (let index = 0; index < len; ++index) {
+            let _indexes = [...indexes];
+            _indexes.push(index);
+            if (level + 1 === this.array.dim) {
+                this.setOneItem(value.getItem(_indexes), _indexes, options);
+                continue;
+            }
+            this.setArrayLevel(level+1, _indexes, value, options);
+        }
+    }
+    // setting by only one element
+    setOneItem(value, indexes, options = {}) {
+        console.log(this.name, value);
         if (!this.isInitialized(indexes)) {
             return this.#doInit(value, indexes);
+        } else if (options.doInit) {
+            // called as doInit:true but it's initizalized before
+            throw new Error('value initialized');
         }
         const id = this.getId(indexes);
         if (this.const) {
@@ -62,17 +90,14 @@ class Reference {
         const id = this.getId(indexes);
         assert(id !== null);
         console.log(this.name, id, this.instance.type);
-        console.log(value);
+        if (typeof value.toString === 'function') console.log(value.toString());
+        else console.log(value);
         this.instance.set(id, value);
         this.markAsInitialized(indexes);
     }
-    init (value, indexes = []) {
+    init (value, indexes = [], options = {}) {
         assert(value !== null); // to detect obsolete legacy uses
-        if (this.isInitialized(indexes)) {
-            // TODO: more info
-            throw new Error('value initialized');
-        }
-        this.#doInit(value, indexes);
+        this.set(value, indexes, {...options, doInit: true});
     }
     static getArrayAndSize(lengths) {
         // TODO: dynamic arrays, call to factory, who decides?
@@ -86,17 +111,36 @@ class Reference {
         return this.instance.get(this.getId(indexes));
     }
     getItem(indexes, options = {}) {
-        console.log(['GETITEM', indexes, options]);
+        console.log(['GETITEM', indexes, options, this.locator]);
         let locator = this.locator;
         let label = options.label;
+
+        // indexes evaluation
+        let evaluatedIndexes = [];
         if (Array.isArray(indexes) && indexes.length > 0) {
-            const evaluatedIndexes = indexes.map(x => x.asInt());
+            evaluatedIndexes = indexes.map(x => x.asInt());
             if (label) label = label + '['+evaluatedIndexes.join('],[')+']';
-            locator = this.array.locatorIndexesApply(this.locator, evaluatedIndexes);
         }
-        console.log(locator);
-        const res = options.const ? this.instance.getItem(locator, options) : this.instance.getConstItem(locator, options);
-        console.log(['GETITEM', res.constructor.name, res.definition, this.const]);
+
+        // if array is defined
+        let res = false;
+        if (this.array) {
+            console.log(evaluatedIndexes);
+            if (this.array.isFullIndexed(evaluatedIndexes)) {
+                // full access => result an item (non subarray)
+                locator = this.array.locatorIndexesApply(this.locator, evaluatedIndexes);
+            } else {
+                // parcial access => result a subarray
+                res = new ArrayOf(this.type, this.array.createSubArray(evaluatedIndexes, locator));
+                console.log(res);
+            }
+        } else if (evaluatedIndexes.length > 0) {
+            throw new Error('try to access to index on non-array value');
+        }
+        if (res === false) {
+            res = options.const ? this.instance.getConstItem(locator, options) : this.instance.getItem(locator, options);
+        }
+
         if (label) res.setLabel(label);
         else res.setLabel('___');
 

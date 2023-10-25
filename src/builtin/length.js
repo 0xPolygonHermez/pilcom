@@ -1,4 +1,6 @@
 const Function = require("../function.js");
+const StringValue = require('../expression_items/string_value.js');
+const IntValue = require('../expression_items/int_value.js');
 module.exports = class Length extends Function {
     constructor (parent) {
         super(parent, {funcname: 'length'});
@@ -8,18 +10,16 @@ module.exports = class Length extends Function {
             throw new Error('Invalid number of parameters');
         }
         const arg0 = s.args[0];
+        const item = arg0.eval();
+        if (item instanceof StringValue) {
+            return {result: BigInt(item.length)};
+        }
         if (arg0 && arg0.isReference()) {
-            const [instance,rinfo] = this.expressions.getReferenceInfo(arg0);
-            const operand = arg0.getAloneOperand();
-            return rinfo.array ? BigInt(rinfo.array.getLength(operand.dim)) : 0n;
+            return {result: item.array ? BigInt(item.array.getLength(0)) : 0n};
         }
-        const value = this.expressions.e2value(s.args[0]);
-        if (typeof value === 'string') {
-            return BigInt(value.length);
-        }
-        return 0n;
+        return {result: 0n};
     }
     exec(s, mapInfo) {
-        return mapInfo;
+        return new IntValue(mapInfo.result);
     }
 }

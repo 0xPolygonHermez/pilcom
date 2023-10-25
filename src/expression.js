@@ -41,6 +41,11 @@ class Expression extends ExpressionItem {
         this.stack = [];
         this.fixedRowAccess = false;
     }
+    static createFrom(object) {
+        const res = new Expression();
+        res._set(object);
+        return res;
+    }
     get isExpression() {
         return true;
     }
@@ -416,16 +421,30 @@ class Expression extends ExpressionItem {
         // cloned.dumpStackResults(stackResults, '');
         return cloned;
     }
-    eval() {
+    evalAsValue(options) {
+        return this.eval({...options, onlyAsValue: true});
+    }
+    eval(options = {}) {
         if (this.stack.length === 0) {
             return this;
         }
-        let options = {};
+        console.log('CALL #01', options);
         let stackResults = this.evaluateOperands(options);
-        // this.instanceExpressions(options);
+        console.log('CALL RESULTS', stackResults);
+        console.log('CALL #02');
         this.evaluateFullStack(stackResults, options);
-        console.log('====[ RESULT ]====> ', stackResults[0][0], this.stack.length);
-        return stackResults[this.stack.length-1][0];
+        console.log('CALL #03');
+        if (!options.onlyAsValue && stackResults[0][0] instanceof ExpressionItems.NonRuntimeEvaluableItem) {
+            // TODO: optimize evaluateFullStack was done ....
+            console.log('CALL #04');
+            const res = this.instance();
+            console.log('CALL #05');
+            return res;
+        }
+        console.log('CALL #06');
+        const res = stackResults[this.stack.length-1][0];
+        console.log('CALL #07');
+        return res;
     }
     evaluateFullStack(stackResults, options) {
         this.evaluateStackPos(stackResults, this.stack.length - 1, options);
@@ -642,31 +661,14 @@ class Expression extends ExpressionItem {
         }
         return result;
     }
-    /* evalAsIntValue() {
-        return IntValue.castTo(this.eval());
-    }*/
-    evaluateValueAsNumber(value, options) {
-        console.log(value);
-        let evaluated = false;
-        while (true) {
-            if (typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean') {
-                return Number(value);
-            }
-            if (value instanceof ExpressionItem) {
-                return value.asInt();
-            }
-            if (evaluated) break;
-            value = this.evaluateValue(value, options);
-            evaluated = true;
+    evalAsInt(options = {}) {
+        const value = this.evalAsValue(options);
+        const res = value.asIntDefault(false);
+        if (res === false) {
+            console.log(value);
+            throw new Error(this.toString() + " isn't a number");
         }
-        throw new Error(`Value isn't a number`);
-    }
-    evaluateValuesAsNumbers(values, options) {
-        if (typeof values === 'undefined') {
-            return (options ? options.default ?? [] : []);
-        }
-        console.log(values);
-        return values.map(value => this.evaluateValueAsNumber(value, options));
+        return res;
     }
     getArrayResult(results, indexes, options) {
         console.log(results);
@@ -697,8 +699,9 @@ class Expression extends ExpressionItem {
                 // when evaluates single operands, StackItem is a reference to stack position
                 // and it could be evaluated when all operands are left-to-right evaluated
                 if (operand instanceof ExpressionItems.StackItem) continue;
+                console.log(`CALL OPERAND ${stpos}/${this.stack.length} ${operandIndex}/${st.operands.length} ${operand}`);
                 const result = operand.eval(options);
-
+                operandResults.push(result);
                 if (options.instance && result !== null) {
                     if (result instanceof Expression) {
                         this.dump('THIS BEFORE INSERTSTACK');
@@ -708,6 +711,7 @@ class Expression extends ExpressionItem {
                         st.operands[operandIndex] = new ExpressionItems.StackItem(stackOffset);
                         this.dump('THIS AFTER INSERTSTACK');
                     } else {
+                        console.log(result);
                         st.operands[operandIndex] = assertExpressionItem(result);
                     }
                 }
@@ -1080,7 +1084,7 @@ class Expression extends ExpressionItem {
     }
     asInt() {
         let value = this.eval();
-        assert((value instanceof Expression) === false);
+        assertLog((value instanceof Expression) === false, value);
         if (typeof value.asInt === 'function') {
             return value.asInt();
         }

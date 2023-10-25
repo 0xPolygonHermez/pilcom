@@ -86,18 +86,13 @@ module.exports = class Indexable {
         if (typeof res.getItem === 'function') {
             return res.getItem();
         }
-        if (this.expressionItemClass && (res instanceof this.expressionItemClass) === false) {
-            if (typeof res.value !== 'undefined' && res.value instanceof this.expressionItemClass) {
-                return res.value.clone();
-            }
-            // REVIEW, empty properties
-            properties = properties ?? {};
-            res = new this.expressionItemClass(id);
-            for (const property in properties) {
-                res[property] = properties[property];
-            }
+        if (!this.expressionItemClass || res instanceof this.expressionItemClass) {
+            return res;
         }
-        return res;
+        if (typeof res.value !== 'undefined' && res.value instanceof this.expressionItemClass) {
+            return res.value.clone();
+        }
+        return this.expressionItemClass.createFrom(res.value);
     }
 
     getLabel(id, options) {
@@ -123,7 +118,9 @@ module.exports = class Indexable {
     set(id, value) {
         const item = this.get(id);
         console.log(item);
-        console.log(value);
+        console.log(value.constructor.name);
+        if (value && typeof value.toString === 'function') console.log(value.toString());
+        else console.log(value);
         assertLog(item && typeof item.setValue === 'function', {type: this.type, definition: this.definitionClass, id, item: item});
         item.setValue(value);
 /*

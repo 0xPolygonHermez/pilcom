@@ -33,7 +33,8 @@ module.exports = class FunctionCall extends RuntimeItem {
         this.funcdef = source.funcdef;
     }
     evalInside(options) {
-        console.log([`#FCALL.EVAL#${this.name} ${Context.sourceTag}`, this.args]);
+        console.log([`#F CALL.EVAL #${this.name} ${Context.sourceTag}`, this.args]);
+        if (Context.sourceTag === 'basic_functions.pil:12') debugger;
         const definition = Context.references.get(this.name, options);
         const res = Context.processor.executeFunctionCall(this.name, this);
         console.log(res);

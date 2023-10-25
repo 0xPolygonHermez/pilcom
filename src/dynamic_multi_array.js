@@ -43,7 +43,7 @@ module.exports = class DynamicMultiArray extends MultiArray {
     createSubArray(dim) {
         return new MultiArray(this.lengths.slice(-dim));
     }
-    applyIndex(obj, indexes) {
+    applyIndexes(obj, indexes) {
         const res = this.getIndexesTypedOffset(indexes);
         let dup = obj.clone()
         if (dup.id) {

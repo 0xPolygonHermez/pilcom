@@ -1,0 +1,40 @@
+subproof Functions(2**23) {
+    col witness w;
+    int values[12][20];
+
+    function sum1(int a, int b) : int {
+        return a + b;
+    }
+
+    function sum(int a, int bs[]) : int {
+        int total = a;
+        int count_ = a;
+        int count = length(bs);
+        for (int index = 0; index < count; index = index + 1) {
+            int count__ = index;
+            // total = sum1(total, bs[index]);
+            total = total + bs[index];
+        }
+        int count___ = 34;
+        return total;
+    }
+
+    function fact(int k): int {
+        if (k < 2) {
+            return 1;
+        }
+        return k * fact(k - 1);
+    }
+
+    function procedure(int value) {
+        col witness p1;
+
+        p1 === value;
+    }
+    int k[10];
+    k[0] = 109;
+    expr e1 = 12;
+    int res = sum1(18, e1);
+    int res2 = sum(20, values[7]);
+    int res3 = sum(25, k);
+}

@@ -153,7 +153,7 @@ class ExpressionItem {
         }
     }
     evalInside(options = {}) {
-        throw new Error(`eval not defined for class ${this.constructor.name}`);
+        throw new Error(`evalInside not defined for class ${this.constructor.name}`);
     }
     evalPrior(options) {
         if (!this.rowOffset || !this.rowOffset.isPriorRows()) {
