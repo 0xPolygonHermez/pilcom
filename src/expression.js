@@ -99,7 +99,7 @@ module.exports = class Expression {
             }
         }
     }
-    insertStack(e, pos) {
+    insertStack(e, pos, options = {}) {
         const delta = e.stack.length;
         for (let index = pos; index < this.stack.length; ++index) {
             for (const ope of this.stack[index].operands) {
@@ -305,7 +305,6 @@ module.exports = class Expression {
                     res = res.getAloneOperand();
                 }
                 if (res instanceof Expression) {
-                    res.dump();
                     ope.__value = res;
                 } else {
                     assert(!(res instanceof Expression));
@@ -427,7 +426,7 @@ module.exports = class Expression {
         this.evaluateIndexes(dope);
         return dope;
     }
-    instance(simplify = false) {
+    instance(options = {}) {
         let dup = this.clone();
         dup.evaluateOperands(false, true);
         dup.evaluateOperands(true, true);
@@ -435,12 +434,9 @@ module.exports = class Expression {
         const top = dup.stack.length-1;
         dup.evaluateStackPosValue(top, true);
         dup.instanceValues();
-        if (simplify) {
-            // console.log('=== SIMPLIFY ===');
-            // dup.dump();
+        if (options.simplify) {
             dup.simplify();
             dup.assertInstanced();
-            // dup.dump();
         }
         return dup;
     }
@@ -499,19 +495,26 @@ module.exports = class Expression {
     }
     // this method instance the expression references to include them inside
     // TODO: view how these affects to optimization.
-    instanceExpressions() {
+    instanceExpressions(options = {}) {
         let pos = 0;
+        const isAlone = this.isAlone();
         while (pos < this.stack.length) {
             let nextPos = true;
             for (let ope of this.stack[pos].operands) {
-                // assert(ope.__value instanceof Expression === false);
                 if (ope.type !== OP_RUNTIME) continue;
                 if (ope.__value instanceof Expression) {
                     ope.type = OP_STACK;
                     const exprToInsert = ope.__value.instance();
                     const next = typeof ope.next === 'number' ? ope.next : ope.__next;
                     if (next) exprToInsert.next(next);
-                    ope.offset = this.insertStack(exprToInsert, pos);
+                    if (isAlone) {
+                        this.stack.pop();
+                    }
+
+                    const stackOffset = this.insertStack(exprToInsert, pos, options);
+                    if (!isAlone) {
+                        ope.offset = stackOffset;
+                    }
                     nextPos = false;
                     break;
                 }
@@ -524,7 +527,14 @@ module.exports = class Expression {
                     const exprToInsert = res.instance();
                     const next = typeof ope.next === 'number' ? ope.next : ope.__next;
                     if (next) exprToInsert.next(next);
-                    ope.offset = this.insertStack(exprToInsert, pos);
+                    delete this.stack[0];
+                    if (isAlone) {
+                        this.stack.pop();
+                    }
+                    const stackOffset = this.insertStack(exprToInsert, pos, options);
+                    if (!isAlone) {
+                        ope.offset = stackOffset;
+                    }
                     nextPos = false;
                     break;
                 }
@@ -910,6 +920,9 @@ module.exports = class Expression {
         return container.pop(1)[0];
     }
     pack(container, options) {
+        if (this.isAlone()) {
+            return this.packAlone(container, options);
+        }
         let top = this.stack.length-1;
         return this.stackPosPack(container, top, options);
     }
@@ -965,7 +978,6 @@ module.exports = class Expression {
 
     }
     referencePack(container, type, id, next, stage, options) {
-        // TODO stage
         switch (type) {
             case 'im':
                 container.pushExpression(Expression.parent.getPackedExpressionId(id, container, options));
@@ -1002,7 +1014,7 @@ module.exports = class Expression {
     resolve() {
         const res = this.eval();
         if (res instanceof Expression) {
-            return res.instance(true);
+            return res.instance({simplify: true});
         }
         return res;
     }

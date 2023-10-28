@@ -134,6 +134,7 @@ module.exports = class ProtoOut {
         console.log(['PROTO.CHALLENGES', this.pilOut.numChallenges]);
 
         let message = this.PilOut.fromObject(this.pilOut);
+        fs.writeFileSync('tmp/pilout.log', util.inspect(this.pilOut, false, null, false));
         this.data = this.PilOut.encode(message).finish();
         return this.data;
     }
@@ -462,11 +463,17 @@ module.exports = class ProtoOut {
     }
     toHintField(hdata, options = {}) {
         const path = options.path ?? '';
-
+        // check if an alone expression to use and translate its single operand
+        if (hdata && typeof hdata.isAlone === 'function') {
+            const operand = hdata.packAlone(options.packed, options);
+            this.translate(operand);
+            return { operand };
+        }
         if (typeof hdata === 'object' && hdata.constructor.name === 'ExpressionId') {
             const expressionId = options.hints.getPackedExpressionId(hdata.id, options.packed, options);
             if (expressionId === false) {
-                return { operand: options.hints.expressions.get(hdata.id).packAlone(options.packed, options) };
+                const expr = options.hints.expressions.get(hdata.id);
+                options.hints.getPackedExpressionId(hdata.id, options.packed, options);
             }
             return { operand: { expression: { idx: expressionId } }};
         }

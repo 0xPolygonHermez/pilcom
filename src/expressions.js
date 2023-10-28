@@ -209,9 +209,9 @@ module.exports = class Expressions {
                 if (ref.value instanceof Expression) {
                     res = ref.value.eval();
                     if (res instanceof Expression) {
-                        res = res.instance(true);
+                        res = res.instance({simplify: true});
                     } else if (res instanceof NonRuntimeEvaluable) {
-                        res = ref.value.instance(true);
+                        res = ref.value.instance({simplify: true});
                     }
                 } else {
                     res = ref;

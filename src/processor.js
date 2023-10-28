@@ -233,7 +233,6 @@ module.exports = class Processor {
     executeStatement(st) {
         const __executeStatementCounter = this.executeStatementCounter++;
         this.traceLog(`[TRACE] #${__executeStatementCounter} ${st.debug ?? ''} (DEEP:${this.scope.deep})`, '38;5;75');
-
         this.sourceRef = st.debug ?? '';
         this.context.sourceRef = this.sourceRef
         // console.log(`SOURCE ${this.sourceRef}`);
@@ -811,10 +810,10 @@ module.exports = class Processor {
         let id, expr, prefix = '';
 
         if (scopeType === 'air') {
-            id = this.constraints.define(s.left.instance(true), s.right.instance(true),false,this.sourceRef);
+            id = this.constraints.define(s.left.instance({simplify: true}), s.right.instance({simplify: true}),false,this.sourceRef);
             expr = this.constraints.getExpr(id);
         } else if (scopeType === 'proof') {
-            id = this.globalConstraints.define(s.left.instance(true), s.right.instance(true),false,this.sourceRef);
+            id = this.globalConstraints.define(s.left.instance({simplify: true}), s.right.instance({simplify: true}),false,this.sourceRef);
             expr = this.globalConstraints.getExpr(id);
             prefix = 'GLOBAL';
         } else {

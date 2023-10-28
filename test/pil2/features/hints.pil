@@ -4,8 +4,20 @@ public input1;
 
 subproof Hints(2**16) {
 
-    col witness byte_in, byte_out, bytes[16];
+    col witness byte_in, byte_out;
+    col witness bytes[16];
+    col witness stage(2) gsum;
+    col witness stage(3) gsum2;
 
+    expr tot = gsum * 8 + byte_in;
+    expr tot2 = gsum * 2 + byte_out;
+
+    @my_hint1 {gsum: gsum2 + 2}
+    @my_hint2 {gsum: (gsum + gsum2) * 3}
+    @my_hint3 {gsum: gsum}
+    @my_hint4 {gsum: [gsum, gsum2]}
+    @my_hint4 {tot: tot}
+    @my_hint4 {tot2: tot2}
     @my_first_hint {value_xx: 27, values_ab: [2, 3]}
     @public {reference: input1, expression: bytes[3] + 5, row_index: 13}
 

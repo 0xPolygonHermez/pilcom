@@ -78,10 +78,8 @@ module.exports = class Assign {
             this.references.set(name, indexes, value);
             return;
         }
-        value = value.instance(true);
-        if (this.context.sourceRef === 'std_sum.pil:195') {
-            console.log('XXX');
-        }
+        value = value.instance({simplify: true});
+
         console.log(`ASSIGN ${this.context.sourceRef} ${value}`);
         this.references.set(name, indexes, value);
         return
