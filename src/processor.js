@@ -168,6 +168,7 @@ module.exports = class Processor {
             proto.setSubproof(subproofName, subproof.aggregate);
             let airId = 0;
             for (const airName of subproof.airs) {
+                console.log(`SUBPROOF(${subproofName},${airName})`);
                 const air = subproof.airs.get(airName);
                 const bits = log2(Number(air.rows));
                 proto.setAir(airName, air.rows);
@@ -647,6 +648,7 @@ module.exports = class Processor {
         this.references.clearType('fixed');
         this.references.clearType('witness');
         this.expressions.clear();
+        this.hints.clear();
     }
     finalSubproofScope() {
         this.callDelayedFunctions('subproof', 'final');

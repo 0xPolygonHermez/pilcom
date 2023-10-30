@@ -358,6 +358,7 @@ module.exports = class ProtoOut {
                     // translate index of witness because witness cols must be order by stage and
                     // it implies change index number.
                     const [stage, protoId] = this.witnessId2ProtoId[ope.witnessCol.colIdx] ?? [false, false];
+                    // console.log(`TRANSLATE witnessCol colIdx:${ope.witnessCol.colIdx}=>${protoId} rowOffset:${ope.witnessCol.rowOffset} stage:${ope.witnessCol.stage}=>${stage}`);
                     if (protoId === false) {
                         throw new Error(`Translate: Found invalid witnessColId ${ope.witnessCol.colIdx}`);
                     }

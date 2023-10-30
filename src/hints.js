@@ -17,6 +17,9 @@ module.exports = class Hints {
         }
         return cloned;
     }
+    clear() {
+        this.hints = [];
+    }
     cloneHint(data, options = {}) {
         const path = options.path ?? '';
         // when data is an instance of alone Expression doesn't replace it
