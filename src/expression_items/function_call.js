@@ -32,7 +32,7 @@ module.exports = class FunctionCall extends RuntimeItem {
         super.cloneUpdate(source);
         this.funcdef = source.funcdef;
     }
-    evalInside(options) {
+    evalInside(options = {}) {
         console.log([`#F CALL.EVAL #${this.name} ${Context.sourceTag}`, this.args]);
         if (Context.sourceTag === 'basic_functions.pil:12') debugger;
         const definition = Context.references.get(this.name, options);

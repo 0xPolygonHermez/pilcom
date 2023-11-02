@@ -26,6 +26,9 @@ class StringValue extends RuntimeItem {
     asStringItem() {
         return this.clone();
     }
+    asBool() {
+        return this.value !== "";
+    }
     cloneInstance() {
         return new StringValue(this.value);
     }

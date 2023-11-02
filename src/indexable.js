@@ -92,6 +92,10 @@ module.exports = class Indexable {
         if (typeof res.value !== 'undefined' && res.value instanceof this.expressionItemClass) {
             return res.value.clone();
         }
+        if (typeof res.value === 'undefined') {
+           return new this.expressionItemClass();
+        }
+        assertLog(typeof this.expressionItemClass.createFrom === 'function', [this.type, this.constructor.name, this.expressionItemClass, res, res.value]);
         return this.expressionItemClass.createFrom(res.value);
     }
 

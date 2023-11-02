@@ -48,8 +48,7 @@ class Reference {
         return  (indexes.length === 0 || !this.array) ? this.locator : this.array.getLocator(this.locator, indexes);
     }
     set (value, indexes = [], options = {}) {
-        console.log(indexes);
-        console.log(`set(${this.name}, [${indexes.join(',')}]`);
+        console.stdebug(`set(${this.name}, [${indexes.join(',')}]`);
         assert(value !== null); // to detect obsolete legacy uses
         if (!this.array || this.array.isFullIndexed(indexes)) {
             return this.setOneItem(value, indexes, options);
@@ -72,7 +71,6 @@ class Reference {
     }
     // setting by only one element
     setOneItem(value, indexes, options = {}) {
-        console.log(this.name, value);
         if (!this.isInitialized(indexes)) {
             return this.#doInit(value, indexes);
         } else if (options.doInit) {
@@ -89,9 +87,6 @@ class Reference {
     #doInit(value, indexes) {
         const id = this.getId(indexes);
         assert(id !== null);
-        console.log(this.name, id, this.instance.type);
-        if (typeof value.toString === 'function') console.log(value.toString());
-        else console.log(value);
         this.instance.set(id, value);
         this.markAsInitialized(indexes);
     }
@@ -111,7 +106,6 @@ class Reference {
         return this.instance.get(this.getId(indexes));
     }
     getItem(indexes, options = {}) {
-        console.log(['GETITEM', indexes, options, this.locator]);
         let locator = this.locator;
         let label = options.label;
 
@@ -125,14 +119,12 @@ class Reference {
         // if array is defined
         let res = false;
         if (this.array) {
-            console.log(evaluatedIndexes);
             if (this.array.isFullIndexed(evaluatedIndexes)) {
                 // full access => result an item (non subarray)
                 locator = this.array.locatorIndexesApply(this.locator, evaluatedIndexes);
             } else {
                 // parcial access => result a subarray
                 res = new ArrayOf(this.type, this.array.createSubArray(evaluatedIndexes, locator));
-                console.log(res);
             }
         } else if (evaluatedIndexes.length > 0) {
             throw new Error('try to access to index on non-array value');
@@ -144,7 +136,6 @@ class Reference {
         if (label) res.setLabel(label);
         else res.setLabel('___');
 
-        console.log(res);
         return res;
     }
 }

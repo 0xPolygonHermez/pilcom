@@ -4,7 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const assert = chai.assert;
 var tmp = require('tmp-promise');
-const Scope  = require('../../src/scope.js');
+const Scope  = require('../../../src/scope.js');
 
 describe("Scope", async function () {
     this.timeout(10000000);

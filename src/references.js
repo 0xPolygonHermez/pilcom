@@ -5,6 +5,7 @@ const {ExpressionItem, ArrayOf} = require("./expression_items.js");
 const Reference = require('./reference.js');
 const Containers = require('./containers.js');
 const Context = require('./context.js');
+const Exceptions = require('./exceptions.js');
 module.exports = class References {
 
     constructor () {
@@ -159,7 +160,6 @@ module.exports = class References {
         return [scopeId, false];
     }
     declare(name, type, lengths = [], options = {}, initValue = null) {
-        console.log(`declare(${name},${type},[${lengths.join(',')}])`);
         assert(typeof name === 'string');
         assert(!name.includes('::object'));
         assert(!name.includes('.object'));
@@ -190,7 +190,6 @@ module.exports = class References {
 
         /* take constant property from options, the rest is data information */
         const constProperty = options.const ?? false;
-        console.log(['CONST ', constProperty, name]);
         let data = {...options};
         delete data.const;
 
@@ -201,7 +200,6 @@ module.exports = class References {
         const id = isReference ? null : instance.reserve(size, nameInfo.name, array, data);
 
         const reference = new Reference(nameInfo.name, type, isReference, array, id, instance, scopeId, refProperties);
-        console.log(container, reference);
 
         if (container) {
             this.containers.addReference(nameInfo.name, reference);
@@ -376,12 +374,7 @@ module.exports = class References {
         return this._getInstanceAndLocator(name, indexes);
     }
     addUse(name) {
-        if (!this.containers[name]) {
-            // TODO: defined must be check containers
-            throw new Exception(`Use not created container ${name}`);
-        }
-        Context.scope.addToScopeProperty('uses', name);
-        this.uses.push(name);
+        this.containers.addUse(name);
     }
     searchDefinition(name) {
         const subnames = name.split('.');
@@ -402,7 +395,7 @@ module.exports = class References {
                     throw new Error(`Not match declaration scope and accessing scope (${containerName}) of ${name}`);
                 }
             }
-            if (reference && this.containers.isDefined(explicitContainer)) {
+            if (!reference && this.containers.isDefined(explicitContainer)) {
                 reference = this.containers.getReferenceInside(explicitContainer, lname, false);
             }
         }
@@ -462,13 +455,13 @@ module.exports = class References {
         }
         if (!reference) {
             if (typeof defaultValue !== 'undefined') return defaultValue;
-            throw new Error(`Reference ${names.join(',')} not found on ${Context.sourceRef}`);
+            throw new Exceptions.ReferenceNotFound(names.join(','));
         }
 
         // constants are visible inside functions
         if (this.isVisible(reference) === false) {
             if (typeof defaultValue !== 'undefined') return defaultValue;
-            throw new Error(`Reference ${names.join(',')} not visible from current scope ${Context.sourceRef}`);
+            throw new Exceptions.ReferenceNotVisible(names.join(','));
         }
         return reference;
     }
@@ -555,7 +548,9 @@ module.exports = class References {
         if (def.array) delete def.array;
         delete this.references[name];
     }
-
+    unsetProperty(property, values) {
+        this.containers.unsetProperty(property, values);
+    }
     *[Symbol.iterator]() {
         for (let index in this.references) {
           yield index;

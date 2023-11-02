@@ -6,22 +6,30 @@ const Context = require('../context.js');
 module.exports = class ArrayOf extends RuntimeItem {
     constructor (instanceType, array) {
         super();
-        assert(array instanceof MultiArray);
+        assertLog(array instanceof MultiArray, array);
 
         this.instanceType = instanceType;
-        this.array = array.clone();
+        this._array = array.clone();
+        console.log(array.constructor.name, array, this._array);
+    }
+    get array() {
+        return this._array;
+    }
+    set array(value) {
+        throw new Error();
     }
     get instance() {
         return Context.references.getTypeInstance(this.instanceType);
     }
     cloneInstance() {
-        return new ArrayOf(this.instanceType, this.array);
+        console.log(this.instanceType, this._array);
+        return new ArrayOf(this.instanceType, this._array);
     }
     evalInside() {
         return this.clone();
     }
     getItem(indexes) {
-        const id = this.array.indexesToOffset(indexes);
+        const id = this._array.indexesToOffset(indexes);
         return this.instance.getItem(id);
     }
 }

@@ -67,7 +67,7 @@ module.exports = class Containers {
 
         // const nameInfo = this.decodeName(name).scope;
         ;
-        this.containers[name] = {scope: this.parent.getNameScope(name), alias, definitions: {}};
+        this.containers[name] = {scope: this.parent.getNameScope(name), alias, references: {}};
         this.current = name;
         return true;
     }
@@ -91,6 +91,8 @@ module.exports = class Containers {
             throw new Error(`Could add reference ${name} to closed container`);
         }
         const container = this.containers[this.current];
+        console.log(this.containers);
+        console.log(this.current);
         if (container.references[name]) {
             throw new Error(`Reference ${name} was declared previously on scope ${this.current}`);
         }
@@ -99,7 +101,7 @@ module.exports = class Containers {
     addUse(name) {
         if (!this.containers[name]) {
             // TODO: defined must be check containers
-            throw new Exception(`Use not created container ${name}`);
+            throw new Error(`Use not created container ${name}`);
         }
         Context.scope.addToScopeProperty('uses', name);
         this.uses.push(name);

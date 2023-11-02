@@ -2,6 +2,23 @@ subproof Functions(2**23) {
     col witness w;
     int values[12][20];
 
+    function defer_definition_2(int b, int a) {
+        // b = vb, a = va
+        // a <= vb | b <= vb (now a value is vb, definition at same time)
+        // [a,b] <= [vb,va]
+        return sum1(a, b);
+    }
+
+    function defer_definition(int a, int b) {
+        return sum1(a, b);
+    }
+
+    function stotal_ (int a[]): int {
+        return sum(0, a);
+    }
+    function stotal (int a[]): int {
+        return stotal_(a);
+    }
     function sum1(int a, int b) : int {
         return a + b;
     }
@@ -35,6 +52,25 @@ subproof Functions(2**23) {
     k[0] = 109;
     expr e1 = 12;
     int res = sum1(18, e1);
+    assert_eq(res, 30);
     int res2 = sum(20, values[7]);
+    assert_eq(res2, 20);
+
     int res3 = sum(25, k);
+    assert_eq(res3, 109 + 25);
+
+    int k2[4];
+    k2[0] = 110;
+    k2[1] = 220;
+    k2[2] = 330;
+    k2[3] = 440;
+
+    int res4 = stotal(k2);
+    assert_eq(res4, 1100);
+
+    int res5 = defer_definition(13, 35);
+    assert_eq(res5, 48);
+
+    int res6 = defer_definition_2(13, 35);
+    assert_eq(res6, 48);
 }

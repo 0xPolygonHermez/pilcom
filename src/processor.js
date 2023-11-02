@@ -381,10 +381,10 @@ module.exports = class Processor {
         for (let icond = 0; icond < s.conditions.length; ++icond) {
             const cond = s.conditions[icond];
             if ((icond === 0) !== (cond.type === 'if')) {
-                throw new Exception('first position must be an if, and if only could be on first position');
+                throw new Error('first position must be an if, and if only could be on first position');
             }
             if (cond.type === 'else' && icond !== (s.conditions.length-1)) {
-                throw new Exception('else only could be on last position');
+                throw new Error('else only could be on last position');
             }
 
             if (typeof cond.expression !== 'undefined' && this.expressions.e2bool(cond.expression) !== true) {
@@ -448,7 +448,8 @@ module.exports = class Processor {
         return result;
     }
     execForIn(s) {
-        if (s.list && s.list.type === 'expression_list') {
+        console.log(s);
+        if (s.list && s.list instanceof ExpressionItems.ExpressionList) {
             return this.execForInList(s);
         }
         return this.execForInExpression(s);
@@ -998,9 +999,22 @@ module.exports = class Processor {
             lindex = m.index + m[0].length;
         }
         const lastS = template.substring(lindex);
-        const codeTags = tags.map((x, index) => 'constant ____'+index+' = '+x.expr+";").join("\n");
+
+        // create a tag for each substitution string
+        const codeTags = tags.map((x, index) => 'expr ____'+index+' = '+x.expr+";").join("\n");
+
+        // compile a list of tags to created its associated expressions
+        // this expressions aren't executed, only compiled for this reason
+        // we don't need create a context.
         const compiledTags = this.compiler.parseExpression(codeTags);
-        return compiledTags.map((e, index) => tags[index].pre + this.e2value(e.value)).join('')+lastS;
+
+        // evaluating different init of each tag
+        const stringTags = compiledTags.map(e => e.init[0].eval().asString());
+
+        // replace on string each tag for its value
+        const evaluatedTemplate = stringTags.map((s, index) => tags[index].pre + s).join('')+lastS;
+        console.log(`TEMPLATE "${template}" ==> "${evaluatedTemplate}"`);
+        return evaluatedTemplate;
     }
     evaluateExpression(e){
         // TODO

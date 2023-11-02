@@ -76,7 +76,13 @@ module.exports = class Function {
         let iarg = 0;
         for (const name in this.args) {
             // TODO: checking types and dims
-            args[iarg].dump();
+            if (Array.isArray(args[iarg])) {
+                for (const arg of args[iarg]) {
+                    arg.dump();
+                }
+            } else {
+                args[iarg].dump();
+            }
             ++iarg;
         }
     }
@@ -193,8 +199,17 @@ module.exports = class Function {
         console.log(arg);
         console.log(value);
         // REVIEW: use arg.type, but perphaps we need to do a casting
-        console.log(value.array);
-        Context.references.declare(name, arg.type, value.array ? value.array.lengths: [], {}, value);
+        if (name === 'cols') {
+//            debugger;
+        }
+        let lengths = [];
+        if (value.array) {
+            lengths = value.array.lengths;
+        } else if (Array.isArray(value)) {
+            lengths = [value.lenght];
+        }
+
+        Context.references.declare(name, arg.type, lengths, {}, value);
 
         // TODO: arrays.
         /*

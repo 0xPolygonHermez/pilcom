@@ -39,7 +39,7 @@ private function check_id_and_cols(int opid, int cols_count, int provide) {
         // FIX: dynamic arrays not ready
         int opids_count = 0;
         int opids[100];
-        expr gsum = 0;  // Resulting sum of every subproof and every air. 
+        expr gsum = 0;  // Resulting sum of every subproof and every air.
                         // Declared as expression (unknown at runtime), but used as field element.
     }
 
@@ -230,12 +230,32 @@ private function PIOP_proof() {
 }
 
 private function check_was_completed() {
+    /*
     for (int opid in proof.std.piop.opids) {
-        if (proof.std.piop.`id${opid}`.require == 0) {
+        // if (proof.std.piop.`id${opid}`.require == 0) {
+        //     error(`PIOP #${opid} defined without require`);
+        // }
+        // if (proof.std.piop.`id${opid}`.provide == 0) {
+        //     error(`PIOP #${opid} defined without provide`);
+        // }
+        use proof.std.piop.`id${opid}`;
+        if (require == 0) {
             error(`PIOP #${opid} defined without require`);
         }
-        if (proof.std.piop.`id${opid}`.provide == 0) {
+        if (provide == 0) {
             error(`PIOP #${opid} defined without provide`);
         }
     }
+    */
+    for (int index = 0; index < proof.std.piop.opids_count; ++index) {
+        int opid = proof.std.piop.opids[index];
+        use proof.std.piop.`id${opid}`;
+        if (require == 0) {
+            error(`PIOP #${opid} defined without require`);
+        }
+        if (provide == 0) {
+            error(`PIOP #${opid} defined without provide`);
+        }
+    }
+
 }

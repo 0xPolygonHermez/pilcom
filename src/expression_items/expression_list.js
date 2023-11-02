@@ -21,6 +21,9 @@ class ExpressionList extends ExpressionItem {
         this.items.push(item.clone());
         this.indexes = [this.items.length];
     }
+    evalInside(options = {}) {
+        return this.items.map(x => x.eval(options));
+    }
 }
 
 module.exports = ExpressionList;

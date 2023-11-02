@@ -6,6 +6,7 @@ const version = require("../package").version;
 const compile = require("./compiler.js");
 const ffjavascript = require("ffjavascript");
 const tty = require('tty');
+const debugConsole = require('./debug_console.js').init();
 
 const argv = require("yargs")
     .version(version)
@@ -68,39 +69,9 @@ async function run() {
     // await fs.promises.writeFile(outputFile.trim(), JSON.stringify(out, null, 1) + "\n", "utf8");
 }
 
-const originalMethod = console.log
-const maxSourceRefLen = 20;
-console.log = (...args) => {
-    let initiator = false;
-    try {
-        throw new Error();
-    } catch (e) {
-    if (typeof e.stack === 'string') {
-        let isFirst = true;
-        for (const line of e.stack.split('\n')) {
-        const matches = line.match(/^\s+at\s+.*\/([^\/:]*:[0-9]+:[0-9]+)\)/);
-        if (matches) {
-            if (!isFirst) { // first line - current function
-                            // second line - caller (what we are looking for)
-            initiator = matches[1];
-            break;
-            }
-            isFirst = false;
-        }
-        }
-    }
-    }
-    if (initiator === false) {
-        originalMethod.apply(console, args);
-    } else {
-        initiator = initiator.split(':').slice(0,2).join(':').replace('.js','');
-        initiator = initiator.length > maxSourceRefLen ? ('...' + initiator.substring(-maxSourceRefLen+3)) : initiator.padEnd(maxSourceRefLen);
-        originalMethod.apply(console, [`\x1B[30;104m${initiator} \x1B[0m`, ...args]);
-    }
-}
 
 run().then(()=> {
-    process.exit(0);
+    process.exitCode = 0;
 }, (err) => {
     console.log(err.stack);
     if (err.pos) {
@@ -108,5 +79,5 @@ run().then(()=> {
     } else {
         console.log(err.message);
     }
-    process.exit(1);
+    process.exitCode = 1;
 });

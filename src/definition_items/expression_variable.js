@@ -18,6 +18,7 @@ module.exports = class ExpressionVariable extends Variable {
             this.value = value.instance();
             return;
         }
+        console.log(value);
         this.value = value.clone();
         /*
         if (value instanceof ExpressionClass || value instanceof ValueItem) {

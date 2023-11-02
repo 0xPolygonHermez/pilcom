@@ -34,4 +34,7 @@ module.exports = class ValueItem extends ExpressionItem {
     toString() {
         return `${this.value}`;
     }
+    equals(value) {
+        return this.constructor.name === value.constructor.name && this.value === value.value;
+    }
 }

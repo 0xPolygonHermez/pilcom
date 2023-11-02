@@ -72,6 +72,9 @@ class MultiArray {
     }
     applyIndexes(obj, indexes) {
         const res = this.getIndexesTypedOffset(indexes);
+        if (res.array === false && typeof obj.getItem === 'function') {
+            return obj.getItem(indexes);
+        }
         let dup = obj.clone()
         if (dup.id) {
             dup.id = dup.id + res.offset;

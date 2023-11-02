@@ -149,7 +149,6 @@ class Expression extends ExpressionItem {
         if (this.stack.length) {
             throw new Error(`Set only could be used with empty stack`);
         }
-        console.log(operand);
         this.stack.push({op: false, operands: [assertExpressionItem(operand.clone())]});
     }
 /*
@@ -157,7 +156,7 @@ class Expression extends ExpressionItem {
         assert(typeof refType === 'string');
         this._set({type: OP_ID_REF, id, refType, next});
     }
-
+/*
     setValue (value) {
         if (typeof value === 'object') {
             throw new Error(`object(${value.constructor.name}) as value not allowed`);
@@ -428,22 +427,13 @@ class Expression extends ExpressionItem {
         if (this.stack.length === 0) {
             return this;
         }
-        console.log('CALL #01', options);
         let stackResults = this.evaluateOperands(options);
-        console.log('CALL RESULTS', stackResults);
-        console.log('CALL #02');
         this.evaluateFullStack(stackResults, options);
-        console.log('CALL #03');
         if (!options.onlyAsValue && stackResults[0][0] instanceof ExpressionItems.NonRuntimeEvaluableItem) {
-            // TODO: optimize evaluateFullStack was done ....
-            console.log('CALL #04');
             const res = this.instance();
-            console.log('CALL #05');
             return res;
         }
-        console.log('CALL #06');
         const res = stackResults[this.stack.length-1][0];
-        console.log('CALL #07');
         return res;
     }
     evaluateFullStack(stackResults, options) {
@@ -458,7 +448,7 @@ class Expression extends ExpressionItem {
             return results[0];
         }
 
-        console.log([results, st.operands.length, st]);
+        // console.log([results, st.operands.length, st]);
         let values = results[1];
         for (let operandIndex = 0; operandIndex < st.operands.length; ++operandIndex) {
             const operand = st.operands[operandIndex];
@@ -469,16 +459,16 @@ class Expression extends ExpressionItem {
             if (operand instanceof ExpressionItems.StackItem) {
                 values[operandIndex] = this.evaluateStackPos(stackResults, stackIndex - operand.getOffset());
             } else {
-                console.log(operand);
+                // console.log(operand);
                 values[operandIndex] = operand.eval(options);
             }
             if (options.instance) {
 
             }
         }
-        console.log(values);
+        // console.log(values);
 
-        console.log([st.op, ...values]);
+        // console.log([st.op, ...values]);
         let value = null;
         if (values.some(value => value instanceof ExpressionItems.NonRuntimeEvaluableItem))  {
             value = ExpressionItems.NonRuntimeEvaluableItem.get();
@@ -692,14 +682,14 @@ class Expression extends ExpressionItem {
             const st = this.stack[stpos];
             stackResults.push(results);
             let operandResults = results[1];
-            console.log(st.operands);
+            // console.log(st.operands);
             for (let operandIndex = 0; operandIndex < st.operands.length; ++operandIndex) {
                 const operand = assertExpressionItem(st.operands[operandIndex]);
 
                 // when evaluates single operands, StackItem is a reference to stack position
                 // and it could be evaluated when all operands are left-to-right evaluated
                 if (operand instanceof ExpressionItems.StackItem) continue;
-                console.log(`CALL OPERAND ${stpos}/${this.stack.length} ${operandIndex}/${st.operands.length} ${operand}`);
+                // console.log(`CALL OPERAND ${stpos}/${this.stack.length} ${operandIndex}/${st.operands.length} ${operand}`);
                 const result = operand.eval(options);
                 operandResults.push(result);
                 if (options.instance && result !== null) {
@@ -1076,14 +1066,35 @@ class Expression extends ExpressionItem {
         }
         return res;
     }
+    isEmpty() {
+        return this.stack.length === 0;
+    }
     asBool() {
-        return this.asInt() ? true : false;
+        let value = this.eval();
+        // check if empty expression
+        if (this.isEmpty()) {
+            return false;
+        }
+        assertLog((value instanceof Expression) === false, value);
+        if (typeof value.asBool === 'function') {
+            return value.asBool();
+        }
+        if (typeof value.asInt === 'function') {
+            const ivalue = value.asInt();
+            assert(typeof ivalue === 'bigint');
+            return ivalue !== 0n;
+        }
+        throw new Exceptions.CannotBeCastToType('bool');
     }
     asIntItem() {
         return new ExpressionItems.IntValue(this.asInt());
     }
     asInt() {
         let value = this.eval();
+        // check if empty expression
+        if (this.isEmpty()) {
+            return 0n;
+        }
         assertLog((value instanceof Expression) === false, value);
         if (typeof value.asInt === 'function') {
             return value.asInt();
@@ -1098,6 +1109,9 @@ class Expression extends ExpressionItem {
     }
     asString() {
         const value = this.eval();
+        if (this.isEmpty()) {
+            return '';
+        }
         assert((value instanceof Expression) === false);
         if (typeof value.asString === 'function') {
             return value.asString();
