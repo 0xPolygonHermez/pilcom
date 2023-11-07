@@ -55,7 +55,10 @@ module.exports = class Constraints {
         if (right.asIntDefault(false) !== 0n) {
             left.insert('sub', right);
         }
-        // left.simplify();
+        // const dumpId = Date.now();
+        // left.dump(`XXXXXXXXX-${dumpId}-1`)
+        // left.instance().dump(`XXXXXXXXX-${dumpId}-2`);
+        left.simplify();
         const exprId = Context.expressions.insert(left);
         return this.constraints.push({exprId, sourceRef, boundery}) - 1;
     }

@@ -11,5 +11,5 @@ subproof Module(2**16) {
     x === q * mod + x_mod;
 
 
-    multiset_provide(MODULE_ID, 1, [x, x_mod]);
+    multiset_proves(MODULE_ID, 1, [x, x_mod]);
 }

@@ -10,6 +10,9 @@ class StringValue extends RuntimeItem {
         return true;
     }
     toString(options) {
+        return this.value;
+    }
+    dump(options) {
         return '"'+this.value+'"';
     }
     getValue() {

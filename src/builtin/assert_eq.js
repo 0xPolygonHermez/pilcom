@@ -1,6 +1,7 @@
 const Function = require("../function.js");
 const Expression = require('../expression.js');
 const Context = require('../context.js');
+const IntValue = require('../expression_items/int_value.js');
 const {assert, assertLog} = require('../assert.js');
 module.exports = class AssertEq extends Function {
     constructor () {
@@ -22,6 +23,6 @@ module.exports = class AssertEq extends Function {
         return 0n;
     }
     exec(s, mapInfo) {
-        return mapInfo;
+        return new IntValue(mapInfo);
     }
 }

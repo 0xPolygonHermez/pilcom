@@ -12,6 +12,8 @@ module.exports = class Context {
         this.stack = [];
         this.config = {debug: {}};
         this.uses = [];
+        this.subproofName = false;
+        this.airName = false;
     }
     static get expressions() {
         return this._instance._processor.expressions;
@@ -36,6 +38,15 @@ module.exports = class Context {
     }
     static get references() {
         return this._instance._processor.references;
+    }
+    static get proofLevel() {
+        if (this.airName) {
+            return `AIR:${this.airName}`;
+        }
+        if (this.subproofName) {
+            return `SUBPROOF:${this.subproofName}`;
+        }
+        return 'PROOF';
     }
     setNamespace(namespace, subproof) {
         this.namespace = namespace;

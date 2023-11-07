@@ -1,4 +1,5 @@
 module.exports = class DebugClass {
+    static logid = 0;
     constructor (options = {}) {
         this.originalMethod = console.log;
         this.maxSourceRefLen = options.maxSourceRefLen ?? 20;
@@ -30,8 +31,10 @@ module.exports = class DebugClass {
         if (initiator === false) {
             this.originalMethod.apply(console, args);
         } else {
+            ++DebugClass.logid;
             initiator = initiator.split(':').slice(0,2).join(':').replace('.js','');
             initiator = initiator.length > this.maxSourceRefLen ? ('...' + initiator.substring(-this.maxSourceRefLen+3)) : initiator.padEnd(this.maxSourceRefLen);
+            initiator = initiator + DebugClass.logid.toString(16).toUpperCase().padStart(10, ' ')+'L';
             this.originalMethod.apply(console, [`\x1B[30;104m${initiator} \x1B[0m`, ...args]);
         }
     }

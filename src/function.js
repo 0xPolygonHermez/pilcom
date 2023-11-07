@@ -45,8 +45,9 @@ module.exports = class Function {
     evalArguments(args) {
         let eargs = [];
         for (const arg of args) {
-            eargs.push(arg.eval());
+            eargs.push(arg.evalAsItem());
         }
+        console.log('ARGUMENTS '+eargs.map(x => x.toString()).join(','));
         return eargs;
     }
     // mapArgument was called before enter on function visibility scope because
@@ -200,15 +201,15 @@ module.exports = class Function {
         console.log(value);
         // REVIEW: use arg.type, but perphaps we need to do a casting
         if (name === 'cols') {
-//            debugger;
+            debugger;
         }
         let lengths = [];
         if (value.array) {
             lengths = value.array.lengths;
         } else if (Array.isArray(value)) {
-            lengths = [value.lenght];
+            lengths = [value.length];
         }
-
+        console.log('KKK2KKK', name, lengths, value.constructor.name, value.toString());
         Context.references.declare(name, arg.type, lengths, {}, value);
 
         // TODO: arrays.

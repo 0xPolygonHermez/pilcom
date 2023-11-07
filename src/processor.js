@@ -42,6 +42,7 @@ module.exports = class Processor {
         this.compiler = parent;
         this.trace = true;
         this.Fr = Fr;
+        this.prime = Fr.p;
         this.references = new References();
         this.scope = new Scope();
         this.runtime = new Runtime();
@@ -158,6 +159,7 @@ module.exports = class Processor {
         // TODO: use a constant
         this.references.declare('N', 'int', [], { global: true, sourceRef: this.sourceRef });
         this.references.declare('BITS', 'int', [], { global: true, sourceRef: this.sourceRef });
+        this.references.declare('PRIME', 'int', [], { global: true, sourceRef: this.sourceRef });
         this.references.declare('__SUBPROOF__', 'string', [], { global: true, sourceRef: this.sourceRef });
         this.scope.pushInstanceType('proof');
         this.sourceRef = '(execution)';
@@ -304,8 +306,8 @@ module.exports = class Processor {
             this.scope.pop();
             --this.functionDeep;
             this.callstack.pop();
-            console.log(`END CALL ${name}`)
-            return res;
+            console.log(`END CALL ${name}`, res);
+            return typeof res === 'undefined' ? new ExpressionItems.IntValue() : res;
         }
         this.error({}, `Undefined function ${name}`);
     }
@@ -322,7 +324,6 @@ module.exports = class Processor {
         // TODO: move to assign class
         const indexes = this.decodeIndexes(st.name.indexes)
         const names = this.context.getNames(st.name.name);
-        console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> EXEC-ASSIGN <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<');
 //        if (st.value.type === 'sequence') {
         if (st.value instanceof ExpressionItems.ExpressionList) {
             const sequence = new Sequence(this, st.value, ExpressionItems.IntValue.castTo(this.references.get('N')));
@@ -344,6 +345,7 @@ module.exports = class Processor {
         }
         console.log(st.value);
         this.assign.assign(names, indexes, st.value);
+        console.log(`ASSIGN ${st.name.name} = ${st.value.toString()} \x1B[0;90m[${Context.sourceTag}]\x1B[0m`);
         // this.references.set(st.name.name, [], this.expressions.eval(st.value));
     }
     execHint(s) {
@@ -386,8 +388,9 @@ module.exports = class Processor {
             if (cond.type === 'else' && icond !== (s.conditions.length-1)) {
                 throw new Error('else only could be on last position');
             }
+            console.log(cond);
 
-            if (typeof cond.expression !== 'undefined' && this.expressions.e2bool(cond.expression) !== true) {
+            if (typeof cond.expression !== 'undefined' && cond.expression.evalAsBool() !== true) {
                 continue;
             }
             this.scope.push();
@@ -432,16 +435,22 @@ module.exports = class Processor {
         return result;
     }
     execFor(s) {
+        console.log('EXEC-FOR');
         let result;
         this.scope.push();
         this.execute(s.init, `FOR ${this.sourceRef} INIT`);
         let index = 0;
-        while (this.expressions.e2bool(s.condition)) {
+        // while (this.expressions.e2bool(s.condition)) {
+        while (true) {
+            const loopCond = s.condition.eval().asBool();
+            console.log('FOR.CONDITION', loopCond, s.condition.toString(), s.condition);
+            if (!loopCond) break;
             // if only one statement, scope will not create.
             // if more than one statement, means a scope_definition => scope creation
             result = this.execute(s.statements, `FOR ${this.sourceRef} I:${index}`);
             ++index;
             if (result instanceof BreakCmd) break;
+            console.log('INCREMENT', s.increment);
             this.execute(s.increment);
         }
         this.scope.pop();
@@ -595,7 +604,7 @@ module.exports = class Processor {
         assert(e.type === 'expression_list');
         let values = [];
         for (const value of e.values) {
-            values.push(this.e2value(value));
+            values.push(value.evalAsInt());
         }
         return values;
     }
@@ -649,13 +658,16 @@ module.exports = class Processor {
     executeSubproof(subproofName, subproof) {
         this.currentSubproof = subproof;
         this.scope.pushInstanceType('subproof');
+        this.context.subproofName = subproofName;
         for (const airRows of subproof.rows) {
             this.rows = airRows;
 
             console.log(`BEGIN AIR ${subproofName} (${airRows}) #${this.airId}`);
+            // TODO: context is global?
             const air = new Air(this.Fr, this.context, airRows);
 
             const airName = subproofName + (subproof.rows.length > 1 ? `_${air.bits}`:'');
+            Context.airName = airName;
             subproof.airs.define(airName, air);
 
             // TO-DO loop with different rows
@@ -664,6 +676,7 @@ module.exports = class Processor {
             // create built-in constants
             this.references.set('N', [], air.rows);
             this.references.set('BITS', [], air.bits);
+            this.references.set('PRIME', [], this.prime);
             this.references.set('__SUBPROOF__', [], subproofName);
 
 /*            this.references.set('N', [], new ExpressionItems.IntValue(air.rows));
@@ -693,11 +706,14 @@ module.exports = class Processor {
             this.scope.popInstanceType(['witness', 'fixed', 'im']);
             this.context.pop();
             console.log(`END AIR ${subproofName} (${airRows}) #${this.airId}`);
+            Context.airName = false;
             ++this.airId;
         }
         this.finalSubproofScope();
         this.scope.popInstanceType();
         this.currentSubproof = false;
+        Context.subproofName = false;
+        this.references.clearScope('subproof');
         ++this.subproofId;
     }
     finalAirScope() {
@@ -706,6 +722,7 @@ module.exports = class Processor {
     clearAirScope(label = '') {
         this.references.clearType('fixed', label);
         this.references.clearType('witness', label);
+        this.references.clearScope('air');
         this.expressions.clear(label);
     }
     finalSubproofScope() {
@@ -715,10 +732,12 @@ module.exports = class Processor {
         this.callDelayedFunctions('proof', 'final');
     }
     callDelayedFunctions(scope, event) {
+        console.log(this.delayedCalls);
         if (typeof this.delayedCalls[scope] === 'undefined' || typeof this.delayedCalls[scope][event] === 'undefined') {
             return false;
         }
         for (const fname in this.delayedCalls[scope][event]) {
+            console.log(`CALL DELAYED(${scope},${event}) FUNCTION ${fname}`);
             this.execCall({ op: 'call', function: {name: fname}, args: [] });
         }
     }
@@ -815,8 +834,8 @@ module.exports = class Processor {
         this.delayedCalls[scope][event][fname].sourceRefs.push(this.context.sourceRef);
     }
     execExpr(s) {
-        console.log(s.expr);
-        this.expressions.eval(s.expr);
+        s.expr.eval();
+        // this.expressions.eval(s.expr);
     }
     decodeNameAndLengths(s) {
         return [s.name, this.decodeLengths(s)];
@@ -825,7 +844,7 @@ module.exports = class Processor {
         let values = [];
         if (indexes) {
             for (const index of indexes) {
-                values.push(this.expressions.e2number(index));
+                values.push(Number(index.evalAsInt()));
             }
         }
         return values;
@@ -888,20 +907,21 @@ module.exports = class Processor {
         } else {
             throw new Error(`Constraint definition on invalid scope (${scopeType}) ${this.context.sourceRef}`);
         }
-        console.log(`\x1B[1;36;44m${prefix}CONSTRAINT      > ${expr.toString({hideClass:true, hideLabel:false})} === 0 (${this.sourceRef})\x1B[0m`);
-        console.log(`\x1B[1;36;44m${prefix}CONSTRAINT (RAW)> ${expr.toString({hideClass:true, hideLabel:true})} === 0 (${this.sourceRef})\x1B[0m`);
+        console.log(`\x1B[1;36;44m${prefix}CONSTRAINT [${Context.proofLevel}] > ${expr.toString({hideClass:true, hideLabel:false})} === 0 (${this.sourceRef})\x1B[0m`);
+        console.log(`\x1B[1;36;44m${prefix}CONSTRAINT [${Context.proofLevel}] (RAW) > ${expr.toString({hideClass:true, hideLabel:true})} === 0 (${this.sourceRef})\x1B[0m`);
     }
     execVariableIncrement(s) {
         // REVIEW used only inside loop (increment) in other cases was an expression
         const name = s.name;
         const value = this.references.get(name, []);
         // REVIEW: could be an expression (if expression x+1+1 = x+2)
-        console.log(s.pre, s.post, value.getValue());
-        this.references.set(name, [], value.getValue() + s.pre + s.post);
+        const intValue = value.getValue();
+        console.log(`INCREMENT ${s.name} = ${intValue} + ${s.pre + s.post} = ${intValue + s.pre + s.post}`);
+        // console.log(s.pre, s.post, value.getValue());
+        this.references.set(name, [], intValue + s.pre + s.post);
     }
     execVariableDeclaration(s) {
-        console.log('VARIABLE DECLARATION '+this.context.sourceRef+' init:'+s.init);
-        console.log(s);
+        console.log('VARIABLE DECLARATION '+Context.sourceRef+' init:'+s.init);
         const init = typeof s.init !== 'undefined';
 //         console.log(s);
         const count = s.items.length;
@@ -917,42 +937,26 @@ module.exports = class Processor {
             const scope = s.scope ?? false;
             let initValue = null;
             if (init) {
-                console.log([name, s.vtype, Context.sourceRef]);
+                console.log(name, s.vtype, Context.sourceRef);
                 switch (s.vtype) {
                     case 'expr':
-                        // s.init[index].expr.dump('INIT1 '+name);
-                        console.log(s.init[index]);
-                        // initValue = s.init[index].eval();
-                        console.log('CALL #2.1');
                         initValue = s.init[index].eval();
-                        console.log('CALL #2.1E');
-                        console.log(initValue);
-                        console.log('CALL #2.1F');
-                        // initValue.dump('INIT2 '+name);
                         break;
                     case 'int':
-                        console.log(s);
-                        console.log('CALL #2.2');
-                        console.log(s.init[index]);
-                        const _v = s.init[index].eval();
-                        console.log(_v);
-                        console.log('CALL #2.2E');
-                        initValue = new ExpressionItems.IntValue(_v);
-                        console.log('CALL #2.2F');
+                        initValue = s.init[index].eval().asIntItem();
                         break;
                     case 'string':
-                        console.log('CALL #2.3');
                         initValue = new ExpressionItems.StringValue(this.expressions.e2value(s.init[index]));
-                        console.log('CALL #2.3E');
                         break;
                 }
+                console.log(name, s.vtype, initValue.toString ? initValue.toString() : initValue);
             }
-            console.log('CALL #_3');
-            console.log(initValue);
-            console.log('CALL #3');
             this.references.declare(name, s.vtype, lengths, { scope, sourceRef, const: s.const ?? false }, initValue);
-            console.log('CALL #3E');
-            // if (initValue !== null) this.references.set(name, [], initValue);
+            if (initValue !== null) {
+                const initValueText = typeof initValue.toString === 'function' ? initValue.toString() : initValue;
+                console.log(`ASSIGN(DECL) ${name} = ${initValueText} \x1B[0;90m[${Context.sourceTag}]\x1B[0m`);
+                // this.references.set(name, [], initValue);
+            }
         }
     }
     execConstantDefinition(s) {
@@ -1034,6 +1038,6 @@ module.exports = class Processor {
         return new ReturnCmd(res);
     }
     e2value(e, s, title) {
-        return this.expressions.e2value(e, s, title);
+        return e.evalAsValue();
     }
 }

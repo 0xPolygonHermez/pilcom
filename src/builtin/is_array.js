@@ -1,4 +1,5 @@
 const Function = require("../function.js");
+const IntValue = require('../expression_items/int_value.js');
 
 module.exports = class IsArray extends Function {
     constructor (parent) {
@@ -21,6 +22,6 @@ module.exports = class IsArray extends Function {
         return 0n;
     }
     exec(s, mapInfo) {
-        return mapInfo;
+        return new IntValue(mapInfo);
     }
 }

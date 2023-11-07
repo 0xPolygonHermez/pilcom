@@ -12,6 +12,9 @@ module.exports = class ArrayOf extends RuntimeItem {
         this._array = array.clone();
         console.log(array.constructor.name, array, this._array);
     }
+    toString(options) {
+        return super.toString(options)+'['+this._array.lengths.join('],[')+']';
+    }
     get array() {
         return this._array;
     }

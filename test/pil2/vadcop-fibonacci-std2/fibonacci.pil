@@ -1,4 +1,4 @@
-include "../vadcop/std_sum.pil"
+include "../std2/std_mset_lookup_range.pil"
 include "module.pil";
 
 public mod;
@@ -17,8 +17,8 @@ subproof aggregate Fibonacci(2**16, 2**18) {
     L1 * (b - in1) === 0;
     L1 * (a - in2) === 0;
     L1' * (a - out) === 0;
-    // multiset_require(MODULE_ID, 1, [a*a + b*b, a' * (1 - L1'2) + out * L1'2])
-    multiset_require(MODULE_ID, 1, [a*a + b*b, a'])
+
+    multiset_assumes(MODULE_ID, 1, [a*a + b*b, a'])
 };
 
 

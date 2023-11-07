@@ -93,7 +93,10 @@ module.exports = class Indexable {
             return res.value.clone();
         }
         if (typeof res.value === 'undefined') {
-           return new this.expressionItemClass();
+            if (this.expressionItemClass.createWithId) {
+                return new this.expressionItemClass(id);
+            }
+            return new this.expressionItemClass();
         }
         assertLog(typeof this.expressionItemClass.createFrom === 'function', [this.type, this.constructor.name, this.expressionItemClass, res, res.value]);
         return this.expressionItemClass.createFrom(res.value);
@@ -123,8 +126,8 @@ module.exports = class Indexable {
         const item = this.get(id);
         console.log(item);
         console.log(value.constructor.name);
-        if (value && typeof value.toString === 'function') console.log(value.toString());
-        else console.log(value);
+        // if (value && typeof value.toString === 'function') console.log(value.toString());
+        // else console.log(value);
         assertLog(item && typeof item.setValue === 'function', {type: this.type, definition: this.definitionClass, id, item: item});
         item.setValue(value);
 /*

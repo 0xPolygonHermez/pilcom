@@ -47,6 +47,13 @@ module.exports = class Containers {
         }
         throw new Error(`unsetProperty was called with invalid property ${property}`);
     }
+    clearScope(proofScope) {
+        console.log(`CLEAR-SCOPE.CONTAINERS.IN ${proofScope}`, Object.keys(this.containers).map(name => [name, this.containers[name].scope]));
+        this.containers = Object.keys(this.containers)
+            .filter(name => this.containers[name].scope !== proofScope)
+            .reduce((containers, name) => { containers[name] = this.containers[name]; return containers; }, {});
+        console.log(`CLEAR-SCOPE.CONTAINERS.OUT ${proofScope}`, Object.keys(this.containers).map(name => [name, this.containers[name].scope]));
+    }
     create(name, alias = false)
     {
         if (this.current !== false) {

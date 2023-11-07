@@ -4,14 +4,21 @@ const StringValue = require("./string_value.js");
 const Context = require('../context.js');
 
 class StringTemplate extends StringValue {
+    constructor (value = '') {
+        assertLog(typeof value === 'string', value);
+        super(value);
+    }
     evalTemplate(options) {
-        console.log('BEFORE TEMPLATE');
-        const res = new StringValue(Context.processor.evaluateTemplate(this.value));
-        console.log('AFTER TEMPLATE');
-        return res;
+        return new StringValue(Context.processor.evaluateTemplate(this.value));
+    }
+    cloneInstance() {
+        return new StringTemplate(this.value);
+    }
+    dump(options) {
+        return '`'+this.value+'`';
     }
     toString(options) {
-        return '"'+this.evalTemplate(options)+'"';
+        return this.evalTemplate(options);
     }
     getValue() {
         return this.evalTemplate();
@@ -22,7 +29,7 @@ class StringTemplate extends StringValue {
     asStringItem() {
         return this.evalTemplate();
     }
-    eval(options = {}) {
+    evalInside(options = {}) {
         return this.evalTemplate(options);
     }
 }

@@ -177,6 +177,9 @@ class ExpressionItem {
         results.next = this.evalNext(options);
         return results.final ? results.final : results.inside;
     }
+    evalAsItem(options) {
+        return this.clone();
+    }
 }
 
 module.exports = ExpressionItem;

@@ -1,5 +1,6 @@
 const ExpressionItem = require("./expression_item.js");
 module.exports = class ProofItem extends ExpressionItem {
+    static createWithId = true;
     constructor (id) {
         super();
         this.id = id;
@@ -29,7 +30,6 @@ module.exports = class ProofItem extends ExpressionItem {
         return false;
     }
     cloneUpdate(source) {
-        console.log(['PROOFITEM.CLONEUPDATE', source.rowOffset]);
         super.cloneUpdate(source);
         if (source.rowOffset) {
             this.rowOffset = source.rowOffset.clone();

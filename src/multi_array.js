@@ -5,6 +5,8 @@ class MultiArray {
     constructor (lengths, options = {}) {
         // baseOffset is accumulated offset, means parentOffset + new offset.
         this.baseOffset = options.baseOffset ?? 0;
+        assertLog(Array.isArray(lengths), lengths);
+        assertLog(lengths.every(x => typeof x === 'number'), lengths);
         this.initOffsets(lengths);
 
         // if parentInitizalized means need to extract

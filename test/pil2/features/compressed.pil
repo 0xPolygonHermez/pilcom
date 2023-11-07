@@ -1,0 +1,96 @@
+subproof Compress(2**23) {
+    col witness a,b,c,d;
+    challenge stage(2) alpha;
+    // challenge stage(2) beta;
+
+    expr e = a;
+    println("e=",e);
+    for (int i = 0; i < 3; i = i + 1) {
+        e = e * alpha + b;
+        println("e=",e);
+    }
+    e = e * 24 + c;
+    println("e=",e);
+    e = 0;
+
+    expr cols[10];
+    cols[0] = a;
+    cols[1] = b;
+    cols[2] = c;
+    // println(cols[0], cols[1], cols[2]);
+
+    // FAIL e = (e + cols[0])*alpha;
+    // expr k = (e + cols[0])*alpha;
+    // println("e,k=",k);
+
+    for (int icol = 0; icol < 3; icol = icol + 1) {
+        // FAIL e = (e + cols[icol])*alpha;
+        e = (e + cols[icol])*alpha;
+        // OK e = (e + alpha)*cols[icol];
+        println("e=",e);
+    }
+
+/*
+    int opid = 73;
+    expr cols_compressed = 0;
+    println("cols", cols);
+    println("length(cols)", length(cols));
+    println("cols[0]", cols[0]);
+    for (int icol = 0; icol < length(cols); icol = icol + 1) {
+        println("cols_compressed", cols_compressed, "icol", icol, "cols[icol]", cols[icol]);
+        expr pcols_compressed = cols_compressed;
+        cols_compressed = (pcols_compressed + cols[icol]) * 18;
+        println("cols_compressed (out)", cols_compressed);
+    }
+
+    println("KKKKKK cols_compressed", cols_compressed);
+    // the opid is added to avoid soundness issues between different PIOP checks
+    cols_compressed = (cols_compressed + opid) + beta;
+    cols_compressed === 20;
+
+    cols_compressed = 0;
+//    println("cols_compressed", cols_compressed, "icol", icol, "cols[icol]", cols[icol]);
+    cols_compressed = (cols_compressed + cols[0]) * 18;
+    //println("cols_compressed (out)", cols_compressed);
+
+    //icol = icol + 1;
+    //  println("cols_compressed", cols_compressed, "icol", icol, "cols[icol]", cols[icol]);
+    cols_compressed = (cols_compressed + cols[1]) * 18;
+    // println("cols_compressed (out)", cols_compressed);
+
+    // icol = icol + 1;
+    // println("cols_compressed", cols_compressed, "icol", icol, "cols[icol]", cols[icol]);
+    cols_compressed = (cols_compressed + cols[2]) * 18;
+    // println("cols_compressed (out)", cols_compressed);
+
+    cols_compressed = (cols_compressed + opid) + beta;
+    // println("cols_compressed (out)", cols_compressed);
+
+    cols_compressed === 30;
+*/
+/*
+
+    function compress_cols(int opid, expr cols[]): expr {
+        expr cols_compressed = 0;
+        println("cols", cols);
+        println("length(cols)", length(cols));
+        println("cols[0]", cols[0]);
+//        for (int icol = length(cols) - 1; icol >= 0; icol = icol - 1) {
+        for (int icol = 0; icol < length(cols); icol = icol + 1) {
+            println("cols_compressed", cols_compressed, "icol", icol, "cols[icol]", cols[icol]);
+            cols_compressed = (cols_compressed + cols[icol]) * 18;
+            println("cols_compressed (out)", cols_compressed);
+            // cols_compressed = cols_compressed + cols[icol];
+        }
+
+        println("KKKKKK cols_compressed", cols_compressed);
+        // the opid is added to avoid soundness issues between different PIOP checks
+        cols_compressed = (cols_compressed + opid) + beta;
+        cols_compressed === 17;
+        return cols_compressed;
+    }
+
+    expr result = compress_cols(13, [a, b, c]);
+    println("result=", result);
+*/
+}

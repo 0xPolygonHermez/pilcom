@@ -288,13 +288,17 @@ module.exports = class Expressions {
         return Context.references.getTypeInfo(names, e.__indexes, options);
     }
     e2num(e, s, title = '') {
+        DEPRECATED;
         return this.e2types(e, s, title, ['number','bigint']);
     }
     e2number(e, s, title = '') {
+        DEPRECATED;
         let res = this.e2types(e, s, title, ['number','bigint'], false);
         return Number(res);
     }
     e2types(e, s, title, types, toBigInt = true) {
+        DEPRECATED;
+
         // TODO: review specify PRE/POST on expression conversion ==> refactorize !!!
         let res = e;
         if (res instanceof Expression) {
@@ -324,9 +328,11 @@ module.exports = class Expressions {
         return this.getValueTypes(e, s, title, ['number','bigint','string']);
     }
     e2value(e, s, title = '') {
+        DEPRECATED;
         return this.e2types(e, s, title, ['number','bigint','string']);
     }
     e2bool(e, s, title = '') {
+        DEPRECATED;
         let res = this.e2types(e, s, title, ['number','bigint','string']);
         if (typeof res === 'string') {
             return res !== '';

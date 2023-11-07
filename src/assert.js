@@ -8,7 +8,7 @@ function assertLog(condition, info) {
 }
 
 function assertReturnInstanceOf(value, cls, info) {
-    _assert(value instanceof cls);
+    assertLog(value instanceof cls, [value, info]);
     return value;
 }
 module.exports = {

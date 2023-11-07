@@ -12,6 +12,7 @@ module.exports = class Defined extends Function {
             throw new Error('Invalid number of parameters');
         }
         const arg0 = s.args[0];
+        console.log('DEFINED', arg0);
         let value = false;
         try {
             if (arg0) {
@@ -34,6 +35,7 @@ module.exports = class Defined extends Function {
         return res;
     }
     exec(s, mapInfo) {
+        console.log('DEFINED', mapInfo);
         return mapInfo;
     }
 }

@@ -1,4 +1,6 @@
 const Function = require("../function.js");
+const IntValue = require('../expression_items/int_value.js');
+
 module.exports = class Error extends Function {
     constructor (parent) {
         super(parent, {funcname: 'error', args: [], returns: [] });
@@ -24,6 +26,8 @@ module.exports = class Error extends Function {
             caller = e.stack.split('\n').slice(1).join('\n');
         }
         console.log(caller);*/
-        console.log(`\x1B[1;35m[${s.debug}] ERROR ${mapInfo.join(' ')}\x1B[0m`);
+        console.log(`\x1B[1;35mERROR ${mapInfo.join(' ')}\x1B[0m`);
+        EXIT_HERE;
+        return new IntValue(0n);
     }
 }

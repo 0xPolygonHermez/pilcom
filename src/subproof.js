@@ -28,6 +28,7 @@ module.exports = class Subproof {
         if (!this.insideFirstAir) {
             const spvNonDeclared = Object.keys(this.spvDeclaredInsideThisAir).filter(name => this.spvDeclaredInsideThisAir[name] === false);
             if (spvNonDeclared.length > 0) {
+                console.log(spvNonDeclared);
                 throw new Error(``);
             }
         }

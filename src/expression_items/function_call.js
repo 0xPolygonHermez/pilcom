@@ -37,7 +37,7 @@ module.exports = class FunctionCall extends RuntimeItem {
         if (Context.sourceTag === 'basic_functions.pil:12') debugger;
         const definition = Context.references.get(this.name, options);
         const res = Context.processor.executeFunctionCall(this.name, this);
-        console.log(res);
+        console.log(this.name, res);
         return res;
     }
 }

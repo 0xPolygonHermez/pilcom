@@ -1,4 +1,5 @@
 const Function = require("../function.js");
+const IntValue = require('../expression_items/int_value.js');
 module.exports = class Println extends Function {
     constructor (parent) {
         super(parent, {funcname: 'println', args: [], returns: [] });
@@ -11,7 +12,7 @@ module.exports = class Println extends Function {
                 continue;
             }
 
-            const value = this.expressions.e2value(arg);
+            const value = arg.eval();
             texts.push(value);
         }
         return texts;
@@ -24,6 +25,7 @@ module.exports = class Println extends Function {
             caller = e.stack.split('\n').slice(1).join('\n');
         }
         console.log(caller);*/
-        console.log(`\x1B[1;35m[${s.debug}] ${mapInfo.join(' ')} (DEEP:${this.scope.deep})\x1B[0m`);
+        console.log(`\x1B[1;35mPRINTLN ${mapInfo.join(' ')}\x1B[0m`);
+        return new IntValue(0);
     }
 }

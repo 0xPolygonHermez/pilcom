@@ -1,6 +1,7 @@
 const {assert, assertLog} = require('./assert.js');
 const MultiArray = require("./multi_array.js");
 const ArrayOf = require('./expression_items/array_of.js');
+const Context = require('./context.js');
 
 /**
  * @property {MultiArray} array
@@ -63,7 +64,11 @@ class Reference {
             let _indexes = [...indexes];
             _indexes.push(index);
             if (level + 1 === this.array.dim) {
-                this.setOneItem(value.getItem(_indexes), _indexes, options);
+                if (Array.isArray(value)) {
+                    this.setOneItem(value[_indexes[level]], _indexes, options);
+                } else {
+                    this.setOneItem(value.getItem(_indexes), _indexes, options);
+                }
                 continue;
             }
             this.setArrayLevel(level+1, _indexes, value, options);
@@ -80,7 +85,7 @@ class Reference {
         const id = this.getId(indexes);
         if (this.const) {
             // TODO: more info
-            throw new Error('setting a const element');
+            throw new Error(`setting ${this.name} a const element on ${Context.sourceRef}`);
         }
         this.instance.set(id, value);
     }
@@ -127,6 +132,7 @@ class Reference {
                 res = new ArrayOf(this.type, this.array.createSubArray(evaluatedIndexes, locator));
             }
         } else if (evaluatedIndexes.length > 0) {
+            console.log(this);
             throw new Error('try to access to index on non-array value');
         }
         if (res === false) {

@@ -35,6 +35,12 @@ class IntValue extends ValueItem {
     asInt() {
         return this.value;
     }
+    asIntItem() {
+        return this.clone();
+    }
+    asIntDefault(defaultValue) {
+        return this.value;
+    }
     asNumber() {
         return Number(this.value);
     }

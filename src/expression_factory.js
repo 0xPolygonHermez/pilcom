@@ -86,6 +86,7 @@ module.exports = class ExpressionFactory {
         let res;
         if (obj.template) {
             res = new StringTemplate(obj.value);
+            console.log('TEMPLATE #####) '+obj.value);
             delete obj.template;
         }
         else {

@@ -78,6 +78,9 @@ module.exports = class References {
             delete this.references[name];
         }
     }
+    clearScope(proofScope) {
+        this.containers.clearScope(proofScope);
+    }
     isReferencedType(type) {
         return type.at(0) === '&'
     }
@@ -165,7 +168,7 @@ module.exports = class References {
         assert(!name.includes('.object'));
 
         const nameInfo = this.decodeName(name);
-        console.log(`DECLARE_REFERENCE ${name} ==> ${nameInfo.name} ${type} []${lengths.length} scope:${nameInfo.scope} #${Context.scope.deep} ${initValue}[type: ${initValue instanceof Object ? initValue.constructor.name : typeof initValue}]`, options);
+        console.log(`DECLARE_REFERENCE ${name} ==> ${nameInfo.name} ${type} ${lengths.length ? '[' + lengths.join(',') + '] ': ''}scope:${nameInfo.scope} #${Context.scope.deep} ${initValue}[type: ${initValue instanceof Object ? initValue.constructor.name : typeof initValue}]`, options);
 
         let [array, size] = Reference.getArrayAndSize(lengths);
 
@@ -408,7 +411,8 @@ module.exports = class References {
         return reference;
     }
     isVisible(def) {
-        return !def.scopeId || def.type === 'constant' || def.type === 'function' ||
+        console.log('ISVISIBLE', (def.constructor ?? {name: '_'}).name, def);
+        return !def.scopeId || !this.hasScope(def.type) || ['constant', 'function', 'witness', 'fixed'].includes(def.type) ||
                 def.scopeId >= this.visibilityScope; // || def.scopeId <= Context.scope.getScopeId('air');
     }
     /**

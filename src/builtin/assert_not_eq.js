@@ -1,4 +1,6 @@
 const Function = require("../function.js");
+const IntValue = require('../expression_items/int_value.js');
+
 module.exports = class AssertNotEq extends Function {
     constructor (parent) {
         super(parent, {funcname: 'assert_not_eq'});
@@ -15,7 +17,7 @@ module.exports = class AssertNotEq extends Function {
         return 0n;
     }
     exec(s, mapInfo) {
-        return mapInfo;
+        return new IntValue(mapInfo);
     }
 
 }
