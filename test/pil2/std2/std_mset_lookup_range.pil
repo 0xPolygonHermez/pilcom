@@ -295,6 +295,7 @@ private function PIOP_proof() {
 }
 
 private function check_was_completed() {
+/*
     for (int opid in proof.std.piop.opids) {
         use proof.std.piop.`id${opid}`;
         if (assumes == 0) {
@@ -302,6 +303,17 @@ private function check_was_completed() {
         }
         if (proves == 0) {
             error(`PIOP #${opid} defined without proves`);
+        }
+    }*/
+
+    for (int index = 0; index < proof.std.piop.opids_count; index = index + 1) {
+        int opid = proof.std.piop.opids[index];
+        use proof.std.piop.`id${opid}`;
+        if (assumes == 0) {
+            error(`PIOP #${opid} defined without require`);
+        }
+        if (proves == 0) {
+            error(`PIOP #${opid} defined without provide`);
         }
     }
 }

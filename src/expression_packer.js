@@ -4,58 +4,58 @@ const ExpressionItems = require('./expression_items.js');
 const Context = require('./context.js');
 const { DefinitionItem } = require('./definition_items.js');
 
-module.exports = class ExpressionPack {
-    constructor() {
-        this.expression = false;
+module.exports = class ExpressionPacker {
+    constructor(container = false, expression = false) {
+        this.set(container, expression);
     }
-    set(expression) {
+    set(container, expression) {
+        this.container = container;
         this.expression = expression;
-        return this;
     }
-    packAlone(container, options) {
-        this.operandPack(container, this.expression.getAloneOperand(), 0, options);
-        return container.pop(1)[0];
+    packAlone(options) {
+        this.operandPack(this.expression.getAloneOperand(), 0, options);
+        return this.container.pop(1)[0];
     }
-    pack(container, options) {
+    pack(options) {
         let top = this.expression.stack.length-1;
-        return this.stackPosPack(container, top, options);
+        return this.stackPosPack(top, options);
     }
-    stackPosPack(container, pos, options) {
+    stackPosPack(pos, options) {
         const st = this.expression.stack[pos];
         if (st.op === false) {
-            this.operandPack(container, st.operands[0], pos, options);
+            this.operandPack(st.operands[0], pos, options);
             return false;
         }
         for (const ope of st.operands) {
-            this.operandPack(container, ope, pos, options);
+            this.operandPack(ope, pos, options);
         }
         switch (st.op) {
             case 'mul':
-                return container.mul();
+                return this.container.mul();
 
             case 'add':
-                return container.add();
+                return this.container.add();
 
             case 'sub':
-                return container.sub();
+                return this.container.sub();
 
             case 'neg':
-                return container.neg();
+                return this.container.neg();
 
             default:
                 throw new Error(`Invalid operation ${st.op} on packed expression`);
         }
     }
 
-    operandPack(container, ope, pos, options) {
+    operandPack(ope, pos, options) {
         if (ope instanceof ExpressionItems.ValueItem) {
-            container.pushConstant(ope.value);
+            this.container.pushConstant(ope.value);
         } else if (ope instanceof ExpressionItems.ProofItem) {
-            this.referencePack(container, ope, options);
+            this.referencePack(ope, options);
         } else if (ope instanceof ExpressionItems.StackItem) {
-            const eid = this.stackPosPack(container, pos-ope.getOffset(), options);
+            const eid = this.stackPosPack(pos-ope.getOffset(), options);
             if (eid !== false) {        // eid === false => alone operand
-                container.pushExpression(eid);
+                this.container.pushExpression(eid);
             }
         } else {
             const opeType = ope instanceof Object ? ope.constructor.name : typeof ope;
@@ -63,7 +63,7 @@ module.exports = class ExpressionPack {
         }
 
     }
-    referencePack(container, ope, options) {
+    referencePack(ope, options) {
         // TODO stage expression
         // container.pushExpression(Expression.parent.getPackedExpressionId(id, container, options));
         // break;
@@ -80,27 +80,27 @@ module.exports = class ExpressionPack {
             console.log(ope);
             // CURRENT ERROR: in this scope definition not available.
             console.log(def);
-            container.pushWitnessCol(id, ope.getRowOffset(), def.stage);
+            this.container.pushWitnessCol(id, ope.getRowOffset(), def.stage);
 
         } else if (ope instanceof ExpressionItems.FixedCol) {
             // container.pushFixedCol(id, next ?? 0);
-            container.pushFixedCol(id, ope.getRowOffset());
+            this.container.pushFixedCol(id, ope.getRowOffset());
 
         } else if (ope instanceof ExpressionItems.Public) {
             // container.pushPublicValue(id)
-            container.pushPublicValue(id);
+            this.container.pushPublicValue(id);
 
         } else if (ope instanceof ExpressionItems.Challenge) {
             // container.pushChallenge(id, stage ?? 1);
-            container.pushChallenge(id, def.stage);
+            this.container.pushChallenge(id, def.stage);
 
         } else if (ope instanceof ExpressionItems.Proofval) {
             // container.pushProofValue(id)
-            container.pushProofValue(id);
+            this.container.pushProofValue(id);
 
         } else if (ope instanceof ExpressionItems.Subproofval) {
             // container.pushSubproofValue(id)
-            container.pushSubproofValue(id);
+            this.container.pushSubproofValue(id);
         } else {
             throw new Error(`Invalid reference class ${ope.constructor.name} to pack`);
         }

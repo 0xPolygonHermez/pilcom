@@ -24,7 +24,10 @@ module.exports = class References {
                 break;
             }
         }
-        return instance.get ? instance.get(item.id): false;
+        console.log(instance, item.id);
+        const res = instance.get ? instance.get(item.id): false;
+        console.log(res);
+        return res;
     }
 /*    getDefinition(name, indexes) {
         const reference = this.getReference(name);
@@ -130,7 +133,19 @@ module.exports = class References {
         }
         return [false, type];
     }
-    checkAndGetContainer(nameInfo) {
+    getGlobalScope(name, useCurrentContainer = true) {
+        const res = this.decodeName(name);
+        if (res.absoluteScope) {
+            if (res.isProofScope) return 'proof';
+            if (res.isSubproofScope) return 'subproof';
+            if (res.isAirScope) return 'air';
+        }
+        if (useCurrentContainer) {
+            this.containers.getCurrent();
+        }
+        return false;
+    }
+    checkAndGetContainer(nameInfo){
         const container = this.containers.getCurrent();
         if (container && nameInfo.scope !== false) {
             throw new Error(`Static reference ${nameInfo.name} inside container not allowed`);

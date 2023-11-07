@@ -15,6 +15,7 @@ const NATIVE_REFS = ['witness', 'fixed', 'public', 'challenge', 'subproofvalue',
 const NATIVE_OPS = ['add', 'sub', 'mul', 'neg'];
 const VALID_NATIVE_OPS = [false, ...NATIVE_OPS];
 const Exceptions = require('./exceptions.js');
+const ExpressionPacker = require('./expression_packer.js');
 
 // TODO: StackPos as class
 
@@ -1195,18 +1196,18 @@ class Expression extends ExpressionItem {
         }
         return ope.toString(options);
     }
-    packAlone(container, options) {
-        this.operandPack(container, this.getAloneOperand(), 0, options);
-        return container.pop(1)[0];
+    pack(container, options) {
+        const packer = new ExpressionPacker(container, this);
+        this.dump('PRE-PACK');
+        return packer.pack(options);
+    }
+/*    packAlone(container, options) {
+        return this.expressionPack.packAlone(container, options);
     }
     pack(container, options) {
-        if (this.isAlone()) {
-            return this.packAlone(container, options);
-        }
-        let top = this.stack.length-1;
-        return this.stackPosPack(container, top, options);
-    }
-    stackPosPack(container, pos, options) {
+        return Context.expressions.pack(container, options);
+    }*/
+/*    stackPosPack(container, pos, options) {
         const st = this.stack[pos];
         if (st.op === false) {
             this.operandPack(container, st.operands[0], pos, options);
@@ -1234,63 +1235,43 @@ class Expression extends ExpressionItem {
     }
 
     operandPack(container, ope, pos, options) {
-        switch (ope.type) {
-            case OP_VALUE:
-                container.pushConstant(ope.value);
-                break;
-
-            case OP_ID_REF:
-                this.referencePack(container, ope.refType, ope.id, ope.next, ope.stage, options);
-                break;
-
-            case OP_STACK:
-                // TODO: expression == false;
-                const eid = this.stackPosPack(container, pos-ope.offset, options);
-                if (eid !== false) {        // eid === false => alone operand
-                    container.pushExpression(eid);
-                }
-                break;
-
-            default:
-                console.log(ope);
-                throw new Error(`Invalid reference ${ope.type} on packed expression`);
+        if (ope instanceof ExpressionItems.ValueItem) {
+            container.pushConstant(ope.getValue());
         }
-
-    }
-    referencePack(container, type, id, next, stage, options) {
-        switch (type) {
-            case 'im':
-                container.pushExpression(Expression.parent.getPackedExpressionId(id, container, options));
-                break;
-
-            case 'witness':
-                container.pushWitnessCol(id, next ?? 0, stage ?? 1); // TODO: stage
-                break;
-
-            case 'fixed':
-                container.pushFixedCol(id, next ?? 0);
-                break;
-
-            case 'public':
-                container.pushPublicValue(id);
-                break;
-
-            case 'challenge':
-                container.pushChallenge(id, stage ?? 1);
-                break;
-
-            case 'subproofvalue':
-                container.pushSubproofValue(id);
-                break;
-
-            case 'proofvalue':
-                container.pushProofValue(id);
-                break;
-
-            default:
-                throw new Error(`Invalid reference type ${type} to pack`);
+        else if (ope instanceof Expression) {
+            container.pushExpression(Expression.parent.getPackedExpressionId(id, container, options));
+        }
+        else if (ope instanceof ExpressionItems.WitnessCol) {
+            container.pushWitnessCol(ope.id, ope.next ?? 0, stage ?? 1); // TODO: stage
+        }
+        else if (ope instanceof ExpressionItems.FixedCol) {
+            container.pushFixedCol(ope.id, ope.next ?? 0);
+        }
+        else if (ope instanceof ExpressionItems.Public) {
+            container.pushPublicValue(ope.id);
+        }
+        else if (ope instanceof ExpressionItems.Challenge) {
+            container.pushChallenge(ope.id, stage ?? 1);
+        }
+        else if (ope instanceof ExpressionItems.Subproofval) {
+            container.pushSubproofValue(ope.id);
+        }
+        else if (ope instanceof ExpressionItems.Proofval) {
+            container.pushProofValue(ope.id);
+        }
+        else if (ope instanceof ExpressionItems.StackItem) {
+            // TODO: expression == false;
+            const eid = this.stackPosPack(container, pos-ope.offset, options);
+            if (eid !== false) {        // eid === false => alone operand
+                container.pushExpression(eid);
+            }
+        }
+        else {
+            console.log(ope);
+            throw new Error(`Invalid reference ${ope.type} on packed expression`);
         }
     }
+*/
     resolve() {
         const res = this.eval();
         if (res instanceof Expression) {

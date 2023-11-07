@@ -357,6 +357,11 @@ module.exports = class Processor {
         this.hints.define(name, res);
     }
     processHintData(hdata) {
+        if (hdata instanceof Expression) {
+            const value = hdata.eval();
+            if (typeof value === 'bigint') return value;
+            return hdata.instance();
+        }
         if (hdata.type === 'array') {
             let result = [];
             for (const item of hdata.data) {
@@ -371,11 +376,6 @@ module.exports = class Processor {
                 result[key] = this.processHintData(hdata.data[key]);
             }
             return result;
-        }
-        if (hdata instanceof Expression) {
-            const value = hdata.eval();
-            if (typeof value === 'bigint') return value;
-            return hdata.instance();
         }
         console.log(hdata);
         EXIT_HERE;

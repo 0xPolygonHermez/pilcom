@@ -26,11 +26,14 @@ module.exports = class Subproof {
     }
     airEnd() {
         if (!this.insideFirstAir) {
-            const spvNonDeclared = Object.keys(this.spvDeclaredInsideThisAir).filter(name => this.spvDeclaredInsideThisAir[name] === false);
-            if (spvNonDeclared.length > 0) {
-                console.log(spvNonDeclared);
-                throw new Error(``);
-            }
+            /* const spvNonDeclared = Object.keys(this.spvDeclaredInsideThisAir).filter(name => this.spvDeclaredInsideThisAir[name] === false);
+            console.log(spvNonDeclared);
+            for (const name of spvNonDeclared) {
+                console.log(Context.references.getReference(name));
+                console.log(Context.references.getReference(name+'__'));
+                // console.log(spvNonDeclared, Context.airName);
+                // throw new Error(``);
+            }*/
         }
         this.insideFirstAir = false;
         this.insideAir = false;
@@ -44,7 +47,11 @@ module.exports = class Subproof {
             // this.colDeclaration(s, 'subproofvalue', true, false, {aggregateType: s.aggregateType});
             console.log(['SUBPROOFVALUE', name,lengths, data]);
             const res = Context.references.declare(name, 'subproofvalue', lengths, data);
+            console.log(Context.references.getNameScope(name));
+            console.log(Context.references.containers.getCurrent())
+            console.log(Context.references.containers.get(Context.references.containers.getCurrent()));
             this.spvDeclaredInFirstAir[name] = {res, lengths: [...lengths]};
+            console.log(res);
             return res;
         }
 

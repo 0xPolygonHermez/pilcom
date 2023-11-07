@@ -469,8 +469,8 @@ module.exports = class ProtoOut {
     toHintField(hdata, options = {}) {
         const path = options.path ?? '';
         // check if an alone expression to use and translate its single operand
-        if (hdata && typeof hdata.isAlone === 'function') {
-            const operand = hdata.packAlone(options.packed, options);
+        if (hdata && typeof hdata.pack === 'function') {
+            const operand = hdata.pack(options.packed, options);
             this.translate(operand);
             return { operand };
         }
@@ -504,7 +504,7 @@ module.exports = class ProtoOut {
             return { hintFieldArray: { hintFields: Array.isArray(result) ? result : [result] }};
         }
         console.log(hdata);
-        throw new Error(`Invalid hint-data (type:${typeof data}) on cloneHint of ${path}`);
+        throw new Error(`Invalid hint-data (type:${typeof hdata}/${(hdata.constructor ?? {name:''}).name}) on cloneHint of ${path}`);
     }
     bint2uint8(value, bytes = 0) {
         let result = new Uint8Array(this.uint8size);

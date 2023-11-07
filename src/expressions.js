@@ -3,14 +3,13 @@ const LabelRanges = require('./label_ranges.js');
 const Expression = require('./expression.js');
 const WitnessCol = require('./expression_items/witness_col.js');
 const NonRuntimeEvaluable = require('./non_runtime_evaluable.js');
-const ExpressionPack = require('./expression_pack.js');
+const ExpressionPacker = require('./expression_packer.js');
 const Context = require('./context.js');
 module.exports = class Expressions {
     constructor () {
         this.expressions = [];
         this.packedIds = [];
         this.labelRanges = new LabelRanges();
-        this.expressionPack = new ExpressionPack();
     }
     clone() {
         let cloned = Object.assign(Object.create(Object.getPrototypeOf(this)), this);
@@ -347,19 +346,20 @@ module.exports = class Expressions {
     }
     pack(container, options) {
         this.packedIds = [];
+        const packer = new ExpressionPacker();
         for (let id = 0; id < this.expressions.length; ++id) {
             if (typeof this.packedIds[id] !== 'undefined') continue;    // already packed
             this.expressions[id].dump('PACK-EXPRESSION ');
-            this.expressionPack.set(this.expressions[id]);
-            this.packedIds[id] = this.expressionPack.pack(container, options);
+            packer.set(container, this.expressions[id]);
+            this.packedIds[id] = packer.pack(options);
             // packedId === false, means directly was a alone term.
         }
     }
     getPackedExpressionId(id, container, options) {
         console.log(id, this.packedIds, this.packedIds[id]);
         if (container && typeof this.packedIds[id] === 'undefined') {
-            this.expressionPack.set(this.expressions[id]);
-            this.packedIds[id] = this.expressionPack.pack(container, options);
+            const packer = new ExpressionPacker(container, this.expressions[id]);
+            this.packedIds[id] = packer.pack(options);
         }
         return this.packedIds[id];
     }
