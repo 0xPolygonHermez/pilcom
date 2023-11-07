@@ -1,17 +1,17 @@
 
 Main-0
 col fixed LLAST = [0...,1];
-multiset_provide(MAIN_ID, LLAST, [step, ...A,....])
+multiset_proves(MAIN_ID, LLAST, [step, ...A,....])
 
 Main-1
-multiset_require(MAIN_ID, L1, [step, ...A,....])
+multiset_assumes(MAIN_ID, L1, [step, ...A,....])
 
 Main-2  512
 
 mu
 
-multiset_require()
-multiset_provide()
+multiset_assumes()
+multiset_proves()
 
 
 SM(i)
@@ -35,11 +35,11 @@ SM(i)
 3 A=30 setA=0 CONST=X
 
 
-multiset_require(MAIN_ID, L1, [step(0), A(30)]);
-multiset_provide(MAIN_ID, LLAST, [step+1(4), A(30)]);
+multiset_assumes(MAIN_ID, L1, [step(0), A(30)]);
+multiset_proves(MAIN_ID, LLAST, [step+1(4), A(30)]);
 
-multiset_require(MAIN_ID, L1, [step(4), A(30)]);
-multiset_provide(MAIN_ID, LLAST, [step+1(8), A(70)]);
+multiset_assumes(MAIN_ID, L1, [step(4), A(30)]);
+multiset_proves(MAIN_ID, LLAST, [step+1(8), A(70)]);
 
 
 
@@ -48,8 +48,8 @@ multiset_provide(MAIN_ID, LLAST, [step+1(8), A(70)]);
 6 A=60 setA=1 CONST=70
 7 A=70 setA=0 CONST=X
 
-multiset_require(MAIN_ID, L1, [step(8), A(70)]);
-multiset_provide(MAIN_ID, LLAST, [step+1(11), A(0)]);
+multiset_assumes(MAIN_ID, L1, [step(8), A(70)]);
+multiset_proves(MAIN_ID, LLAST, [step+1(11), A(0)]);
 
 
 8 A=70 setA=1 CONST=50
@@ -90,22 +90,22 @@ set_transition_constraint(A, setA * (CONST - A) - A,
 
 set_manual_transtion_constraint(XXX);
     cols[];
-multiset_require(MAIN_ID, L1, [step(0), A(30)]);
-multiset_provide(MAIN_ID, LLAST, [step+1(4), A(30)]);
+multiset_assumes(MAIN_ID, L1, [step(0), A(30)]);
+multiset_proves(MAIN_ID, LLAST, [step+1(4), A(30)]);
 
-multiset_require(MAIN_ID, L1, [step(4), A(30)]);
-multiset_provide(MAIN_ID, LLAST, [step+1(8), A(70)]);
+multiset_assumes(MAIN_ID, L1, [step(4), A(30)]);
+multiset_proves(MAIN_ID, LLAST, [step+1(8), A(70)]);
 
-multiset_require(MAIN_ID, L1, [step(8), A(70)]);
-multiset_provide(MAIN_ID, LLAST, [step+1(11), A(0)]);
+multiset_assumes(MAIN_ID, L1, [step(8), A(70)]);
+multiset_proves(MAIN_ID, LLAST, [step+1(11), A(0)]);
 
 // (1-L1) * (A' - * setA * (CONST - A) - A) = 0
 
-multiset_require(MAIN_ID, L1, [step(0), A(30)]);
-multiset_provide(MAIN_ID, LLAST, [step+1(4), setA * (CONST - A) + A]);
+multiset_assumes(MAIN_ID, L1, [step(0), A(30)]);
+multiset_proves(MAIN_ID, LLAST, [step+1(4), setA * (CONST - A) + A]);
 
-multiset_require(MAIN_ID, L1, [step(4), A(30)]);
-multiset_provide(MAIN_ID, LLAST, [step+1(8), A(70)]);
+multiset_assumes(MAIN_ID, L1, [step(4), A(30)]);
+multiset_proves(MAIN_ID, LLAST, [step+1(8), A(70)]);
 
-multiset_require(MAIN_ID, L1, [step(8), A(70)]);
-multiset_provide(MAIN_ID, LLAST, [step+1(11), A(0)]);
+multiset_assumes(MAIN_ID, L1, [step(8), A(70)]);
+multiset_proves(MAIN_ID, LLAST, [step+1(11), A(0)]);

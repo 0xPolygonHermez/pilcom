@@ -22,12 +22,12 @@ subproof aggregate Fibonacci(2**16, 2**18) {
     L1 * (b - in1) === 0;
     L1 * (a - in2) === 0;
 
-    // * multiset_require(MODULE_ID, 1, [a*a + b*b, a'])
+    // * multiset_assumes(MODULE_ID, 1, [a*a + b*b, a'])
 
     // * (1-LLAST) [a*a + b*b, a'] is (1-LLAST) [Arith.x, Arith.x_mod]
     // * cols compressed
-    // gsum_require[0] = ((((L1' * out)+ (1-L1') * a') * std_alpha + a * a + b * b) * std_alpha) + MODULE_ID + std_beta;
-    // gsum_require_mul_count[0] = 1
+    // gsum_assumes[0] = ((((L1' * out)+ (1-L1') * a') * std_alpha + a * a + b * b) * std_alpha) + MODULE_ID + std_beta;
+    // gsum_assumes_mul_count[0] = 1
 
     col witness stage(2) gsum;
 
@@ -37,12 +37,12 @@ subproof aggregate Fibonacci(2**16, 2**18) {
     // * RHS2a = LHS;
     // RHS2a = 1;
     // RHS2b = 0;
-    // * LHS = LHS * gsum_require[i];
+    // * LHS = LHS * gsum_assumes[i];
     // LHS = ((((L1' * out)+ (1-L1') * a') * std_alpha + a * a + b * b) * std_alpha) + MODULE_ID + std_beta
-    // * RHS1 = RHS1 * gsum_require[i];
+    // * RHS1 = RHS1 * gsum_assumes[i];
     // RHS1 = 0
-    // * RHS2b = RHS2b + gsum_require_mul_count[i];
-    // RHS2b = 0 + gsum_require_mul_count[0] = 0 + 1 = 1
+    // * RHS2b = RHS2b + gsum_assumes_mul_count[i];
+    // RHS2b = 0 + gsum_assumes_mul_count[0] = 0 + 1 = 1
     // * RHS2 = RHS2a * RHS2b;
     // RHS2 = 1 * 1 = 1
     // * RHS = RHS1 - RHS2;

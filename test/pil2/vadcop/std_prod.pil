@@ -8,13 +8,13 @@ private function init_multiset_challenges() {
     }
 }
 
-// User interface for multiset requires
-function multiset_require(int opid, expr sel, expr cols[]) {
+// User interface for multiset assumes
+function multiset_assumes(int opid, expr sel, expr cols[]) {
     multiset_update(0, opid, sel, cols);
 }
 
-// User interface for multiset provides
-function multiset_provide(int opid, expr sel, expr cols[]) {
+// User interface for multiset proves
+function multiset_proves(int opid, expr sel, expr cols[]) {
     multiset_update(1, opid, sel, cols);
 }
 
@@ -23,7 +23,7 @@ function multiset_provide(int opid, expr sel, expr cols[]) {
 
 // function aggregate_function ( public table tb, int opid ) : expr {
 //     // verify if correct opid and cols
-//     check_multiset_opid_and_cols(opid, length(cols), provide);
+//     check_multiset_opid_and_cols(opid, length(cols), proves);
 
 //     init_multiset_challenges();
 
@@ -35,12 +35,12 @@ function multiset_provide(int opid, expr sel, expr cols[]) {
 // }
 
 /**
- * Verifies the number of columns of same multiset check (require, provide) is the same.
+ * Verifies the number of columns of same multiset check (assumes, proves) is the same.
  * @param opid (unique) identifier of the multiset check
  * @param _cols number of columns of the multiset check
- * @param provide 1 if provide, 0 if require
+ * @param proves 1 if proves, 0 if assumes
  */
-private function check_multiset_opid_and_cols(int opid, int cols_count, int provide) {
+private function check_multiset_opid_and_cols(int opid, int cols_count, int proves) {
 
     if (cols_count < 1) {
         error(`The number of columns of multiset #${opid} must be at least 1`);
@@ -56,14 +56,14 @@ private function check_multiset_opid_and_cols(int opid, int cols_count, int prov
     }
 
     container air.std.multiset {
-        expr gprod_require = 1;
-        expr gprod_provide = 1;
+        expr gprod_assumes = 1;
+        expr gprod_proves = 1;
     }
 
     container proof.std.multiset.`id${opid}` alias msid {
         int cols;
-        int provide;
-        int require;
+        int proves;
+        int assumes;
     }
 
     if (msid.cols == 0) {
@@ -75,10 +75,10 @@ private function check_multiset_opid_and_cols(int opid, int cols_count, int prov
         error(`The number of columns of multiset #${opid} should be equal to ${msid.cols}`);
     }
 
-    if (provide) {
-        ++msid.provide;
+    if (proves) {
+        ++msid.proves;
     } else {
-        ++msid.require;
+        ++msid.assumes;
     }
     
 }
@@ -90,7 +90,7 @@ private function check_multiset_opid_and_cols(int opid, int cols_count, int prov
  * @param cols array of columns of the argument
  * @return S·([opid + C₁·α + C₂·α² + ... + Cₙ·αⁿ] + β - 1) + 1
  */
-function multiset_prepare_cols(int opid, expr sel, expr cols[]): expr {
+private function multiset_prepare_cols(int opid, expr sel, expr cols[]): expr {
     expr cols_compressed = 0;
     for (int icol = length(cols) - 1; icol >= 0; --icol) {
         cols_compressed = (cols_compressed + cols[icol]) * std_alpha;
@@ -108,14 +108,14 @@ function multiset_prepare_cols(int opid, expr sel, expr cols[]): expr {
 
 /**
  * Given columns C₀,...,Cₙ₋₁, and selector S, it 1] defines the constraints at the air level, 2] updates the values at the subproof level, and 3] updates the constraints at the proof level.
- * @param provide boolean indicating if updating a provide or a require
+ * @param proves boolean indicating if updating a proves or a assumes
  * @param opid (unique) identifier of the argument
  * @param sel selector of the argument
  * @param cols columns of the argument
  */
-function multiset_update(int provide, int opid, expr sel, expr cols[]) {
+private function multiset_update(int proves, int opid, expr sel, expr cols[]) {
     // verify if correct opid and cols
-    check_multiset_opid_and_cols(opid, length(cols), provide);
+    check_multiset_opid_and_cols(opid, length(cols), proves);
 
     init_multiset_challenges();
 
@@ -127,12 +127,12 @@ function multiset_update(int provide, int opid, expr sel, expr cols[]) {
     expr cols_selected = multiset_prepare_cols(opid, sel, cols);
 
     use air.std.multiset;
-    if (provide) {
-        // adding all products of provide called in this air
-        gprod_provide = gprod_provide * cols_selected;
+    if (proves) {
+        // adding all products of proves called in this air
+        gprod_proves = gprod_proves * cols_selected;
     } else {
-        // adding all products of require called in this air
-        gprod_require = gprod_require * cols_selected;
+        // adding all products of assumes called in this air
+        gprod_assumes = gprod_assumes * cols_selected;
     }
 
     // 1] define constraints at the air level
@@ -148,16 +148,16 @@ function multiset_update(int provide, int opid, expr sel, expr cols[]) {
 private function multiset_air() {
     col witness stage(3) gprod;
 
-    //                                              gprod_require
+    //                                              gprod_assumes
     //  gprod === ('gprod * (1 - L1) + L1) * ----------------------------
-    //                                              gprod_provide
+    //                                              gprod_proves
 
 
     col fixed L1 = [1,0...];
 
     expr previous_gprod = 'gprod * (1 - L1) + L1;  // L1 == 1 ? 1 : 'gprod
 
-    grod * air.std.multiset.gprod_provide === previous_gprod * air.std.multiset.gprod_require;
+    grod * air.std.multiset.gprod_proves === previous_gprod * air.std.multiset.gprod_assumes;
 
     L1' * (gprod - subproof.std.multiset.prod_result) === 0;
 }
@@ -172,14 +172,14 @@ private function multiset_proof() {
     proof.std.multiset.gprod === 1;
 }
 
-// It checks wheter there is some multiset check without either provide or require
+// It checks wheter there is some multiset check without either proves or assumes
 private function check_multiset_was_completed() {
     for (int opid in proof.std.multiset.opids) {
-        if (proof.std.multiset.`id${opid}`.require == 0) {
-            error(`Multiset #${opid} defined without require`);
+        if (proof.std.multiset.`id${opid}`.assumes == 0) {
+            error(`Multiset #${opid} defined without assumes`);
         }
-        if (proof.std.multiset.`id${opid}`.provide == 0) {
-            error(`Multiset #${opid} defined without provide`);
+        if (proof.std.multiset.`id${opid}`.proves == 0) {
+            error(`Multiset #${opid} defined without proves`);
         }
     }
 }
@@ -197,37 +197,37 @@ private function init_lookup_challenges() {
     }
 }
 
-// User interface for lookup requires
-function lookup_require(int opid, expr sel, expr cols[]) {
+// User interface for lookup assumes
+function lookup_assumes(int opid, expr sel, expr cols[]) {
     use air.std.lookup.`id${opid}`;
 
-    if (provide == 1) {
-        lookup_update_require(opid, sel, cols);
+    if (proves == 1) {
+        lookup_update_assumes(opid, sel, cols);
     } else {
         selR = sel;
         colsR = cols;
     }
 }
 
-// User interface for lookup provides
-function lookup_provide(int opid, expr sel, expr cols[]) {
+// User interface for lookup proves
+function lookup_proves(int opid, expr sel, expr cols[]) {
     use air.std.lookup.`id${opid}`;
 
-    if (require == 1) {
-        lookup_update_provide(opid, sel, cols);
-        lookup_update_require(opid, selR, colsR);
+    if (assumes == 1) {
+        lookup_update_proves(opid, sel, cols);
+        lookup_update_assumes(opid, selR, colsR);
     } else {
-        lookup_update_provide(opid, sel, cols);
+        lookup_update_proves(opid, sel, cols);
     }
 }
 
 /**
- * Verifies the number of columns of same lookup check (require, provide) is the same.
+ * Verifies the number of columns of same lookup check (assumes, proves) is the same.
  * @param opid (unique) identifier of the lookup check
  * @param _cols number of columns of the lookup check
- * @param provide 1 if provide, 0 if require
+ * @param proves 1 if proves, 0 if assumes
  */
-private function check_lookup_opid_and_cols(int opid, int cols_count, int provide) {
+private function check_lookup_opid_and_cols(int opid, int cols_count, int proves) {
 
     if (cols_count < 1) {
         error(`The number of columns of lookup #${opid} must be at least 1`);
@@ -235,14 +235,14 @@ private function check_lookup_opid_and_cols(int opid, int cols_count, int provid
 
     container air.std.lookup alias look {
         int opids[];
-        expr gprod_require = 1;
-        expr gprod_provide = 1;
+        expr gprod_assumes = 1;
+        expr gprod_proves = 1;
     }
 
     container air.std.lookup.`id${opid}` alias lookid {
         int cols;
-        int provide;
-        int require;
+        int proves;
+        int assumes;
 
         expr selR;
         expr colsR[];
@@ -262,16 +262,16 @@ private function check_lookup_opid_and_cols(int opid, int cols_count, int provid
         error(`The number of columns of lookup #${opid} should be equal to ${lookid.cols}`);
     }
 
-    if (provide) {
-        if (lookid.provide > 0) {
-            error(`Lookup #${opid} provide was called previously`);
+    if (proves) {
+        if (lookid.proves > 0) {
+            error(`Lookup #${opid} proves was called previously`);
         }
-        ++lookid.provide;
+        ++lookid.proves;
     } else {
-        if (lookid.require > 0) {
-            error(`Lookup #${opid} provide was called previously`);
+        if (lookid.assumes > 0) {
+            error(`Lookup #${opid} proves was called previously`);
         }
-        ++lookid.require;
+        ++lookid.assumes;
     }
 }
 
@@ -282,7 +282,7 @@ private function check_lookup_opid_and_cols(int opid, int cols_count, int provid
  * @param cols columns of the argument
  * @return S·[opid + C₁·α + C₂·α² + ... + Cₙ·αⁿ]
  */
-function lookup_prepare_cols (int opid, expr sel, expr cols[]): expr {
+private function lookup_prepare_cols (int opid, expr sel, expr cols[]): expr {
     expr cols_compressed = 0;
     for (int icol = length(cols) - 1; icol >= 0; --icol) {
         cols_compressed = (cols_compressed + cols[icol]) * std_alpha;
@@ -300,12 +300,12 @@ function lookup_prepare_cols (int opid, expr sel, expr cols[]): expr {
 
 /**
  * Given columns C₀,...,Cₙ₋₁, and selector S, it defines the constraints at the air level
- * @param provide boolean indicating if updating a provide or a require
+ * @param proves boolean indicating if updating a proves or a assumes
  * @param opid (unique) identifier of the argument
  * @param sel selector of the argument
  * @param cols columns of the argument
  */
-function lookup_update_provide(int opid, expr selP, expr colsP[]) {
+private function lookup_update_proves(int opid, expr selP, expr colsP[]) {
     // verify if correct opid and cols
     check_lookup_opid_and_cols(opid, length(colsP), 1);
 
@@ -320,12 +320,12 @@ function lookup_update_provide(int opid, expr selP, expr colsP[]) {
     colsP_selected = lookup_prepare_cols(opid, selP, colsP);
 
     use air.std.lookup;
-    gprod_provide = gprod_provide * air.std.lookup.`id${opid}`.colsP_selected;
+    gprod_proves = gprod_proves * air.std.lookup.`id${opid}`.colsP_selected;
 
     // define constraints at the air level
     on final air lookup_air();
 }
-function lookup_update_require(int opid, expr selR, expr colsR[]) {
+private function lookup_update_assumes(int opid, expr selR, expr colsR[]) {
     // verify if correct opid and cols
     check_lookup_opid_and_cols(opid, length(colsR), 0);
 
@@ -342,7 +342,7 @@ function lookup_update_require(int opid, expr selR, expr colsR[]) {
     colsR_selected = colsR_pre_selected + colsP_selected * (1 - colsR_selR)
 
     use air.std.lookup;
-    gprod_require = gprod_require * lookid.colsR_selected;
+    gprod_assumes = gprod_assumes * lookid.colsR_selected;
 
     // define constraints at the air level
     on final air lookup_air();
@@ -353,7 +353,7 @@ private function lookup_air() {
 
     use air.std.lookup;
 
-    @lookup_check {h1: h1, h2: h2, colsT: gprod_provide, colsF: gprod_require, gprod};
+    @lookup_check {h1: h1, h2: h2, colsF: gprod_assumes, colsT: gprod_proves, prod: gprod};
 
     // Define h1,h2 polynomials
     col witness h1 stage(2);
@@ -365,7 +365,7 @@ private function lookup_air() {
     //  gprod === ('gprod * (1 - L1) + L1) * -------------------------------------------------------------------------------
     //                                          (delta*(1 + gamma) + h1 + gamma*h2) * (delta*(1 + gamma) + h2 + gamma*h1')
 
-    expr numerator = (1 + std_gamma) * (gprod_require + std_delta) * (std_delta * (1 + std_gamma) + gprod_provide + gamma * gprod_provide')
+    expr numerator = (1 + std_gamma) * (gprod_assumes + std_delta) * (std_delta * (1 + std_gamma) + gprod_proves + gamma * gprod_proves')
     expr denominator = (std_delta * (1 + std_gamma) + h1 + gamma * h2) * (std_delta * (1 + std_gamma) + h2 + gamma * h1')
 
     col fixed L1 = [1,0...];
@@ -377,14 +377,14 @@ private function lookup_air() {
     L1' * (gprod - 1) === 0;
 }
 
-// It checks wheter there is some lookup check without either provide or require
+// It checks wheter there is some lookup check without either proves or assumes
 private function check_lookup_was_completed() {
     for (int opid in air.std.lookup.opids) {
-        if (air.std.lookup.`id${opid}`.require == 0) {
-            error(`Lookup #${opid} defined without require`);
+        if (air.std.lookup.`id${opid}`.assumes == 0) {
+            error(`Lookup #${opid} defined without assumes`);
         }
-        if (air.std.lookup.`id${opid}`.provide == 0) {
-            error(`Lookup #${opid} defined without provide`);
+        if (air.std.lookup.`id${opid}`.proves == 0) {
+            error(`Lookup #${opid} defined without proves`);
         }
     }
 }
@@ -413,44 +413,44 @@ private function init_coset_constants(int len) {
 
 // 1] WIP
 function connection_init(int opid, expr cols[]) {
-        // connection_update_require(opid, sel, cols);
+        // connection_update_assumes(opid, sel, cols);
 }
 
 function connection_connect(int opid, expr cols[]) {
-        // connection_update_provide(opid, sel, cols);
+        // connection_update_proves(opid, sel, cols);
 }
 
 // 2]
-function connection_require(int opid, expr cols[]) {
+function connection_assumes(int opid, expr cols[]) {
     use air.std.connection.`id${opid}`;
 
     colsR = cols;
 
-    if (provide == 1) {
-        connection_update_require(opid, cols);
-        connection_update_provide(opid, colsP);
+    if (proves == 1) {
+        connection_update_assumes(opid, cols);
+        connection_update_proves(opid, colsP);
     } else {
-        connection_update_require(opid, cols);
+        connection_update_assumes(opid, cols);
     }
 }
 
-function connection_provide(int opid, expr cols[]) {
+function connection_proves(int opid, expr cols[]) {
     use air.std.connection.`id${opid}`;
 
-    if (require == 1) {
-        connection_update_provide(opid, cols);
+    if (assumes == 1) {
+        connection_update_proves(opid, cols);
     } else {
         colsP = cols;
     }
 }
 
 /**
- * Verifies the number of columns of same connection check (require, provide) is the same.
+ * Verifies the number of columns of same connection check (assumes, proves) is the same.
  * @param opid (unique) identifier of the connection check
  * @param _cols number of columns of the connection check
- * @param provide 1 if provide, 0 if require
+ * @param proves 1 if proves, 0 if assumes
  */
-private function check_connection_opid_and_cols(int opid, int cols_count, int provide) {
+private function check_connection_opid_and_cols(int opid, int cols_count, int proves) {
 
     if (cols_count < 1) {
         error(`The number of columns of connection #${opid} must be at least 1`);
@@ -458,14 +458,14 @@ private function check_connection_opid_and_cols(int opid, int cols_count, int pr
 
     container air.std.connection alias conn {
         int opids[];
-        expr gprod_require = 1;
-        expr gprod_provide = 1;
+        expr gprod_assumes = 1;
+        expr gprod_proves = 1;
     }
 
     container proof.std.connection.`id${opid}` alias connid {
         int cols;
-        int provide;
-        int require;
+        int proves;
+        int assumes;
 
         expr colsR[];
         int len_colsR;
@@ -486,27 +486,27 @@ private function check_connection_opid_and_cols(int opid, int cols_count, int pr
         error(`The number of columns of connection #${opid} should be equal to ${connid.cols}`);
     }
 
-    if (provide) {
-        if (connid.provide > 0) {
-            error(`Connection #${opid} provide was called previously`);
+    if (proves) {
+        if (connid.proves > 0) {
+            error(`Connection #${opid} proves was called previously`);
         }
-        ++connid.provide;
+        ++connid.proves;
     } else {
-        if (connid.require > 0) {
-            error(`Connection #${opid} provide was called previously`);
+        if (connid.assumes > 0) {
+            error(`Connection #${opid} proves was called previously`);
         }
-        ++connid.require;
+        ++connid.assumes;
     }
 }
 
 /**
  * Given columns C₀,...,Cₙ₋₁, and selector S, it defines the constraints at the air level
- * @param provide boolean indicating if updating a provide or a require
+ * @param proves boolean indicating if updating a proves or a assumes
  * @param opid (unique) identifier of the argument
  * @param sel selector of the argument
  * @param cols columns of the argument
  */
-function connection_update_provide(int opid, expr colsP[]) {
+private function connection_update_proves(int opid, expr colsP[]) {
     // verify if correct opid and cols
     check_connection_opid_and_cols(opid, length(colsP), 1);
 
@@ -518,12 +518,13 @@ function connection_update_provide(int opid, expr colsP[]) {
     }
 
     use air.std.connection;
-    gprod_provide = gprod_provide * proof.std.connection.`id${opid}`.gprodP;
+    gprod_proves = gprod_proves * proof.std.connection.`id${opid}`.gprodP;
 
     // define constraints at the air level
     on final air connection_air();
 }
-function connection_update_require(int opid, expr colsR[]) {
+
+private function connection_update_assumes(int opid, expr colsR[]) {
     // verify if correct opid and cols
     check_connection_opid_and_cols(opid, length(colsR), 1);
 
@@ -545,7 +546,7 @@ function connection_update_require(int opid, expr colsR[]) {
     }
 
     use air.std.connection;
-    gprod_require = gprod_require * proof.std.connection.`id${opid}`.gprodR;
+    gprod_assumes = gprod_assumes * proof.std.connection.`id${opid}`.gprodR;
 
     // define constraints at the air level
     on final air connection_air();
@@ -566,19 +567,19 @@ private function connection_air() {
 
     expr previous_gprod = 'gprod * (1 - L1) + L1;  // L1 == 1 ? 1 : 'gprod
 
-    grod * gprod_provide === previous_gprod * gprod_require;
+    grod * gprod_proves === previous_gprod * gprod_assumes;
 
     L1' * (gprod - 1) === 0;
 }
 
-// It checks wheter there is some connection check without either provide or require
+// It checks wheter there is some connection check without either proves or assumes
 private function check_connection_was_completed() {
     for (int opid in air.std.connection.opids) {
-        if (air.std.connection.`id${opid}`.require == 0) {
-            error(`Connection #${opid} defined without require`);
+        if (air.std.connection.`id${opid}`.assumes == 0) {
+            error(`Connection #${opid} defined without assumes`);
         }
-        if (air.std.connection.`id${opid}`.provide == 0) {
-            error(`Connection #${opid} defined without provide`);
+        if (air.std.connection.`id${opid}`.proves == 0) {
+            error(`Connection #${opid} defined without proves`);
         }
     }
 }

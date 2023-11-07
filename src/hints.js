@@ -17,10 +17,21 @@ module.exports = class Hints {
         }
         return cloned;
     }
+    clear() {
+        this.hints = [];
+    }
     cloneHint(data, options = {}) {
         const path = options.path ?? '';
-        if (options.insertExpressions && data instanceof Expression) {
-            return new ExpressionId(this.expressions.insert(data));
+        // when data is an instance of alone Expression doesn't replace it
+        // by expressionId because at end it's translate directly to the
+        // single operand (witness, fixed, ...)
+        if (data instanceof Expression) {
+            if (data.isAlone()) {
+                return data.clone();
+            }
+            if (options.insertExpressions) {
+                return new ExpressionId(this.expressions.insert(data));
+            }
         }
         if (data instanceof ExpressionId) {
             return data.clone();
@@ -43,14 +54,15 @@ module.exports = class Hints {
             return result;
         }
         console.log(data);
-        throw new Error(`Invalid hint-data (type:${typeof data}) on cloneHint of ${path}`);
+        throw new Error(`Invalid hint-data (type:${typeof data} ${data && data.constructor ? data.constructor.name : ''}) on cloneHint of ${path}`);
     }
 
     getPackedExpressionId(id, container, options) {
         return this.expressions.getPackedExpressionId(id, container, options);
     }
     define(name, data) {
-        return this.hints.push({name, data: this.cloneHint(data, {path: name, insertExpressions: true})});
+        const hintItem = {name, data: this.cloneHint(data, {path: name, insertExpressions: true})};
+        return this.hints.push(hintItem);
     }
 
     *[Symbol.iterator]() {

@@ -320,7 +320,7 @@ function subair_permutation_produce (expr sel[], expr cols[][]) {
 }
 
 
-function subair_permutation_requires (expr pcid, expr sel, expr cols[]) {
+function subair_permutation_assumes (expr pcid, expr sel, expr cols[]) {
     once expr subair_permutation_expr = 1;
 
     challenge a;
@@ -386,11 +386,11 @@ function final_subair_permutation () {
 //    @subair_permutation_prover_value permutation_grand_product[index] subair_permutation_col
     b*c === 1;
 
-    // requires
+    // assumes
     subair_permutation_col' === subair_permutation_expr * (subair_permutation_col * (1-L1) + L1);
     permutation_grand_product[index] === L1 * subair_permutation_col;
 
-    // provides
+    // proves
     subair_permutation_expr * subair_permutation_col' === (subair_permutation_col * (1-L1) + L1);
     permutation_grand_product[index] === L1 * subair_permutation_col;
 

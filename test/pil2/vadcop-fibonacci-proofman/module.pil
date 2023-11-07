@@ -1,0 +1,20 @@
+constant MODULE_ID = 1;
+
+subproof Module(2**4) {
+
+    subproofval aggregate(sum) gsum_module;
+
+    col fixed L1 = [1,0...];
+    col witness x, q, x_mod;
+
+    // TODO: verify range checks and x_mod < mod
+    x === q * mod + x_mod;
+
+    col witness stage(2) gsum;
+
+    @hint_with_errors { any: gsum }
+
+    (gsum - 'gsum * (1 - L1)) * (((x_mod * std_alpha + x) * std_alpha) + MODULE_ID + std_beta) - 1 === 0;
+
+    //L1' * (gsum - gsum_module) === 0;
+}

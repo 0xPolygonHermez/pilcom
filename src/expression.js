@@ -835,7 +835,6 @@ class Expression extends ExpressionItem {
         while (pos < this.stack.length) {
             let nextPos = true;
             for (let ope of this.stack[pos].operands) {
-                // assert(ope.__value instanceof Expression === false);
                 if (ope.type !== OP_RUNTIME) continue;
                 console.log(ope);
                 EXIT_HERE;
@@ -844,7 +843,14 @@ class Expression extends ExpressionItem {
                     const exprToInsert = ope.__value.instance();
                     const next = typeof ope.next === 'number' ? ope.next : ope.__next;
                     if (next) exprToInsert.next(next);
-                    ope.offset = this.insertStack(exprToInsert, pos);
+                    if (isAlone) {
+                        this.stack.pop();
+                    }
+
+                    const stackOffset = this.insertStack(exprToInsert, pos, options);
+                    if (!isAlone) {
+                        ope.offset = stackOffset;
+                    }
                     nextPos = false;
                     break;
                 }
@@ -861,7 +867,14 @@ class Expression extends ExpressionItem {
                     const exprToInsert = res.instance();
                     const next = typeof ope.next === 'number' ? ope.next : ope.__next;
                     if (next) exprToInsert.next(next);
-                    ope.offset = this.insertStack(exprToInsert, pos);
+                    delete this.stack[0];
+                    if (isAlone) {
+                        this.stack.pop();
+                    }
+                    const stackOffset = this.insertStack(exprToInsert, pos, options);
+                    if (!isAlone) {
+                        ope.offset = stackOffset;
+                    }
                     nextPos = false;
                     break;
                 }
@@ -1182,10 +1195,106 @@ class Expression extends ExpressionItem {
         }
         return ope.toString(options);
     }
+    packAlone(container, options) {
+        this.operandPack(container, this.getAloneOperand(), 0, options);
+        return container.pop(1)[0];
+    }
+    pack(container, options) {
+        if (this.isAlone()) {
+            return this.packAlone(container, options);
+        }
+        let top = this.stack.length-1;
+        return this.stackPosPack(container, top, options);
+    }
+    stackPosPack(container, pos, options) {
+        const st = this.stack[pos];
+        if (st.op === false) {
+            this.operandPack(container, st.operands[0], pos, options);
+            return false;
+        }
+        for (const ope of st.operands) {
+            this.operandPack(container, ope, pos, options);
+        }
+        switch (st.op) {
+            case 'mul':
+                return container.mul();
+
+            case 'add':
+                return container.add();
+
+            case 'sub':
+                return container.sub();
+
+            case 'neg':
+                return container.neg();
+
+            default:
+                throw new Error(`Invalid operation ${st.op} on packed expression`);
+        }
+    }
+
+    operandPack(container, ope, pos, options) {
+        switch (ope.type) {
+            case OP_VALUE:
+                container.pushConstant(ope.value);
+                break;
+
+            case OP_ID_REF:
+                this.referencePack(container, ope.refType, ope.id, ope.next, ope.stage, options);
+                break;
+
+            case OP_STACK:
+                // TODO: expression == false;
+                const eid = this.stackPosPack(container, pos-ope.offset, options);
+                if (eid !== false) {        // eid === false => alone operand
+                    container.pushExpression(eid);
+                }
+                break;
+
+            default:
+                console.log(ope);
+                throw new Error(`Invalid reference ${ope.type} on packed expression`);
+        }
+
+    }
+    referencePack(container, type, id, next, stage, options) {
+        switch (type) {
+            case 'im':
+                container.pushExpression(Expression.parent.getPackedExpressionId(id, container, options));
+                break;
+
+            case 'witness':
+                container.pushWitnessCol(id, next ?? 0, stage ?? 1); // TODO: stage
+                break;
+
+            case 'fixed':
+                container.pushFixedCol(id, next ?? 0);
+                break;
+
+            case 'public':
+                container.pushPublicValue(id);
+                break;
+
+            case 'challenge':
+                container.pushChallenge(id, stage ?? 1);
+                break;
+
+            case 'subproofvalue':
+                container.pushSubproofValue(id);
+                break;
+
+            case 'proofvalue':
+                container.pushProofValue(id);
+                break;
+
+            default:
+                throw new Error(`Invalid reference type ${type} to pack`);
+        }
+    }
     resolve() {
         const res = this.eval();
         if (res instanceof Expression) {
-            return res.instance(true);
+            return res.instance({simplify: true});
         }
         return res;
     }

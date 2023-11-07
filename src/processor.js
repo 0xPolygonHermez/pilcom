@@ -193,6 +193,7 @@ module.exports = class Processor {
             proto.setSubproof(subproofName, subproof.aggregate);
             let airId = 0;
             for (const airName of subproof.airs) {
+                console.log(`SUBPROOF(${subproofName},${airName})`);
                 const air = subproof.airs.get(airName);
                 const bits = log2(Number(air.rows));
                 proto.setAir(airName, air.rows);
@@ -724,6 +725,7 @@ module.exports = class Processor {
         this.references.clearType('witness', label);
         this.references.clearScope('air');
         this.expressions.clear(label);
+        this.hints.clear();
     }
     finalSubproofScope() {
         this.callDelayedFunctions('subproof', 'final');
@@ -898,10 +900,10 @@ module.exports = class Processor {
         const right = s.right.instance();
         left.dump();
         if (scopeType === 'air') {
-            id = this.constraints.define(s.left.instance(true), s.right.instance(true),false,this.sourceRef);
+            id = this.constraints.define(s.left.instance({simplify: true}), s.right.instance({simplify: true}),false,this.sourceRef);
             expr = this.constraints.getExpr(id);
         } else if (scopeType === 'proof') {
-            id = this.globalConstraints.define(s.left.instance(true), s.right.instance(true),false,this.sourceRef);
+            id = this.globalConstraints.define(s.left.instance({simplify: true}), s.right.instance({simplify: true}),false,this.sourceRef);
             expr = this.globalConstraints.getExpr(id);
             prefix = 'GLOBAL';
         } else {
