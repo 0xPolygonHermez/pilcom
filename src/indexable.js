@@ -42,9 +42,6 @@ module.exports = class Indexable {
         return this.rtype;
     }
     getEmptyValue(id, data = {}) {
-        if (this.type === 'subproofvalue') {
-            console.log(['SUBPROOFVALUE-E', data]);
-        }
         if (this.definitionClass) {
             return new this.definitionClass(id, data);
         }

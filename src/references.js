@@ -15,10 +15,11 @@ module.exports = class References {
         this.visibilityStack = [];
         this.containers = new Containers(this);
     }
-    getDefinitionByItem(item, options) {
+    getDefinitionByItem(item, options = {}) {
         let instance = null;
         const instances = [...(options.instances ?? []), ...Object.values(this.types).map(x => x.instance)];
         for (const _instance of instances) {
+            console.log(_instance);
             if (_instance.expressionItemClass === item.constructor) {
                 instance = _instance;
                 break;

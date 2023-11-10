@@ -133,6 +133,7 @@ module.exports = class ProtoOut {
     encode() {
         console.log(['PROTO.CHALLENGES', this.pilOut.numChallenges]);
 
+        fs.writeFileSync('tmp/pilout.pre.log', util.inspect(this.pilOut, false, null, false));
         let message = this.PilOut.fromObject(this.pilOut);
         fs.writeFileSync('tmp/pilout.log', util.inspect(this.pilOut, false, null, false));
         this.data = this.PilOut.encode(message).finish();
@@ -142,14 +143,20 @@ module.exports = class ProtoOut {
         fs.writeFileSync(filename, this.data);
     }
     setAir(name, rows) {
+        const airId = this.currentSubproof.airs.length;
         this.currentAir = {name, numRows: Number(rows)};
         this.currentSubproof.airs.push(this.currentAir);
+        return airId;
     }
     setSubproof(name, aggregable = false) { // TODO: Add subproof value
         this.currentSubproof = {name, aggregable, airs: []};
         const subproofId = this.pilOut.subproofs.length;
         this.pilOut.subproofs.push(this.currentSubproof);
-        this.currentSubproof.subproofvalues = this.spvId2Proto.filter(value => value[2] === subproofId).map(value => { return {aggType: SPV_AGGREGATIONS.indexOf(value[1])}});
+        return subproofId;
+    }
+    setSubproofValues(aggregations) {
+        // this.currentSubproof.subproofvalues = this.spvId2Proto.filter(value => value[2] === subproofId).map(value => { return {aggType: SPV_AGGREGATIONS.indexOf(value[1])}});
+        this.currentSubproof.subproofvalues = aggregations.map(aggregation => { return {aggType: SPV_AGGREGATIONS.indexOf(aggregation)}});
     }
 
     // use for all subproof values, of all subproofs
@@ -182,7 +189,7 @@ module.exports = class ProtoOut {
     _setSymbols(symbols, data = {}) {
         for(const [name, ref] of symbols) {
             const arrayInfo = ref.array ? ref.array : {dim: 0, lengths: []};
-            const sym2proto = this.symbolType2Proto(ref.type, ref.locator);
+            const sym2proto = this.symbolType2Proto(ref.type, ref.locator, ref);
             let payout = {
                 name,
                 dim: arrayInfo.dim,
@@ -195,7 +202,7 @@ module.exports = class ProtoOut {
         }
     }
 
-    symbolType2Proto(type, id) {
+    symbolType2Proto(type, id, ref) {
         switch(type) {
             case 'im':
                 return {type: REF_TYPE_IM_COL, id};
@@ -211,8 +218,8 @@ module.exports = class ProtoOut {
                 return {type: REF_TYPE_WITNESS_COL, id: protoId, stage};
             }
             case 'subproofvalue': {
-                const [protoId, aggregation, subproofId] = this.spvId2Proto[id];
-                return {type: REF_TYPE_SUBPROOF_VALUE, id: protoId, subproofId};
+                const def = ref.instance.get(id);
+                return {type: REF_TYPE_SUBPROOF_VALUE, id: def.relativeId, subproofId: ref.data.subproofId};
             }
             case 'proofvalue':
                 return {type: REF_TYPE_PROOF_VALUE, id};
@@ -369,27 +376,19 @@ module.exports = class ProtoOut {
                     ope.witnessCol.stage = stage;
                 }
                 break;
-            case 'subproofValue': {
-                    // translate index of subproof because it's relative to subproof
-                    const id = ope.subproofValue.idx;
-                    const [protoId, aggregation, subproofId] = this.spvId2Proto[id] ?? [false,false,false];
-                    if (protoId === false) {
-                        console.log(ope);
-                        throw new Error(`Translate: Found invalid subproofvalue ${id}`);
-                    }
-                    ope.subproofValue.idx = protoId;
-                    ope.subproofValue.subproofId = subproofId;
-                }
+            case 'subproofValue':
+                // subproof no need translate idx because put index from begining
+                // ope.subproofValue.aggType = SPV_AGGREGATIONS.indexOf(ope.subproofValue.aggType)
                 break;
             case 'challenge': {
-                    const id = ope.challenge.idx;
+                    /* const id = ope.challenge.idx;
                     const [protoId, stage] = this.challengeId2Proto[id] ?? [false, false];
                     if (protoId === false) {
                         console.log(ope);
                         throw new Error(`Translate: Found invalid subproofvalue ${id}`);
                     }
                     ope.challenge.idx = protoId;
-                    ope.challenge.stage = stage;
+                    ope.challenge.stage = stage;*/
                 }
                 break;
             case 'constant':
@@ -411,7 +410,7 @@ module.exports = class ProtoOut {
         for (const [index, constraint] of constraints.keyValues()) {
             const packedExpressionId = constraints.getPackedExpressionId(constraint.exprId, packed);
             let payload = { expressionIdx: { idx: packedExpressionId },
-                            debugLine: constraints.getDebugInfo(index, packed) };
+                            debugLine: '###'+constraints.getDebugInfo(index, packed) };
             this.pilOut.constraints.push(payload);
         }
     }
@@ -421,6 +420,7 @@ module.exports = class ProtoOut {
             let payload;
             console.log([index, constraint]);
             const debugLine = constraints.getDebugInfo(index, packed, options);
+            console.log(`DEBUGLINE: ${debugLine}`);
             const packedExpressionId = constraints.getPackedExpressionId(constraint.exprId, packed, options);
             switch (constraint.boundery) {
                 case false:
@@ -470,8 +470,11 @@ module.exports = class ProtoOut {
         const path = options.path ?? '';
         // check if an alone expression to use and translate its single operand
         if (hdata && typeof hdata.pack === 'function') {
+            console.log('HINT', typeof hdata.toString() ? hdata.constructor.name + ' ==> ' + hdata.toString() : hdata);
             const operand = hdata.pack(options.packed, options);
+            console.log('HINT', operand);
             this.translate(operand);
+            console.log('HINT', operand);
             return { operand };
         }
         if (typeof hdata === 'object' && hdata.constructor.name === 'ExpressionId') {
@@ -487,6 +490,7 @@ module.exports = class ProtoOut {
             for (let index = 0; index < hdata.length; ++index) {
                 result.push(this.toHintField(hdata[index], {...options, path: path + '[' + index + ']'}));
             }
+            console.log('HINT',result);
             return { hintFieldArray: { hintFields: Array.isArray(result) ? result : [result] }};
         }
         if (typeof hdata === 'bigint' || typeof hdata === 'number') {
@@ -501,6 +505,7 @@ module.exports = class ProtoOut {
                 const value = this.toHintField(hdata[name], {...options, path: path + '.' + name});
                 result.push({...value, name});
             }
+            console.log('HINT',result);
             return { hintFieldArray: { hintFields: Array.isArray(result) ? result : [result] }};
         }
         console.log(hdata);

@@ -20,6 +20,7 @@ const PackedExpressions = require("./packed_expressions.js");
 const ProtoOut = require("./proto_out.js");
 const FixedCols = require("./fixed_cols.js");
 const WitnessCols = require("./witness_cols.js");
+const SubproofValues = require("./subproof_values.js");
 const Iterator = require("./iterator.js");
 const Context = require("./context.js");
 const Runtime = require("./runtime.js");
@@ -93,7 +94,7 @@ module.exports = class Processor {
         ExpressionItem.setManager(ExpressionItems.Proofval, this.proofvalues);
         this.references.register('proofvalue', this.proofvalues);
 
-        this.subproofvalues = new Indexable('subproofvalue', DefinitionItems.Subproofval, ExpressionItems.Subproofval);
+        this.subproofvalues = new SubproofValues();
         ExpressionItem.setManager(ExpressionItems.Subproofval, this.subproofvalues);
         this.references.register('subproofvalue', this.subproofvalues);
 
@@ -125,6 +126,9 @@ module.exports = class Processor {
         this.currentSubproof = false;
 
         this.sourceRef = '(init)';
+
+        this.proto = new ProtoOut(this.Fr);
+        this.proto.setupPilOut('noname');
     }
     loadBuiltInClass() {
         const filenames = fs.readdirSync(__dirname + '/builtin');
@@ -181,53 +185,56 @@ module.exports = class Processor {
         // this.constraints.dump(packed);
         // this.fixeds.dump();
 
-        let proto = new ProtoOut(this.Fr);
-        proto.setupPilOut('myFirstPil');
-        let subproofId = 0;
-        proto.setSubproofvalues(this.subproofvalues.getPropertyValues(['id', 'aggregateType', 'subproofId']));
-        proto.setPublics(this.publics);
-        proto.setProofvalues(this.proofvalues);
-        proto.setChallenges(this.challenges);
-        for (const subproofName of this.subproofs) {
-            const subproof = this.subproofs.get(subproofName);
-            proto.setSubproof(subproofName, subproof.aggregate);
-            let airId = 0;
-            for (const airName of subproof.airs) {
-                console.log(`SUBPROOF(${subproofName},${airName})`);
-                const air = subproof.airs.get(airName);
-                const bits = log2(Number(air.rows));
-                proto.setAir(airName, air.rows);
-                proto.setFixedCols(air.fixeds);
-                proto.setWitnessCols(air.witness);
-                // expression: constraint, hint, operand (expression)
-                let packed = new PackedExpressions();
-                // this.expressions.pack(packed);
-                air.expressions.pack(packed, {instances: [air.fixeds, air.witness]});
-                proto.setConstraints(air.constraints, packed,
-                    { labelsByType: {
-                        witness: air.witness.labelRanges,
-                        fixed: air.fixeds.labelRanges },
-                      expressions: air.expressions
-                    });
-                proto.setSymbolsFromLabels(air.witness.labelRanges, 'witness', {airId, subproofId});
-                proto.setSymbolsFromLabels(air.fixeds.labelRanges, 'fixed', {airId, subproofId});
-                proto.setExpressions(packed);
-                proto.addHints(air.hints, packed, {
-                        subproofId,
-                        airId
-                    });
-                ++airId;
-            }
-            ++subproofId;
-        }
+        // let proto = new ProtoOut(this.Fr);
+        // proto.setupPilOut('myFirstPil');
+        // let subproofId = 0;
+        // proto.setSubproofvalues(this.subproofvalues.getPropertyValues(['id', 'aggregateType', 'subproofId']));
+        this.proto.setPublics(this.publics);
+        this.proto.setProofvalues(this.proofvalues);
+        this.proto.setChallenges(this.challenges);
+        // update challenge stage on expression, only for challenges with open-stage because
+        // only at end the stage of challenge is set.
+        // this.proto.updateOpenChallenges();
+
+        // for (const subproofName of this.subproofs) {
+        //     const subproof = this.subproofs.get(subproofName);
+        //     proto.setSubproof(subproofName, subproof.aggregate);
+        //     let airId = 0;
+        //     for (const airName of subproof.airs) {
+        //         console.log(`SUBPROOF(${subproofName},${airName})`);
+        //         const air = subproof.airs.get(airName);
+        //         const bits = log2(Number(air.rows));
+        //         proto.setAir(airName, air.rows);
+        //         proto.setFixedCols(air.fixeds);
+        //         proto.setWitnessCols(air.witness);
+        //         // expression: constraint, hint, operand (expression)
+        //         let packed = new PackedExpressions();
+        //         // this.expressions.pack(packed);
+        //         air.expressions.pack(packed, {instances: [air.fixeds, air.witness]});
+        //         proto.setConstraints(air.constraints, packed,
+        //             { labelsByType: {
+        //                 witness: air.witness.labelRanges,
+        //                 fixed: air.fixeds.labelRanges },
+        //               expressions: air.expressions
+        //             });
+        //         proto.setSymbolsFromLabels(air.witness.labelRanges, 'witness', {airId, subproofId});
+        //         proto.setSymbolsFromLabels(air.fixeds.labelRanges, 'fixed', {airId, subproofId});
+        //         proto.setExpressions(packed);
+        //         proto.addHints(air.hints, packed, {
+        //                 subproofId,
+        //                 airId
+        //             });
+        //         ++airId;
+        //     }
+        //     ++subproofId;
+        // }
         let packed = new PackedExpressions();
-        // this.expressions.pack(packed);
         this.globalExpressions.pack(packed);
-        proto.setGlobalConstraints(this.globalConstraints, packed);
-        proto.setGlobalExpressions(packed);
-        proto.setGlobalSymbols(this.references);
-        proto.encode();
-        proto.saveToFile('tmp/pilout.ptb');
+        this.proto.setGlobalConstraints(this.globalConstraints, packed);
+        this.proto.setGlobalExpressions(packed);
+        this.proto.setGlobalSymbols(this.references);
+        this.proto.encode();
+        this.proto.saveToFile('tmp/pilout.ptb');
         // stageWidths
         // expressions
 
@@ -660,14 +667,17 @@ module.exports = class Processor {
         this.currentSubproof = subproof;
         this.scope.pushInstanceType('subproof');
         this.context.subproofName = subproofName;
+        // proto.setSubproofvalues(this.subproofvalues.getPropertyValues(['id', 'aggregateType', 'subproofId']));
+        const subproofId = this.proto.setSubproof(subproofName, subproof.aggregate);
         for (const airRows of subproof.rows) {
+            console.log(`BEGIN AIR ${subproofName} (${airRows})`); //  #${this.airId}`);
             this.rows = airRows;
 
-            console.log(`BEGIN AIR ${subproofName} (${airRows}) #${this.airId}`);
             // TODO: context is global?
             const air = new Air(this.Fr, this.context, airRows);
 
             const airName = subproofName + (subproof.rows.length > 1 ? `_${air.bits}`:'');
+            const airId = this.proto.setAir(airName, airRows);
             Context.airName = airName;
             subproof.airs.define(airName, air);
 
@@ -695,13 +705,35 @@ module.exports = class Processor {
             }
             this.finalAirScope();
             subproof.airEnd();
-            air.witness = this.witness.clone();
-            air.fixeds = this.fixeds.clone();
-            air.expressions = this.expressions.clone();
-            air.constraints = this.constraints.clone();
-            air.constraints.expressions = air.expressions;
-            air.hints = this.hints.clone();
-            air.hints.expressions = air.expressions;
+
+            // pilout generation
+            // setting id of proofitems used, be carefull with challenge (stage not defined)
+
+            // const subproof = this.subproofs.get(subproofName);
+            // proto.setSubproof(subproofName, subproof.aggregate);
+            let packed = new PackedExpressions();
+            this.proto.setFixedCols(this.fixeds);
+            this.proto.setWitnessCols(this.witness);
+            // this.expressions.pack(packed, {instances: [air.fixeds, air.witness]});
+            this.expressions.pack(packed, {instances: [this.fixeds, this.witness]});
+            this.proto.setConstraints(this.constraints, packed,
+                {
+                    labelsByType: {
+                        witness: this.witness.labelRanges,
+                        fixed: this.fixeds.labelRanges,
+                        subproofvalue: (id, options) => this.subproofvalues.getRelativeLabel(subproofId, id, options)
+                    },
+                    expressions: this.expressions
+                });
+            this.proto.setSymbolsFromLabels(this.witness.labelRanges, 'witness', {airId, subproofId});
+            this.proto.setSymbolsFromLabels(this.fixeds.labelRanges, 'fixed', {airId, subproofId});
+            this.proto.setExpressions(packed);
+            this.proto.addHints(this.hints, packed, {
+                    subproofId,
+                    airId
+                });
+
+            // clearing air scope
             this.clearAirScope(airName);
             this.constraints = new Constraints(this.Fr, this.expressions);
             this.scope.popInstanceType(['witness', 'fixed', 'im']);
@@ -711,6 +743,7 @@ module.exports = class Processor {
             ++this.airId;
         }
         this.finalSubproofScope();
+        this.proto.setSubproofValues(this.subproofvalues.getAggreationTypesBySubproofId(subproofId));
         this.scope.popInstanceType();
         this.currentSubproof = false;
         Context.subproofName = false;

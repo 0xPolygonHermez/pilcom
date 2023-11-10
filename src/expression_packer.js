@@ -24,7 +24,7 @@ module.exports = class ExpressionPacker {
         const st = this.expression.stack[pos];
         if (st.op === false) {
             this.operandPack(st.operands[0], pos, options);
-            return false;
+            return this.container.pop(1)[0];
         }
         for (const ope of st.operands) {
             this.operandPack(ope, pos, options);
@@ -100,7 +100,8 @@ module.exports = class ExpressionPacker {
 
         } else if (ope instanceof ExpressionItems.Subproofval) {
             // container.pushSubproofValue(id)
-            this.container.pushSubproofValue(id);
+            const def = Context.references.getDefinitionByItem(ope);
+            this.container.pushSubproofValue(def.relativeId, def.subproofId);
         } else {
             throw new Error(`Invalid reference class ${ope.constructor.name} to pack`);
         }

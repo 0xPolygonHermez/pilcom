@@ -16,7 +16,7 @@ module.exports = class Constraints {
     }
 
     get(id) {
-        return this.constraints[id];
+        return {...this.constraints[id]};
     }
 
     getExpr(id) {
@@ -60,6 +60,7 @@ module.exports = class Constraints {
         // left.instance().dump(`XXXXXXXXX-${dumpId}-2`);
         left.simplify();
         const exprId = Context.expressions.insert(left);
+        console.log(`DEFINE CONSTRAINT ${sourceRef}`);
         return this.constraints.push({exprId, sourceRef, boundery}) - 1;
     }
 
