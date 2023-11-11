@@ -158,15 +158,19 @@ class PolsArray {
         return buff;
     }
 
-    writeToBigBuffer(buff, pos) {
+    writeToBigBuffer(buff, nPols) {
+        if(!nPols) nPols = this.$$nPols;
         if (typeof buff == "undefined") {
-            buff = new BigBuffer(constBuffBuff);
+            buff = new BigBuffer(this.$$n*this.$$nPols);
         }
         let p=0;
         for (let i=0; i<this.$$n; i++) {
             for (let j=0; j<this.$$nPols; j++) {
-                buff.setElement(p++, (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + 0xffffffff00000001n) : this.$$array[j][i]);
+                const value = (this.$$array[j][i] < 0n) ? (this.$$array[j][i] + this.F.p) : this.$$array[j][i];
+                buff.setElement(p++, value);
+                
             }
+            for(let i = this.$$nPols; i < nPols; ++i) buff.setElement(p++, 0n);
         }
         return buff;
     }
