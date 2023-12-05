@@ -321,12 +321,12 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
             } else if (s.type == "CONSTANTDEF") {
                 if (ctx.config && ctx.config.defines && typeof ctx.config.defines[s.name] !== 'undefined') {
                     console.log(`NOTICE: Ignore constant definition ${s.name} on ${relativeFileName}:${s.first_line} because it was pre-defined`);
-                    return;
+                } else {
+                    if (ctx.constants[s.name]) error(s, `name already defined ${s.name}`);
+                    const se = simplifyExpression(Fr, ctx, s.exp);
+                    if (se.op != "number") error(s, "Not a constant expression");
+                    ctx.constants[s.name] = se.value;
                 }
-                if (ctx.constants[s.name]) error(s, `name already defined ${s.name}`);
-                const se = simplifyExpression(Fr, ctx, s.exp);
-                if (se.op != "number") error(s, "Not a constant expression");
-                ctx.constants[s.name] = se.value;
             } else {
                 error(s, `Invalid line type: ${s.type}`);
             }
