@@ -1,0 +1,29 @@
+
+
+subProof Main() {
+    col witness op1, op2, a, b, c;
+    col witness stage 2 z;
+    op1 * (op1 - 1) === 0;
+    op2 * (op2 - 1) === 0;
+
+
+}
+
+subProof Op1() {
+    col witness sel, a, b, c;
+    col witness stage 2 z;
+    sel * (sel - 1) === 0;
+
+    col cl = (a*u + b)*u + c + v;
+    col scl = sel * ( cl  - 1) + 1;
+
+    when first { z === 1 }
+    when frame { z' === z * scl }
+}
+
+subProof Op2() {
+    col witness sel, a, b, c;
+    col witness stage 2 z;
+    sel * (sel - 1) === 0;
+
+}
