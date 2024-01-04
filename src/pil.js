@@ -20,7 +20,7 @@ const argv = require("yargs")
 async function run() {
     let inputFile;
     if (argv._.length == 0) {
-        console.log("Only one circuit at a time is permited");
+        console.log("Only one circuit at a time is permitted");
         process.exit(1);
     } else if (argv._.length == 1) {
         inputFile = argv._[0];

@@ -141,13 +141,13 @@ describe("Plookup and permutation selectors value Test", async function () {
         assert.equal("(string):6:  permutation not found w=1 values: 1:2", res);
     });
 
-    it("Test (permutation - wo selector - value not enought)", async () => {
+    it("Test (permutation - wo selector - value not enough)", async () => {
         const res = await commonTestCode(F, 'non-binary-permutation-wo-selectors-value-not-enought',
            `pol commit a1, a2;
             a1 is a2;
         `,
         {   a1: [4,3,4,4],
             a2: [1,3,4,4] });
-        assert.equal("(string):6:  permutation not enought found w=3 values: 1:4", res.join(''));
+        assert.equal("(string):6:  permutation not enough found w=3 values: 1:4", res.join(''));
     });
 });

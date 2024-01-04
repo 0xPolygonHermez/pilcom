@@ -35,7 +35,7 @@ async function run() {
     } else if (argv._.length == 1) {
         commitFile = argv._[0];
     } else {
-        console.log("Only one commit file at a time is permited");
+        console.log("Only one commit file at a time is permitted");
         process.exit(1);
     }
 

@@ -21,7 +21,7 @@ class PolsArray {
         } else if (type == "constant") {
             this.$$nPols = pil.nConstants;
         } else {
-            throw new Error("need to specify if you want commited or constant pols")
+            throw new Error("need to specify if you want committed or constant pols")
         }
 
         this.$$def = {};
