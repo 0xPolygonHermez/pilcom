@@ -1,0 +1,85 @@
+// PIL Binary Operations Table used by Binary
+//
+// ADD   (OP:0)
+// SUB   (OP:1)
+// LT    (OP:2)
+// SLT   (OP:3)
+// EQ    (OP:4)
+// AND   (OP:5)
+// OR    (OP:6)
+// XOR   (OP:7)
+// LT4   (OP:8)
+
+const int BINARY_OPS_TABLE_ID = 1;
+
+subproof aggregate BinaryOpsTable(2**23) {
+
+    constant OP_C = 256*256*4;                        // 2 CarryIn + 2 LastByte = 4 (OC = OPERATION CYCLE)
+    constant LAST_C = 256*256*2;                      // 2 CarryIn
+
+    col fixed P_A = [0..255]...;                      // Input A    (8 bits)
+    col fixed P_B = [0:256..255:256]...;              // Input B    (8 bits)
+    col fixed P_OP = [0:OP_C..7:OP_C]...;             // Operation  (3 bits)
+    col fixed P_CIN = [0:256*256,1:256*256]...;       // CarryIn    (1 bits)
+    col fixed P_LAST = [0:LAST_C, 1:LAST_C]...;       // Last byte  (1 bits)
+    col fixed P_USE_CARRY = [ 0:OP_C*2,               // Carry => C (1 bits) - ADD,SUB
+                             [0:LAST_C, 1:LAST_C]:3,  //                     - LT,SLT,AND
+                              0:OP_C*2 ]...;          //                     - OR,NOP
+    col fixed P_C;                                    // Output C   (8 bits)
+    col fixed P_COUT;                                 // CarryOut   (1 bits)
+
+    // TODO    pol RESET = Global.CLK32[0] + Global.CLK32[16];
+    // col fixed RESET = [1,0:15]...;
+    col fixed FACTOR = [1, 2**16, 0:14];
+    col fixed P_FLAGS;
+    col fixed FACTOR[8];
+
+    // P_FLAGS = cOut + 2 * useCarry + 4 * usePreviousAreLt4 + 8 * reset4
+    // In even byte clocks, useCarry = usePreviousAreLt4 = 0 and cOut = cMiddle, therefore P_FLAGS = cMiddle + 8 * reset4
+    lockup_proves(BINARY_OPS_TABLE_ID, 1,[P_LAST, P_OPCODE, Global.BYTE_2A, Global.BYTE, P_CIN, P_C, P_FLAGS]);
+
+    for (int i = 0; i < OP_C; ++i) {
+        fe [a, b, cin, plast, c, cout, op] = [P_A[i], P_B[i], P_CIN[i], P_LAST[i], 0, 0, P_OPCODE[i]];
+
+        switch (op) {
+            case 0: // ADD
+                c = (cin + a + b) & 0xFF;
+                cout = (cin + a + b) >> 8;
+
+            case 1: // SUB
+                cout = ((a - cin) >= b ? 0 : 1);
+                c = 256 * cout + a - cin - b;
+
+            case 2,3: // LT,SLT
+                if (a < b) {
+                    cout = 1;
+                    c = plast;
+                } else if (a == b) {
+                    cout = cin;
+                    c = plast * cin;
+                }
+                if (op == 3 && plast && (a & 0x80) != (b & 0x80)) {
+                    c = (a & 0x80);
+                    cout = c;
+                }
+
+            case 4: // EQ
+                if (a == b && !cin)  c = plast;
+                else cout = 1;
+                cout = plast ? !cout : cout;
+
+            case 5: // AND
+                c = a & b;
+                cout = cin || c;
+
+            case 6: // OR
+                c = a | b;
+
+            case 7: // XOR
+                c = a ^ b;
+
+        }
+        P_C[i] = c;
+        P_COUT[i] = c;
+    }
+

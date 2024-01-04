@@ -1,0 +1,13 @@
+const int STORAGE_ROM_ID 10;
+
+subproof StorageRom(2**16) {
+
+    col fixed OPERATION;
+    col fixed CONST0;
+    col fixed JMP_ADDRESS;
+    col fixed LINE;
+    col fixed IN_SIBLING_RKEY;
+
+    lookup_proves(STORAGE_ROM_ID, 1, [OPERATION, CONST0, JMP_ADDRESS, LINE, IN_SIBLING_RKEY]);
+}
+

@@ -61,6 +61,12 @@ module.exports = class ExpressionFactory {
         delete obj.values;
         return elist;
     }
+    static fromAppend(obj) {
+        console.log('TODO !!! ');
+        let res = this.fromObject(obj.value);
+        delete obj.value;
+        return res;
+    }
     static fromReference(obj) {
         // if (obj.rowOffset) {
         //     console.log('ROWOFFSET.FROMREFERENCE');

@@ -1,0 +1,12 @@
+
+const int CLIMB_KEY_TABLE_ID = 10;
+
+subproof ClimbKeyTable(2**22) {
+
+col fixed T_CLKEYSEL, T_LEVEL, T_CHUNK_VALUE, T_CARRYLT_IN, T_CARRYLT_OUT;
+
+// TODO: build constants !!!
+
+lockup_proves(CLIMB_KEY_TABLE_ID, 1, [T_CLKEYSEL, T_LEVEL, T_CHUNK_VALUE, T_CARRYLT_IN, T_CARRYLT_OUT]);
+
+}
