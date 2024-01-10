@@ -29,6 +29,7 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
             nQ: 0,
             nPublic: 0,
             expressions: [],
+            definedExpressions: {},
             polIdentities: [],
             plookupIdentities: [],
             permutationIdentities: [],
@@ -217,10 +218,12 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
                 }
             } else if (s.type == "POLDEFINITION") {
                 poldef = ctx.namespace + "." + s.name;
-                const eidx = ctx.expressions.length;
+                // const eidx = ctx.expressions.length;
+                // explore(ctx, s.expression);
                 s.expression.poldef = poldef;
                 addFilename(s.expression, relativeFileName, ctx);
-                ctx.expressions.push(s.expression);
+                const eidx = insertExpression(ctx, s.expression);
+                // ctx.expressions.push(s.expression);
                 if (ctx.references[ctx.namespace + "." + s.name]) error(s, `name already defined ${ctx.namespace + "." + s.name}`);
                 ctx.references[ctx.namespace + "." + s.name] = {
                     type: "imP",
@@ -229,9 +232,11 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
                 }
                 ctx.nIm++;
             } else if (s.type == "POLIDENTITY") {
-                const eidx = ctx.expressions.length;
+                // const eidx = ctx.expressions.length;
+                // explore(ctx, s.expression);
                 addFilename(s.expression, relativeFileName, ctx);
-                ctx.expressions.push(s.expression);
+                // ctx.expressions.push(s.expression);
+                const eidx = insertExpression(ctx, s.expression);
                 ctx.polIdentities.push({fileName: relativeFileName, namespace: ctx.namespace, line: s.first_line, e: eidx});
             } else if (s.type == "PLOOKUPIDENTITY" || s.type == "PERMUTATIONIDENTITY") {
                 const pu = {
@@ -244,27 +249,35 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
                     selT: null
                 }
                 for (let j=0; j<s.f.length; j++) {
-                    const efidx = ctx.expressions.length;
+                    // const efidx = ctx.expressions.length;
+                    // explore(ctx, s.f[j]);
                     addFilename(s.f[j], relativeFileName, ctx);
-                    ctx.expressions.push(s.f[j]);
+                    // ctx.expressions.push(s.f[j]);
+                    const efidx = insertExpression(ctx, s.f[j]);
                     pu.f.push(efidx);
                 }
                 if (s.selF) {
-                    const selFidx = ctx.expressions.length;
+                    //const selFidx = ctx.expressions.length;
+                    // explore(ctx, s.selF);
                     addFilename(s.selF, relativeFileName, ctx);
-                    ctx.expressions.push(s.selF);
+                    // ctx.expressions.push(s.selF);
+                    const selFidx = insertExpression(ctx, s.selF);
                     pu.selF = selFidx;
                 }
                 for (let j=0; j<s.t.length; j++) {
-                    const etidx = ctx.expressions.length;
+                    // const etidx = ctx.expressions.length;
+                    // explore(ctx, s.t[j]);
                     addFilename(s.t[j], relativeFileName, ctx);
-                    ctx.expressions.push(s.t[j]);
+                    // ctx.expressions.push(s.t[j]);
+                    const etidx = insertExpression(ctx, s.t[j]);
                     pu.t.push(etidx);
                 }
                 if (s.selT) {
-                    const selTidx = ctx.expressions.length;
+                    // const selTidx = ctx.expressions.length;
+                    // explore(ctx, s.selT);
                     addFilename(s.selT, relativeFileName, ctx);
-                    ctx.expressions.push(s.selT);
+                    // ctx.expressions.push(s.selT);
+                    const selTidx = insertExpression(ctx, s.selT);
                     pu.selT = selTidx;
                 }
                 if (pu.f.length != pu.t.length ) error(s, `${s.type} with diferent number of elements`);
@@ -282,15 +295,19 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
                     connections: [],
                 }
                 for (let j=0; j<s.pols.length; j++) {
-                    const efidx = ctx.expressions.length;
+                    // const efidx = ctx.expressions.length;
+                    // explore(ctx, s.pols[j]);
                     addFilename(s.pols[j], relativeFileName, ctx);
-                    ctx.expressions.push(s.pols[j]);
+                    // ctx.expressions.push(s.pols[j]);
+                    const efidx = insertExpression(ctx, s.pols[j]);
                     ci.pols.push(efidx);
                 }
                 for (let j=0; j<s.connections.length; j++) {
-                    const etidx = ctx.expressions.length;
+                    // const etidx = ctx.expressions.length;
+                    // explore(ctx, s.connections[j]);
                     addFilename(s.connections[j], relativeFileName, ctx);
-                    ctx.expressions.push(s.connections[j]);
+                    // ctx.expressions.push(s.connections[j]);
+                    const etidx = insertExpression(ctx, s.connections[j]);
                     ci.connections.push(etidx);
                 }
                 if (ci.pols.length != ci.connections.length ) error(s, `connection with diferent number of elements`);
@@ -337,6 +354,8 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
                 throw err;
             }
         }
+        console.log(['A',ctx.expressions.length]);
+
         if (!skip) continue;
 
         if (insideIncludedDomain) {
@@ -360,6 +379,8 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
     }
 
     if (isMain) {
+        console.log(['B',ctx.expressions.length]);
+        exploreAll(ctx);
         if (typeof ctx.namespaces === 'object') {
             let notFoundNamespaces = Object.keys(ctx.namespaces).filter(namespace => ctx.namespaces[namespace] === 0);
             if (notFoundNamespaces.length) {
@@ -471,6 +492,7 @@ module.exports = async function compile(Fr, fileName, ctx, config = {}) {
     }
 
     if (isMain) {
+        console.log(['C', ctx.expressions.length]);
         return ctx2json(ctx);
     }
 }
@@ -717,7 +739,69 @@ function ctx2json(ctx) {
         out.connectionIdentities.push(pu);
     }
 
+    console.log(['EXPRESSIONS', out.expressions.length]);
     return out;
+}
+
+function insertExpression(ctx, e) {
+    const sexpr = _explore(ctx, e);
+    if (typeof ctx.definedExpressions[sexpr] !== 'undefined') {
+        ctx.definedExpressions[sexpr].references.push(e.fileName + ':' + e.line);
+        return ctx.definedExpressions[sexpr].id;
+    }
+    ctx.definedExpressions[sexpr] = {id: ctx.expressions.length, references: [e.fileName + ':' + e.line]};
+    ctx.expressions.push(e);
+    return ctx.definedExpressions[sexpr].id;
+}
+function explore(ctx, e) {
+}
+function exploreAll(ctx) {
+    for (const e of ctx.expressions) {
+        console.log('EXP:' + _explore(ctx, e));
+    }
+}
+function _explore(ctx, e) {
+    const op = (e ?? {}).op ?? false;
+
+    if (op === false) {
+        console.log(e);
+    }
+    if (['add', 'mul', 'neg', 'sub'].includes(op)) {
+        return op + '('+e.values.map(x => _explore(ctx, x)).join()+')';
+    }
+    if (op === 'number') {
+        return e.value;
+    }
+    if (op === 'constant') {
+        return e.name;
+    }
+    if (op === 'pol') {
+        const name = (e.namespace === 'this' ? ctx.namespace : e.namespace) +'.'+e.name;
+        let ref = name;
+        if (e.next) {
+            if (e.next === true) {
+                ref = ref + "'";
+            } else {
+                console.log(e);
+                EXIT_HERE;
+            }
+        }
+        if (typeof e.idxExp !== 'undefined') {
+            const se = simplifyExpression(ctx.Fr, ctx, e.idxExp);
+            ref = ref + '[' + Number(se.value) + ']';
+        }
+        return 'pol:'+ref;
+    }
+    if (op === 'public') {
+        return 'public:'+e.id;
+    }
+    if (op === 'pow') {
+        if (e.values.length === 2 && e.values[0].op === 'number') {
+            return BigInt(e.values[0].value) ** BigInt(e.values[1].value);
+        }
+        console.log(e.values);
+        EXIT_HERE;
+    }
 }
 
 function expression2JSON(ctx, e, deps) {
