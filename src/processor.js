@@ -24,6 +24,7 @@ const Iterator = require("./iterator.js");
 const Context = require("./context.js");
 const {FlowAbortCmd, BreakCmd, ContinueCmd, ReturnCmd} = require("./flow_cmd.js")
 const fs = require('fs');
+const path = require('path');
 const { log2, getKs, getRoots } = require("./utils.js");
 const Hints = require('./hints.js');
 const util = require('util');
@@ -123,7 +124,7 @@ module.exports = class Processor {
     insideFunction() {
         return this.functionDeep > 0;
     }
-    startExecution(statements) {
+    startExecution(statements, piloutDir) {
         let bits = 0;
         while (bits < 530) {
             ++bits;
@@ -143,14 +144,14 @@ module.exports = class Processor {
         this.executeSubproofs();
         this.finalProofScope();
         this.scope.popInstanceType();
-        this.generateOut();
+        this.generateOut(piloutDir);
     }
     executeSubproofs() {
         for (const name of this.subproofs) {
             this.executeSubproof(name, this.subproofs.get(name));
         }
     }
-    generateOut()
+    generateOut(piloutDir)
     {
         //packed.dump();
         // this.constraints.dump(packed);
@@ -201,8 +202,8 @@ module.exports = class Processor {
         proto.setGlobalConstraints(this.globalConstraints, packed);
         proto.setGlobalExpressions(packed);
         proto.setGlobalSymbols(this.references);
-        proto.encode();
-        proto.saveToFile('tmp/pilout.ptb');
+        proto.encode(path.join(piloutDir, "pilout.log"));
+        proto.saveToFile(path.join(piloutDir, "pilout.ptb"));
         // stageWidths
         // expressions
 

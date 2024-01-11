@@ -58,7 +58,8 @@ class Compiler {
             }
         }
         let sts = await this.parseSource(fileName, true);
-        this.processor.startExecution(sts);
+        let piloutDir = config.piloutDir || 'tmp';
+        this.processor.startExecution(sts, piloutDir);
         if (config.processorTest) {
             return this.processor;
         }
