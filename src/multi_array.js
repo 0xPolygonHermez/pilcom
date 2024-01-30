@@ -1,4 +1,5 @@
 const {assert, assertLog} = require('./assert.js');
+const Debug = require('./debug.js');
 class MultiArray {
     static ErrorIndexOutOfRange = class extends Error {
     }
@@ -90,9 +91,9 @@ class MultiArray {
         return (indexes.length === this.dim);
     }
     locatorIndexesApply(locatorId, indexes) {
-        console.log([locatorId, indexes, this.dim, this.lengths]);
+        if (Debug.active) console.log([locatorId, indexes, this.dim, this.lengths]);
         const [offset, dims] = this.getIndexesOffset(indexes);
-        console.log([offset, dims]);
+        if (Debug.active) console.log([offset, dims]);
         if ((this.dim - dims) > 0) {
             throw new Error(`ERROR ON ARRAY ${offset} ${dims} ${this.dim}`);
         }

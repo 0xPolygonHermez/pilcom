@@ -6,7 +6,7 @@ module.exports = class ExpressionOperationsInfo {
         pow:  { type: 'arith',   label: '**', precedence:  98, args: 2, commutative: false },
         neg:  { type: 'arith',   label: '-',  precedence: 102, args: 1, commutative: false },
         div:  { type: 'arith',   label: '/',  precedence:  94, args: 2, commutative: false },
-        mod:  { type: 'arith',   label: '%',  precedence:  92, args: 1, commutative: false },
+        mod:  { type: 'arith',   label: '%',  precedence:  92, args: 2, commutative: false },
         gt:   { type: 'cmp',     label: '>',  precedence:  76, args: 2, commutative: false },
         ge:   { type: 'cmp',     label: '>=', precedence:  72, args: 2, commutative: false },
         lt:   { type: 'cmp',     label: '<',  precedence:  78, args: 2, commutative: false },

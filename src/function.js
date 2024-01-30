@@ -6,6 +6,7 @@ const Expression = require("./expression.js");
 const ExpressionItems = require("./expression_items.js");
 const List = require("./list.js");
 const Context = require('./context.js');
+const Debug = require('./debug.js');
 module.exports = class Function {
     constructor (id, data = {}) {
         this.id = id;
@@ -45,9 +46,9 @@ module.exports = class Function {
     evalArguments(args) {
         let eargs = [];
         for (const arg of args) {
-            eargs.push(arg.evalAsItem());
+            eargs.push(arg.instance());
         }
-        console.log('ARGUMENTS '+eargs.map(x => x.toString()).join(','));
+        if (Debug.active) console.log('ARGUMENTS '+eargs.map(x => x.toString()).join(','));
         return eargs;
     }
     // mapArgument was called before enter on function visibility scope because
@@ -55,6 +56,10 @@ module.exports = class Function {
     mapArguments(s) {
         const eargs = this.evalArguments(s.args);
         const scall = this.callToString(eargs);
+        if (Debug.active) {
+            console.log(`FUNCTION.mapArguments ${this.name}`);
+            console.log(util.inspect(eargs, false, null, true));
+        }
         this.checkArgumentsTypes(eargs);
         return {eargs, scall};
     }
@@ -120,8 +125,8 @@ module.exports = class Function {
                     if (argDim) {
                         s.args[iarg].eval();
                         const ref = s.args[iarg].getReference();
-                        console.log(ref);
-                        console.log(ref.name);
+                        if (Debug.active) console.log(ref);
+                        if (Debug.active) console.log(ref.name);
                         const def = Context.references.getDefinition(ref.name);
                         const dup = def.array.applyIndexes(def, ref.__indexes ?? []);
 
@@ -132,7 +137,7 @@ module.exports = class Function {
 
                         Context.processor.declareReference(name, type, dup.array ? dup.array.lengths: [], {});
                     } else {
-                        console.log([name, iarg, s.args.length]);
+                        if (Debug.active) console.log([name, iarg, s.args.length]);
                         const value = s.args[iarg].eval();
                         // TODO: review? no referece?
                         Context.processor.declareReference(name, type, value.array ? value.array.lengths: [], {}, value);
@@ -140,7 +145,7 @@ module.exports = class Function {
                 } else {
                     // console.log(`MAP-${arg.type}`);
                     // TODO: type conversion, mapping in other class
-                    console.log(s.args[iarg]);
+                    if (Debug.active) console.log(s.args[iarg]);
                     if (s.args[iarg] instanceof ExpressionItems.ExpressionList) {
                         // check (argDim === 1 && arg.type === 'expr')
                         const list = new List(this, s.args[iarg], false);
@@ -149,33 +154,33 @@ module.exports = class Function {
                         let index = 0;
                         for (const value of list.values) {
                             extraInfo = index;
-                            console.log(value);
+                            if (Debug.active) console.log(value);
                             Context.references.set(name, [index++], value instanceof Expression ? value.instance() : value);
                         }
                     } else if (argDim) {
-                            console.log(s.args[iarg].eval());
+                            if (Debug.active) console.log(s.args[iarg].eval());
                             const ref = s.args[iarg].getReference();
                             const def = Context.references.getDefinition(ref.name);
                             const dup = def.array.applyIndexes(def, ref.__indexes ?? []);
                             Context.processor.declareReference(name, type, dup.array.lengths, {});
                             Context.processor.assign.assign(name, dup.array.lengths, s.args[iarg]);
                     } else if (!(s.args[iarg] instanceof Expression)) {
-                        console.log(arg);
-                        console.log([this.name, iarg, s.args[iarg], s.args.length]);
+                        if (Debug.active) console.log(arg);
+                        if (Debug.active) console.log([this.name, iarg, s.args[iarg], s.args.length]);
                         EXIT_HERE;
                     } else {
                         // const value = s.args[iarg].instance().getAloneOperand();
                         // const value = s.args[iarg].getAloneOperand();
                         // const value = s.args[iarg].getReference();
-                        console.log(util.inspect(s.args[iarg], false, 10, true));
+                        if (Debug.active) console.log(util.inspect(s.args[iarg], false, 10, true));
                         const value = s.args[iarg].evaluateAloneReference();
-                        console.log(util.inspect(s.args[iarg].eval(), false, 10, true));
-                        console.log(util.inspect(s.args[iarg].instance(), false, 10, true));
+                        if (Debug.active) console.log(util.inspect(s.args[iarg].eval(), false, 10, true));
+                        if (Debug.active) console.log(util.inspect(s.args[iarg].instance(), false, 10, true));
                         const dim = value.array ? value.array.dim : 0;
                         if (dim !== argDim) {
                             throw new Error(`Invalid array on ${Context.sourceRef} ${dim} != ${argDim}`);
                         }
-                        console.log(util.inspect(value, false, 10, true));
+                        if (Debug.active) console.log(util.inspect(value, false, 10, true));
                         Context.processor.declareReference(name, type, value.array ? value.array.lengths: [], {}, value);
                     }
                 }
@@ -196,9 +201,9 @@ module.exports = class Function {
     }
     setArgument(name, value) {
         const arg = this.args[name];
-        console.log(name);
-        console.log(arg);
-        console.log(value);
+        if (Debug.active) console.log(name);
+        if (Debug.active) console.log(arg);
+        if (Debug.active) console.log(value);
         // REVIEW: use arg.type, but perphaps we need to do a casting
         if (name === 'cols') {
             debugger;
@@ -209,7 +214,7 @@ module.exports = class Function {
         } else if (Array.isArray(value)) {
             lengths = [value.length];
         }
-        console.log('KKK2KKK', name, lengths, value.constructor.name, value.toString());
+        if (Debug.active) console.log('KKK2KKK', name, lengths, value.constructor.name, value.toString());
         Context.references.declare(name, arg.type, lengths, {}, value);
 
         // TODO: arrays.
@@ -289,7 +294,7 @@ module.exports = class Function {
     }
     exec(callInfo, mapInfo) {
         this.declareAndInitializeArguments(mapInfo.eargs);
-        console.log(Context.constructor.name);
+        if (Debug.active) console.log(Context.constructor.name);
         let res = Context.processor.execute(this.statements, `FUNCTION ${this.name}`);
         if (res instanceof ReturnCmd) {
             Context.processor.traceLog('[TRACE-BROKE-RETURN]', '38;5;75;48;5;16');

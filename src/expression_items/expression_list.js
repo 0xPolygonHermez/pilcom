@@ -40,6 +40,10 @@ class ExpressionList extends ExpressionItem {
         }
         return item.getItem(indexes.slice(1));
     }
+    instance(options) {
+        let _items = this.items.map(x => x.instance(options));
+        return new ExpressionList(_items, this.debug);
+    }
 }
 
 module.exports = ExpressionList;

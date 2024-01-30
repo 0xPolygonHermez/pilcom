@@ -14,38 +14,44 @@
 // ┄┄┄┄┄│┄┄┄┄┄┄┄┄│┄┄┄┄┄│┄┄┄┄┄┄┄│┄┄┄┄┄┄│┄┄┄┄┄┄┄│┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ 
 
 
-//  bytes/clk │ clk │ cols           │ area │ opens │ NOTES 
-// ───────────┼─────┼────────────────┼──────┼───────┼───────────────────────────────────
-//      2     │  16 │ 8 + 4*2 = 16   │ 256  │  17   │ 
-//      4     │   8 │ 8 + 4*4 = 24   │ 192  │   9   │ 
-//      8     │   4 │ 8 + 4*8 = 40   │ 160  │   5   │ 
-//     16     │   2 │ 8 + 4*16 = 76  │ 152  │   3   │ 
-//     32     │   1 │ 8 + 4*32 = 136 │ 136  │   2   │ 
+//  ope │ opcode │ cin │ carry │ last │ ROWS  │ NOTES 
+// ─────┼────────┼─────┼───────┼──────┼───────┼───────────────────────────────────
+//  ADD │   0    │  0  │  X    │      │ 2**17 │ could use cIn to ADC
+//  SUB │   1    │  0  │  X    │      │ 2**17 │ 
+//  OR  │   6    │  0  │       │      │ 2**16 │ 
+//  XOR │   7    │  0  │       │      │ 2**16 │ 
+//  LT  │   2    │  0  │  X    │  X   │ 2**18 │ 
+//  SLT │   3    │  0  │  X    │  X   │ 2**18 │ 
+//  EQ  │   4    │  0  │  X    │  X   │ 2**18 │ 
+//  AND │   5    │  0  │  X    │  X   │ 2**17 │ use carry to detect any bit one 
+//  LT4 │   8    │  0  │  X    │  X   │ 2**18 │ TOTAL = 2**20 + 2**19 => 2**21
+// ┄┄┄┄┄│┄┄┄┄┄┄┄┄│┄┄┄┄┄│┄┄┄┄┄┄┄│┄┄┄┄┄┄│┄┄┄┄┄┄┄│┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ 
+
+
+//  bytes/clk │ clk │ cols           │ area │ lookups │ opens │ NOTES 
+// ───────────┼─────┼────────────────┼──────┼─────────┼───────┼───────────────────────────────────
+//      2     │  16 │ 8 + 4*2 = 16   │ 256  │      2  │  17   │ 
+//      4     │   8 │ 8 + 4*4 = 24   │ 192  │      4  │   9   │ 
+//      8     │   4 │ 8 + 4*8 = 40   │ 160  │      8  │   5   │ 
+//     16     │   2 │ 8 + 4*16 = 76  │ 152  │     16  │   3   │ 
+//     32     │   1 │ 8 + 4*32 = 136 │ 136  │     32  │   2   │ 
 
 const int BINARY_ID = 1;
 
 subproof aggregate Binary(2**21, 2**23, 2**25) {
 
-    col fixed CLK0 = [1,0:3]...;
-    const expr RESET = CLK0;
-
-    col witness freeInA[8], freeInB[8], freeInC[8];   // 8 x 1 Byte (2 inputs, 1 output)
+    col witness freeInA[32], freeInB[32], freeInC[32];   // 8 x 1 Byte (2 inputs, 1 output)
     col witness opcode;                               // operation code
-    col witness carry[9];                             // 9 chunks carries [cin:0,cout:1],[cin:1,cout:2],...,[cin:6,cout:7]
+    col witness carry[33];                             // 9 chunks carries [cin:0,cout:1],[cin:1,cout:2],...,[cin:6,cout:7]
     col witness result;                               // selector of result binary operation
 
     // CLK0     1,0,0...0,0|1,0,0...0,0|1,0,....
     // result   0,0,0...0,1|0,0,0...0,1|0,0,....
     // 'result  1,0,0...0,0|1,0,0...0,0|1,0,....
-    (1 - CLK0) * 'result = 0;
     result * (1 - result) = 0;
 
-    ('opcode - opcode) * (1 - CLK0) === 0;
-
     const expr cIn = carry[0];
-    const expr cOut = carry[8];
-
-    (1 - CLK0) * ('cOut - cIn) === 0;
+    const expr cOut = carry[32];
 
     for (int index = 0; index < length(carry); index += 1) {
         carry[index] * (1 - carry[index]) === 0;

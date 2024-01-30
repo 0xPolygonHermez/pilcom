@@ -2,7 +2,7 @@ const {assert, assertLog} = require('./assert.js');
 const MultiArray = require("./multi_array.js");
 const ArrayOf = require('./expression_items/array_of.js');
 const Context = require('./context.js');
-
+const Debug = require('./debug.js');
 /**
  * @property {MultiArray} array
  */
@@ -21,7 +21,7 @@ class Reference {
         this.initialized = false;
         for (const property in properties) {
             assert(typeof this[property] === 'undefined');
-            if (property === 'const') console.log(['CONST ********', properties[property]]);
+            if (Debug.active) if (property === 'const') console.log(['CONST ********', properties[property]]);
             this[property] = properties[property];
         }
     }
@@ -45,11 +45,11 @@ class Reference {
         return  (indexes.length === 0 || !this.array) ? this.initialized : this.array.isInitialized(indexes);
     }
     getId(indexes = []) {
-        console.log(`getId ${this.name} ${Array.isArray(indexes) ? '[' + indexes.join(',') + ']':indexes} ${this.array ? this.array.toDebugString():''}`);
+        if (Debug.active) console.log(`getId ${this.name} ${Array.isArray(indexes) ? '[' + indexes.join(',') + ']':indexes} ${this.array ? this.array.toDebugString():''}`);
         return  (indexes.length === 0 || !this.array) ? this.locator : this.array.getLocator(this.locator, indexes);
     }
     set (value, indexes = [], options = {}) {
-        console.stdebug(`set(${this.name}, [${indexes.join(',')}]`);
+        if (Debug.active) console.stdebug(`set(${this.name}, [${indexes.join(',')}]`);
         assert(value !== null); // to detect obsolete legacy uses
         if (!this.array || this.array.isFullIndexed(indexes)) {
             return this.setOneItem(value, indexes, options);
@@ -58,7 +58,7 @@ class Reference {
         // At this point, it's a array initilization
     }
     setArrayLevel(level, indexes, value, options = {}) {
-        console.log(`setArrayLevel(${this.name} ${level}, [${indexes.join(',')}]`);
+        if (Debug.active) console.log(`setArrayLevel(${this.name} ${level}, [${indexes.join(',')}]`);
         const len = this.array.lengths[level];
         for (let index = 0; index < len; ++index) {
             let _indexes = [...indexes];
@@ -114,6 +114,10 @@ class Reference {
         let locator = this.locator;
         let label = options.label;
 
+        if (Debug.active) {
+            console.log(indexes);
+            console.log(this);
+        }
         // indexes evaluation
         let evaluatedIndexes = [];
         if (Array.isArray(indexes) && indexes.length > 0) {
@@ -132,6 +136,7 @@ class Reference {
                 res = new ArrayOf(this.type, this.array.createSubArray(evaluatedIndexes, locator));
             }
         } else if (evaluatedIndexes.length > 0) {
+            console.log(evaluatedIndexes);
             console.log(this);
             throw new Error('try to access to index on non-array value');
         }

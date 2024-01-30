@@ -36,6 +36,7 @@ const fs = require('fs');
 const { log2, getKs, getRoots } = require("./utils.js");
 const Hints = require('./hints.js');
 const util = require('util');
+const Debug = require('./debug.js');
 
 module.exports = class Processor {
     constructor (Fr, parent) {
@@ -138,7 +139,7 @@ module.exports = class Processor {
             if (this.context.config.debug.builtInLoad) {
                 console.log(`Loading builtin ${filename}.....`);
             }
-            console.log(filename);
+            if (Debug.active) console.log(filename);
             const builtInCls = require(__dirname + '/builtin/'+ filename);
             const builtInObj = new builtInCls(this);
             this.builtIn[builtInObj.name] = builtInObj;
@@ -243,9 +244,11 @@ module.exports = class Processor {
     }
     traceLog(text, color = '') {
         if (!this.trace) return;
-        console.log([Expression.constructor.name]);
-        if (color) console.log(`\x1B[${color}m${text}\x1B[0m`);
-        else console.log(text);
+        if (Debug.active) {
+            console.log([Expression.constructor.name]);
+            if (color) console.log(`\x1B[${color}m${text}\x1B[0m`);
+            else console.log(text);
+        }
     }
     execute(statements, label = '') {
         const __executeCounter = this.executeCounter++;
@@ -275,10 +278,10 @@ module.exports = class Processor {
             this.error(st, `Invalid statement (without type)`);
         }
         const method = ('exec_'+st.type).replace(/[-_][a-z]/g, (group) => group.slice(-1).toUpperCase());
-        console.log(`## DEBUG ## ${this.executeCounter}.${this.executeStatementCounter} ${method} ${st.debug}` );
+        if (Debug.active) console.log(`## DEBUG ## ${this.executeCounter}.${this.executeStatementCounter} ${method} ${st.debug}` );
         if (!(method in this)) {
             console.log('==== ERROR ====');
-                this.error(st, `Invalid statement type: ${st.type}`);
+            this.error(st, `Invalid statement type: ${st.type}`);
         }
         let res;
         try {
@@ -293,6 +296,14 @@ module.exports = class Processor {
         }
         return res;
     }
+    execPragma(st) {
+        const params = st.value.split(/\s+/);
+        console.log(params);
+        if (params[0] === 'debug') {
+            if (params[1] === 'on') Debug.active = true;
+            else if (params[1] === 'off') Debug.active = false;        
+        }
+    }
     execProof(st) {
         this.scope.pushInstanceType('proof');
         this.execute(st.statements);
@@ -300,11 +311,16 @@ module.exports = class Processor {
     }
     executeFunctionCall(name, callinfo) {
         const func = this.builtIn[name] ?? this.references.get(name);
-        console.log(`CALL ${name}`);
-        console.log(callinfo);
+        if (Debug.active) {
+            console.log(`CALL ${name}`);
+            console.log(callinfo);
+        }
 
         if (func) {
             const mapInfo = func.mapArguments(callinfo);
+            // console.log(mapInfo);
+            // console.log(func.constructor.name);
+            // callinfo.dumpArgs(mapInfo.eargs, 'CALLINFO');
             this.callstack.push(mapInfo.scall ?? name);
             ++this.functionDeep;
             this.scope.push();
@@ -314,16 +330,16 @@ module.exports = class Processor {
             this.scope.pop();
             --this.functionDeep;
             this.callstack.pop();
-            console.log(`END CALL ${name}`, res);
+            if (Debug.active) console.log(`END CALL ${name}`, res);
             return typeof res === 'undefined' ? new ExpressionItems.IntValue() : res;
         }
         this.error({}, `Undefined function ${name}`);
     }
     execCall(st) {
         const name = st.function.name;
-        console.log(`CALL (EXEC) ${name}`);
+        if (Debug.active) console.log(`CALL (EXEC) ${name}`);
         const res = this.executeFunctionCall(name, st);
-        console.log(`END CALL (EXEC) ${name}`);
+        if (Debug.active) console.log(`END CALL (EXEC) ${name}`);
         return res;
     }
     execAssign(st) {
@@ -336,31 +352,31 @@ module.exports = class Processor {
         if (st.value instanceof ExpressionItems.ExpressionList) {
             const sequence = new Sequence(this, st.value, ExpressionItems.IntValue.castTo(this.references.get('N')));
             sequence.extend();
-            console.log(sequence.size);
-            console.log(sequence.toString());
+            if (Debug.active) console.log(sequence.size);
+            if (Debug.active) console.log(sequence.toString());
             EXIT_HERE;
         }
-        console.log(st.value);
-        st.value.dump('@@@@@@@@@@@@@@@@@@');
+        if (Debug.active) console.log(st.value);
+        if (Debug.active) st.value.dump('@@@@@@@@@@@@@@@@@@');
         const expr2 = st.value.instance();
-        expr2.dump('@^^@------/');
+        if (Debug.active) expr2.dump('@^^@------/');
         if (st.name.reference) {
             assert(indexes.length === 0);
             const assignedValue = st.value.instance();
-            console.log(assignedValue);
+            if (Debug.active) console.log(assignedValue);
             this.assign.assignReference(names, assignedValue);
             return;
         }
-        console.log(st.value);
+        if (Debug.active) console.log(st.value);
         this.assign.assign(names, indexes, st.value);
-        console.log(`ASSIGN ${st.name.name} = ${st.value.toString()} \x1B[0;90m[${Context.sourceTag}]\x1B[0m`);
+        if (Debug.active) console.log(`ASSIGN ${st.name.name} = ${st.value.toString()} \x1B[0;90m[${Context.sourceTag}]\x1B[0m`);
         // this.references.set(st.name.name, [], this.expressions.eval(st.value));
     }
     execHint(s) {
         const name = s.name;
-        console.log(util.inspect(s.data, false, null, true));
+        if (Debug.active) console.log(util.inspect(s.data, false, null, true));
         const res = this.processHintData(s.data);
-        console.log(util.inspect(res, false, null, true));
+        if (Debug.active) console.log(util.inspect(res, false, null, true));
         this.hints.define(name, res);
     }
     processHintData(hdata) {
@@ -384,7 +400,7 @@ module.exports = class Processor {
             }
             return result;
         }
-        console.log(hdata);
+        if (Debug.active) console.log(hdata);
         EXIT_HERE;
     }
     execIf(s) {
@@ -396,7 +412,7 @@ module.exports = class Processor {
             if (cond.type === 'else' && icond !== (s.conditions.length-1)) {
                 throw new Error('else only could be on last position');
             }
-            console.log(cond);
+            if (Debug.active) console.log(cond);
 
             if (typeof cond.expression !== 'undefined' && cond.expression.evalAsBool() !== true) {
                 continue;
@@ -443,7 +459,7 @@ module.exports = class Processor {
         return result;
     }
     execFor(s) {
-        console.log('EXEC-FOR');
+        if (Debug.active) console.log('EXEC-FOR');
         let result;
         this.scope.push();
         this.execute(s.init, `FOR ${this.sourceRef} INIT`);
@@ -451,21 +467,21 @@ module.exports = class Processor {
         // while (this.expressions.e2bool(s.condition)) {
         while (true) {
             const loopCond = s.condition.eval().asBool();
-            console.log('FOR.CONDITION', loopCond, s.condition.toString(), s.condition);
+            if (Debug.active) console.log('FOR.CONDITION', loopCond, s.condition.toString(), s.condition);
             if (!loopCond) break;
             // if only one statement, scope will not create.
             // if more than one statement, means a scope_definition => scope creation
             result = this.execute(s.statements, `FOR ${this.sourceRef} I:${index}`);
             ++index;
             if (result instanceof BreakCmd) break;
-            console.log('INCREMENT', s.increment);
+            if (Debug.active) console.log('INCREMENT', s.increment);
             this.execute(s.increment);
         }
         this.scope.pop();
         return result;
     }
     execForIn(s) {
-        console.log(s);
+        if (Debug.active) console.log(s);
         if (s.list && s.list instanceof ExpressionItems.ExpressionList) {
             return this.execForInList(s);
         }
@@ -527,8 +543,8 @@ module.exports = class Processor {
     }
     execForInExpression(s) {
         // s.list.expr.dump();
-        console.log(s);
-        console.log(s.list);
+        if (Debug.active) console.log(s);
+        if (Debug.active) console.log(s.list);
         let it = new Iterator(s.list);
         this.scope.push();
         this.execute(s.init,`FOR-IN-EXPRESSION ${this.sourceRef} INIT`);
@@ -557,7 +573,7 @@ module.exports = class Processor {
         const [name, indexes, legth] = slist.getRuntimeReference();
     }
     execBreak(s) {
-        return new BreakCmd();
+        return new BreakCmd();console.log
     }
     execContinue(s) {
         return new ContinueCmd();
@@ -572,15 +588,16 @@ module.exports = class Processor {
         }
     }
     execFunctionDefinition(s) {
-        console.log('FUNCTION '+s.funcname);
+        if (Debug.active) console.log('FUNCTION '+s.funcname);
         let func = new Function(this, s);
         this.references.declare(func.name, 'function');
         this.references.set(func.name, [], func);
     }
     getExprNumber(expr, s, title) {
-        console.log(s);
-        expr.dump();
-        // expr.expr.dump();
+        if (Debug.active) {
+            console.log(s);
+            expr.dump();
+        }
         const se = ExpressionItems.IntValue.castTo(expr.eval());
         if (typeof se !== 'bigint') {
 //        if (se.op !== 'number') {
@@ -767,12 +784,12 @@ module.exports = class Processor {
         this.callDelayedFunctions('proof', 'final');
     }
     callDelayedFunctions(scope, event) {
-        console.log(this.delayedCalls);
+        if (Debug.active) console.log(this.delayedCalls);
         if (typeof this.delayedCalls[scope] === 'undefined' || typeof this.delayedCalls[scope][event] === 'undefined') {
             return false;
         }
         for (const fname in this.delayedCalls[scope][event]) {
-            console.log(`CALL DELAYED(${scope},${event}) FUNCTION ${fname}`);
+            if (Debug.active) console.log(`CALL DELAYED(${scope},${event}) FUNCTION ${fname}`);
             this.execCall({ op: 'call', function: {name: fname}, args: [] });
         }
     }
@@ -921,7 +938,7 @@ module.exports = class Processor {
             s.executed = true;
             return this.execute(s.statements,`CODE ${this.sourceRef}`);
         }
-        console.log(`Ignore once section because it has already executed ${s.debug}`);
+        if (Debug.active) console.log(`Ignore once section because it has already executed ${s.debug}`);
     }
     execConstraint(s) {
         const scopeType = this.scope.getInstanceType();
@@ -951,12 +968,12 @@ module.exports = class Processor {
         const value = this.references.get(name, []);
         // REVIEW: could be an expression (if expression x+1+1 = x+2)
         const intValue = value.getValue();
-        console.log(`INCREMENT ${s.name} = ${intValue} + ${s.pre + s.post} = ${intValue + s.pre + s.post}`);
+        if (Debug.active) console.log(`INCREMENT ${s.name} = ${intValue} + ${s.pre + s.post} = ${intValue + s.pre + s.post}`);
         // console.log(s.pre, s.post, value.getValue());
         this.references.set(name, [], intValue + s.pre + s.post);
     }
     execVariableDeclaration(s) {
-        console.log('VARIABLE DECLARATION '+Context.sourceRef+' init:'+s.init);
+        if (Debug.active) console.log('VARIABLE DECLARATION '+Context.sourceRef+' init:'+s.init);
         const init = typeof s.init !== 'undefined';
 //         console.log(s);
         const count = s.items.length;
@@ -972,7 +989,7 @@ module.exports = class Processor {
             const scope = s.scope ?? false;
             let initValue = null;
             if (init) {
-                console.log(name, s.vtype, Context.sourceRef);
+                if (Debug.active) console.log(name, s.vtype, Context.sourceRef);
                 switch (s.vtype) {
                     case 'expr':
                         initValue = s.init[index].eval();
@@ -984,12 +1001,12 @@ module.exports = class Processor {
                         initValue = new ExpressionItems.StringValue(this.expressions.e2value(s.init[index]));
                         break;
                 }
-                console.log(name, s.vtype, initValue.toString ? initValue.toString() : initValue);
+                if (Debug.active) console.log(name, s.vtype, initValue.toString ? initValue.toString() : initValue);
             }
             this.references.declare(name, s.vtype, lengths, { scope, sourceRef, const: s.const ?? false }, initValue);
             if (initValue !== null) {
                 const initValueText = typeof initValue.toString === 'function' ? initValue.toString() : initValue;
-                console.log(`ASSIGN(DECL) ${name} = ${initValueText} \x1B[0;90m[${Context.sourceTag}]\x1B[0m`);
+                if (Debug.active) console.log(`ASSIGN(DECL) ${name} = ${initValueText} \x1B[0;90m[${Context.sourceTag}]\x1B[0m`);
                 // this.references.set(name, [], initValue);
             }
         }
@@ -1052,7 +1069,7 @@ module.exports = class Processor {
 
         // replace on string each tag for its value
         const evaluatedTemplate = stringTags.map((s, index) => tags[index].pre + s).join('')+lastS;
-        console.log(`TEMPLATE "${template}" ==> "${evaluatedTemplate}"`);
+        if (Debug.active) console.log(`TEMPLATE "${template}" ==> "${evaluatedTemplate}"`);
         return evaluatedTemplate;
     }
     evaluateExpression(e){
@@ -1067,8 +1084,10 @@ module.exports = class Processor {
             throw new Error('Return is called out of function scope');
         }
         const res = s.value.instance();
-        console.log(res);
-        console.log(res.eval());
+        if (Debug.active) {
+            console.log(res);
+            console.log(res.eval());
+        }
         this.traceLog(`[RETURN.END  ${sourceRef}] ${this.scope.deep}`);
         return new ReturnCmd(res);
     }

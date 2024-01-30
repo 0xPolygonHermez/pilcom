@@ -2,20 +2,26 @@ const util = require('util');
 const RuntimeItem = require("./runtime_item.js");
 const ExpressionList = require("./expression_list.js");
 const Context = require('../context.js');
-module.exports = class FunctionCall extends RuntimeItem {
+const Debug = require('../debug.js');
+const ExpressionClass = require('../expression_class.js');
+module.exports = class FunctionCall extends RuntimeItem {    
     constructor (name, args = [], indexes = [], debug = {}) {
         super(debug);
         this.name = name;
         if (args instanceof ExpressionList) {
-            console.log(util.inspect(args, false, 10, true));
+            if (Debug.active) console.log(util.inspect(args, false, 10, true));
             args = args.items;
         }
-        console.log([`#FCALL#${name} ${Context.sourceTag} ${args.length}`, args]);
+        if (Debug.active) console.log([`#FCALL#${name} ${Context.sourceTag} ${args.length}`, args]);
         // this.args = args.map(x => (typeof x.clone === 'function') ? x.clone() : x);
         this.args = args.map(x => x.clone());
         this.indexes = indexes.map(x => (typeof x.clone === 'function') ? x.clone() : x);
-        console.log(`############## ARGS(${name},${this.args.length}) ######################`);
-        console.log(util.inspect(args, false, 10, true));
+        if (Debug.active) {
+            console.log(`############## ARGS(${name},${this.args.length}) ######################`);
+            console.log(util.inspect(args, false, 10, true));
+            this.dumpArgs(this.args, 'FCALL');
+        }
+    
     }
     setFunction(funcdef) {
         this.funcdef = funcdef;
@@ -32,12 +38,22 @@ module.exports = class FunctionCall extends RuntimeItem {
         super.cloneUpdate(source);
         this.funcdef = source.funcdef;
     }
+    dumpArgs (args, label = '') {
+        args.forEach((x, index) => {
+            const _label = `${label}[${index}]`;
+            if (ExpressionClass.isInstance(x)) x.dump(_label); 
+            else if (x instanceof ExpressionList) this.dumpArgs(x.items, _label);
+            else console.log(_label, x);
+        });
+    }
     evalInside(options = {}) {
-        console.log([`#F CALL.EVAL #${this.name} ${Context.sourceTag}`, this.args]);
-        if (Context.sourceTag === 'basic_functions.pil:12') debugger;
+        if (Debug.active) {
+            console.log([`#FCALL.EVAL #${this.name} ${Context.sourceTag}`, this.args]);
+            this.dumpArgs(this.args, `CALL ${this.name}`);
+        }
         const definition = Context.references.get(this.name, options);
         const res = Context.processor.executeFunctionCall(this.name, this);
-        console.log(this.name, res);
+        if (Debug.active) console.log(this.name, res);
         return res;
     }
 }

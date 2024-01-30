@@ -6,6 +6,7 @@ const Reference = require('./reference.js');
 const Containers = require('./containers.js');
 const Context = require('./context.js');
 const Exceptions = require('./exceptions.js');
+const Debug = require('./debug.js');
 module.exports = class References {
 
     constructor () {
@@ -19,15 +20,15 @@ module.exports = class References {
         let instance = null;
         const instances = [...(options.instances ?? []), ...Object.values(this.types).map(x => x.instance)];
         for (const _instance of instances) {
-            console.log(_instance);
+            if (Debug.active) console.log(_instance);
             if (_instance.expressionItemClass === item.constructor) {
                 instance = _instance;
                 break;
             }
         }
-        console.log(instance, item.id);
+        if (Debug.active) console.log(instance, item.id);
         const res = instance.get ? instance.get(item.id): false;
-        console.log(res);
+        if (Debug.active) console.log(res);
         return res;
     }
 /*    getDefinition(name, indexes) {
@@ -227,8 +228,10 @@ module.exports = class References {
         }
 
         if (initValue !== null) {
-            if (initValue && typeof initValue.toString === 'function') console.log(initValue.toString());
-            else console.log(initValue);
+            if (Debug.active) {
+                if (initValue && typeof initValue.toString === 'function') console.log(initValue.toString());
+                else console.log(initValue);
+            }
             reference.init(initValue);
         }
         return id;
@@ -244,7 +247,7 @@ module.exports = class References {
     }
 
     get (name, indexes = []) {
-        console.log('GET', name, indexes);
+        if (Debug.active) console.log('GET', name, indexes);
 
         // getReference produce an exception if name not found
         return this.getReference(name).get(indexes);
@@ -264,7 +267,7 @@ module.exports = class References {
 
         assert(typeof name === 'string' || (Array.isArray(name) && name.length > 0));
 
-        console.log(indexes);
+        if (Debug.active) console.log(indexes);
         indexes = indexes ?? [];
         options = options ?? {};
 
@@ -378,7 +381,7 @@ module.exports = class References {
             tvalue.array = info.array;
         }
         if (options.preDelta) {
-            console.log(typeof tvalue.value);
+            if (Debug.active) console.log(typeof tvalue.value);
             assert(typeof tvalue.value === 'number' || typeof tvalue.value === 'bigint');
             tvalue.value += options.preDelta;
             instance.set(info.locator + info.offset, tvalue.value);
@@ -427,7 +430,7 @@ module.exports = class References {
         return reference;
     }
     isVisible(def) {
-        console.log('ISVISIBLE', (def.constructor ?? {name: '_'}).name, def);
+        if (Debug.active) console.log('ISVISIBLE', (def.constructor ?? {name: '_'}).name, def);
         return !def.scopeId || !this.hasScope(def.type) || ['constant', 'function', 'witness', 'fixed'].includes(def.type) ||
                 def.scopeId >= this.visibilityScope; // || def.scopeId <= Context.scope.getScopeId('air');
     }
@@ -460,12 +463,12 @@ module.exports = class References {
             }
         }
 
-        console.log(names);
+        if (Debug.active) console.log(names);
         if (!names) {
             names = Context.current.getNames(name);
         }
 
-        console.log(names);
+        if (Debug.active) console.log(names);
         // console.log(`getReference(${name}) on ${this.context.sourceRef} = [${names.join(', ')}]`);
         let reference = false;
 
@@ -556,7 +559,7 @@ module.exports = class References {
         this.references[name] = reference;
     }
     set (name, indexes, value) {
-        console.log('SET', name, indexes, value);
+        if (Debug.active) console.log('SET', name, indexes, value);
         assert(value !== null); // to detect obsolete legacy uses
 
         // getReference produce an exception if name not found

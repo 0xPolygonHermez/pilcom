@@ -1,6 +1,7 @@
 const {assert, assertLog} = require('../assert.js');
 const Variable = require("./variable.js");
 const ExpressionItem = require('../expression_items/int_value.js');
+const Debug = require('../debug.js');
 
 class IntVariable extends Variable {
     constructor (value = 0n) {
@@ -14,7 +15,7 @@ class IntVariable extends Variable {
         super(value);
     }
     setValue(value) {
-        console.log(value);
+        if (Debug.active) console.log(value);
         if (typeof value.asInt === 'function') {
             value = value.asInt();
         }

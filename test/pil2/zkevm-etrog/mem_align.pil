@@ -19,7 +19,8 @@ namespace MemAlign:: {
     col witness inM[2];
 
     // 32 bytes of V
-    col witness inV;
+    col witness inValueShifted;
+    col witness inValueSorted;
 
     // write 32 bytes (256 bits)
     col witness wr256;
@@ -78,10 +79,10 @@ namespace MemAlign:: {
     col RESET = Global.CLK32[0];
 
     //              RangeCheck                  Latch   Clock
-    // factorV      Plookup (FACTORV)           no      yes
-    // wr256        Plookup (WR256)             yes     no
-    // wr8          Plookup (WR8)               yes     no
-    // offset       Plookup (OFFSET)            yes     no
+    // factorV      Lookup (FACTORV)           no      yes
+    // wr256        Lookup (WR256)             yes     no
+    // wr8          Lookup (WR8)               yes     no
+    // offset       Lookup (OFFSET)            yes     no
     // inV          RangeCheck (BYTE_C4096)     no      yes
     // inM[0..1]    RangeCheck (BYTE2A,BYTE2)   no      yes
     // m0[0..7]     Built                       no      yes

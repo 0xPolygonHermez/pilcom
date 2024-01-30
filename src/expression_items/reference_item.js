@@ -2,6 +2,7 @@ const RuntimeItem = require("./runtime_item.js");
 const Context = require('../context.js');
 const RowOffset = require('./row_offset.js');
 const ExpressionItem = require('./expression_item.js');
+const Debug = require('../debug.js');
 module.exports = class ReferenceItem extends RuntimeItem {
     constructor (name, indexes = [], rowOffset) {
         super();
@@ -28,20 +29,24 @@ module.exports = class ReferenceItem extends RuntimeItem {
         return cloned;
     }
     evalInside(options = {}) {
-        console.log(['EVALINSIDE '+this.name, options]);
-        console.log(this.rowOffset);
-        console.log(this);
-        if (this.rowOffset.value) {
-            console.log('ROWOFFSET.EVALINSIDE');
+        if (Debug.active) {
+            console.log(['EVALINSIDE '+this.name, options]);
+            console.log(this.rowOffset);
+            console.log(this);
+            if (this.rowOffset.value) {
+                console.log('ROWOFFSET.EVALINSIDE');
+            }
         }
         const item = Context.references.getItem(this.name, this.indexes);
         if (this.rowOffset && !this.rowOffset.isZero()) {
             item.rowOffset = this.rowOffset.clone();
         }
         // TODO: next
-        console.log(`REFERENCE ${this.name} [${this.indexes.join('][')}]`)
-        console.log(item);
-        console.log(item.eval());
+        if (Debug.active) {
+            console.log(`REFERENCE ${this.name} [${this.indexes.join('][')}]`)
+            console.log(item);
+            console.log(item.eval());
+        }
         return item.eval();
     }
 }

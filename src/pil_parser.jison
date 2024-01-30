@@ -8,6 +8,7 @@
 \s+                                         { /* skip whitespace */ }
 \/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/ { /* console.log("MULTILINE COMMENT: "+yytext); */  }
 \/\/.*                                      { /* console.log("SINGLE LINE COMMENT: "+yytext); */ }
+\#pragma\s+[^\r\n]*                         { yytext = yytext.replace(/^#pragma\s+/, ''); return 'PRAGMA'; }
 
 col                                         { return 'COL'; }
 witness                                     { return 'WITNESS'; }
@@ -256,6 +257,9 @@ top_level_block
 
     | DEBUGGER
         { $$ = { type: 'debugger' }}
+
+    | PRAGMA
+        { $$ = { type: 'pragma', value: $1 }}
     ;
 
 use_directive
@@ -740,6 +744,10 @@ codeblock_closed
 
     | DEBUGGER
         { $$ = { type: 'debugger' }}
+    
+    | PRAGMA
+        { $$ = { type: 'pragma', value: $1 }}
+
     ;
 
 case_body
@@ -1072,20 +1080,22 @@ sequence
 
 multiple_expression_list
     : %empty    %prec EMPTY
-        { $$ = ExpressionFactory.fromObject({ type: 'expression_list', values: [] }); console.log('C', $$) }
+        { $$ = ExpressionFactory.fromObject({ type: 'expression_list', values: [], __debug: 0 }); }
 
     | multiple_expression_list ',' expression %prec ','
-        { $$ = $1; console.log($$); $$.pushItem(ExpressionFactory.fromObject($3)); }
+        { $$ = $1; $$.pushItem(ExpressionFactory.fromObject($3)); }
 
     | multiple_expression_list ',' '[' expression_list ']' %prec ','
-        { $$ = $1; $$.pushItem(ExpressionFactory.fromObject({ type: 'expression_list', values: $4.values })); }
+        { $$ = $1; $$.pushItem(ExpressionFactory.fromObject($4)); }
+//        { $$ = $1; $$.pushItem(ExpressionFactory.fromObject({ type: 'expression_list', values: $4.values, __debug: 1 })); }
 
     | '[' expression_list ']' %prec NO_EMPTY
         { $$ = ExpressionFactory.fromObject({ type: 'expression_list', values:
-                    [ExpressionFactory.fromObject({ type: 'expression_list', values: [$2.values]})]}); console.log('A',$$) }
+                    [ExpressionFactory.fromObject($2)], __debug: 4}); }
+//                    [ExpressionFactory.fromObject({ type: 'expression_list', values: [$2.values], __debug: 2})], __debug: 4}); console.log('A',$$) }
 
     | expression
-        { $$ = ExpressionFactory.fromObject({ type: 'expression_list', values: [$1] }); console.log('B',$$) }
+        { $$ = ExpressionFactory.fromObject({ type: 'expression_list', values: [$1], __debug: 3 }); }
     ;
 
 expression_list
@@ -1416,11 +1426,18 @@ name_optional_index
         { $$ = { ...$1, ...$2 } }
     ;
 
+expression_index
+    :   expression
+    |   expression ':' expression
+    |   expression ':'
+    |   ':' expression
+    ;
+
 array_index
-    :   array_index '[' expression ']'
+    :   array_index '[' expression_index ']'
         { $$ = { dim: $1.dim + 1, indexes: [...$1.indexes, $3] } }
 
-    |   '[' expression ']'
+    |   '[' expression_index ']'
         { $$ = { dim: 1, indexes: [$2]} }
     ;
 

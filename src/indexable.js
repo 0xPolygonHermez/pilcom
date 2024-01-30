@@ -2,6 +2,7 @@ const LabelRanges = require("./label_ranges.js");
 const {cloneDeep} = require('lodash');
 const {assert, assertLog} = require('./assert.js');
 const ExpressionItem = require('./expression_items/expression_item.js');
+const Debug = require('./debug.js');
 module.exports = class Indexable {
     constructor (type, definitionClass, expressionItemClass, options) {
         this.expressionItemClass = expressionItemClass ?? false;
@@ -34,7 +35,7 @@ module.exports = class Indexable {
         return cloned;
     }
     clear(label = '') {
-        console.log(`CLEARING ${label} (${this.type})`);
+        if (Debug.active) console.log(`CLEARING ${label} (${this.type})`);
         this.values = [];
         this.labelRanges = new LabelRanges();
     }
@@ -48,7 +49,7 @@ module.exports = class Indexable {
         return null;
     }
     reserve(count, label, multiarray, data) {
-        if (this.type === 'subproofvalue') {
+        if (this.type === 'subproofvalue' && Debug.active) {
             console.log(['SUBPROOFVALUE-R', data]);
         }
         const id = this.values.length;
@@ -121,8 +122,8 @@ module.exports = class Indexable {
     }
     set(id, value) {
         const item = this.get(id);
-        console.log(item);
-        console.log(value.constructor.name);
+        if (Debug.active) console.log(item);
+        if (Debug.active) console.log(value.constructor.name);
         // if (value && typeof value.toString === 'function') console.log(value.toString());
         // else console.log(value);
         assertLog(item && typeof item.setValue === 'function', {type: this.type, definition: this.definitionClass, id, item: item});
@@ -198,7 +199,7 @@ module.exports = class Indexable {
             let pvalues = [];
             for (const _property of properties) {
                 const definition = this.get(index);
-                console.log(definition);
+                if (Debug.active) console.log(definition);
                 value = _property === 'id' ? definition.id ?? index : definition[_property];
                 if (isArray) {
                     pvalues.push(value);

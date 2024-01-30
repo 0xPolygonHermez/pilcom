@@ -1,0 +1,118 @@
+// PIL State Machine that compute 256 bits operations:
+//
+// ADD   (OP:0)
+// SUB   (OP:1)
+// LT    (OP:2)
+// SLT   (OP:3)
+// EQ    (OP:4)
+// AND   (OP:5)
+// OR    (OP:6)
+// XOR   (OP:7)
+// LT4   (OP:8)
+// ADC   (OP:9)
+
+const int BINARY_ID = 1;
+
+instance Binary(id: ID, rows: 2**23, bytes: 32);
+instance Binary(id, rows, bytes);
+
+subproof aggregate Binary(id = BINARY_ID, rows = 2**23, bytesPerRow = 4, bits = 256) {
+    N = rows;
+
+    assert(isPowOfTwo(rows));
+    assert(bytes % 2 == 0);
+    assert(bits % 8 == 0);
+    assert(bits % (8 * bytesPerRow) == 0);
+
+    const int ONE_ROW = bits == (8 * bytesPerRow);
+    const int BYTES_PER_ROW = bits/(8 * bytesPerRow);
+    
+
+    col witness freeInA[bytesPerRow], freeInB[bytesPerRow], freeInC[bytesPerRow];   
+    col witness op;                                  
+    col witness carry[bytesPerRow];
+    col witness result;
+    
+    if (!ONE_ROW) {
+        col fixed RESET = [1,0:(BYTES_PER_ROW-1)]...;
+
+        // RESET    1,0,0...0,0|1,0,0...0,0|1,0,....
+        // result   0,0,0...0,1|0,0,0...0,1|0,0,....
+        // 'result  1,0,0...0,0|1,0,0...0,0|1,0,....
+        (1 - RESET) * 'result = 0;
+
+        (opcode - 'opcode) * (1 - RESET) === 0;
+        cIn' === cOut * (1 - RESET' + reset4 * CLK_64_BITS);
+    }
+    result * (1 - result) = 0;
+
+    for (int index = 0; index < length(carry); index += 1) {
+        carry[index] * (1 - carry[index]) === 0;
+    }
+
+    col witness previousAreLt4;
+    col witness usePreviousAreLt4;
+    col witness reset4;
+    col witness useCarry;
+
+    previousAreLt4 * (1 - previousAreLt4) === 0;
+    usePreviousAreLt4 * (1 - usePreviousAreLt4) === 0;
+    reset4 * (1 - reset4) === 0;
+    useCarry * (1 - useCarry) === 0;
+    cOut * (1 - cOut) === 0;
+
+    // RESET = Global.CLK32[0] + Global.CLK32[16];
+
+
+    // LT4_PROPAGATE (polynomial made up of constant, binary and disjoint polynomials, therefore it's a constant and binary polynomial)
+    //
+    // Each 4 clocks this sm has processed 8 bytes = 64 bits, last clock isn't relevant last clock cOut is ignored because:
+    //      · last cout = 0 => means LT4 = 0 (if the last chunk of a isn't lower than the last of b then we are done).
+    //      · last cout = 1 => means last a chunk is less than b, in this path result only deepends of ge4 value.
+
+    const expr LT4_PROPAGATE = /* NO 0-2,3 */       Global.CLK32[4] + Global.CLK32[5] + Global.CLK32[6] + /* NO 7 */ + Global.CLK32[8] + Global.CLK32[9]
+                              + Global.CLK32[10] + /* NO 11 */ + Global.CLK32[12] + Global.CLK32[13] + Global.CLK32[14] + Global.CLK32[15]
+                              /* NO 16-18,19 */ +  Global.CLK32[20] + Global.CLK32[21] + Global.CLK32[22] + /* NO 23 */ + Global.CLK32[24] + Global.CLK32[25]
+                              + Global.CLK32[26] + /* NO 27 */ + Global.CLK32[28] + Global.CLK32[29] + Global.CLK32[30] + Global.CLK32[31];
+
+    previousAreLt4' === (Global.CLK32[3] + Global.CLK32[19]) * cOut + previousAreLt4 * (LT4_PROPAGATE + (Global.CLK32[7] + Global.CLK32[11] + Global.CLK32[23] + Global.CLK32[27]) * cOut);
+
+    lCout' === cOut + usePreviousAreLt4 * (previousAreLt4 - cOut);
+    lOpcode' === opcode;
+
+    // P_FLAGS = cOut + 2 * useCarry + 4 * usePreviousAreLt4 + 8 * reset4
+    // In even byte clocks, useCarry = usePreviousAreLt4 = 0 and cOut = cMiddle, therefore P_FLAGS = cMiddle + 8 * reset4
+
+    const int LAST_INDEX = bytesPerRow - 1;
+    for (int index = 0; index < LAST_INDEX; index += 1) {
+        lookup_assumes(BINARY_OPS_TABLE_ID ,1 ,[      0, opcode, freeInA[index], freeInB[index], carry[index], freeInC[index], carry[index + 1] + 8 * reset4]);
+    }
+    lookup_assumes(BINARY_OPS_TABLE_ID ,1 ,[result', opcode, freeInA[LAST_INDEX], freeInB[LAST_INDEX], carry[LAST_INDEX], freeInC[LAST_INDEX], carry[LAST_INDEX+1] + 2 * useCarry + 4 * usePreviousAreLt4 + 8 * reset4]);
+
+    useCarry * usePreviousAreLt4 === 0;
+
+    expr a,b,c;
+    for (int clk = 0; clk < 4; clk += 1 ) {
+        for (int index = 0; index < 4; index += ) {
+            a +=  freeInA[]
+        }
+    }
+    //
+    // a === freeInA[0] + 2**8 * freeInA[1] + 2**16 * freeInA[2] + 2**24 * freeInA[3];
+    // b === freeInB[0] + 2**8 * freeInB[1] + 2**16 * freeInB[2] + 2**24 * freeInB[3];
+
+    // TODO: verify on each 8 clocks
+    // c === useCarry * cOut + usePreviousAreLt4 * previousAreLt + (1 - useCarry - usePreviousAreLt4) * (freeInC[0] + 2**8 * freeInC[1] + 2**16 * freeInC[2] + 2**24 * freeInC[3]);
+
+    // In the last byte, when useCarry or usePreviousAreLt4 are 1, the value of c[0] needs to change
+    // to result (0 or 1). In the first clock, freeInC must be changed to match with the lookup
+    // because lookup is a static table (has a 0 for comparators), but useCarry or
+    // usePreviousAreLt4 are dynamic. Otherwise, useCarry and usePreviousAreLt4 are enabled only in the last byte
+    // (verified lookup only enabled when P_LAST = 1).
+
+    // In the last byte, only FACTOR[7] is active, and freeInC only affects to c[7]'.
+
+    pol c7Temp = c[7] * (1 - RESET) + freeInC[0] * FACTOR[7] + 256 * freeInC[1] * FACTOR[7];
+    c[7]' = (1 - useCarry - usePreviousAreLt4) * c7Temp;
+}
+

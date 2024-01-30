@@ -54,6 +54,7 @@
 
 */
 const Exceptions = require('../exceptions.js');
+const Debug = require('../debug.js');
 class ExpressionItem {
     static _classToManager = {};
 
@@ -67,7 +68,7 @@ class ExpressionItem {
         ExpressionItem[name] = cls;
     }
     setLabel (label) {
-        console.log(['SETLABEL', label]);
+        if (Debug.active) console.log(['SETLABEL', label]);
         this.label = label;
     }
     get dim () {
@@ -115,11 +116,11 @@ class ExpressionItem {
         return this.rowOffset.getStrings();
     }
     static setManager(cls, manager) {
-        console.log(['SET_MANAGER', cls.name]);
+        if (Debug.active) console.log(['SET_MANAGER', cls.name]);
         ExpressionItem._classToManager[cls.name] = manager;
     }
     getManager() {
-        console.log(['GET_MANAGER', this.constructor.name]);
+        if (Debug.active) console.log(['GET_MANAGER', this.constructor.name]);
         return ExpressionItem._classToManager[this.constructor.name];
     }
     _asDefault(method, defaultValue = false) {
@@ -136,7 +137,9 @@ class ExpressionItem {
         return this._rowOffset;
     }
     set rowOffset(value) {
-        if (!value.isZero()) console.log(['ROWOFFSET.SET', value]);
+        if (Debug.active) {
+            if (!value.isZero()) console.log(['ROWOFFSET.SET', value]);
+        }
         this._rowOffset = value;
     }
     clone() {
@@ -159,14 +162,14 @@ class ExpressionItem {
         if (!this.rowOffset || !this.rowOffset.isPriorRows()) {
             return false;
         }
-        console.log(['ROWOFFSET.EVALPRIOR', this.rowOffset.value]);
+        if (Debug.active) console.log(['ROWOFFSET.EVALPRIOR', this.rowOffset.value]);
         return this.rowOffset.value;
     }
     evalNext(options) {
         if (!this.rowOffset || !this.rowOffset.isNextRows()) {
             return false;
         }
-        console.log(['ROWOFFSET.EVALNEXT', this.rowOffset.value]);
+        if (Debug.active) console.log(['ROWOFFSET.EVALNEXT', this.rowOffset.value]);
         return this.rowOffset.value;
     }
     eval(options) {
@@ -178,6 +181,9 @@ class ExpressionItem {
         return results.final ? results.final : results.inside;
     }
     evalAsItem(options) {
+        return this.clone();
+    }
+    instance(options) {
         return this.clone();
     }
 }

@@ -2,6 +2,7 @@ const {assert, assertLog} = require("./assert.js");
 const Router = require("./router.js");
 const Expression = require("./expression.js");
 const Values = require('./values.js');
+const Debug = require('./debug.js');
 
 const MAX_ELEMS_GEOMETRIC_SEQUENCE = 300;
 class SequencePadding {
@@ -36,7 +37,7 @@ module.exports = class Sequence {
     }
     clone() {
         let cloned = new Sequence(this.parent, this.expression, this.maxSize);
-        console.log(['CLONED', this.maxSize, cloned.maxSize]);
+        if (Debug.active) console.log(['CLONED', this.maxSize, cloned.maxSize]);
         this.#values.mutable = false;
         cloned.#values = this.#values.clone();
         return cloned;
@@ -65,16 +66,18 @@ module.exports = class Sequence {
         this.paddingSize = 0;
         const size = this._sizeOf(e);
         assert(size >= this.paddingCycleSize, `size(${size}) < paddingCycleSize(${this.paddingCycleSize})`);
-        console.log(['SIZE(MAXSIZE)', this.maxSize]);
-        console.log(['SIZE(paddingCycleSize)', this.paddingCycleSize]);
-        console.log(['SIZE(paddingSize)', this.paddingSize]);
+        if (Debug.active) {
+            console.log(['SIZE(MAXSIZE)', this.maxSize]);
+            console.log(['SIZE(paddingCycleSize)', this.paddingCycleSize]);
+            console.log(['SIZE(paddingSize)', this.paddingSize]);
+        }
         if (this.paddingCycleSize) {
             this.paddingSize = this.maxSize - (size - this.paddingCycleSize);
             this.size = size - this.paddingCycleSize + this.paddingSize;
         } else {
             this.size = size;
         }
-        console.log(['SIZE', this.size]);
+        if (Debug.active) console.log(['SIZE', this.size]);
         return this.size;
     }
     _sizeOf(e) {
@@ -93,7 +96,7 @@ module.exports = class Sequence {
     }
     _sizeOfRepeatSeq(e) {
         const times = this.toNumber(this.parent.getExprNumber(e.times));
-        console.log(['times', times]);
+        if (Debug.active) console.log(['times', times]);
         return times  * this._sizeOf(e.value);
     }
     setPaddingSize(size) {
@@ -112,7 +115,7 @@ module.exports = class Sequence {
     getRangeSeqInfo(e) {
         const fromTimes = e.times ? this.toNumber(this.e2num(e.times)): 1;
         const toTimes = e.toTimes ? this.toNumber(this.e2num(e.toTimes)): fromTimes;
-        console.log(['fromTimes', fromTimes, 'toTimes', toTimes]);
+        if (Debug.active) console.log(['fromTimes', fromTimes, 'toTimes', toTimes]);
         if (fromTimes !== toTimes) {
             throw new Error(`In range sequence, from(${fromTimes}) and to(${toTimes}) must be same`);
         }
@@ -122,7 +125,7 @@ module.exports = class Sequence {
         const t1Times = e.t1.times ? this.toNumber(this.e2num(e.t1.times)): 1;
         const t2Times = e.t2.times ? this.toNumber(this.e2num(e.t2.times)): 1;
         const tnTimes = e.tn.times === false ? false : (e.tn.times ? this.toNumber(this.e2num(e.t2.times)): 1);
-        console.log(['t1Times', t1Times, 't2Times', t2Times, 'tnTimes', tnTimes]);
+        if (Debug.active) console.log(['t1Times', t1Times, 't2Times', t2Times, 'tnTimes', tnTimes]);
         if (t1Times !== t2Times && (tnTimes === false || tnTimes === t2Times)) {
             throw new Error(`In term sequence, t1(${t1Times}), t2(${t2Times})`+
                         (tnTimes === false ? '':` and tn(${tbTimes}`)+'must be same');
@@ -314,16 +317,18 @@ module.exports = class Sequence {
         return this.extendPos - initialExtendPos;
     }
     extend() {
-        console.log(this.size);
+        if (Debug.active) console.log(this.size);
         // this.values = new Array(this.size);
         this.extendPos = 0;
         this._extend(this.expression);
         this.#values.mutable = false;
     }
     verify() {
-        console.log(this.toString());
-        console.log([this.extendPos, this.size]);
-        console.log(['SIZE', this.size]);
+        if (Debug.active) {
+            console.log(this.toString());
+            console.log([this.extendPos, this.size]);
+            console.log(['SIZE', this.size]);
+        }
         assert(this.valueCounter === this.size);
         for (let index = 0; index < size; ++index) {
             assert(this.values[index] === 'bigint', `type of index ${index} not bigint (${typeof this.values[index]}) ${value}`);
@@ -405,7 +410,7 @@ module.exports = class Sequence {
         return this.#values.toString();
     }
     toNumber(value) {
-        console.log(value);
+        if (Debug.active) console.log(value);
         let nvalue = Number(value);
         if (nvalue === NaN || isNaN(nvalue)) {
             throw new Error(`Invalid number ${value}`);

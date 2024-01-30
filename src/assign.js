@@ -2,14 +2,15 @@ const Expression = require("./expression.js");
 const Context = require('./context.js');
 const {assert, assertLog} = require('./assert.js');
 const NonRuntimeEvaluableItem = require('./expression_items/non_runtime_evaluable_item.js');
+const Debug = require('./debug.js');
 
 module.exports = class Assign {
     constructor () {
     }
     assign (name, indexes, value) {
-        console.log(value);
+        if (Debug.active) console.log(value);
         value = this.getValue(value);
-        console.log(value);
+        if (Debug.active) console.log(value);
         assert(value !== null);
         return this.#assign(name, indexes, value);
     }
@@ -34,7 +35,7 @@ module.exports = class Assign {
         return Context.references.set(name, indexes, value);*/
     }
     assignType(type, name, indexes, value) {
-        console.log(type);
+        if (Debug.active) console.log(type);
         switch (type) {
             case 'int': return this.assignTypeInt(name, indexes, value, type);
             case 'expr': return this.assignTypeExpr(name, indexes, value, type);
@@ -83,9 +84,9 @@ module.exports = class Assign {
         }
         value = value.instance(true);
         if (Context.sourceRef === 'std_sum.pil:195') {
-            console.log('XXX');
+            if (Debug.active) console.log('XXX');
         }
-        console.log(`ASSIGN ${Context.sourceRef} ${value}`);
+        if (Debug.active) console.log(`ASSIGN ${Context.sourceRef} ${value}`);
         Context.references.set(name, indexes, value);
     }
 }
