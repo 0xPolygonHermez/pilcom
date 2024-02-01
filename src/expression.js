@@ -17,10 +17,13 @@ const VALID_NATIVE_OPS = [false, ...NATIVE_OPS];
 const Exceptions = require('./exceptions.js');
 const ExpressionPacker = require('./expression_packer.js');
 const ExpressionClass = require('./expression_class.js');
+const ExpressionList = require('./expression_items/expression_list.js');
 const Debug = require('./debug.js');
+const Types = require('./types.js');
 // TODO: StackPos as class
 
 function assertExpressionItem(value, info) {
+    assert((value instanceof ExpressionList) === false);
     return assertReturnInstanceOf(value, ExpressionItem, info);
 }
 class Expression extends ExpressionItem {
@@ -36,6 +39,7 @@ class Expression extends ExpressionItem {
 
     static operatorsToMethodCache = {};
     static operators = ExpressionOperatorMethods;
+    static unitaryOperators = ExpressionOperationsInfo.getUnitaryOperations();
     static context;
 
     constructor () {
@@ -88,6 +92,7 @@ class Expression extends ExpressionItem {
     }
 
     insertStack(expressionToInsert, stackIndex) {
+        assert(expressionToInsert instanceof Expression);
         const delta = expressionToInsert.stack.length;
 
         //
@@ -227,7 +232,7 @@ class Expression extends ExpressionItem {
         const aIsEmpty = this.stack.length === 0;
         const bIsEmpty = b === false || b.stack.length === 0;
 
-        if (bIsEmpty && op !== 'not') {
+        if (bIsEmpty && Expression.unitaryOperators.includes(op) === false ) {
             throw new Error(`insert without operands`);
         }
         const aIsAlone = this.isAlone();
@@ -279,7 +284,7 @@ class Expression extends ExpressionItem {
             return res;
         }
         // verify that all bs are expressions
-        assert(bs.reduce((isExpression, b) => isExpresion = isExpression && b instanceof Expression, true));
+        assert(bs.reduce((isExpression, b) => isExpression && b instanceof Expression, true));
 
 
         const anyEmptyB = bs.some((b) => b.stack.length === 0);
@@ -457,6 +462,7 @@ class Expression extends ExpressionItem {
     // stackResults[pos][0] contains result of this stack position,
     // in stackResults[pos][1] contains a results array of this stack position operands
     instance(options) {
+        assert(this.stack.length > 0);
         if (Debug.active) {
             console.log(Context.sourceRef);
             this.dump("#############");
@@ -469,9 +475,36 @@ class Expression extends ExpressionItem {
         if (Debug.active) cloned.dump('PRE-SIMPLIFY');
         cloned.simplify();
         if (Debug.active) cloned.dump('POST-SIMPLIFY');
+        if (options.unroll) {
+            return cloned.unroll();
+        }
+        if (options.unpackItem && cloned.isAlone()) {
+            const operand = cloned.getAloneOperand();
+            if (operand instanceof ExpressionItem) {
+                return operand;
+            }
+        }
         // console.log(stackResults);
         // cloned.dumpStackResults(stackResults, '');
         return cloned;
+    }
+    isInstanceOf(cls) {
+        if (!this.isAlone()) return false;
+
+        const operand = this.getAloneOperand();
+        return (operand instanceof cls);
+    }
+    unroll(options) {
+        if (!this.isAlone()) return this;
+
+        const operand = this.getAloneOperand();
+        if (operand instanceof ExpressionItems.ArrayOf === false) return this;
+        
+        return operand.toArrays();
+        // for (const e of res) {
+        //     if (e instanceof Expression) e.dump();
+        //     else console.log(e);
+        // }
     }
     evalAsValue(options) {
 //        return this.eval({...options, onlyAsValue: true});
@@ -482,6 +515,7 @@ class Expression extends ExpressionItem {
         return (res instanceof ExpressionItems.ValueItem || res instanceof ExpressionItems.StringValue) ? res : ExpressionItems.NonRuntimeEvaluableItem.get();
     }
     eval(options = {}) {
+        assert(this.stack.length > 0);
         return this.instance(options);
 /*        console.trace('EVAL '+this.toString());
         if (this.stack.length === 0) {
@@ -499,6 +533,7 @@ class Expression extends ExpressionItem {
         return stackResults.map((x, index) => `#${index} ${x[0] ?? 'null'} ${x[1].map(o => o ? o.toString() : o).join(',')}`).reverse().join('\n');
     }
     evaluateFullStack(stackResults, options) {
+        assert(this.stack.length > 0);
         const evaluateId = Date.now();
         if (Debug.active) { 
             this.dump(`evaluateFullStack #${evaluateId} BEGIN`);
@@ -509,6 +544,7 @@ class Expression extends ExpressionItem {
         if (Debug.active) this.dump(`evaluateFullStack #${evaluateId} END`);
     }
     evaluateStackPos(stackResults, stackIndex, options = {}) {
+        assert(stackIndex < this.stack.length);
         const st = this.stack[stackIndex];
         const results = stackResults[stackIndex];
         const _debugLabel = `#${options.evaluateId ?? 0} S${stackIndex}(${st.op})`;
@@ -598,6 +634,7 @@ class Expression extends ExpressionItem {
         const operationInfo = ExpressionOperationsInfo.get(operation);
 
         if (operationInfo === false) {
+            console.log(values);
             throw new Error(`Operation ${operation} not was defined`);
         }
 
@@ -666,7 +703,7 @@ class Expression extends ExpressionItem {
             }
             ++iarg;
         }
-
+        
         throw new Error(`Operation ${operation} not was defined by types ${types.join(',')} [${methods.join(', ')}]`);
     }
     castingItemMethod(type) {
@@ -793,7 +830,15 @@ class Expression extends ExpressionItem {
 
                 // optimization to get stackResults, to avoid calculate two times when
                 // insert into stack the expression (1)
+                if (Debug.active) {
+                    console.log(options);
+                    console.log(operand);
+                }
                 const result = operand.eval(options);
+                if (Debug.active) {
+                    console.log(result);
+                    console.log(Context.sourceRef);
+                }
                 operandResults.push(result);
                 if (options.instance && result !== null) {
                     if (Debug.active) this.dump(`AAAA.IN stpos:${stpos}`);
@@ -1166,6 +1211,9 @@ class Expression extends ExpressionItem {
             return op.dumpItem({...options, cType, cProp, cValue, pos});
         }
         if (op === null) return 'null';
+        if (Array.isArray(op)) {
+            return '['+op.map(x => this.dumpOperand(x, pos, options)).join()+']'
+        }
         EXIT_HERE;
     }
     toString(options) {
@@ -1359,8 +1407,12 @@ class Expression extends ExpressionItem {
     hasRuntimes() {
         return this.stack.some(stackPos => stackPos.operands.some(operand => operand.isRuntime()));
     }
+    static getType() {
+        return 'expr';
+    }
 }
 
 ExpressionItem.registerClass('Expression', Expression);
 ExpressionClass.set(Expression);
+Types.register('expr', Expression);
 module.exports = Expression;

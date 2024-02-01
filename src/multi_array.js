@@ -29,10 +29,27 @@ class MultiArray {
             initialized: [...this.initialized]});
         return cloned;
     }
-    createSubArray(indexes, locatorOffset) {
-        const [offset, dims] = this.getIndexesOffset(indexes);
+    createSubArray(indexes, locatorOffset, from = false, to = false) {
+        let [offset, dims] = this.getIndexesOffset(indexes);
         const dim = this.offsets.length - dims;
-        const cloned = new MultiArray(this.lengths.slice(-dim), {
+        let _lengths = this.lengths.slice(-dim);
+        if (from !== false || to !== false) {
+            assert(dim === 1);
+            if (to === false) {
+                assert(from < _lengths[0]);
+                _lengths[0] = _lengths[0] - to;
+                offset += to 
+            } else if (from === false) {
+                assert(to < _lengths[0]);
+                _lengths[0] = to + 1;
+            } else {
+                assert(to < _lengths[0] && from < _lengths[0] && from <= to);
+                _lengths[0] = to - from + 1;
+                offset += from 
+            }
+            console.log(this.lengths, dim, _lengths, offset, from, to);
+        }
+        const cloned = new MultiArray(_lengths, {
             baseOffset: this.baseOffset + offset + locatorOffset,
             parentOffset: this.baseOffset,
             parentInitialized: this.initialized });

@@ -72,8 +72,6 @@ module.exports = class Scope {
         }
         this.shadows[this.deep] = {};
         for (const property in this.properties[this.deep]) {
-            console.log(this.properties);
-            console.log(this.properties[this.deep]);
             assertLog(typeof Context.references.unsetProperty === 'function', Context.references.constructor.name);
             Context.references.unsetProperty(property, this.properties[this.deep][property]);
         }

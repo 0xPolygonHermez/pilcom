@@ -2,7 +2,7 @@ const util = require('util');
 const {cloneDeep} = require('lodash');
 const Expression = require("./expression.js");
 const {ReferenceItem, IntValue, StringValue, StringTemplate,
-    FunctionCall, ExpressionList} = require("./expression_items.js");
+    FunctionCall, ExpressionList, RangeIndex} = require("./expression_items.js");
 const Router = require("./router.js");
 const {assert, assertLog} = require('./assert');
 const RowOffset = require('./expression_items/row_offset.js');
@@ -97,8 +97,12 @@ module.exports = class ExpressionFactory {
     }
     static _fromAppend(obj) {
         console.log('TODO !!! ');
+        console.log(util.inspect(obj, false, null));
         let res = this._fromObject(obj.value);
+        res.transform = 'spread';
         delete obj.value;
+        res.dump();
+        EXIT_HERE;
         return res;
     }
     static _fromReference(obj) {
@@ -166,6 +170,13 @@ module.exports = class ExpressionFactory {
         delete obj.prior;
         // console.log(res);
         return res;
+    }
+    static _fromRangeIndex(obj) {
+        const from = obj.from ?? false;
+        const to = obj.to ?? false;        
+        delete obj.from;
+        delete obj.to;
+        return new RangeIndex(from, to);
     }
     // TODO: positionalParams
 }

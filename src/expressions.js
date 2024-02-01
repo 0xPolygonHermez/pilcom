@@ -34,7 +34,6 @@ module.exports = class Expressions {
         return res;
     }
     get(id) {
-        console.log(this.expressions);
         if (this.isDefined(id)) {
             return this.expressions[id];
         }

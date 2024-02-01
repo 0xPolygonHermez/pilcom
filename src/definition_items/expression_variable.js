@@ -17,7 +17,6 @@ module.exports = class ExpressionVariable extends Variable {
         }
         // super.setValue(value);
         if (typeof value.instance === 'function') {
-            assert(value.stack.length > 0);
             this.value = value.instance();
             return;
         }

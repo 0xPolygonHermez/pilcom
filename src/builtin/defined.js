@@ -12,7 +12,6 @@ module.exports = class Defined extends Function {
             throw new Error('Invalid number of parameters');
         }
         const arg0 = s.args[0];
-        console.log('DEFINED', arg0);
         let value = false;
         try {
             if (arg0) {
@@ -29,13 +28,10 @@ module.exports = class Defined extends Function {
                 throw e;
             }
         }
-        console.log(value);
         const res = new IntValue(value !== false ? 1n : 0n);
-        console.log(`defined(${arg0.toString()})`,res);
         return res;
     }
     exec(s, mapInfo) {
-        console.log('DEFINED', mapInfo);
         return mapInfo;
     }
 }

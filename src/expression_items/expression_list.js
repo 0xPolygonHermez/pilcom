@@ -2,15 +2,21 @@ const Exceptions = require('../exceptions.js');
 const {assert, assertLog} = require('../assert.js');
 const ExpressionItem = require('./expression_item.js');
 const MultiArray = require('../multi_array.js');
+const util = require('util');
+const Context = require('../context.js');
 class ExpressionList extends ExpressionItem {
 
-    constructor(items, debug = {}) {
-        super(debug);
+    constructor(items, options = {}) {
+        super(options);
         this.indexes = [items.length];
         this.label = '';
-        this.items = [];
-        for (const item of items) {
-            this.items.push(item.clone());
+        if (options.cloneItems === false) {
+            this.items = items;
+        } else {
+            this.items = [];
+            for (const item of items) {
+                this.items.push(item.clone());
+            }
         }
         this.array = new MultiArray([this.items.length]);
         this._ns_ = 'ExpressionItem';
@@ -41,8 +47,21 @@ class ExpressionList extends ExpressionItem {
         return item.getItem(indexes.slice(1));
     }
     instance(options) {
-        let _items = this.items.map(x => x.instance(options));
-        return new ExpressionList(_items, this.debug);
+        let _items = [];
+        const _options = {...options, unroll: false};
+        for (const item of this.items) {
+            const _instanced = item.instance(_options);
+            if (_instanced.isAlone()) {
+                const _operand = _instanced.getAloneOperand();
+                if (_operand.isUnrolled()) {
+                    const unrolled = _operand.unroll();
+                    _items = [..._items, ...unrolled];
+                    continue;
+                }
+            }
+            _items.push(_instanced);
+        }
+        return new ExpressionList(_items, {...this.debug, cloneItems: false});
     }
 }
 

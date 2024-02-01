@@ -3,6 +3,7 @@ const {cloneDeep} = require('lodash');
 const {assert, assertLog} = require('./assert.js');
 const ExpressionItem = require('./expression_items/expression_item.js');
 const Debug = require('./debug.js');
+const Context = require('./context.js');
 module.exports = class Indexable {
     constructor (type, definitionClass, expressionItemClass, options) {
         this.expressionItemClass = expressionItemClass ?? false;
@@ -126,7 +127,10 @@ module.exports = class Indexable {
         if (Debug.active) console.log(value.constructor.name);
         // if (value && typeof value.toString === 'function') console.log(value.toString());
         // else console.log(value);
-        assertLog(item && typeof item.setValue === 'function', {type: this.type, definition: this.definitionClass, id, item: item});
+        assertLog(item, {type: this.type, definition: this.definitionClass, id, item});
+        if (typeof item.setValue !== 'function') {
+            throw new Error(`Invalid assignation at ${Context.sourceRef}`);
+        }
         item.setValue(value);
 /*
         if (typeof this.cls === 'function') {

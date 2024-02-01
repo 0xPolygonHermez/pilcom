@@ -1,6 +1,6 @@
 const {assert, assertLog} = require('../assert.js');
 const ValueItem = require("./value_item.js");
-
+const Types = require('../types.js');
 class IntValue extends ValueItem {
     constructor (value = 0n) {
         if (value instanceof IntValue) {
@@ -31,6 +31,9 @@ class IntValue extends ValueItem {
         }
         console.log(value);
         EXIT_HERE;
+    }
+    static getType() {
+        return 'int';
     }
     asInt() {
         return this.value;
@@ -122,6 +125,7 @@ class IntValue extends ValueItem {
         return new IntValue(this.asInt() == valueB.asInt() ? 1:0);
     }
 }
-
+Types.register('int', IntValue);
 ValueItem.registerClass('IntValue', IntValue);
+
 module.exports = IntValue;

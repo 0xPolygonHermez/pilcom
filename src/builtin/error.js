@@ -1,5 +1,6 @@
 const Function = require("../function.js");
 const IntValue = require('../expression_items/int_value.js');
+const Context = require('../context.js');
 
 module.exports = class Error extends Function {
     constructor (parent) {
@@ -26,6 +27,7 @@ module.exports = class Error extends Function {
             caller = e.stack.split('\n').slice(1).join('\n');
         }
         console.log(caller);*/
+        console.log(Context.sourceRef);
         console.log(`\x1B[1;35mERROR ${mapInfo.join(' ')}\x1B[0m`);
         EXIT_HERE;
         return new IntValue(0n);

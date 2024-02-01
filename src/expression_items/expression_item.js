@@ -186,6 +186,14 @@ class ExpressionItem {
     instance(options) {
         return this.clone();
     }
+    isEmpty() {
+        // default implementation
+        return false;
+    }    
+    isUnrolled() {
+        // default implementation
+        return false;
+    }    
 }
 
 module.exports = ExpressionItem;

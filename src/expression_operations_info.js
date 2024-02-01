@@ -20,10 +20,14 @@ module.exports = class ExpressionOperationsInfo {
         band: { type: 'bit',     label: '&',  precedence:  58, args: 2, commutative: true },
         bor:  { type: 'bit',     label: '|',  precedence:  56, args: 2, commutative: true },
         bxor: { type: 'bit',     label: '^',  precedence:  54, args: 2, commutative: true },
-        not:  { type: 'logical', label: '!',  precedence: 100, args: 1, commutative: false }
+        not:  { type: 'logical', label: '!',  precedence: 100, args: 1, commutative: false },
+        spread: { type: 'array', label: '...',  precedence: 101, args: 1, commutative: false }
     };
 
     static get(operation) {
         return ExpressionOperationsInfo.#operations[operation] ?? false;
+    }
+    static getUnitaryOperations() {
+        return Object.keys(this.#operations).filter(x => this.#operations[x].args === 1);
     }
 };

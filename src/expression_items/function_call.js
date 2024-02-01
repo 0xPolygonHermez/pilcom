@@ -12,7 +12,8 @@ module.exports = class FunctionCall extends RuntimeItem {
             if (Debug.active) console.log(util.inspect(args, false, 10, true));
             args = args.items;
         }
-        if (Debug.active) console.log([`#FCALL#${name} ${Context.sourceTag} ${args.length}`, args]);
+        if (Debug.active) console.log(`#FCALL#${name} ${Context.sourceTag} ${args.length}`+ 
+                                      util.inspect(args, false, null));
         // this.args = args.map(x => (typeof x.clone === 'function') ? x.clone() : x);
         this.args = args.map(x => x.clone());
         this.indexes = indexes.map(x => (typeof x.clone === 'function') ? x.clone() : x);

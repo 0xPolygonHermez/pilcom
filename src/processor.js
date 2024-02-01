@@ -590,7 +590,7 @@ module.exports = class Processor {
     execFunctionDefinition(s) {
         if (Debug.active) console.log('FUNCTION '+s.funcname);
         let func = new Function(this, s);
-        this.references.declare(func.name, 'function');
+        this.references.declare(func.name, 'function', [], {sourceRef: Context.sourceRef});
         this.references.set(func.name, [], func);
     }
     getExprNumber(expr, s, title) {

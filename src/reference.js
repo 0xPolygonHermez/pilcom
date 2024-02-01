@@ -1,8 +1,10 @@
 const {assert, assertLog} = require('./assert.js');
 const MultiArray = require("./multi_array.js");
 const ArrayOf = require('./expression_items/array_of.js');
+const RangeIndex = require('./expression_items/range_index.js');
 const Context = require('./context.js');
 const Debug = require('./debug.js');
+    
 /**
  * @property {MultiArray} array
  */
@@ -58,16 +60,19 @@ class Reference {
         // At this point, it's a array initilization
     }
     setArrayLevel(level, indexes, value, options = {}) {
-        if (Debug.active) console.log(`setArrayLevel(${this.name} ${level}, [${indexes.join(',')}]`);
+        if (Debug.active) console.log(`setArrayLevel(${this.name} ${level}, [${indexes.join(',')}] ${Context.sourceRef}`);
         const len = this.array.lengths[level];
         for (let index = 0; index < len; ++index) {
             let _indexes = [...indexes];
             _indexes.push(index);
             if (level + 1 === this.array.dim) {
                 if (Array.isArray(value)) {
+//                    console.log('native', _indexes[level], _indexes);
                     this.setOneItem(value[_indexes[level]], _indexes, options);
-                } else {
-                    this.setOneItem(value.getItem(_indexes), _indexes, options);
+                } else {    
+                    const _item = value.getItem(_indexes);
+//                    console.log('getItem', _indexes, _item);
+                    this.setOneItem(_item, _indexes, options);
                 }
                 continue;
             }
@@ -120,8 +125,21 @@ class Reference {
         }
         // indexes evaluation
         let evaluatedIndexes = [];
+        let fromIndex = false;
+        let toIndex = false;
         if (Array.isArray(indexes) && indexes.length > 0) {
-            evaluatedIndexes = indexes.map(x => x.asInt());
+            for (let index = 0; index < indexes.length; ++index) {
+                if (indexes[index].isInstanceOf(RangeIndex)) {
+                    if (index + 1 !== indexes.length) {
+                        throw new Error(`Range index is valid only in last index ${Context.sourceRef}`);
+                    }
+                    const rangeIndex = indexes[index].getAloneOperand();
+                    fromIndex = rangeIndex.from === false ? false : Number(rangeIndex.from.asInt());
+                    toIndex = rangeIndex.to === false ? false : Number(rangeIndex.to.asInt());
+                    continue;
+                }
+                evaluatedIndexes.push(indexes[index].asInt());
+            }
             if (label) label = label + '['+evaluatedIndexes.join('],[')+']';
         }
 
@@ -133,7 +151,7 @@ class Reference {
                 locator = this.array.locatorIndexesApply(this.locator, evaluatedIndexes);
             } else {
                 // parcial access => result a subarray
-                res = new ArrayOf(this.type, this.array.createSubArray(evaluatedIndexes, locator));
+                res = new ArrayOf(this.type, this.array.createSubArray(evaluatedIndexes, locator, fromIndex, toIndex));
             }
         } else if (evaluatedIndexes.length > 0) {
             console.log(evaluatedIndexes);

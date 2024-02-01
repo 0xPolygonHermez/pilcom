@@ -1100,13 +1100,15 @@ multiple_expression_list
 
 expression_list
     : expression_list ',' DOTS_FILL expression %prec ','
-        { $$ = $1; $$.values.push({ type: 'append', value: $4 }) }
+//        { $$ = $1; $$.values.push({ type: 'append', value: $4 }) }
+        { $$ = $1; $$.values.push($4.insert('spread')) }
 
     | expression_list ',' expression %prec ','
         { $$ = $1; $$.values.push($3) }
 
     | DOTS_FILL expression
-        { $$ = { type: 'expression_list',  values: [{ type: 'append', value: $2}] } }
+//        { $$ = { type: 'expression_list',  values: [{ type: 'append', value: $2}] } }
+        { $$ = { type: 'expression_list',  values: [$2.insert('spread')] } }
 
     | expression
         { $$ = { type: 'expression_list',  values: [$1] } }
@@ -1428,9 +1430,16 @@ name_optional_index
 
 expression_index
     :   expression
-    |   expression ':' expression
-    |   expression ':'
-    |   ':' expression
+        { $$ = $1 }
+
+    |   expression DOTS_RANGE expression
+        { $$ = ExpressionFactory.fromObject({type: 'range_index', from: $1, to: $3}); }
+
+    |   expression DOTS_RANGE
+        { $$ = ExpressionFactory.fromObject({type: 'range_index', from: $1}); }
+
+    |   DOTS_RANGE expression
+        { $$ = ExpressionFactory.fromObject({type: 'range_index', to: $2}); }
     ;
 
 array_index

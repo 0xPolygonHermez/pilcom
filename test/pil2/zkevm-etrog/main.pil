@@ -17,7 +17,24 @@ include "../std2/std_mset_lookup_range.pil"
 // memAlign
 // freeBits
 
-const int RANGE32_ID = 10;
+
+const int ARITH_ID = 1;
+const int BINARY_ID = 2;
+const int MEM_ALIGN_ID = 3;
+const int MEMORY_ID = 4;
+const int PADDING_KK_HASH_ID = 5;
+const int PADDING_KK_LEN_DIGEST_ID = 6;
+const int PADDING_PG_DIGEST_ID = 7;
+const int PADDING_PG_HASH_ID = 8;
+const int PADDING_PG_LEN_ID = 9;
+const int PADDING_SHA256_HASH_ID = 10;
+const int PADDING_SHA256_LEN_DIGEST_ID = 11;
+const int POSEIDON_G_ID = 12;
+const int RANGE32_ID = 13;
+const int ROM_ID = 14;
+const int STORAGE_ID = 15;
+
+const int BINARY_OP_LT4 = 8;
 
 subproof Main(2**23) {
     const int NR = 8;
@@ -57,8 +74,9 @@ subproof Main(2**23) {
     col witness hashS, hashSLen, hashSDigest;
     col witness useHashBytes, hashBytes;
     col witness bin;
-    col witness binOpcode;
-    col witness assert;
+    col witness binOp;
+    col witness carryIn;
+    col witness doAssert;
     col witness repeat, call, returnJmp;
     col witness assumeFREE;
 
@@ -76,18 +94,22 @@ subproof Main(2**23) {
     col witness useJmpAddrRel;
     col witness useElseAddrRel;
 
+    col witness useOpAsParam;
+    col witness useConstAsParam;
+
     col fixed L1 = [1,0...];
     col fixed STEP = [0..(N-1)];
     // op registers with out of expression
     // av assumed value, could be op or FREE
-    const expr op[8];
-    const expr assumeInput[8];
-    for (int index = 0; index < 7; ++index) {
+    const expr op[NR];
+    const expr assumeInput[NR];
+    const expr zeros[NR];
+    for (int index = 0; index < NR; ++index) {
         expr _op = 
             A[index] * inA +
             B[index] * inB +
             C[index] * inC +
-            C[(index + 7) % 8] * inROTL_C +
+            C[(index + NR - 1) % NR] * inROTL_C +
             D[index] * inD +
             E[index] * inE +
             FREE[index] * (inFREE + inFREE0) +
@@ -112,6 +134,7 @@ subproof Main(2**23) {
                 cntPaddingPG * inCntPaddingPG +
                 RCX * inRCX;
         }
+        zeros[index] = 0;
         op[index] = _op;
         assumeInput[index] = (1 - assumeFREE) * (op[index] - FREE[index]) + FREE[index];
     }
@@ -132,7 +155,7 @@ subproof Main(2**23) {
                       2**16 * isStack + isStack*SP + 
                       2**17 * isMem + useAddrRel * addrRel + offset;
 
-    #pragma debug on
+    #pragma debug off
     multiset_assumes(RANGE32_ID, jmpn, [isNeg * 2**32 + op[0], 32]);    
     isNeg * (1 - isNeg) === 0;
 
@@ -143,8 +166,8 @@ subproof Main(2**23) {
 
     // op0 check zero
     col witness op0Inv;
-    const expr op0IsZero = 1 - op0*op0Inv;
-    op0IsZero * op0 === 0;
+    const expr op0IsZero = 1 - op[0]*op0Inv;
+    op0IsZero * op[0] === 0;
 
     // Calculate New State
     for (int index = 0; index < NR; ++index) {
@@ -165,20 +188,20 @@ subproof Main(2**23) {
     GAS' === setGAS * (op[0] - GAS) + GAS;
 
     const expr decRCX = repeat * (1 - RCXIsZero);
-    RCX' === setRCX * (op0 - (RCX-decRCX)) + (RCX-decRCX);
+    RCX' === setRCX * (op[0] - (RCX-decRCX)) + (RCX-decRCX);
 
-    HASHPOS' === setHASHPOS * (op0 - HASHPOS) + HASHPOS + (hashK + hashP + hashS)*D0 + useHashBytes * hashBytes;
+    HASHPOS' === setHASHPOS * (op[0] - HASHPOS) + HASHPOS + (hashK + hashP + hashS)*D[0] + useHashBytes * hashBytes;
 
-    const expr doJmp = jmpn * isNeg + jmp + jmpC * carry + jmpz * op0IsZero + returnJmp + call;
+    const expr doJmp = jmpn * isNeg + jmp + jmpc * carry + jmpz * op0IsZero + returnJmp + call;
     const expr elseJmp = jmpn * (1-isNeg) + jmpc * (1-carry) + jmpz * (1-op0IsZero);
 
     // ROM/Zkasm constraint: useJmpAddr * returnJmp = 0
     const expr finalJmpAddr = jmpAddr + useJmpAddrRel * addrRel + returnJmp * (RR' - jmpAddr);
     const expr nextNoJmpZkPC = zkPC + 1 - ((1-RCXIsZero)*repeat);
-    const expr finalElseAddr = useElseAddr * (elseAddr - nextNoJmpZkPC) + nextNoJmpZkPC;
+    const expr finalElseAddr = elseAddr + useElseAddrRel * elseAddr;
 
     // if elseAddr wasn't specified on zkasm, compiler put current address + 1
-    zkPC' = doJmp * (finalJmpAddr - nextNoJmpZkPC) + elseJmp * (finalElseAddr - nextNoJmpZkPC) + nextNoJmpZkPC;
+    zkPC' === doJmp * (finalJmpAddr - nextNoJmpZkPC) + elseJmp * (finalElseAddr - nextNoJmpZkPC) + nextNoJmpZkPC;
 
     zkPC * L1 === 0;
 
@@ -195,8 +218,9 @@ subproof Main(2**23) {
     public localExitRoot[NR];
     public newBatchNum;
 
+    #pragma debug off
     for (int index = 0; index < NR; ++index) {
-        (A[index] - op[index]) * assert === 0;
+        (A[index] - op[index]) * doAssert === 0;
         // oldStateRoot[NR] = B(NR);
         L1 * (B[index] - oldStateRoot[index]) === 0;
         // oldBatchNum[NR] = SP(NR);
@@ -241,7 +265,8 @@ subproof Main(2**23) {
     // TODO:
     // multiset_assumes(BINARY_ID, WR + hashPDigest, [...op, ...GL4, [1, 0:7], BINARY_OP_LT4]);
     // multiset_assumes(BINARY_ID, WR + hashPDigest, [...op, ...GL4, [1, 0:(NR-1)], BINARY_OP_LT4]);
-    multiset_assumes(BINARY_ID, WR + hashPDigest, [...op, ...GL4, 1, 0, 0, 0, 0, 0, 0, 0, BINARY_OP_LT4]);
+    #pragma debug off
+    multiset_assumes(BINARY_ID, sWR + hashPDigest, [...op, ...GL4, 1, 0, 0, 0, 0, 0, 0, 0, BINARY_OP_LT4, 1, 0]);
 
     // Binary: resultValidRange []...a, ...b, lOpcode, Binary.lCout];
 
@@ -251,7 +276,7 @@ subproof Main(2**23) {
     // hashP1, hashK1, hashS1 =>
     // ind, indR
     const expr romFlags = compact_bin_cols ([
-            assert, bin, binCarryIn, sRD, sWR, memAlignRD, memAlignWR, memAlignWR8, mOp, mWR,
+            doAssert, bin, carryIn, sRD, sWR, memAlignRD, memAlignWR, memAlignWR8, mOp, mWR,
             arith, arithUseCD, arithUseCD, 
             hashK, hashKDigest, hashKLen, hashP, hashPDigest, hashPLen, 
             hashS, hashSDigest, hashSLen, useHashBytes,
@@ -286,33 +311,34 @@ subproof Main(2**23) {
         arithC[i] = arithUseCD * (C[i] - A[i]) + A[i];
         arithD[i] = arithUseCD * (C[i] - B[i]) + B[i];
         arithE[i] = arithUseE * E[i];
-        paramOp[i] = useOpAsParam * (assumeInput[i] - A[i]) + A[i];
-        paramConst[i] = useConstAsParam * (CONST[i] - B[i]) + B[i];
+        paramA[i] = useOpAsParam * (assumeInput[i] - A[i]) + A[i];
+        paramB[i] = useConstAsParam * (CONST[i] - B[i]) + B[i];
         // if useOpAsParam, res must be zero => managed in SM too (as other flag)
-        paramRes[i] = (1 - useOpAsParam) * op[i];
+        paramOp[i] = (1 - useOpAsParam) * op[i];
     }
     // We group arithmetic operations by the number of inputs they have
     // 1] 5 inputs (A * B + C = D * 2^256 + E)
 
-    multiset_assume(ARITH_ID, arith, [arithOp, ...A, ...B, ...arithC, ...arithD, ...arithE, ...assumeInput]);
+    multiset_assumes(ARITH_ID, arith, [arithOp, ...A, ...B, ...arithC, ...arithD, ...arithE, ...assumeInput]);
     cntArith' === cntArith * (1 - L1) + arith;
 
-    multiset_assume(BINARY_ID, bin, [binOp, ...paramA, ...paramB, ...paramOp, binCarryIn, carry]);
-    cntBinary' = cntBinary * (1 - L1) + bin + sWR + hashPDigest;
+    multiset_assumes(BINARY_ID, bin, [binOp, ...paramA, ...paramB, ...paramOp, carryIn, carry]);
+    cntBinary' === cntBinary * (1 - L1) + bin + sWR + hashPDigest;
 
     // OPTIMIZATION2EVAL: HASHPOSDIGEST = HASHPOS :HASHLEN + $ :HASHDIGEST
     // optimization reuse CONST as hashBytes or use CONST_LITE to general purpose
-    lookup_assume(PADDING_KK_HASH_ID, hashK, [addr, HASHPOS, useHashBytes * (hashBytes - D[0]) + D[0], ...assumeInput]);
+    lookup_assumes(PADDING_KK_HASH_ID, hashK, [addr, HASHPOS, useHashBytes * (hashBytes - D[0]) + D[0], ...assumeInput]);
     // PaddingKK: crLatch * PaddingKK.r8valid { addr, len - rem - crLen + 1, crLen, crV0C, crV1C, crV2C, crV3C, crV4C, crV5C, crV6C, crV7C }
 
-    multiset_assume(PADDING_KK_LEN_DIGEST_ID, hashKLen + hashKDigest, [hashKLen, addr, ...assumeInput, hashKDigest * incCounter]);
+    multiset_assumes(PADDING_KK_LEN_DIGEST_ID, hashKLen + hashKDigest, [hashKLen, addr, ...assumeInput, hashKDigest * incCounter]);
     // TODO: check if could be in same, perhaps len and Digest is in same "clock" of keccak
     // TODO: if use 2 multisets, better use a lookup without selector
     // REVIEW:
     // PaddingKK: lastHashLen { addr, len }
     // PaddingKK: lastHashDigest { addr, hash0, hash1, hash2, hash3, hash4, hash5, hash6, hash7, incCounter }
 
-    cntKeccakF' = cntKeccakF * (1 - L1) + incCounter * hashKDigest;
+    // ERROR: cntKeccakF' = cntKeccakF * (1 - L1) + incCounter * hashKDigest;
+    cntKeccakF' === cntKeccakF * (1 - L1) + incCounter * hashKDigest;
 
     // SHA256 lookups and permutation check
 
@@ -328,7 +354,7 @@ subproof Main(2**23) {
     // TODO: modify sha to be aligned with rest of hash, because currently the Sha digest's chunks are ordered 
     // from most to least significant. (hash0 => op7, hash1 => op6, ..)
     
-    cntSha256F' = cntSha256F * (1 - L1) + incCounter * hashSDigest;
+    cntSha256F' === cntSha256F * (1 - L1) + incCounter * hashSDigest;
 
     // HASHP Plookpups
     lookup_assumes(PADDING_PG_HASH_ID, hashS, [addr, HASHPOS, useHashBytes * (hashBytes - D[0]) + D[0], ...op]);
@@ -352,10 +378,10 @@ subproof Main(2**23) {
     // multiset_proves(PADDING_PG_LEN, lastHashLen, [addr, len]);
     // multiset_proves(PADDING_PG_LEN_DIGEST_ID, lastHashDigest, [addr, ...curHash, incCounter])
 
-    cntPaddingPG' = cntPaddingPG * (1 - L1) + hashPDigest * incCounter;
+    cntPaddingPG' === cntPaddingPG * (1 - L1) + hashPDigest * incCounter;
 
     // TODO: modify executor
-    cntPoseidonG' = cntPoseidonG * (1 - L1) + (hashPDigest + sRD + sWR) * incCounter + 2 * (sRD + sWR);
+    cntPoseidonG' === cntPoseidonG * (1 - L1) + (hashPDigest + sRD + sWR) * incCounter + 2 * (sRD + sWR);
 
     // Memory
     multiset_assumes(MEMORY_ID, mOp, [addr, STEP, mWR, ...assumeInput]);
@@ -369,21 +395,23 @@ subproof Main(2**23) {
     A[5] * (sRD + sWR) === 0;
     A[6] * (sRD + sWR) === 0;
     A[7] * (sRD + sWR) === 0;
-    A[8] * (sRD + sWR) === 0;
+    // ERROR out of bounds A[8] * (sRD + sWR) === 0;
+    B[2] * (sRD + sWR) === 0;
     B[3] * (sRD + sWR) === 0;
     B[4] * (sRD + sWR) === 0;
     B[5] * (sRD + sWR) === 0;
     B[6] * (sRD + sWR) === 0;
     B[7] * (sRD + sWR) === 0;
-    B[8] * (sRD + sWR) === 0;
-    multiset_assume(POSEIDON_G_ID, sRD + sWR, [...A[0:4], 0, ...B[0:2], ...sKeyI, sKey]);
+
+    // ERROR: multiset_assumes(POSEIDON_G_ID, sRD + sWR, [...A[0:4], 0, ...B[0:2], ...sKeyI, sKey]);
+    multiset_assumes(POSEIDON_G_ID, sRD + sWR, [...A[0..4], 0, ...B[0..1], ...sKeyI, ...sKey]);
     // [...in, hashType, ...cap, ...hash]
 
-    multiset_assume(STORAGE_ID, sRD, [SR[0] + 2**32*SR[1], SR[2] + 2**32*SR[3], SR[4] + 2**32*SR[5], SR[6] + 2**32*SR[7],
-                                      ...sKey, ...assumeInput, incCounter]);
+    multiset_assumes(STORAGE_ID, sRD, [SR[0] + 2**32*SR[1], SR[2] + 2**32*SR[3], SR[4] + 2**32*SR[5], SR[6] + 2**32*SR[7],
+                                      ...sKey, ...assumeInput, 0, 0, 0, 0, incCounter]);
     // STORAGE_ID,latchGet,[...oldRoot, ...rkey, ...valueLow, ...valueHigh, incCounter]
 
-    multiset_assume(STORAGE_ID, sWR, [SR[0] + 2**32*SR[1], SR[2] + 2**32*SR[3], SR[4] + 2**32*SR[5], SR[6] + 2**32*SR[7],
+    multiset_assumes(STORAGE_ID, sWR, [SR[0] + 2**32*SR[1], SR[2] + 2**32*SR[3], SR[4] + 2**32*SR[5], SR[6] + 2**32*SR[7],
                                       ...sKey, ...D, 
                                       op[0] + 2**32*op[1], op[2] + 2**32*op[3], op[4] + 2**32*op[5], op[6] + 2**32*op[7],
                                       incCounter]);
@@ -391,11 +419,11 @@ subproof Main(2**23) {
 
     // MemAlign 
 
-    // memAlign RD
-    multiset_assume(MEM_ALIGN_ID, memAlignRD, [0, C0, ...A, ...B, ...assumeInput]);
-    multiset_assume(MEM_ALIGN_ID, memAlignWR, [1, C0, ...A, ...B, ...assumeInput, ...D, ...E]);
+    // memAlign RD    
+    multiset_assumes(MEM_ALIGN_ID, memAlignRD, [0, C[0], ...A, ...B, ...assumeInput, ...zeros, ...zeros]);
+    multiset_assumes(MEM_ALIGN_ID, memAlignWR, [1, C[0], ...A, ...B, ...assumeInput, ...D, ...E]);
 
-    cntMemAlign' = cntMemAlign * (1 - L1) + memAlignRD + memAlignWR;
+    cntMemAlign' === cntMemAlign * (1 - L1) + memAlignRD + memAlignWR;
 }
 
 function compact_bin_cols(expr cols[]) {

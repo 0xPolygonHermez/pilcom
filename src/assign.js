@@ -22,6 +22,7 @@ module.exports = class Assign {
         return value;
     }
     #assign (name, indexes, value) {
+        // console.log(`ASSIGN(${name})[#${indexes.length ?? 0}] = ${value.constructor ? (value.constructor.name ?? typeof value):typeof value}`);
         // const array = Context.references.getArray(name, indexes);
         const reference = Context.references.getReference(name);
         return reference.set(value, indexes);
@@ -42,6 +43,7 @@ module.exports = class Assign {
         }
     }
     assignArray(name, indexes, value, array) {
+        console.log(`ASSIGN_ARRAY(${name})[#${indexes.length ?? 0}] = ${value.constructor ? (value.constructor.name ?? typeof value):typeof value}`);
         const ref = value.getAloneOperand();
         let valueIndexes = value.__indexes ?? [];
         const def = Context.references.getDefinition(ref.name);
@@ -53,6 +55,7 @@ module.exports = class Assign {
         // array.lengths[0] != def.array.lengths[0]) {
     }
     assignArrayLevel(level, name, indexes, value, leftArray, rightArray) {
+        console.log(`ASSIGN_ARRAY_LEVEL(${level},${name})[#${indexes.length ?? 0}] = ${value.constructor ? (value.constructor.name ?? typeof value):typeof value}`);
         // console.log(['assignArrayLevel', level, name, indexes]);
         const len = leftArray.lengths[level];
         for (let index = 0; index < len; ++index) {
@@ -68,6 +71,7 @@ module.exports = class Assign {
         }
     }
     assignReference (name, value) {
+        console.log(`ASSIGN_REFERENCE(${level},${name}) = ${value.constructor ? (value.constructor.name ?? typeof value):typeof value}`);
         Context.references.setReference(name, value);
     }
     assignTypeInt(name, indexes, value, type) {
@@ -78,6 +82,7 @@ module.exports = class Assign {
         }
     }
     assignTypeExpr(name, indexes, value, type) {
+        console.log(`ASSIGN_TYPE_EXPR(${name},${type})[#${indexes.length ?? 0}] = ${value.constructor ? (value.constructor.name ?? typeof value):typeof value}`);
         if (!(value instanceof Expression)) {
             Context.references.set(name, indexes, value);
             return;

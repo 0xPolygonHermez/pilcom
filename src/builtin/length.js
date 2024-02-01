@@ -12,23 +12,16 @@ module.exports = class Length extends Function {
         }
         const arg0 = s.args[0];
         const item = arg0.evalAsItem();
-        console.log(util.inspect(item, false, null, true));
         if (item instanceof StringValue) {
             return {result: BigInt(item.length)};
         }
-        console.log(item);
-        console.log(item.array);
         if (item && item.array) {
-            console.log(util.inspect(item, false, null, true));
-            console.log(BigInt(item.array.getLength(0)));
             return {result: item.array ? BigInt(item.array.getLength(0)) : 0n};
         }
-        console.log('OHH, NOOO!!!');
         return {result: 0n};
     }
     exec(s, mapInfo) {
         const res = new IntValue(mapInfo.result);
-        console.log('LENGTH', res);
         return res;
     }
 }

@@ -107,6 +107,7 @@ module.exports = class References {
         return typedef.instance;
     }
     decodeName (name) {
+        assert(typeof name === 'string');
         const parts = name.split('.');
         let scope = false;
         if (parts.length === 1) {
@@ -172,10 +173,17 @@ module.exports = class References {
         }
 
         const scopeId = this.hasScope(type) ? Context.scope.declare(nameInfo.name, type, existingReference, false) : 0;
+        if (nameInfo.name === 'Main.jmp') {
+            console.log(scopeId);
+            console.log(existingReference);
+            // EXIT_HERE;
+        }
         // scope(name, def) => exception !!!
         //                  => scopeId;
-        if (existingReference !== false && existingReference.scopeId === scopeId) {
-            throw new Error(`${nameInfo.name} was defined previously on ${existingReference.data.sourceRef}`)
+        if (existingReference !== false && this.isVisible(existingReference)) {
+            if  (existingReference.scopeId === scopeId || existingReference.scope === false || scopeId === false) {
+                throw new Error(`At ${Context.sourceRef} is defined ${nameInfo.name}, but ${existingReference.name} as ${existingReference.type} was defined previously on ${existingReference.data.sourceRef}`)
+            }
         }
         return [scopeId, false];
     }
@@ -185,12 +193,19 @@ module.exports = class References {
         assert(!name.includes('.object'));
 
         const nameInfo = this.decodeName(name);
+        if (name === 'Main.jmp') { console.log(nameInfo); }
         console.log(`DECLARE_REFERENCE ${name} ==> ${nameInfo.name} ${type} ${lengths.length ? '[' + lengths.join(',') + '] ': ''}scope:${nameInfo.scope} #${Context.scope.deep} ${initValue}[type: ${initValue instanceof Object ? initValue.constructor.name : typeof initValue}]`, options);
 
         let [array, size] = Reference.getArrayAndSize(lengths);
+        if (Debug.active) console.log(name, lengths, array, size);
 
-        const existingReference = this.references[nameInfo.name] ?? false;
-
+        let refname = nameInfo.name;
+        let internalReference = false;
+        if (nameInfo.absoluteScope === false && nameInfo.parts.length === 2) {
+            const _ref = this.references[nameInfo.parts[1]] ?? false;
+            internalReference = _ref;
+        }
+        const existingReference = this.references[nameInfo.name] ?? internalReference;
         // When reference is reference to other reference, caller put & before type name (ex: &int)
 
         const [isReference, finalType] = this.normalizeType(type);
@@ -247,6 +262,7 @@ module.exports = class References {
     }
 
     get (name, indexes = []) {
+        assertLog(typeof name === 'string', name);
         if (Debug.active) console.log('GET', name, indexes);
 
         // getReference produce an exception if name not found
@@ -431,7 +447,7 @@ module.exports = class References {
     }
     isVisible(def) {
         if (Debug.active) console.log('ISVISIBLE', (def.constructor ?? {name: '_'}).name, def);
-        return !def.scopeId || !this.hasScope(def.type) || ['constant', 'function', 'witness', 'fixed'].includes(def.type) ||
+        return !def.scopeId || !this.hasScope(def.type) || ['constant', 'function'].includes(def.type) ||
                 def.scopeId >= this.visibilityScope; // || def.scopeId <= Context.scope.getScopeId('air');
     }
     /**

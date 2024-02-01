@@ -7,7 +7,12 @@ module.exports = class ReferenceItem extends RuntimeItem {
     constructor (name, indexes = [], rowOffset) {
         super();
         this.name = name;
-        this.indexes = indexes.map(index => index.clone());
+        try {
+            this.indexes = indexes.map(index => index.clone());
+        } catch (e) {
+            console.log(indexes);
+            throw e;
+        }
         // TODO: next as expression
         this.rowOffset = RowOffset.factory(rowOffset);
     }
@@ -38,6 +43,9 @@ module.exports = class ReferenceItem extends RuntimeItem {
             }
         }
         const item = Context.references.getItem(this.name, this.indexes);
+        if (item.isEmpty()) {
+            throw new Error(`accessing to ${item.label} before his initialization at ${Context.sourceRef}`);
+        }
         if (this.rowOffset && !this.rowOffset.isZero()) {
             item.rowOffset = this.rowOffset.clone();
         }
