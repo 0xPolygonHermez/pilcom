@@ -1,10 +1,10 @@
 module.exports = class Variable {
-    constructor (Fr, value, vtype, lengths, debug) {
+    constructor (Fr, value, vtype, lengths, options) {
         super(Fr);
         this.values = [];
         this.type = vtype;
         this.lengths = lengths;
-        this.debug = debug;
+        this.options = options;
         this.calculateOffsets(this.lengths);
     }
     getValue(indexes) {

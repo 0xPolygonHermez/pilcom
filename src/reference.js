@@ -159,7 +159,7 @@ class Reference {
             throw new Error('try to access to index on non-array value');
         }
         if (res === false) {
-            res = options.const ? this.instance.getConstItem(locator, options) : this.instance.getItem(locator, options);
+            res = this.const ? this.instance.getConstItem(locator, options) : this.instance.getItem(locator, options);
         }
 
         if (label) res.setLabel(label);

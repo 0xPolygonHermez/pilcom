@@ -101,6 +101,7 @@ subproof Main(2**23) {
     col fixed STEP = [0..(N-1)];
     // op registers with out of expression
     // av assumed value, could be op or FREE
+    // col witness op[NR];
     const expr op[NR];
     const expr assumeInput[NR];
     const expr zeros[NR];
@@ -155,7 +156,12 @@ subproof Main(2**23) {
                       2**16 * isStack + isStack*SP + 
                       2**17 * isMem + useAddrRel * addrRel + offset;
 
-    #pragma debug off
+
+    // op0 check zero
+    col witness op0Inv;
+    const expr op0IsZero = 1 - op[0]*op0Inv;
+    op0IsZero * op[0] === 0;
+
     multiset_assumes(RANGE32_ID, jmpn, [isNeg * 2**32 + op[0], 32]);    
     isNeg * (1 - isNeg) === 0;
 
@@ -164,10 +170,6 @@ subproof Main(2**23) {
     const expr RCXIsZero = 1 - RCX * RCXInv;
     RCXIsZero * RCX === 0;
 
-    // op0 check zero
-    col witness op0Inv;
-    const expr op0IsZero = 1 - op[0]*op0Inv;
-    op0IsZero * op[0] === 0;
 
     // Calculate New State
     for (int index = 0; index < NR; ++index) {

@@ -31,7 +31,6 @@ class Compiler {
     constructor(Fr) {
         this.Fr = Fr;
         this.constants = new Definitions(Fr);
-        this.processor = new Processor(Fr, this);
     }
 
     initContext() {
@@ -45,8 +44,10 @@ class Compiler {
     }
     async compile(fileName, config = {}) {
         const isMain = true;
-        this.initContext();
         this.config = config;
+        this.initContext();
+        console.log(config);
+        this.processor = new Processor(this.Fr, this, this.config);
         if (this.config.namespaces) {
             this.namespaces = {};
             for (const name of this.config.namespaces) {

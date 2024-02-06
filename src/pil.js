@@ -11,6 +11,7 @@ const debugConsole = require('./debug_console.js').init();
 const argv = require("yargs")
     .version(version)
     .usage("pil <source.pil> -o <output.json> [-P <pilconfig.json>]")
+    .alias("e", "exec")
     .alias("o", "output")
     .alias("P", "config")
     .alias("v", "verbose")
@@ -36,7 +37,7 @@ async function run() {
     const fileName = path.basename(fullFileName, ".pil");
 
     const outputFile = typeof(argv.output) === "string" ?  argv.output : fileName + ".json";
-    const config = typeof(argv.config) === "string" ? JSON.parse(fs.readFileSync(argv.config.trim())) : {};
+    let config = typeof(argv.config) === "string" ? JSON.parse(fs.readFileSync(argv.config.trim())) : {};
 
     if (argv.verbose) {
         config.verbose = true;
@@ -45,6 +46,10 @@ async function run() {
         }
     }
 
+    // only execute
+    if (argv.exec || argv.output === 'none') {
+        config.protoOut = false;
+    }
     const F = new ffjavascript.F1Field((1n<<64n)-(1n<<32n)+1n );
 
     if (argv.include) {
@@ -54,6 +59,7 @@ async function run() {
     if (argv.includePathFirst) {
         config.includePathFirst = true;
     }
+    console.log(config);
     const out = await compile(F, fullFileName, null, config);
     console.log(out);
 /*

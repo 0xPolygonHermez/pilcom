@@ -5,8 +5,8 @@ const Context = require('../context.js');
 const Debug = require('../debug.js');
 const ExpressionClass = require('../expression_class.js');
 module.exports = class FunctionCall extends RuntimeItem {    
-    constructor (name, args = [], indexes = [], debug = {}) {
-        super(debug);
+    constructor (name, args = [], indexes = [], options = {}) {
+        super(options);
         this.name = name;
         if (args instanceof ExpressionList) {
             if (Debug.active) console.log(util.inspect(args, false, 10, true));

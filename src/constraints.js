@@ -28,15 +28,10 @@ module.exports = class Constraints {
     }
 
     getPackedExpressionId(id, container, options = {}) {
-        console.log(Context.expressions);
-        console.log(options);
-        console.log(id);
-        console.log(options.expressions ?? Context.expressions);
         const res = (options.expressions ?? Context.expressions).getPackedExpressionId(id, container, options);
         return res;
     }
     define(left, right, boundery, sourceRef) {
-        console.log(left, right);
         assertLog(left instanceof Expression, left);
         assertLog(right instanceof Expression, right);
         if (left.isRuntime()) {
@@ -51,7 +46,6 @@ module.exports = class Constraints {
             console.log('\x1B[31mWARNING: accessing fixed row acces\x1b[0m');
         }
         const id = this.constraints.length;
-        console.log(right.eval());
         if (right.asIntDefault(false) !== 0n) {
             left.insert('sub', right);
         }
@@ -82,18 +76,15 @@ module.exports = class Constraints {
         }
     }
     dump (packed) {
-        console.log('CONSTRAINTS');
         for (let index = 0; index < this.constraints.length; ++index) {
             console.log(this.getDebugInfo(index, packed));
         }
     }
     getDebugInfo(index, packed, options) {
         const constraint = this.constraints[index];
-        console.log(constraint);
         const eid = constraint.exprId;
         // const peid = Context.expressions.getPackedExpressionId(eid);
         const peid = this.getPackedExpressionId(eid, packed, options);
-        console.log(peid);
         let info = `INFO ${index}: ${eid} ${peid} ${constraint.sourceRef}`
         options = options ?? {};
 

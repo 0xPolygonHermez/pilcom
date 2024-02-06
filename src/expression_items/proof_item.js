@@ -26,7 +26,7 @@ module.exports = class ProofItem extends ExpressionItem {
     eval(options) {
         return this.clone();
     }
-    runtimeEvaluable() {
+    isRuntimeEvaluable() {
         return false;
     }
     cloneUpdate(source) {

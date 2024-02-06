@@ -58,8 +58,8 @@ const Debug = require('../debug.js');
 class ExpressionItem {
     static _classToManager = {};
 
-    constructor(debug = {}) {
-        this.debug = debug;
+    constructor(options = {}) {
+        this.options = options;
         this.indexes = false;
         this.label = '';
         this._ns_ = 'ExpressionItem';
@@ -194,6 +194,10 @@ class ExpressionItem {
         // default implementation
         return false;
     }    
+    isRuntimeEvaluable() {
+        // default implementation
+        return true;
+    }
 }
 
 module.exports = ExpressionItem;

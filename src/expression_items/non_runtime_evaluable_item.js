@@ -16,7 +16,7 @@ class NonRuntimeEvaluableItem extends ExpressionItem {
     eval(options) {
         return NonRuntimeEvaluableItem._singletonInstance;;
     }
-    runtimeEvaluable() {
+    isRuntimeEvaluable() {
         return false;
     }
 }

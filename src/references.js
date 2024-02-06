@@ -291,7 +291,6 @@ module.exports = class References {
         // TODO: if reference is a 'reference' check if name is correct
         const item = reference.getItem(indexes, {...options, label: reference.name});
 
-
         if (options.preDelta) {
             EXIT_HERE;
             console.log(typeof tvalue.value);

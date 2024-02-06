@@ -2,18 +2,21 @@ const {assert} = require("chai");
 module.exports = class Context {
     static _instance = null;
 
-    constructor (Fr, processor) {
+    constructor (Fr, processor, config = {}) {
         assert(Context._instance === null);
         Context._instance = this;
         this.Fr = Fr;
         this._processor = processor;
         this.namespace = '';
         this.subproof = false;
-        this.stack = [];
-        this.config = {debug: {}};
+        this.stack = [];        
+        this.config = {debug: {}, ...config};
+        console.log(config);
+        console.log(this.config);
         this.uses = [];
         this.subproofName = false;
-        this.airName = false;
+        this.airId = false;
+        this.airN = false;
     }
     static get expressions() {
         return this._instance._processor.expressions;

@@ -250,31 +250,41 @@ private function PIOP_air() {
 
     expr LHS = 1;
     expr RHS1 = 0;
+
+    col witness gsP[gsum_proves_count];
+    for (int i = 0; i < gsum_proves_count; i = i + 1) {
+        gsP[i] === gsum_proves[i];
+    }
+    col witness gsA[gsum_assumes_count];
+    for (int i = 0; i < gsum_assumes_count; i = i + 1) {
+        gsA[i] === gsum_assumes[i];
+    }
+    
     // for (int i = 0; i < length(gsum_proves); i = i + 1) {
     for (int i = 0; i < gsum_proves_count; i = i + 1) {
-        LHS = LHS * gsum_proves[i];
+        LHS = LHS * gsP[i];
 
         expr tmp = gsum_proves_sel[i];
         // for (int j = 0; j < length(gsum_proves); j = j + 1) {
         for (int j = 0; j < gsum_proves_count; j = j + 1) {
-            if (j != i) tmp = tmp * gsum_proves[j];
+            if (j != i) tmp = tmp * gsP[j];
         }
         RHS1 = RHS1 + tmp;
     }
 
-    expr RHS2a = LHS;
+    // expr RHS2a = LHS;
+    col witness RHS2a;
+    RHS2a === LHS;
     expr RHS2b = 0;
     // for (int i = 0; i < length(gsum_assumes); i = i + 1) {
     for (int i = 0; i < gsum_assumes_count; i = i + 1) {
-        LHS = LHS * gsum_assumes[i];
-        RHS1 = RHS1 * gsum_assumes[i];
+        LHS = LHS * gsA[i];
+        RHS1 = RHS1 * gsA[i];
     
-          println(`i:${i}`);
         expr tmp = gsum_assumes_sel[i];
         // for (int j = 0; j < length(gsum_assumes); j = j + 1) {
         for (int j = 0; j < gsum_assumes_count; j = j + 1) {
-            if (j != i) tmp = tmp * gsum_assumes[j];
-            println(`j:${j}`);
+            if (j != i) tmp = tmp * gsA[j];
         }
         RHS2b = RHS2b + tmp;
     }

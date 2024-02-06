@@ -16,7 +16,7 @@ class NonEvaluatedItem extends ExpressionItem {
     eval(options) {
         return NonEvaluatedItem._singletonInstance;;
     }
-    runtimeEvaluable() {
+    isRuntimeEvaluable() {
         // not evaluated, but perhaps could be evaluated
         return true;
     }

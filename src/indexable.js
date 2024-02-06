@@ -5,8 +5,9 @@ const ExpressionItem = require('./expression_items/expression_item.js');
 const Debug = require('./debug.js');
 const Context = require('./context.js');
 module.exports = class Indexable {
-    constructor (type, definitionClass, expressionItemClass, options) {
+    constructor (type, definitionClass, expressionItemClass, options = {}) {
         this.expressionItemClass = expressionItemClass ?? false;
+        this.expressionItemConstClass = options.constClass ?? expressionItemClass;
         this.definitionClass = definitionClass ?? false;
         this.values = [];
         this.type = type;
@@ -80,25 +81,34 @@ module.exports = class Indexable {
         return this.getItem(id, {...properties, const: true});
     }
     // get expression item to add in a expression
-    getItem(id, properties) {
+    getItem(id, properties = {}) {
         let res = this.values[id];
+        const isConst = (properties.const && this.expressionItemConstClass);
+        const itemClass = isConst ? this.expressionItemConstClass : this.expressionItemClass;
+        if (Debug.active) {
+            console.log([id, itemClass.name, properties, this.expressionItemConstClass, res]);
+            console.log([id, itemClass.name, properties, this.expressionItemConstClass, res.constructor ? res.constructor.name :res.name, res.value ? res.value.constructor.name : '', res]);
+        }
+        if (isConst && typeof res.getConstItem === 'function') {
+            return res.getConstItem();
+        }
         if (typeof res.getItem === 'function') {
             return res.getItem();
         }
-        if (!this.expressionItemClass || res instanceof this.expressionItemClass) {
+        if (!itemClass || res instanceof itemClass) {
             return res;
         }
-        if (typeof res.value !== 'undefined' && res.value instanceof this.expressionItemClass) {
+        if (typeof res.value !== 'undefined' && res.value instanceof itemClass) {
             return res.value.clone();
         }
         if (typeof res.value === 'undefined') {
             if (this.expressionItemClass.createWithId) {
-                return new this.expressionItemClass(id);
+                return new itemClass(id);
             }
-            return new this.expressionItemClass();
+            return new itemClass();
         }
-        assertLog(typeof this.expressionItemClass.createFrom === 'function', [this.type, this.constructor.name, this.expressionItemClass, res, res.value]);
-        return this.expressionItemClass.createFrom(res.value);
+        assertLog(typeof itemClass.createFrom === 'function', [this.type, this.constructor.name, itemClass, res, res.value]);
+        return itemClass.createFrom(res.value, {id, instance: this});
     }
 
     getLabel(id, options) {
