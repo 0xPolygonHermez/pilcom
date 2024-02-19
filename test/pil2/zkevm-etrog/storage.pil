@@ -1,3 +1,4 @@
+include "tools.pil"
 include "poseidong.pil";
 include "climb_key.pil";
 
@@ -151,52 +152,13 @@ subproof Storage(2**23) {
     // Once the work is done, the rest of instructions must be:
     // if op0 = $n-1 (last instruction of the program) then pc = 0 (jump to the beginning of the program)
 
-    /*
-       code generated with:
-       node tools/pil_pol_table/bits_compose.js "hash,hashType,latchGet,latchSet,climbRkey,climbSiblingRkey,climbBitN,jmpz,jmp,setHashLeft,setHashRight,setLevel,setNewRoot,setOldRoot,setRkey,setRkeyBit,setSiblingRkey,setSiblingValueHash,setValueHigh,setValueLow,jmpnz,inFree,inNewRoot,inOldRoot,inRkey,inRkeyBit,inSiblingValueHash,inValueLow,inValueHigh,inRotlVh,inLevel" -b
-    */
+    const expr storageRomFlags = compact_bin_cols ([
+            hash, hashType, latchGet, latchSet, climbRkey, climbSiblingRkey, climbBitN,
+            jmp, jmpz, jmpnz, setHashLeft, setHashRight, setLevel, setNewRoot, setOldRoot,
+            setRkey, setRkeyBit, setSiblingRkey, setSiblingValueHash, setValueHigh, setValueLow,
+            inFree, inNewRoot, inOldRoot, inRkey, inRkeyBit, inSiblingValueHash,
+            inValueLow, inValueHigh, inRotlVh, inLevel]);
 
-    const expr operation =
-          2**0  * hash                  + 2**1  * hashType              + 2**2  * latchGet              + 2**3  * latchSet
-        + 2**4  * climbRkey             + 2**5  * climbSiblingRkey      + 2**6  * climbBitN             + 2**7  * jmpz
-        + 2**8  * jmp                   + 2**9  * setHashLeft           + 2**10 * setHashRight          + 2**11 * setLevel
-        + 2**12 * setNewRoot            + 2**13 * setOldRoot            + 2**14 * setRkey               + 2**15 * setRkeyBit
-        + 2**16 * setSiblingRkey        + 2**17 * setSiblingValueHash   + 2**18 * setValueHigh          + 2**19 * setValueLow
-        + 2**20 * jmpnz                 + 2**21 * inFree                + 2**22 * inNewRoot             + 2**23 * inOldRoot
-        + 2**24 * inRkey                + 2**25 * inRkeyBit             + 2**26 * inSiblingValueHash    + 2**27 * inValueLow
-        + 2**28 * inValueHigh           + 2**29 * inRotlVh              + 2**30 * inLevel;
 
-        (1 - hash) * hash === 0;
-        (1 - hashType) * hashType === 0;
-        (1 - latchGet) * latchGet === 0;
-        (1 - latchSet) * latchSet === 0;
-        (1 - climbRkey) * climbRkey === 0;
-        (1 - climbSiblingRkey) * climbSiblingRkey === 0;
-        (1 - climbBitN) * climbBitN === 0;
-        (1 - jmpz) * jmpz === 0;
-        (1 - jmp) * jmp === 0;
-        (1 - setHashLeft) * setHashLeft === 0;
-        (1 - setHashRight) * setHashRight === 0;
-        (1 - setLevel) * setLevel === 0;
-        (1 - setNewRoot) * setNewRoot === 0;
-        (1 - setOldRoot) * setOldRoot === 0;
-        (1 - setRkey) * setRkey === 0;
-        (1 - setRkeyBit) * setRkeyBit === 0;
-        (1 - setSiblingRkey) * setSiblingRkey === 0;
-        (1 - setSiblingValueHash) * setSiblingValueHash === 0;
-        (1 - setValueHigh) * setValueHigh === 0;
-        (1 - setValueLow) * setValueLow === 0;
-        (1 - jmpnz) * jmpnz === 0;
-        (1 - inFree) * inFree === 0;
-        (1 - inNewRoot) * inNewRoot === 0;
-        (1 - inOldRoot) * inOldRoot === 0;
-        (1 - inRkey) * inRkey === 0;
-        (1 - inRkeyBit) * inRkeyBit === 0;
-        (1 - inSiblingValueHash) * inSiblingValueHash === 0;
-        (1 - inValueLow) * inValueLow === 0;
-        (1 - inValueHigh) * inValueHigh === 0;
-        (1 - inRotlVh) * inRotlVh === 0;
-        (1 - inLevel) * inLevel === 0;
-
-    lookup_assumes(STORAGE_ROM_ID, 1, [operation, const0, jmpAddress, pc, inSiblingRkey]);
+    lookup_assumes(STORAGE_ROM_ID, 1, [storageRomFlags, const0, jmpAddress, pc, inSiblingRkey]);
 }

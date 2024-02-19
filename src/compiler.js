@@ -42,7 +42,7 @@ class Compiler {
         this.includePaths = (this.config && this.config.includePaths) ? (Array.isArray(this.config.includePaths) ? this.config.includePaths: [this.config.includePaths]): [];
         this.relativeFileName = '';
     }
-    async compile(fileName, config = {}) {
+    compile(fileName, config = {}) {
         const isMain = true;
         this.config = config;
         this.initContext();
@@ -59,7 +59,7 @@ class Compiler {
                 this.constants.define(name, this.Fr.e(this.config.defines[name]));
             }
         }
-        let sts = await this.parseSource(fileName, true);
+        let sts = this.parseSource(fileName, true);
         this.processor.startExecution(sts);
         if (config.processorTest) {
             return this.processor;
@@ -132,19 +132,23 @@ console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1
         }
         return parser;
     }
-    async parseSource(fileName, isMain = false) {
+    parseSource(fileName, isMain = false, options = {}) {
 
-        const [src, fileDir, fullFileName, relativeFileName] = await this.loadSource(fileName, isMain);
+        const [_src, fileDir, fullFileName, relativeFileName] = this.loadSource(fileName, isMain. options);
 
+        const preSrc = options.preSrc ?? '';
+        const postSrc = options.postSrc ?? '';
+        const src = preSrc + _src + postSrc;
         this.relativeFileName = relativeFileName;
         this.fileDir = fileDir;
 
+    
         const parser = this.instanceParser(src, fullFileName);
         const sts = parser.parse(src);
 
         for (let i=0; i<sts.length; i++) {
             if (sts[i].type !== 'include') continue;
-            sts[i].contents = await this.loadInclude(sts[i]);
+            sts[i].contents = this.loadInclude(sts[i]);
         }
         return sts;
     }
@@ -152,7 +156,7 @@ console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1
         const parser = this.instanceParser(expression, "template expression");
         return parser.parse(expression);
     }
-    async loadInclude(s) {
+    loadInclude(s, options = {}) {
 
         const includeFile = this.asString(s.file);
         const fullFileNameI = this.config.includePaths ? s.file : path.resolve(this.fileDir, includeFile);
@@ -163,12 +167,12 @@ console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1
         const previous = [this.cwd, this.relativeFileName, this.fileDir];
 
         this.cwd = this.fileDir;
-        const sts = await this.parseSource(fullFileNameI, false);
+        const sts = this.parseSource(fullFileNameI, false, options);
 
         [this.cwd, this.relativeFileName, this.fileDir] = previous;
         return sts;
     }
-    async loadSource(fileName, isMain) {
+    loadSource(fileName, isMain) {
         let fullFileName, fileDir, src;
         let relativeFileName = '';
         let includePathIndex = 0;
@@ -214,7 +218,7 @@ console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1
                 }
             }
             // console.log(`LOADING FILE ${fullFileName} .............`)
-            src = await fs.promises.readFile(fullFileName, "utf8") + "\n";
+            src = fs.readFileSync(fullFileName, "utf8") + "\n";
             // console.log('END LOADING ...');
         }
         return [src, fileDir, fullFileName, relativeFileName];
@@ -228,8 +232,8 @@ console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1
     }
 }
 
-module.exports = async function compile(Fr, fileName, ctx, config = {}) {
+module.exports = function compile(Fr, fileName, ctx, config = {}) {
 
     let compiler = new Compiler(Fr);
-    return await compiler.compile(fileName, config);
+    return compiler.compile(fileName, config);
 }

@@ -47,8 +47,14 @@ class Reference {
         return  (indexes.length === 0 || !this.array) ? this.initialized : this.array.isInitialized(indexes);
     }
     getId(indexes = []) {
-        if (Debug.active) console.log(`getId ${this.name} ${Array.isArray(indexes) ? '[' + indexes.join(',') + ']':indexes} ${this.array ? this.array.toDebugString():''}`);
-        return  (indexes.length === 0 || !this.array) ? this.locator : this.array.getLocator(this.locator, indexes);
+        if (Debug.active) {
+            console.log(`getId ${this.name} ${Array.isArray(indexes) ? '[' + indexes.join(',') + ']':indexes} ${this.array ? this.array.toDebugString():''}`);
+        }
+        if (indexes.length > 0 && !this.array) {
+            throw new Error(`Accessing to index, but not an array ${this.name} ${Context.sourceTag}`);
+        }
+        // return (indexes.length > 0 || this.array) ? this.array.getLocator(this.locator, indexes) : this.locator;
+        return this.array ? this.array.getLocator(this.locator, indexes) : this.locator;
     }
     set (value, indexes = [], options = {}) {
         if (Debug.active) console.stdebug(`set(${this.name}, [${indexes.join(',')}]`);
@@ -87,17 +93,22 @@ class Reference {
             // called as doInit:true but it's initizalized before
             throw new Error('value initialized');
         }
-        const id = this.getId(indexes);
+        const [row, id] = this.getRowAndId(indexes);
         if (this.const) {
             // TODO: more info
             throw new Error(`setting ${this.name} a const element on ${Context.sourceRef}`);
         }
-        this.instance.set(id, value);
+        if (row !== false) this.instance.setRowValue(id, row, value);
+        else this.instance.set(id, value);
     }
     #doInit(value, indexes) {
-        const id = this.getId(indexes);
+        const [row, id] = this.getRowAndId(indexes);
         assert(id !== null);
-        this.instance.set(id, value);
+        if (row !== false) {
+            this.instance.setRowValue(id, row, value);
+        } else {
+            this.instance.set(id, value);
+        }
         this.markAsInitialized(indexes);
     }
     init (value, indexes = [], options = {}) {
@@ -113,8 +124,29 @@ class Reference {
         return [false, 1];
     }
     get (indexes = []) {
-        return this.instance.get(this.getId(indexes));
+        const [row, id] = this.getRowAndId(indexes);
+        if (row !== false) {
+            return this.instance.getRowValue(id, row);
+        }
+        return this.instance.get(id);
     }
+    getRowAndId(indexes = []) {
+        if (!this.instance.runtimeRows || indexes.length === 0) {
+            return [false, this.getId(indexes)];
+        }
+        if (!this.array) {
+            if (indexes.length === 1) {
+                return [indexes[0], this.getId(indexes.slice(0, -1))];
+            }
+            throw new Error(`Accessing to index, but not an array ${this.name} ${Context.sourceTag}`);
+        }
+        if ((this.array.dim + 1) === indexes.length) {
+            return [row, this.getId(indexes).slice(0,-1)];
+        }
+        // other cases managed by getId because they aren't row access
+        return [row, this.getId(indexes)];
+    }
+
     getItem(indexes, options = {}) {
         let locator = this.locator;
         let label = options.label;
@@ -153,6 +185,8 @@ class Reference {
                 // parcial access => result a subarray
                 res = new ArrayOf(this.type, this.array.createSubArray(evaluatedIndexes, locator, fromIndex, toIndex));
             }
+        } else if (evaluatedIndexes.length === 1 && this.instance.runtimeRows) {
+            res = this.instance.getRowValue(locator, evaluatedIndexes[0], options);    
         } else if (evaluatedIndexes.length > 0) {
             console.log(evaluatedIndexes);
             console.log(this);

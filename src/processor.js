@@ -53,6 +53,7 @@ module.exports = class Processor {
 
         this.scope.mark('proof');
         this.delayedCalls = {};
+        this.timers = {};
 
         this.airId = 0;
         this.subproofId = 0;
@@ -251,14 +252,33 @@ module.exports = class Processor {
     }
     execPragma(st) {
         const params = st.value.split(/\s+/);
-        console.log(params);
-        if (params[0] === 'debug') {
-            if (params[1] === 'on') Debug.active = true;
-            else if (params[1] === 'off') Debug.active = false;        
+        const instr = params[0] ?? false;
+        switch (instr) {
+            case 'debug':
+                if (params[1] === 'on') Debug.active = true;
+                else if (params[1] === 'off') Debug.active = false;        
+                break;
+            case 'exit':
+                EXIT_HERE;
+                break;
+            case 'timer': {
+                const name = params[1] ?? false;
+                const action = params[2] ?? 'start';
+                if (action === 'start')  {
+                    this.timers[name] = process.hrtime();
+                } else if (action === 'end') {
+                    const now = process.hrtime();
+                    const start = this.timers[name] ?? now;
+                    const milliseconds = (now[0] - start[0]) * 1000 + Math.floor((now[1] - start[1])/1000000);
+                    console.log(`=========================> TIMER ${name} ${milliseconds} ms <===============================`);
+                }
+                break;
+            }
+            case 'debugger':
+                debugger;
+                break;
         }
-        if (params[0] === 'exit') {
-            EXIT_HERE;
-        }
+        
     }
     execProof(st) {
         this.scope.pushInstanceType('proof');
@@ -381,13 +401,20 @@ module.exports = class Processor {
     }
     execWhile(s) {
         let index = 0;
-        while (this.expressions.e2bool(s.condition)) {
+        let result = false;
+        while (true) {
             this.scope.push();
-            this.execute(s.statements, `WHILE ${this.sourceRef} I:${index}`);
+            const whileCond = s.condition.eval().asBool();
+            if (!whileCond) {
+                this.scope.pop();
+                break;
+            }
+            result = this.execute(s.statements, `WHILE ${this.sourceRef} I:${index}`);
             ++index;
             this.scope.pop();
-            if (res === false) break;
+            if (result instanceof BreakCmd) break;
         }
+        return result;
     }
     execUse(s) {
         const name = this.expandTemplates(s.name);
@@ -539,9 +566,12 @@ module.exports = class Processor {
         throw new Error(msg);
     }
     execInclude(s) {
-        if (s.contents !== false) {
-            return this.execute(s.contents);
+        console.log(s);
+        if (!s.contents) {
+            const sts = this.compiler.loadInclude(s, {preSrc: 'subproof __(2**2) {\n', postSrc: '\n};\n'});
+            s.contents = sts[0].statements;
         }
+        return this.execute(s.contents);
     }
     execFunctionDefinition(s) {
         if (Debug.active) console.log('FUNCTION '+s.funcname);

@@ -62,31 +62,6 @@ module.exports = class Expressions {
     insert(e) {
         return this.expressions.push(e) - 1;
     }
-    __toString(e) {
-        console.log(util.inspect(e, false, null, true /* enable colors */))
-    }
-
-    // update mode
-    ____eval(e, fr = false) {
-        if (e.op in this.operations) {
-            const operation = this.operations[e.op];
-            const [a,b,reduced] = this.evaluateValues(e, operation.args, fr);
-            if (reduced) {
-                if (typeof a.value !== 'bigint' || typeof b.value !== 'bigint') {
-                    throw new Error(`ERROR evaluating operation: ${a.value}[${typeof a.value}] ${operation} on ${b.value}[${typeof b.value}]`);
-                }
-                return { op: 'number',
-                         value: fr ? operation.handleFr(fr, a.value, b.value) : operation.handle(a.value, b.value) };
-            }
-            if (e.op === 'pow') {
-                // TODO: check last Scalar.
-                // return {simplified:true, op: "number", deg:0, value: Fr.toString(Fr.exp(Fr.e(a.value), Scalar.e(b.value))), first_line: e.first_line}
-                this.error(e, "Exponentiation can only be applied between constants");
-            }
-            return e;
-        }
-        return this.router.go([e, fr]);
-    }
     checkExpression(e) {
         if (typeof e === 'undefined' || e.expr || !(e instanceof Expression)) {
             console.log(e)
@@ -96,16 +71,6 @@ module.exports = class Expressions {
     }
     eval(e) {
         return this.checkExpression(e).eval();
-    }
-    evalOperand(operand, values) {
-        switch (operand.type) {
-            case 0:
-                return BigInt(operand.value);
-            case 3:
-                return this.evalRuntime(operand.value);
-        }
-        console.log(operand);
-        EXIT_HERE;
     }
     evalRuntime(operand, expr, deeply) {
         // TODO: if not runtime evaluable return null or
@@ -121,107 +86,10 @@ module.exports = class Expressions {
         return operand.eval();
         throw new Error(`Invalid runtime operation ${op}`);
     }
-    _evalString(e) {
-        if (e.template) return Context.processor.evaluateTemplate(e.value);
-        return e.value;
-    }
-    eval2(e, pos, values) {
-        let st = e.stack[pos];
-        let res;
-        switch (st.op) {
-            case false:
-                res = this.evalOperand(st.operands[0], values)
-                break;
-            default:
-                console.log(st);
-                EXIT_HERE;
-        }
-        values[pos] = res;
-    }
-    _evalNumber(e, fr) {
-        return e;
-    }
-    _evalCall(e) {
-        return Context.processor.execCall(e);
-    }
-    _evalIdref(e) {
-        if (e.array) {
-            return e;
-        }
-        return this.evalReferenceValue(Context.references.getIdRefValue(e.refType, e.id));
-    }
     evalReference(e) {
         const ref = this.evalReferenceValue(e);
         console.log(ref);
         EXIT_HERE;
-    }
-    evalReferenceValue(ref) {
-        let res = ref;
-        switch (ref.type) {
-            case 'fixed':
-                // DUAL, if access row was a value, if not it's an id
-                // TODO
-                if (typeof res.row === 'undefined') {
-                    res = {refType: 'fixed', id: res.id};
-                } else {
-                    // e.parent.fixedRowAccess = true;
-                    res = res.value.getValue(res.row);
-                }
-                if (ref.next) res.next = ref.next;
-                break;
-            case 'challenge':
-                res = {refType: ref.type, id: ref.id };
-                break;
-            case 'witness':
-                if (res.value instanceof WitnessCol) {
-                    res = {refType: ref.type, id: res.value.id };
-                    if (ref.next) res.next = ref.next;
-                }
-                break;
-            case 'public':
-            case 'proofvalue':
-            case 'subproofvalue':
-                res = {refType: ref.type, id: res.id };
-                break;
-            case 'im':
-                // TODO: review next, prior
-                res = {...res, value: res.id};
-                break;
-            case 'fe':
-                res = { op: 'number', value: BigInt(ref.value) };
-                break;
-            case 'constant':
-                if (!res.array) {
-                    res = (typeof ref.value === 'number' ? BigInt(ref.value) : ref.value);
-                }
-                break;
-            case 'int':
-                res = (typeof ref.value === 'number' ? BigInt(ref.value) : ref.value);
-                break;
-            case 'string':
-                res = (typeof ref.value === 'string' ? ref.value : '');
-                break;
-            case 'expr':
-                if (ref.value instanceof Expression) {
-                    res = ref.value.eval();
-                    if (res instanceof Expression) {
-                        res = res.instance({simplify: true});
-                    } else if (res instanceof NonRuntimeEvaluable) {
-                        res = ref.value.instance({simplify: true});
-                    }
-                } else {
-                    res = ref;
-                }
-                break;
-
-            default:
-                console.log(ref);
-                throw new Error(`Invalid reference type: ${ref.type}`);
-        }
-        return res;
-    }
-    _evalReference(operand, expr, deeply) {
-        return this.evalReferenceValue(this.resolveReference(operand, deeply));
     }
     evaluateValues(e, valuesCount, fr) {
         // TODO: check valuesCount
@@ -252,7 +120,7 @@ module.exports = class Expressions {
         }
         return Context.references.getLabel(type, id, options);
     }
-    resolveReference(operand, deeply = false) {
+    _resolveReference(operand, deeply = false) {
         const names = this.context.getNames(operand.name);
 
         let options = {};
@@ -281,20 +149,20 @@ module.exports = class Expressions {
         }
         return res;
     }
-    getReferenceInfo(e, options) {
+    _getReferenceInfo(e, options) {
         const names = this.context.getNames(e.getAloneOperand().name);
         return Context.references.getTypeInfo(names, e.__indexes, options);
     }
-    e2num(e, s, title = '') {
+    _e2num(e, s, title = '') {
         DEPRECATED;
         return this.e2types(e, s, title, ['number','bigint']);
     }
-    e2number(e, s, title = '') {
+    _e2number(e, s, title = '') {
         DEPRECATED;
         let res = this.e2types(e, s, title, ['number','bigint'], false);
         return Number(res);
     }
-    e2types(e, s, title, types, toBigInt = true) {
+    _e2types(e, s, title, types, toBigInt = true) {
         DEPRECATED;
 
         // TODO: review specify PRE/POST on expression conversion ==> refactorize !!!
@@ -315,33 +183,15 @@ module.exports = class Expressions {
         // const res = e.expr && e.expr instanceof Expression ? e.expr.eval() : e;
         return this.getValueTypes(res, s, title, types, toBigInt);
     }
-    getValueTypes(e, s, title, types, toBigInt = true) {
+    _getValueTypes(e, s, title, types, toBigInt = true) {
         const etype = typeof e;
         if (types.includes(etype)) {
             return toBigInt && etype === 'number' ? BigInt(e) : e;
         }
         this.error(s, (title ? ' ':'') + `is not constant expression (${etype}) (2)`);
     }
-    getValue(e, s, title = '') {
+    _getValue(e, s, title = '') {
         return this.getValueTypes(e, s, title, ['number','bigint','string']);
-    }
-    e2value(e, s, title = '') {
-        DEPRECATED;
-        return this.e2types(e, s, title, ['number','bigint','string']);
-    }
-    e2bool(e, s, title = '') {
-        DEPRECATED;
-        let res = this.e2types(e, s, title, ['number','bigint','string']);
-        if (typeof res === 'string') {
-            return res !== '';
-        }
-        if (typeof res === 'bigint') {
-            return res != 0n;
-        }
-        if (typeof res === 'number') {
-            return res != 0;
-        }
-        EXIT_HERE;
     }
     pack(container, options) {
         this.packedIds = [];

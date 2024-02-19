@@ -428,6 +428,9 @@ module.exports = class References {
                     throw new Error(`not found scope ${explicitContainer}`);
                 }
                 reference = this.references[lname];
+                if (explicitContainer === 'air' && !reference) {
+                    reference = this.references[Context.airName+'.'+lname];
+                }
                 if (reference && reference.scopeId !== scopeId) {
                     throw new Error(`Not match declaration scope and accessing scope (${containerName}) of ${name}`);
                 }
@@ -492,12 +495,17 @@ module.exports = class References {
             if (reference) break;
         }
         if (!reference) {
-            if (typeof defaultValue !== 'undefined') return defaultValue;
+            console.log(name);
+            console.log(nameInfo);
+             if (typeof defaultValue !== 'undefined') return defaultValue;
             throw new Exceptions.ReferenceNotFound(names.join(','));
         }
 
         // constants are visible inside functions
-        if (this.isVisible(reference) === false) {
+        if (!nameInfo.absoluteScope && this.isVisible(reference) === false) {
+            console.log(reference);
+            console.log(name);
+            console.log(nameInfo);
             if (typeof defaultValue !== 'undefined') return defaultValue;
             throw new Exceptions.ReferenceNotVisible(names.join(','));
         }

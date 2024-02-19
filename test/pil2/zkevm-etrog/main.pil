@@ -10,7 +10,7 @@
 // include "padding_kk.pil";
 // include "mem.pil";
 // include "padding_sha256.pil";
-include "../std2/std_mset_lookup_range.pil"
+include "tools.pil"
 // hash bytes
 // assumeFREE
 // BitRange32
@@ -306,7 +306,12 @@ subproof Main(2**23) {
     col witness sKey[4];
 
     // Aritmethic State Machine
-    
+
+    int _i = 0;
+    while (_i < 10) {
+        println(_i);
+        _i = _i + 1;
+    }
     expr arithC[NR], arithD[NR], arithE[NR];
     expr paramA[NR], paramB[NR], paramOp[NR];
     for (int i = 0; i < NR; ++i) {
@@ -426,19 +431,4 @@ subproof Main(2**23) {
     multiset_assumes(MEM_ALIGN_ID, memAlignWR, [1, C[0], ...A, ...B, ...assumeInput, ...D, ...E]);
 
     cntMemAlign' === cntMemAlign * (1 - L1) + memAlignRD + memAlignWR;
-}
-
-function compact_bin_cols(expr cols[]) {
-    int factor = 1;
-    expr res = 0;
-    if (length(cols) > 63) {
-        // TODO: ERROR
-    }    
-    // TODO: REPEATED
-    for (int i = 0; i < length(cols); ++i) {
-        res = res + factor * cols[i];
-        cols[i] * (1 - cols[i]) === 0;
-        factor = factor * 2;
-    }
-    return res;
 }

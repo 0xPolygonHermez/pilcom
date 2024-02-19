@@ -1,4 +1,5 @@
 const ProofItem = require("./proof_item.js");
+const Context = require('../context.js');
 // const Sequence = require("../sequence.js");
 module.exports = class FixedCol extends ProofItem {
     constructor (id) {
@@ -24,10 +25,26 @@ module.exports = class FixedCol extends ProofItem {
         // REVIEW
         this.set(value);
     }
+    setRowValue(row, value) {
+        if (this.sequence) {
+            throw new Error(`setting a row value but assigned a sequence previously ${Context.sourceTag}`);
+        }
+        this.values[row] = value;
+    }
+    getRowValue(row) {
+        if (this.sequence) {
+            throw new Error(`row access with sequence ${Context.sourceTag}`);
+        }
+        return this.values[row];
+    }
     set(value) {
         // REVIEW: cyclic references
         if (value instanceof Object) {
             if (this.sequence !== null) {
+                console.log(value);
+                console.log(value.asInt());
+                console.log(this.sequence);
+                this.sequence.dump();
                 EXIT_HERE;
             }
             if (this.values.length > 0) {

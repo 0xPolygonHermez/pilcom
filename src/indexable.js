@@ -133,29 +133,11 @@ module.exports = class Indexable {
     }
     set(id, value) {
         const item = this.get(id);
-        if (Debug.active) console.log(item);
-        if (Debug.active) console.log(value.constructor.name);
-        // if (value && typeof value.toString === 'function') console.log(value.toString());
-        // else console.log(value);
         assertLog(item, {type: this.type, definition: this.definitionClass, id, item});
         if (typeof item.setValue !== 'function') {
             throw new Error(`Invalid assignation at ${Context.sourceRef}`);
         }
         item.setValue(value);
-/*
-        if (typeof this.cls === 'function') {
-            if ((value instanceof this.cls) === false) {
-                if (this.cls.directValue) {
-                    value = new this.cls(value);
-                } else {
-                    let initValue = value;
-                    value = new this.cls(id);
-                    console.log(value);
-                    value.set(initValue);
-                }
-            }
-        }
-        this.values[id] = value;*/
         if (this.debug) {
             console.log(`SET ${this.constructor.name}.${this.type} @${id} ${value}`);
         }
