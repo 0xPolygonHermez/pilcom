@@ -27,9 +27,8 @@ module.exports = class Error extends Function {
             caller = e.stack.split('\n').slice(1).join('\n');
         }
         console.log(caller);*/
-        console.log(Context.sourceRef);
-        console.log(`\x1B[1;35mERROR ${mapInfo.join(' ')}\x1B[0m`);
-        EXIT_HERE;
-        return new IntValue(0n);
+        const msg = mapInfo.join(' ');
+        console.log(`\x1B[1;35mERROR ${msg}\x1B[0m`);
+        throw new Error(`ERROR: ${msg} at ${Context.sourceRef}`);
     }
 }

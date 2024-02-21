@@ -1,5 +1,4 @@
-// subair MemAlign(2**20, 2**23, 2**26)
-namespace MemAlign:: {
+subproof MemAlign() {
 
     /*
     * OPERATIONS

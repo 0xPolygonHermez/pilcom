@@ -2,9 +2,9 @@ const {assert, assertLog} = require('./assert.js');
 const MultiArray = require("./multi_array.js");
 const ArrayOf = require('./expression_items/array_of.js');
 const RangeIndex = require('./expression_items/range_index.js');
+const IntValue = require('./expression_items/int_value.js');
 const Context = require('./context.js');
 const Debug = require('./debug.js');
-    
 /**
  * @property {MultiArray} array
  */
@@ -186,18 +186,22 @@ class Reference {
                 res = new ArrayOf(this.type, this.array.createSubArray(evaluatedIndexes, locator, fromIndex, toIndex));
             }
         } else if (evaluatedIndexes.length === 1 && this.instance.runtimeRows) {
-            res = this.instance.getRowValue(locator, evaluatedIndexes[0], options);    
+            res = this.instance.getRowValue(locator, evaluatedIndexes[0], options);
         } else if (evaluatedIndexes.length > 0) {
             console.log(evaluatedIndexes);
             console.log(this);
             throw new Error('try to access to index on non-array value');
         }
+        if (typeof res === 'bigint' || typeof res === 'number') {
+            res = new IntValue(res);
+        }
         if (res === false) {
             res = this.const ? this.instance.getConstItem(locator, options) : this.instance.getItem(locator, options);
         }
-
-        if (label) res.setLabel(label);
-        else res.setLabel('___');
+    
+        if (label) {
+            res.setLabel(label);
+        } else res.setLabel('___');
 
         return res;
     }

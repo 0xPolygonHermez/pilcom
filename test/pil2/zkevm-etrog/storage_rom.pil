@@ -11,7 +11,7 @@ subproof StorageRom(2**16) {
     
     include "storage_rom_compiled.pil";
 
-    fillWithLastSourceLine();
+    repeat_last_source_line();
     lookup_proves(STORAGE_ROM_ID, 1, [LINE, ROM_FLAGS, CONST0, JMP_ADDRESS, IN_SIBLING_RKEY]);
 }
 
@@ -27,7 +27,7 @@ private function source(int line, int flags, int const0, int jmpAddress, int inS
     air.IN_SIBLING_RKEY[line] = inSiblingRkey;
 }
 
-private function fillWithLastSourceLine() {
+private function repeat_last_source_line() {
     int rline = air.source.lastLine;
     int line = rline + 1;
     // #pragma debugger

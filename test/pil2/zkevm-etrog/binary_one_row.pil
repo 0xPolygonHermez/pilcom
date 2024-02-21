@@ -36,7 +36,7 @@
 //     16     │   2 │ 8 + 4*16 = 76  │ 152  │     16  │   3   │ 
 //     32     │   1 │ 8 + 4*32 = 136 │ 136  │     32  │   2   │ 
 
-const int BINARY_ID = 1;
+const int BINARY_ID = 20;
 
 subproof aggregate Binary(2**21, 2**23, 2**25) {
 

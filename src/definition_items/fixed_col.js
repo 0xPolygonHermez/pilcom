@@ -33,7 +33,7 @@ module.exports = class FixedCol extends ProofItem {
     }
     getRowValue(row) {
         if (this.sequence) {
-            throw new Error(`row access with sequence ${Context.sourceTag}`);
+            return this.sequence.getValue(row);
         }
         return this.values[row];
     }

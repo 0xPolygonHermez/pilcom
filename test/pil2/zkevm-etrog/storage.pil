@@ -2,7 +2,7 @@ include "tools.pil"
 include "poseidong.pil";
 include "climb_key.pil";
 
-const int STORAGE_ID 10;
+const int STORAGE_ID = 90;
 
 subproof Storage(2**23) {
 

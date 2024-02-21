@@ -10,7 +10,7 @@
 // XOR   (OP:7)
 // LT4   (OP:8)
 
-const int BINARY_OPS_TABLE_ID = 1;
+const int BINARY_OPS_TABLE_ID = 21;
 
 subproof aggregate BinaryOpsTable(2**23) {
 

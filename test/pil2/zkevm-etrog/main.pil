@@ -1,6 +1,5 @@
-// include "config.pil";
-// include "global.pil";
-// include "rom.pil";
+include "tools.pil"
+include "rom.pil"
 // include "mem_align.pil";
 // include "arith.pil";
 // include "binary.pil";
@@ -10,29 +9,27 @@
 // include "padding_kk.pil";
 // include "mem.pil";
 // include "padding_sha256.pil";
-include "tools.pil"
 // hash bytes
 // assumeFREE
 // BitRange32
 // memAlign
 // freeBits
 
-
-const int ARITH_ID = 1;
-const int BINARY_ID = 2;
-const int MEM_ALIGN_ID = 3;
+// TODO: only to compile alone
+const int ARITH_ID = 10;
+const int BINARY_ID = 20;
+const int MEM_ALIGN_ID = 5;
 const int MEMORY_ID = 4;
-const int PADDING_KK_HASH_ID = 5;
-const int PADDING_KK_LEN_DIGEST_ID = 6;
-const int PADDING_PG_DIGEST_ID = 7;
-const int PADDING_PG_HASH_ID = 8;
-const int PADDING_PG_LEN_ID = 9;
-const int PADDING_SHA256_HASH_ID = 10;
-const int PADDING_SHA256_LEN_DIGEST_ID = 11;
-const int POSEIDON_G_ID = 12;
-const int RANGE32_ID = 13;
-const int ROM_ID = 14;
-const int STORAGE_ID = 15;
+const int PADDING_KK_HASH_ID = 50;
+const int PADDING_KK_LEN_DIGEST_ID = 51;
+const int PADDING_PG_HASH_ID = 40;
+const int PADDING_PG_DIGEST_ID = 41;
+const int PADDING_PG_LEN_ID = 42;
+const int PADDING_SHA256_HASH_ID = 60;
+const int PADDING_SHA256_LEN_DIGEST_ID = 61;
+const int POSEIDON_G_ID = 45;
+const int RANGE32_ID = 6;
+const int STORAGE_ID = 90;
 
 const int BINARY_OP_LT4 = 8;
 
@@ -288,19 +285,12 @@ subproof Main(2**23) {
             setGAS, setHASHPOS, setPC, setRCX, setRR, setSP, setSR]);
 
     
-    multiset_assumes(ROM_ID, 1, [...CONST, inA, inB, inC, inROTL_C, inD, inE, inSR, inFREE, inFREE0,
-                                 inCTX, inSP, inPC, inGAS, inHASHPOS, inSTEP, inRR, inRCX, ind, indRR,
-                                 inCntArith, inCntBinary, inCntKeccakF, inCntSha256F, 
-                                 inCntMemAlign, inCntPaddingPG, inCntPoseidonG,
-                                 romFlags, offset, incStack, binOp, arithOp, hashBytes, 
-                                 jmpAddr, elseAddr, zkPC]);
-            
-    // multiset_proves(ROM_ID, 1, [...CONST, IN_A, IN_B, IN_C, IN_ROTL_C, IN_D, IN_E, IN_SR, IN_FREE, IN_FREE0,
-    //                             IN_CTX, IN_SP, IN_PC, IN_GAS, IN_HASHPOS, IN_STEP, IN_RR, IN_RCX, IND, IND_RR,
-    //                             IN_CNT_ARITH, IN_CNT_BINARY, IN_CNT_KECCAK_F, IN_CNT_SHA_256_F, 
-    //                             IN_CNT_MEM_ALIGN, IN_CNT_PADDING_PG, IN_CNT_POSEIDON_G,
-    //                             ROM_FLAGS, OFFSET, INC_STACK, BIN_OP, ARITH_OP, HASH_BYTES, 
-    //                             JMP_ADDR, ELSE_ADDR, LINE]);
+    lookup_assumes(ROM_ID, 1, [...CONST, inA, inB, inC, inROTL_C, inD, inE, inSR, inFREE, inFREE0,
+                               inCTX, inSP, inPC, inGAS, inHASHPOS, inSTEP, inRR, inRCX, ind, indRR,
+                               inCntArith, inCntBinary, inCntKeccakF, inCntSha256F, 
+                               inCntMemAlign, inCntPaddingPG, inCntPoseidonG,
+                               romFlags, offset, incStack, binOp, arithOp, hashBytes, 
+                               jmpAddr, elseAddr, zkPC]);        
 
     col witness sKeyI[4];
     col witness sKey[4];
@@ -426,7 +416,6 @@ subproof Main(2**23) {
 
     // MemAlign 
 
-    // memAlign RD    
     multiset_assumes(MEM_ALIGN_ID, memAlignRD, [0, C[0], ...A, ...B, ...assumeInput, ...zeros, ...zeros]);
     multiset_assumes(MEM_ALIGN_ID, memAlignWR, [1, C[0], ...A, ...B, ...assumeInput, ...D, ...E]);
 

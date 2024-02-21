@@ -11,12 +11,13 @@ module.exports = class Context {
         this.subproof = false;
         this.stack = [];        
         this.config = {debug: {}, ...config};
-        console.log(config);
-        console.log(this.config);
         this.uses = [];
         this.subproofName = false;
         this.airId = false;
         this.airN = false;
+    }
+    static get config() {
+        return this._instance.config;
     }
     static get expressions() {
         return this._instance._processor.expressions;

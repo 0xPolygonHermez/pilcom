@@ -1,4 +1,4 @@
-const int CLIMB_KEY_ID = 10;
+const int CLIMB_KEY_ID = 92;
 
 // ClimbKey
 //
@@ -10,7 +10,7 @@ const int CLIMB_KEY_ID = 10;
 // usage:
 //      multiset_assumes(CLIMB_KEY_ID, selector, [keyIn[0], keyIn[1], keyIn[2], keyIn[3], level, bit, keyOut[0], keyOut[1], keyOut[2], keyOut[3]]);
 
-subproof ClimbKey(2**16, 2**20) {
+subproof ClimbKey(2**16) {
 
     // keyIn goldilock with 4 input keys, one by clock (CLK[i]: keyIn = keyIn[i])
     col witness keyIn;

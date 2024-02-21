@@ -90,8 +90,22 @@
 
 include "bits2field_sha256.pil";
 
-namespace PaddingSha256Bit(%N);
-    pol commit s1, s2;
+subproof PaddingSha256Bit(2**23) {
+    const int bits = 7
+
+    col fixed FIELD_LATCH = [0:6,1]...;
+    col witness bit;
+
+    expr bitToField = 0;
+    for (int index = 0; index < bits; ++index) {
+        bitToField += (bits - index - 1)'bit * 2**index;
+    }
+
+    bit *(1-bit) === 0;
+    FIELD_LATCH * (bitToField - input[0]) === 0;
+
+
+    col witness s1, s2;
 
     // Input connection                                                          rBit -> 1   1   0   1   0   1   1   1   X
                                                                              // Fr8   -> 128 64  32  16  8   4   2   1   0
@@ -136,4 +150,5 @@ namespace PaddingSha256Bit(%N);
     pol constant ConnS1, ConnS2, ConnBits2FieldBit;
 
     {s1, s2, Bits2FieldSha256.bit} connect {ConnS1, ConnS2, ConnBits2FieldBit}
+
 

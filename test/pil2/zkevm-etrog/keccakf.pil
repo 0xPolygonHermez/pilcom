@@ -1,21 +1,44 @@
-include "global.pil";
+include "tools.pil"
+include "keccakf_table.pil"
 
+const int KECCAKF_ID = 56
 
-namespace KeccakF(%N);
+subproof KeccakF(2**23) {
 
-    pol constant ConnA, ConnB, ConnC, GateType, kGateType, kA, kB, kC;
-    pol commit a[4], b[4], c[4];
+    const int bits = 11;
+    const int chunks = 4;
 
-    pol a44 = a[3] * 2**33 + a[2] * 2**22 + a[1] * 2**11 + a[0];
-    pol b44 = b[3] * 2**33 + b[2] * 2**22 + b[1] * 2**11 + b[0];
-    pol c44 = c[3] * 2**33 + c[2] * 2**22 + c[1] * 2**11 + c[0];
+    col fixed GATE_TYPE;
+    col witness in1Chunk[chunks], in2Chunk[chunks], outChunk[chunks];
+    
+    const int FACTOR = 2**bits;
+    expr _in1,_in2,_out;
+    for (int chunk = chunks - 1; chunk >= 0; chunk -= 1) {
+        lookup_assumes(KECCAKF_TABLE_ID, 1, [GATE_TYPE, in1Chunk[chunk], in2Chunk[chunk], outChunk[chunk]]);
+        _in1 = _in1 * FACTOR + in1Chunk[chunk];
+        _in2 = _in2 * FACTOR + in2Chunk[chunk];
+        _out = _out * FACTOR + outChunk[chunk];
+    }
+    const expr in1 = _in1;
+    const expr in2 = _in2;
+    const expr out = _out;
 
-    {a44, b44, c44} connect {ConnA, ConnB, ConnC};
+    col fixed FIELD_LATCH = [0:44,1]...;
+    col fixed L1 = [1,0...];
+    col witness bit;
 
-    { GateType, a[0], b[0], c[0] } in { kGateType, kA, kB, kC } ;
-    { GateType, a[1], b[1], c[1] } in { kGateType, kA, kB, kC } ;
-    { GateType, a[2], b[2], c[2] } in { kGateType, kA, kB, kC } ;
-    { GateType, a[3], b[3], c[3] } in { kGateType, kA, kB, kC } ;
+    expr bitToField = 0;
+    for (int index = 0; index < bits; ++index) {
+        bitToField += (bits - index - 1)'bit * 2**index;
+    }
 
-    Global.L1 * a44 = 0;
-    Global.L1 * (2**44-1-b44) = 0;
+    bit *(1-bit) === 0;
+    FIELD_LATCH * (bitToField - in1) === 0;
+
+    // TODO: connections
+    // col constant ConnA, ConnB, ConnC, GateType;
+    // {in1, in2, out} connect {ConnA, ConnB, ConnC};
+
+    L1 * in1 === 0;                    // [L1] in1 == 0000...0000
+    L1 (2**(bits*chunks)-1-in2) === 0; // [L1] in2 == 1111...1111
+}

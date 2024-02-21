@@ -1,5 +1,5 @@
 
-const int CLIMB_KEY_TABLE_ID = 10;
+const int CLIMB_KEY_TABLE_ID = 93;
 
 subproof ClimbKeyTable(2**21) {
 

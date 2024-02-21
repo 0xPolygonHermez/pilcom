@@ -138,7 +138,7 @@ module.exports = class Processor {
         this.builtIn = {};
         for (const filename of filenames) {
             if (!filename.endsWith('.js')) continue;
-            if (this.context.config.debug.builtInLoad) {
+            if (Context.config.debug.builtInLoad) {
                 console.log(`Loading builtin ${filename}.....`);
             }
             if (Debug.active) console.log(filename);
@@ -244,7 +244,7 @@ module.exports = class Processor {
             }
             res = this[method](st);
         } catch (e) {
-            console.log([Expression.constructor.name]);
+            // console.log([Expression.constructor.name]);
             console.log("EXCEPTION ON "+st.debug+" ("+this.callstack.join(' > ')+")");
             throw e;
         }
@@ -449,6 +449,9 @@ module.exports = class Processor {
         let index = 0;
         // while (this.expressions.e2bool(s.condition)) {
         while (true) {
+            if (index % 10000 === 0 && index) {
+                console.log(`inside FOR ${this.sourceRef} index:${index}`);
+            }
             const loopCond = s.condition.eval().asBool();
             if (Debug.active) console.log('FOR.CONDITION', loopCond, s.condition.toString(), s.condition);
             if (!loopCond) break;
@@ -730,7 +733,7 @@ module.exports = class Processor {
             ++this.airId;
         }
         this.finalSubproofScope();
-        if (Context.config.protoOut !== false) {
+        if (!Context.config.protoOut) {
             this.proto.setSubproofValues(this.subproofvalues.getAggreationTypesBySubproofId(subproofId));
         }
         this.scope.popInstanceType();
@@ -740,7 +743,7 @@ module.exports = class Processor {
         ++this.subproofId;
     }
     subproofProtoOut(subproofId, airId) {
-        if (Context.config.protoOut === false) return;
+        if (!Context.config.protoOut) return;
         
         let packed = new PackedExpressions();
         this.proto.setFixedCols(this.fixeds);
