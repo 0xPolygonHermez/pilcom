@@ -44,9 +44,8 @@ class Compiler {
     }
     compile(fileName, config = {}) {
         const isMain = true;
-        this.config = config;
+        this.config = {...config};
         this.initContext();
-        console.log(config);
         this.processor = new Processor(this.Fr, this, this.config);
         if (this.config.namespaces) {
             this.namespaces = {};
@@ -85,41 +84,17 @@ class Compiler {
             oldParseError(str, hash);
         };
         pil_parser.Parser.prototype.parseError = myErr;
-
         let parser = new pil_parser.Parser();
         const parserPerformAction = parser.performAction;
         const parserStateInfo = parser.productions_;
         let compiler = this;
-        /*
-        state = stack[stack.length - 1];
-        if (this.defaultActions[state]) {
-            action = this.defaultActions[state];
-        } else {
-            if (symbol === null || typeof symbol == 'undefined') {
-                symbol = lex();
-            }
-            action = table[state] && table[state][symbol];
-        }
-        ===>
-        const __symbol_info__ = this.terminals_[symbol] + ( lexer.match &&
-                              lexer.match != this.terminals_[symbol] ? ` (${lexer.match})`:'');
-console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1)+"\x1B[0m");
-        */
+
         parser.performAction = function (yytext, yyleng, yylineno, yy, yystate, $$, _$ ) {
             const result = parserPerformAction.apply(this, arguments);
             const first = _$[$$.length - 1 - parserStateInfo[yystate][1]];
             const last = _$[$$.length - 1];
             const sourceRef = `${compiler.relativeFileName}:${last.last_line}`;
             Context.processor.sourceRef = sourceRef;
-//            if (sourceRef === 'mem_align.pil:48') {
-/*            if (sourceRef === 'sequence.pil:5') {
-                console.log(arguments);
-                console.log(this);
-                console.log(yy);
-                console.log(yyleng);
-                EXIT_HERE;
-            }*/
-            // console.log(`ST_${yystate} ${parserStateInfo[yystate][0]} ${sourceRef}`);
             if (typeof this.$ !== 'object')  {
                 return result;
             }
@@ -134,6 +109,13 @@ console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1
     }
     parseSource(fileName, isMain = false, options = {}) {
 
+        let libraries = [];
+        if (isMain && this.config.includes) {
+            this.fileDir = process.cwd();
+            for (const include of this.config.includes) {
+                libraries.push({type: 'include', file: include, debug:'', contents: this.loadInclude({file: include})});
+            }   
+        }
         const [_src, fileDir, fullFileName, relativeFileName] = this.loadSource(fileName, isMain. options);
 
         const preSrc = options.preSrc ?? '';
@@ -144,11 +126,19 @@ console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1
 
     
         const parser = this.instanceParser(src, fullFileName);
-        const sts = parser.parse(src);
-
-        for (let i=0; i<sts.length; i++) {
-            if (sts[i].type !== 'include') continue;
-            sts[i].contents = this.loadInclude(sts[i]);
+        let sts;
+        try {
+            sts = parser.parse(src);
+            for (let i=0; i<sts.length; i++) {
+                if (sts[i].type !== 'include') continue;
+                sts[i].contents = this.loadInclude(sts[i]);
+            }
+            for (const library of libraries.reverse()) {
+                sts.unshift(library);
+            }   
+        } catch (e) {
+            console.log('ERROR ON '+Context.processor.sourceRef);
+            throw e;
         }
         return sts;
     }

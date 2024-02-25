@@ -187,7 +187,11 @@ class Reference {
             }
         } else if (evaluatedIndexes.length === 1 && this.instance.runtimeRows) {
             res = this.instance.getRowValue(locator, evaluatedIndexes[0], options);
+            if (typeof res === 'undefined') {
+                throw Error(`ERROR: Row ${evaluatedIndexes[0]} of ${options.label} isn't initialized`);
+            }
         } else if (evaluatedIndexes.length > 0) {
+            console.log('C');
             console.log(evaluatedIndexes);
             console.log(this);
             throw new Error('try to access to index on non-array value');

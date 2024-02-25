@@ -16,6 +16,8 @@ const argv = require("yargs")
     .alias("P", "config")
     .alias("v", "verbose")
     .alias("I", "include")
+    .option("nofixed")
+    .alias("l", "lib")
     .alias("f", "includePathFirst")
     .argv;
 
@@ -45,13 +47,18 @@ async function run() {
             config.color = tty.isatty(process.stdout.fd);
         }
     }
-
+    if (argv.nofixed) {
+        config.fixed = false;
+    }
     // only execute
     if (argv.exec || argv.output === 'none') {
         config.protoOut = false;
     }
     const F = new ffjavascript.F1Field((1n<<64n)-(1n<<32n)+1n );
 
+    if (argv.lib) {
+        config.includes = argv.lib.split(',');
+    }
     if (argv.include) {
         config.includePaths = argv.include.split(',');
     }

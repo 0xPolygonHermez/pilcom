@@ -1270,7 +1270,8 @@ expression
         { $$ = $1.insert('and', ExpressionFactory.fromObject($3)) }
 
     | expression '?' expression ':' expression %prec '?'
-        { $$ = $1.insert('if', ExpressionFactory.fromObjects($3, $5)) }
+        { $$ = $1.insert('if', [ExpressionFactory.fromObject($3), ExpressionFactory.fromObject($5)]) }
+//        { $$ = $1.insert('if', ExpressionFactory.fromObjects($3, $5)) }
 
     | expression B_AND expression %prec AND
         { $$ = $1.insert('band', ExpressionFactory.fromObject($3)) }

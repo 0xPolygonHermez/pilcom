@@ -225,7 +225,7 @@ module.exports = class Processor {
         const __executeStatementCounter = this.executeStatementCounter++;
         this.traceLog(`[TRACE] #${__executeStatementCounter} ${st.debug ?? ''} (DEEP:${this.scope.deep})`, '38;5;75');
 
-        this.sourceRef = st.debug.split(':').slice(0,2).join(':') ?? '';
+        this.sourceRef = st.debug ? (st.debug.split(':').slice(0,2).join(':') ?? ''):'';
 
         if (typeof st.type === 'undefined') {
             console.log(st);
@@ -569,7 +569,6 @@ module.exports = class Processor {
         throw new Error(msg);
     }
     execInclude(s) {
-        console.log(s);
         if (!s.contents) {
             const sts = this.compiler.loadInclude(s, {preSrc: 'subproof __(2**2) {\n', postSrc: '\n};\n'});
             s.contents = sts[0].statements;
@@ -806,10 +805,33 @@ module.exports = class Processor {
             let init = s.sequence ?? null;
             let seq = null;
             if (init) {
+                // console.log('###################################################');
+                // console.log('###################################################');
+                // console.log('###################################################');
+                // console.log('###################################################');
+                // console.log('###################################################');
                 seq = new Sequence(this, init, ExpressionItems.IntValue.castTo(this.references.get('N')));
+                // console.log('##################################################');
+                // console.log('##### ############################################');
+                // console.log('####  ############################################');
+                // console.log('###                                             ##');
+                // console.log('##                                              ##');
+                // console.log('###                                             ##');
+                // console.log('####  ############################################');
+                // console.log('##### ############################################');
+                // console.log('##################################################');
                 // console.log(`Extending fixed col ${colname} ...`);
-                seq.extend();
+                if (Context.config.fixed !== false) seq.extend();
                 // console.log('SEQ:'+seq.values.join(','));
+                // console.log('##################################################');
+                // console.log('############################################ #####');
+                // console.log('############################################  ####');
+                // console.log('##                                             ###');
+                // console.log('##                                              ##');
+                // console.log('##                                             ###');
+                // console.log('############################################  ####');
+                // console.log('############################################ #####');
+                // console.log('##################################################');
             }
             this.declareFullReference(colname, 'fixed', lengths, {global}, seq);
         }
@@ -975,11 +997,11 @@ module.exports = class Processor {
     execVariableDeclaration(s) {
         if (Debug.active) console.log('VARIABLE DECLARATION '+Context.sourceRef+' init:'+s.init);
         const init = typeof s.init !== 'undefined';
-//         console.log(s);
         const count = s.items.length;
+        const inits = (init && s.init.type === 'expression_list') ? s.init.values : s.init;
 
-        if (init && s.init.length !== count) {
-            this.error(s, `Mismatch between len of variables (${count}) and len of their inits (${s.init.length})`);
+        if (init && inits.length !== count) {
+            this.error(s, `Mismatch between len of variables (${count}) and len of their inits (${inits.length})`);
         }
 
         for (let index = 0; index < count; ++index) {
@@ -992,13 +1014,13 @@ module.exports = class Processor {
                 if (Debug.active) console.log(name, s.vtype, Context.sourceRef);
                 switch (s.vtype) {
                     case 'expr':
-                        initValue = s.init[index].eval();
+                        initValue = inits[index].eval();
                         break;
                     case 'int':
-                        initValue = s.init[index].eval().asIntItem();
+                        initValue = inits[index].eval().asIntItem();
                         break;
                     case 'string':
-                        initValue = new ExpressionItems.StringValue(this.expressions.e2value(s.init[index]));
+                        initValue = new ExpressionItems.StringValue(this.expressions.e2value(inits[index]));
                         break;
                 }
                 if (Debug.active) console.log(name, s.vtype, initValue.toString ? initValue.toString() : initValue);

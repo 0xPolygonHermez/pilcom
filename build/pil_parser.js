@@ -750,7 +750,7 @@ case 294:
  this.$ = $$[$0-2].insert('and', ExpressionFactory.fromObject($$[$0])) 
 break;
 case 295:
- this.$ = $$[$0-4].insert('if', ExpressionFactory.fromObjects($$[$0-2], $$[$0])) 
+ this.$ = $$[$0-4].insert('if', [ExpressionFactory.fromObject($$[$0-2]), ExpressionFactory.fromObject($$[$0])]) 
 break;
 case 296:
  this.$ = $$[$0-2].insert('band', ExpressionFactory.fromObject($$[$0])) 

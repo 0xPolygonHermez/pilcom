@@ -48,6 +48,10 @@ module.exports = class Sequence {
     getValue(index) {
         return this.#values.getValue(index);
     }
+    #setValue(index, value) {
+        ++this.valueCounter;
+        return this.#values.__setValue(index, value);
+    }
     setValue(index, value) {
         /* assert(this.extendPos >= 0 && (this.maxSize === false || this.extendPos < this.maxSize),
                `Invalid value of extendPos:${this.extendPos} maxSize:${this.maxSize}`);*/
@@ -82,7 +86,16 @@ module.exports = class Sequence {
     }
     _sizeOf(e) {
         if (e instanceof Expression) return 1;
-        else return this.router.go(e, '_sizeOf');
+        switch (e.type) {
+            case 'sequence': return this._sizeOfSequence(e);
+            case 'padding_seq': return this._sizeOfPaddingSeq(e);
+            case 'seq_list': return this._sizeOfSeqList(e);
+            case 'repeat_seq': return this._sizeOfRepeatSeq(e);
+            case 'range_seq': return this._sizeOfRangeSeq(e);
+            case 'arith_seq': return this._sizeOfArithSeq(e);
+            case 'geom_seq': return this._sizeOfGeomSeq(e);
+        }
+        throw new Error(`Invalid sequence type ${e.type} sizeof`);
     }
     _sizeOfSeqList(e) {
         let size = 0;
@@ -122,6 +135,8 @@ module.exports = class Sequence {
         return [this.e2num(e.from), this.e2num(e.to), fromTimes];
     }
     getTermSeqInfo(e) {
+        if (e._cache_getTermSeqInfo) return e._cache_getTermSeqInfo;
+
         const t1Times = e.t1.times ? this.toNumber(this.e2num(e.t1.times)): 1;
         const t2Times = e.t2.times ? this.toNumber(this.e2num(e.t2.times)): 1;
         const tnTimes = e.tn.times === false ? false : (e.tn.times ? this.toNumber(this.e2num(e.t2.times)): 1);
@@ -137,8 +152,8 @@ module.exports = class Sequence {
         if (t1 === t2) {
             throw new Error(`In term sequence, t1(${t1}), t2(${t2}) must be different`);
         }
-
-        return [t1, t2, tn, t1Times];
+        e._cache_getTermSeqInfo = [t1, t2, tn, t1Times];
+        return e._cache_getTermSeqInfo;
     }
     _sizeOfRangeSeq(e) {
         // TODO review if negative, fe?
@@ -173,7 +188,7 @@ module.exports = class Sequence {
         let value = t1;
         while (this.extendPos < finalExtendPos) {
             for (let itimes = 0; itimes < times && this.extendPos < finalExtendPos; ++itimes) {
-                this.setValue(this.extendPos++,value);
+                this.#setValue(this.extendPos++,value);
             }
             value = value + delta;
         }
@@ -288,7 +303,7 @@ module.exports = class Sequence {
             while (remaingValues > 0 && itimes > 0)  {
                 --remaingValues;
                 --itimes;
-                this.setValue(this.extendPos, value);
+                this.#setValue(this.extendPos, value);
                 this.extendPos = this.extendPos + (reverse ? -1:1);
             }
             itimes = times;
@@ -310,7 +325,7 @@ module.exports = class Sequence {
         assert(times > 0);
         while (value <= toValue) {
             for (let itimes = 0; itimes < times; ++itimes) {
-                this.setValue(this.extendPos++, value);
+                this.#setValue(this.extendPos++, value);
             }
             value = (value + delta) * ratio;
         }
@@ -338,7 +353,16 @@ module.exports = class Sequence {
         if (e instanceof Expression) {
             return this._extendExpr(e);
         }
-        return this.router.go(e, '_extend');
+        switch (e.type) {
+            case 'sequence': return this._extendSequence(e);
+            case 'padding_seq': return this._extendPaddingSeq(e);
+            case 'seq_list': return this._extendSeqList(e);
+            case 'repeat_seq': return this._extendRepeatSeq(e);
+            case 'range_seq': return this._extendRangeSeq(e);
+            case 'arith_seq': return this._extendArithSeq(e);
+            case 'geom_seq': return this._extendGeomSeq(e);
+        }
+        throw new Error(`Invalid sequence type ${e.type} extend`);
     }
     _extendSeqList(e) {
         let count = 0;
@@ -367,7 +391,7 @@ module.exports = class Sequence {
             let upto = remaingValues >= seqSize ? seqSize : remaingValues;
             // console.log(`SETTING UPTO ${upto} ${remaingValues} ${seqSize}`);
             for (let index = 0; index < upto; ++index) {
-                this.setValue(this.extendPos++, this.#values.getValue(from + index));
+                this.#setValue(this.extendPos++, this.#values.getValue(from + index));
             }
             remaingValues = remaingValues - upto;
         }
@@ -375,10 +399,11 @@ module.exports = class Sequence {
     }
     _extendExpr(e) {
         const num = this.e2num(e);
-        this.setValue(this.extendPos++, num);
+        this.#setValue(this.extendPos++, num);
         return 1;
     }
     _extendRepeatSeq(e) {
+        if (e._cache_extendRepeatSeq) return e._cache_extendRepeatSeq;
         let count = 0;
         const times = this.e2num(e.times);
         for (let itime = 0; itime < times; ++itime) {
@@ -386,8 +411,9 @@ module.exports = class Sequence {
             count += this._extend(e.value);
             // console.log('SETTING POST COUNT '+count);
         }
-        return count;
-    }seq
+        e._cache_extendRepeatSeq = count;
+        return e._cache_extendRepeatSeq;
+    }
     e2num(e) {
         if (typeof e === 'bigint' || typeof e === 'number') {
             return e;

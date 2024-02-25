@@ -31,6 +31,7 @@ module.exports = class Values {
         return cloned;
     }
     cloneValues(cloneEachValue = true) {
+        console.log('\x1B[1;33m************** CLONEVALUES *****************\x1B[0m');
         let _values = this.#values;
         this.#values = [];
         for(const _value of _values) {
@@ -41,6 +42,9 @@ module.exports = class Values {
         if (!this.#mutable) {
             throw new Error(`modifying an inmutable values irow = ${row} and value = ${value}`);
         }
+        this.#values[irow] = value;
+    }
+    __setValue(irow, value) {
         this.#values[irow] = value;
     }
     getValue(irow) {
