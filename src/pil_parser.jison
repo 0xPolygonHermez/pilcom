@@ -192,6 +192,28 @@ function insert_expr(e, op, ...values) {
     return e;
 }*/
 //         console.log(`STATE ${state} ${(this.terminals_[symbol] || symbol)}`);
+function implicit_scope(statements) {
+    if (Array.isArray(statements)) {
+        if (statements.length > 1) {
+            return {type: 'scope_definition', statements};
+        }
+        statements = statements[0];
+    }
+    if (typeof statements.type === 'undefined') {
+        return {type: 'scope_definition', ...statements};
+    }
+    if (statements.type === 'code') {
+        statements.type = 'scope_definition';
+        if (!Array.isArray(statements.statements)) {
+            statements.statements = [statements.statements];
+        }
+        return statements;
+    }
+    if (statements.type === 'scope_definition') {
+        return statements;
+    }
+    return {type: 'scope_definition',  statements};
+}
 %}
 
 %start all_top_level_blocks
@@ -734,7 +756,7 @@ codeblock_closed
         { $$ = { ...$2, type: 'once', statements: $3 } }
 
     | SWITCH '(' expression ')' case_body
-        { $$ = $1 }
+        { $$ = { type: 'switch', value: $3, cases: $5.cases } }
 
     | IF '(' expression ')' non_delimited_statement %prec IF_NO_ELSE
         { $$ = {type:'if', conditions: [{type: 'if', expression: $3, statements: $5 }] } }
@@ -754,8 +776,8 @@ case_body
     : '{' case_list '}'
         { $$ = $2 }
 
-    | '{' case_list DEFAULT statement_list '}'
-        { $$ = $2; $$.cases.push({ else: true, statements: $4 }) }
+    | '{' case_list DEFAULT ':' statement_list '}'
+        { $$ = $2; $$.cases.push({ default: true, statements: implicit_scope($5) }) }
     ;
 
 case_value
@@ -774,10 +796,10 @@ case_value
 
 case_list
     : case_list CASE case_value ':' statement_list_closed
-        { $$ = $1; $$.cases.push({condition: $3, statements: $5 }) }
+        { $$ = $1; $$.cases.push({condition: $3, statements: implicit_scope($5.statements) }) }
 
     | CASE case_value ':' statement_list_closed
-        { $$ = {cases: [{ condition: $2, statements: $4 }]} }
+        { $$ = {cases: [{ condition: $2, statements: implicit_scope($4.statements) }]} }
     ;
 
 for_assignation

@@ -194,7 +194,7 @@ module.exports = class References {
 
         const nameInfo = this.decodeName(name);
         if (name === 'Main.jmp') { console.log(nameInfo); }
-        console.log(`DECLARE_REFERENCE ${name} ==> ${nameInfo.name} ${type} ${lengths.length ? '[' + lengths.join(',') + '] ': ''}scope:${nameInfo.scope} #${Context.scope.deep} ${initValue}[type: ${initValue instanceof Object ? initValue.constructor.name : typeof initValue}]`, options);
+        // console.log(`DECLARE_REFERENCE ${name} ==> ${nameInfo.name} ${type} ${lengths.length ? '[' + lengths.join(',') + '] ': ''}scope:${nameInfo.scope} #${Context.scope.deep} ${initValue}[type: ${initValue instanceof Object ? initValue.constructor.name : typeof initValue}]`, options);
 
         let [array, size] = Reference.getArrayAndSize(lengths);
         if (Debug.active) console.log(name, lengths, array, size);
@@ -495,8 +495,6 @@ module.exports = class References {
             if (reference) break;
         }
         if (!reference) {
-            console.log(name);
-            console.log(nameInfo);
              if (typeof defaultValue !== 'undefined') return defaultValue;
             throw new Exceptions.ReferenceNotFound(names.join(','));
         }

@@ -37,7 +37,9 @@ const { log2, getKs, getRoots } = require("./utils.js");
 const Hints = require('./hints.js');
 const util = require('util');
 const Debug = require('./debug.js');
+const Transpiler = require('./transpiler.js');
 
+const MAX_SWITCH_CASE_RANGE = 512;
 module.exports = class Processor {
     constructor (Fr, parent, config = {}) {
         this.sourceRef = '(processor constructor)';
@@ -49,6 +51,7 @@ module.exports = class Processor {
         this.scope = new Scope();
         this.runtime = new Runtime();
         this.context = new Context(this.Fr, this, config);
+        this.nextStatementTranspile = false;
         console.log(config);
 
         this.scope.mark('proof');
@@ -132,6 +135,8 @@ module.exports = class Processor {
 
         this.proto = new ProtoOut(this.Fr);
         this.proto.setupPilOut('noname');
+
+        this.transpiler = new Transpiler({processor: this});
     }
     loadBuiltInClass() {
         const filenames = fs.readdirSync(__dirname + '/builtin');
@@ -223,6 +228,11 @@ module.exports = class Processor {
     }
     executeStatement(st) {
         const __executeStatementCounter = this.executeStatementCounter++;
+        let activeTranspile = this.nextStatementTranspile;
+        if (activeTranspile) {
+            this.transpile = true;
+            this.nextStatementTranspile = false;
+        }
         this.traceLog(`[TRACE] #${__executeStatementCounter} ${st.debug ?? ''} (DEEP:${this.scope.deep})`, '38;5;75');
 
         this.sourceRef = st.debug ? (st.debug.split(':').slice(0,2).join(':') ?? ''):'';
@@ -242,11 +252,22 @@ module.exports = class Processor {
             if (this.breakpoints.includes(st.debug)) {
                 debugger;
             }
-            res = this[method](st);
+            if (this.transpile) {
+                this.transpiler.transpile(st);
+                EXIT_HERE;
+            } else {
+                res = this[method](st);
+            }
         } catch (e) {
             // console.log([Expression.constructor.name]);
             console.log("EXCEPTION ON "+st.debug+" ("+this.callstack.join(' > ')+")");
+            if (activeTranspile) {
+                this.transpile = false;
+            }
             throw e;
+        }
+        if (activeTranspile) {
+            this.transpile = false;
         }
         return res;
     }
@@ -276,6 +297,9 @@ module.exports = class Processor {
             }
             case 'debugger':
                 debugger;
+                break;  
+            case 'transpile':
+                this.nextStatementTranspile = true;
                 break;
         }
         
@@ -397,6 +421,72 @@ module.exports = class Processor {
             const res = this.execute(cond.statements, `IF ${this.sourceRef}`);
             this.scope.pop();
             return res;
+        }
+    }
+    prepareSwitchCase(s) {
+        let values = {};
+        // s.cases.map((x,i) => {console.log(`#### CASE ${i} ####`); console.log(util.inspect(x.statements, false, 2000, true))});
+        for (let index = 0; index < s.cases.length; ++index) {
+            const _case = s.cases[index];
+            if (_case.condition && _case.condition.values) {
+                for (const value of _case.condition.values) {
+                    if (value instanceof Expression) {  
+                        const _key = value.asInt();
+                        if (typeof values[_key] !== 'undefined') {
+                            throw new Error(`Switch-case value ${_key} duplicated`);
+                        }
+                        values[_key] = index;
+                    } else if (value.from && value.to && value.from instanceof Expression && value.to instanceof Expression) {
+                        const _from = value.from.asInt();
+                        const _to = value.to.asInt();
+                        if ((_to - _from) < MAX_SWITCH_CASE_RANGE) { 
+                            while (_from <= _to) {
+                                if (typeof values[_from] !== 'undefined') {
+                                    throw new Error(`Switch-case value ${_from} duplicated`);
+                                }
+                                values[_from] = index;
+                                ++_from;
+                            }
+                        } else {
+                            throw new Error(`Switch-case range too big ${from}..${to} (${_to-_from}) max: ${MAX_SWITCH_CASE_RANGE}`);
+                        }        
+                    } else {
+                        console.log(value);
+                        EXIT_HERE;
+                    }
+                }
+                console.log(values);
+                _case.__cached_values = values;
+            } else if (_case.default) {
+                if (typeof values[false] !== 'undefined') {
+                    throw new Error(`Switch-case DEFAULT duplicated`);
+                }
+                values[false] = index;
+            } else {
+                console.log(_case);
+                EXIT_HERE;
+            }
+        }
+        s.__cached_values = values;
+    }
+    execSwitch(s) {
+        // switch must cases value must be constant values
+        // TODO: check no constant variable values
+        if (!s.__cached_values) {
+            this.prepareSwitchCase(s);
+        }
+        assert(s.value instanceof Expression);
+        const value = s.value.asInt();
+        let caseIndex = false;
+        if (typeof s.__cached_values[value] !== 'undefined') {
+            caseIndex = s.__cached_values[value];
+        } else if (typeof s.__cached_values[false] !== 'undefined') {
+            caseIndex = s.__cached_values[false];
+        }
+        if (caseIndex !== false) {
+            this.scope.push();
+            this.execute(s.cases[caseIndex].statements, `SWITCH CASE ${value} ${this.sourceRef}`);
+            this.scope.pop();
         }
     }
     execWhile(s) {
@@ -559,7 +649,7 @@ module.exports = class Processor {
         const [name, indexes, legth] = slist.getRuntimeReference();
     }
     execBreak(s) {
-        return new BreakCmd();console.log
+        return new BreakCmd();
     }
     execContinue(s) {
         return new ContinueCmd();

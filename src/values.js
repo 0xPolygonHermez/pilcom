@@ -53,4 +53,7 @@ module.exports = class Values {
     toString() {
         return this.#values.join();
     }
+    __setValues(values) {
+        this.#values = values;
+    }
 }
