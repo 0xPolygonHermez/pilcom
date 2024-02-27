@@ -12,6 +12,8 @@ describe("Expression", async function () {
     this.timeout(10000000);
 
     it("Basic test", async () => {
+
+        // 1. OP_VALUE = 0
         let e = new Expression();
         assert.equal(e.isAlone(), false);
 
@@ -25,6 +27,7 @@ describe("Expression", async function () {
         let expected = [{op: false, operands: [{type: 0, value: 0}]}];
         assert.equal(toJSON(e.stack), toJSON(expected));
 
+        // 2. OP_RUNTIME = 3
         e = new Expression();
 
         assert.equal(e.isAlone(), false);
@@ -39,6 +42,7 @@ describe("Expression", async function () {
         expected = [{op: false, operands: [{type: 3, name: 'joe', indexes: [5], next: 7}]}];
         assert.equal(toJSON(e.stack), toJSON(expected));
 
+        // 3. OP_ID_REF = 1
         e = new Expression();
 
         assert.equal(e.isAlone(), false);
@@ -140,8 +144,6 @@ describe("Expression", async function () {
 
         let d2 = new Expression();
         d2.setIdReference(103, 'fe', -18746, 0);
-
-
 
         let d = new Expression();
         d.insert('+', d1, d2);

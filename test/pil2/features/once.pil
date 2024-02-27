@@ -1,16 +1,14 @@
-subair Functions(2**23);
-
-function func_with_once (col &p1) {
-    once p1 === 314;
+function func_with_once (col witness p1) {
+    once subproof p1 === 314;
 }
 
 function func_with_once2 (int i) : int {
     println(i);
-    once int j = 13;
+    once subproof int j = 13;
     return i * j;
 }
 
-namespace Functions:: {
+subproof Functions(2**23) {
 
     col witness c1,c2;
 
@@ -19,19 +17,19 @@ namespace Functions:: {
 
     for (int i = 1; i < 5; ++i) {
         for (int j = i + 1; j < 5; ++j) {
-            once c2 + c1 === i * j * 7;
+            once subproof c2 + c1 === i * j * 7;
         }
     }
 
     for (int i = 2; i < 5; ++i) {
-        once {
+        once subproof {
             for (int j = i + 1; j < 5; ++j) {
                 c2 + c1 === i * j * 11;
             }
         }
     }
 
-    once {
+    once subproof {
         for (int i = 3; i < 5; ++i) {
             for (int j = i + 1; j < 7; ++j) {
                 c2 + c1 === i * j;
