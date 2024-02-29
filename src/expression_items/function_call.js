@@ -27,6 +27,9 @@ module.exports = class FunctionCall extends RuntimeItem {
     setFunction(funcdef) {
         this.funcdef = funcdef;
     }
+    toString(options) {
+        return this.dump(options);
+    }
     dump(options) {
         const indexes = this.indexes.length > 0 ? '['+this.indexes.join(',')+']':'';
         const args = '(' + this.args.map(x => x.toString()).join(',') +')';

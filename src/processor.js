@@ -52,6 +52,7 @@ module.exports = class Processor {
         this.runtime = new Runtime();
         this.context = new Context(this.Fr, this, config);
         this.nextStatementTranspile = false;
+        this.nextStatementFixed = false;
         console.log(config);
 
         this.scope.mark('proof');
@@ -301,6 +302,9 @@ module.exports = class Processor {
             case 'transpile':
                 this.nextStatementTranspile = true;
                 break;
+            case 'fixed':
+                this.nextStatementFixed = true;
+                break;
         }
         
     }
@@ -455,7 +459,6 @@ module.exports = class Processor {
                         EXIT_HERE;
                     }
                 }
-                console.log(values);
                 _case.__cached_values = values;
             } else if (_case.default) {
                 if (typeof values[false] !== 'undefined') {

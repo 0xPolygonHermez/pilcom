@@ -1004,7 +1004,12 @@ class Expression extends ExpressionItem {
         } else if (st.operands.length === 2) {
             res = this.operandToString(st.operands[0], pos, st.op, options) + ' ' + operationLabel + ' ' +
                   this.operandToString(st.operands[1], pos, st.op, options);
+        } else if (st.operands.length === 3 && st.op === 'if') {
+            res = '(' + this.operandToString(st.operands[0], pos, st.op, options) + ')?('+
+                  this.operandToString(st.operands[1], pos, st.op, options) + '):(' +
+                  this.operandToString(st.operands[2], pos, st.op, options) + ')';
         } else {
+            console.log(st);
             TODO_EXIT
         }
         if (parentPrecedence > operationInfo.precedence || (parentOperation === 'sub' && st.op !== 'mul')) {
