@@ -1,7 +1,9 @@
-const chai = require("chai");
-const assert = chai.assert;
+const {assert, assertLog} = require("./assert.js");
 const Router = require("./router.js");
 const Expression = require("./expression.js");
+const Values = require('./values.js');
+const Debug = require('./debug.js');
+const vm = require('vm');
 
 const MAX_ELEMS_GEOMETRIC_SEQUENCE = 300;
 class SequencePadding {
@@ -11,6 +13,8 @@ class SequencePadding {
     }
 }
 module.exports = class Sequence {
+    #values;
+
     static cacheGeomN = [];
     // TODO: Review compiler estructures
     // TODO: iterator of values without "extend"
@@ -19,23 +23,36 @@ module.exports = class Sequence {
 
     constructor (parent, expression, maxSize) {
         this.parent = parent;
-        this.values = [];
+        this.#values = new Values();
         this.padding = false;
         this.expression = expression;
         this.router = new Router(this, 'type', {pre: this.preRoute});
+
         this.maxSize = typeof maxSize === 'undefined' ? false : Number(maxSize);
         this.paddingCycleSize = false;
         this.paddingSize = 0;
         this.extendPos = 0;
         this.debug = '';
         this.valueCounter = 0;
+        this.varIndex = 0;
         this.sizeOf(expression);
+    }
+    clone() {
+        let cloned = new Sequence(this.parent, this.expression, this.maxSize);
+        if (Debug.active) console.log(['CLONED', this.maxSize, cloned.maxSize]);
+        this.#values.mutable = false;
+        cloned.#values = this.#values.clone();
+        return cloned;
     }
     preRoute(method, e) {
         if (e.debug) this.debug = e.debug;
     }
     getValue(index) {
-        return this.values[index];
+        return this.#values.getValue(index);
+    }
+    #setValue(index, value) {
+        ++this.valueCounter;
+        return this.#values.__setValue(index, value);
     }
     setValue(index, value) {
         /* assert(this.extendPos >= 0 && (this.maxSize === false || this.extendPos < this.maxSize),
@@ -44,29 +61,43 @@ module.exports = class Sequence {
         if ((index >= 0 && (this.maxSize === false || index < this.maxSize) === false)) {
             console.log(`\x1B[33mERROR Invalid value of extendPos:${index} maxSize:${this.maxSize}  ${this.debug}\x1B[0m`);
         }
-        if (typeof this.values[index] !== 'undefined') {
+        if (typeof this.#values.getValue(index) !== 'undefined') {
             console.log(`\x1B[33mERROR Rewrite index position:${index} ${this.debug}\x1B[0m`);
         }
         ++this.valueCounter;
-        return this.values[index] = value;
+        return this.#values.setValue(index, value);
     }
     sizeOf(e) {
         this.paddingCycleSize = false;
         this.paddingSize = 0;
         const size = this._sizeOf(e);
         assert(size >= this.paddingCycleSize, `size(${size}) < paddingCycleSize(${this.paddingCycleSize})`);
+        if (Debug.active) {
+            console.log(['SIZE(MAXSIZE)', this.maxSize]);
+            console.log(['SIZE(paddingCycleSize)', this.paddingCycleSize]);
+            console.log(['SIZE(paddingSize)', this.paddingSize]);
+        }
         if (this.paddingCycleSize) {
             this.paddingSize = this.maxSize - (size - this.paddingCycleSize);
             this.size = size - this.paddingCycleSize + this.paddingSize;
         } else {
             this.size = size;
         }
-
+        if (Debug.active) console.log(['SIZE', this.size]);
         return this.size;
     }
     _sizeOf(e) {
         if (e instanceof Expression) return 1;
-        else return this.router.go(e, '_sizeOf');
+        switch (e.type) {
+            case 'sequence': return this._sizeOfSequence(e);
+            case 'padding_seq': return this._sizeOfPaddingSeq(e);
+            case 'seq_list': return this._sizeOfSeqList(e);
+            case 'repeat_seq': return this._sizeOfRepeatSeq(e);
+            case 'range_seq': return this._sizeOfRangeSeq(e);
+            case 'arith_seq': return this._sizeOfArithSeq(e);
+            case 'geom_seq': return this._sizeOfGeomSeq(e);
+        }
+        throw new Error(`Invalid sequence type ${e.type} sizeof`);
     }
     _sizeOfSeqList(e) {
         let size = 0;
@@ -79,7 +110,8 @@ module.exports = class Sequence {
         return this._sizeOfSeqList(e);
     }
     _sizeOfRepeatSeq(e) {
-        const times = Number(this.parent.getExprNumber(e.times));
+        const times = this.toNumber(this.parent.getExprNumber(e.times));
+        if (Debug.active) console.log(['times', times]);
         return times  * this._sizeOf(e.value);
     }
     setPaddingSize(size) {
@@ -96,17 +128,21 @@ module.exports = class Sequence {
         return this.setPaddingSize(this._sizeOf(e.value));
     }
     getRangeSeqInfo(e) {
-        const fromTimes = e.times ? Number(this.e2num(e.times)): 1;
-        const toTimes = e.toTimes ? Number(this.e2num(e.toTimes)): fromTimes;
+        const fromTimes = e.times ? this.toNumber(this.e2num(e.times)): 1;
+        const toTimes = e.toTimes ? this.toNumber(this.e2num(e.toTimes)): fromTimes;
+        if (Debug.active) console.log(['fromTimes', fromTimes, 'toTimes', toTimes]);
         if (fromTimes !== toTimes) {
             throw new Error(`In range sequence, from(${fromTimes}) and to(${toTimes}) must be same`);
         }
         return [this.e2num(e.from), this.e2num(e.to), fromTimes];
     }
     getTermSeqInfo(e) {
-        const t1Times = e.t1.times ? Number(this.e2num(e.t1.times)): 1;
-        const t2Times = e.t2.times ? Number(this.e2num(e.t2.times)): 1;
-        const tnTimes = e.tn.times === false ? false : (e.tn.times ? Number(this.e2num(e.t2.times)): 1);
+        if (e._cache_getTermSeqInfo) return e._cache_getTermSeqInfo;
+
+        const t1Times = e.t1.times ? this.toNumber(this.e2num(e.t1.times)): 1;
+        const t2Times = e.t2.times ? this.toNumber(this.e2num(e.t2.times)): 1;
+        const tnTimes = e.tn.times === false ? false : (e.tn.times ? this.toNumber(this.e2num(e.t2.times)): 1);
+        if (Debug.active) console.log(['t1Times', t1Times, 't2Times', t2Times, 'tnTimes', tnTimes]);
         if (t1Times !== t2Times && (tnTimes === false || tnTimes === t2Times)) {
             throw new Error(`In term sequence, t1(${t1Times}), t2(${t2Times})`+
                         (tnTimes === false ? '':` and tn(${tbTimes}`)+'must be same');
@@ -118,13 +154,13 @@ module.exports = class Sequence {
         if (t1 === t2) {
             throw new Error(`In term sequence, t1(${t1}), t2(${t2}) must be different`);
         }
-
-        return [t1, t2, tn, t1Times];
+        e._cache_getTermSeqInfo = [t1, t2, tn, t1Times];
+        return e._cache_getTermSeqInfo;
     }
     _sizeOfRangeSeq(e) {
         // TODO review if negative, fe?
         const [fromValue, toValue, times] = this.getRangeSeqInfo(e);
-        return Number(toValue > fromValue ? toValue - fromValue + 1n : toValue - fromValue + 1n) *  times;
+        return this.toNumber(toValue > fromValue ? toValue - fromValue + 1n : toValue - fromValue + 1n) *  times;
     }
     _sizeOfArithSeq(e) {
         const [t1, t2, tn, times] = this.getTermSeqInfo(e);
@@ -134,7 +170,7 @@ module.exports = class Sequence {
             if ((delta > 0 && tn < t2) || (delta < 0 && tn > t2) || (distance % delta !== 0n)) {
                 throw new Error(`Invalid terms of arithmetic sequence ${t1},${t2}...${tn} at ${this.debug}`);
             }
-            return Number(distance/delta + 2n) * times;
+            return this.toNumber(distance/delta + 2n) * times;
         }
         else {
             return this.setPaddingSize(2);
@@ -148,24 +184,24 @@ module.exports = class Sequence {
         const tfinal = tn === false ? t1 + delta * BigInt(this.paddingSize): tn + delta;
         console.log({tag: 'XXXXX', tn, tfinal, paddingSize: this.paddingSize});
         let value = t1;*/
-        const count = tn === false ? this.paddingSize : times * (Number(((tn - t1) / delta)) + 1);
+        const count = tn === false ? this.paddingSize : times * (this.toNumber(((tn - t1) / delta)) + 1);
         const finalExtendPos = this.extendPos + count;
         // console.log({t1, t2, delta, tn, extendPos: this.extendPos, count, finalExtendPos, paddingSize: this.paddingSize});
         let value = t1;
         while (this.extendPos < finalExtendPos) {
             for (let itimes = 0; itimes < times && this.extendPos < finalExtendPos; ++itimes) {
-                this.setValue(this.extendPos++,value);
+                this.#setValue(this.extendPos++,value);
             }
             value = value + delta;
         }
         return count;
     }
     calculateGeomN(ratio, ti, tf) {
-        const ratioAsNum = Number(ratio);
+        const ratioAsNum = this.toNumber(ratio);
         const rn = tf/ti;
 
         if (rn <= Number.MAX_SAFE_INTEGER) {
-            return BigInt(Math.round(Math.log(Number(rn))/Math.log(ratioAsNum)));
+            return BigInt(Math.round(Math.log(this.toNumber(rn))/Math.log(ratioAsNum)));
         }
 
         const key = [ratio, rn].join('_');
@@ -193,7 +229,7 @@ module.exports = class Sequence {
             value = value / chunkValues[index];
             n = n + chunks[index];
         }
-        n = n + BigInt(Math.round(Math.log(Number(value))/Math.log(ratioAsNum)));
+        n = n + BigInt(Math.round(Math.log(this.toNumber(value))/Math.log(ratioAsNum)));
         Sequence.cacheGeomN[key] = n;
         return n;
     }
@@ -240,7 +276,7 @@ module.exports = class Sequence {
             // console.log({padding, calculateSize, ti, tf, ratio, n, t1, t2, tn});
             throw new Error(`ERROR geometric seq calculation ${tf} !== ${ti} * (${ratio} ** ${BigInt(n)})`);
         }
-        return [Number(n) + 1, reverse, ti, tf, ratio];
+        return [this.toNumber(n) + 1, reverse, ti, tf, ratio];
     }
     _sizeOfGeomSeq(e) {
         const [t1, t2, tn, times] = this.getTermSeqInfo(e);
@@ -250,7 +286,7 @@ module.exports = class Sequence {
         const [count, reverse, ti, tf, ratio] = this.getGeomInfo(t1, t2, tn, times, true);
         return tn === false ? count : count * times;
     }
-    _extendGeomSeq(e) {
+    _extendGeomSeq(e) {        
         const [t1, t2, _tn, times] = this.getTermSeqInfo(e);
         const [_count, reverse, ti, tf, ratio] = this.getGeomInfo(t1, t2, _tn, times);
 
@@ -269,7 +305,7 @@ module.exports = class Sequence {
             while (remaingValues > 0 && itimes > 0)  {
                 --remaingValues;
                 --itimes;
-                this.setValue(this.extendPos, value);
+                this.#setValue(this.extendPos, value);
                 this.extendPos = this.extendPos + (reverse ? -1:1);
             }
             itimes = times;
@@ -291,21 +327,44 @@ module.exports = class Sequence {
         assert(times > 0);
         while (value <= toValue) {
             for (let itimes = 0; itimes < times; ++itimes) {
-                this.setValue(this.extendPos++, value);
+                this.#setValue(this.extendPos++, value);
             }
             value = (value + delta) * ratio;
         }
         return this.extendPos - initialExtendPos;
     }
+    _gcodeRangeSeq(e) {
+        const [fromValue, toValue, times] = this.getRangeSeqInfo(e);
+        const delta = fromValue > toValue ? -1n:1n;
+        const v = this.createCodeVariable('_v');
+        let code = `for(let ${v}=${fromValue}n;${v}<=${toValue}n;${v}=${v}${delta > 0n?'+'+delta:delta}n){`;
+        if (times === 1) {
+            code += `__values.push(${v});}\n`;
+        } else {
+            const v2 = this.createCodeVariable();
+            code += `for(let ${v2}=0;${v2}<${times};++${v2}){__values.push(${v})}}\n;`;
+        }
+        const count = times * (Number((toValue - fromValue) / delta) + 1);
+        return [code, count];
+    }
+
     extend() {
-        this.values = new Array(this.size);
+        if (Debug.active) console.log(this.size);
         this.extendPos = 0;
-        this._extend(this.expression);
-        return this.values;
+        const [code, count] = this._gcode(this.expression);
+        let __values = [];
+        const context = {__values}
+        vm.createContext(context);
+        vm.runInContext(code, context);
+        this.#values.__setValues(__values);
+        this.#values.mutable = false;
     }
     verify() {
-        console.log(this.toString());
-        console.log([this.extendPos, this.size]);
+        if (Debug.active) {
+            console.log(this.toString());
+            console.log([this.extendPos, this.size]);
+            console.log(['SIZE', this.size]);
+        }
         assert(this.valueCounter === this.size);
         for (let index = 0; index < size; ++index) {
             assert(this.values[index] === 'bigint', `type of index ${index} not bigint (${typeof this.values[index]}) ${value}`);
@@ -315,7 +374,31 @@ module.exports = class Sequence {
         if (e instanceof Expression) {
             return this._extendExpr(e);
         }
-        return this.router.go(e, '_extend');
+        switch (e.type) {
+            case 'sequence': return this._extendSequence(e);
+            case 'padding_seq': return this._extendPaddingSeq(e);
+            case 'seq_list': return this._extendSeqList(e);
+            case 'repeat_seq': return this._extendRepeatSeq(e);
+            case 'range_seq': return this._extendRangeSeq(e);
+            case 'arith_seq': return this._extendArithSeq(e);
+            case 'geom_seq': return this._extendGeomSeq(e);
+        }
+        throw new Error(`Invalid sequence type ${e.type} extend`);
+    }
+    _gcode(e) {
+        if (e instanceof Expression) {
+            return this._gcodeExpr(e);
+        }
+        switch (e.type) {
+            case 'sequence': return this._gcodeSequence(e);
+            case 'padding_seq': return this._gcodePaddingSeq(e);
+            case 'seq_list': return this._gcodeSeqList(e);
+            case 'repeat_seq': return this._gcodeRepeatSeq(e);
+            case 'range_seq': return this._gcodeRangeSeq(e);
+            case 'arith_seq': return this._gcodeArithSeq(e);
+            case 'geom_seq': return this._gcodeGeomSeq(e);
+        }
+        throw new Error(`Invalid sequence type ${e.type} gcode`);
     }
     _extendSeqList(e) {
         let count = 0;
@@ -324,10 +407,23 @@ module.exports = class Sequence {
         }
         return count;
     }
+    _gcodeSeqList(e) {
+        let count = 0;
+        let code = e.values.length > 1 ? '{' : '';
+        for(const value of e.values) {
+            const [_code, _count] = this._gcode(value);
+            count += _count;
+            code += _code;
+        }
+        return [code + (e.values.length > 1 ? '}' : ''), count];
+    }
     _extendSequence(e) {
         return this._extendSeqList(e);
     }
-    _extendPaddingSeq(e) {
+    _gcodeSequence(e) {
+        return this._gcodeSeqList(e);
+    }
+    _extendPaddingSeq(e) {        
         let from = this.extendPos;
         let seqSize = this._extend(e.value);
         let remaingValues = this.paddingSize - seqSize;
@@ -344,26 +440,67 @@ module.exports = class Sequence {
             let upto = remaingValues >= seqSize ? seqSize : remaingValues;
             // console.log(`SETTING UPTO ${upto} ${remaingValues} ${seqSize}`);
             for (let index = 0; index < upto; ++index) {
-                this.setValue(this.extendPos++, this.values[from + index]);
+                this.#setValue(this.extendPos++, this.#values.getValue(from + index));
             }
             remaingValues = remaingValues - upto;
         }
         return this.paddingSize;
     }
-    _extendExpr(e) {
+    _gcodePaddingSeq(e) {        
+        // TODO: if last element it's a padding, not need to fill and after when access to
+        // a position applies an module over index.
+        const [_code, seqSize] = this._gcode(e.value);
+        let remaingValues = this.paddingSize - seqSize;
+        if (remaingValues < 0) {
+            throw new Error(`In padding range must be space at least for one time sequence at ${this.debug}`);
+        }
+        if (seqSize < 1) {
+            console.log(e.value);
+            throw new Error(`Sequence must be at least one element at ${this.debug}`);
+        }
+        if (remaingValues === 0) {
+            return [_code. seqSize];
+        }
+        let code = `{${_code}`;
+        if (remaingValues > 0) {
+            const v1 = this.createCodeVariable();
+            const base = this.createCodeVariable('_b');
+            code += `let ${base}=__values.length-${seqSize};for (let ${v1}=0;${v1}<${remaingValues};++${v1}){__values.push(__values[${base}+${v1}]);}`;
+        }
+        code += '}\n';
+        return [code, seqSize + remaingValues];
+    }
+    _extendExpr(e) {        
         const num = this.e2num(e);
-        this.setValue(this.extendPos++, num);
+        this._values[this.extendPos++] = num;
         return 1;
+    }
+    _gcodeExpr(e) {        
+        // no cache
+        const num = this.e2num(e);
+        return [`__values.push(${num}n);\n`, 1];
+    }
+    createCodeVariable(prefix = '_i') {
+        return prefix+(++this.varIndex);
     }
     _extendRepeatSeq(e) {
         let count = 0;
         const times = this.e2num(e.times);
         for (let itime = 0; itime < times; ++itime) {
-            // console.log('SETTING PRE COUNT '+count);
             count += this._extend(e.value);
-            // console.log('SETTING POST COUNT '+count);
         }
         return count;
+    }
+    _gcodeRepeatSeq(e) {
+        if (!e.__cache) {
+            const times = this.e2num(e.times);
+            const [_code, _count] = this._gcode(e.value);
+            const v = this.createCodeVariable();
+            const code = `for (let ${v}=0;${v}<${times};++${v}){${_code}}`;
+            const count = _count * Number(times);
+            e.__cache = [code, count];
+        }
+        return e.__cache;
     }
     e2num(e) {
         if (typeof e === 'bigint' || typeof e === 'number') {
@@ -384,6 +521,14 @@ module.exports = class Sequence {
         return {type: vdata.type, value: vdata.values[offset] };
     } */
     toString() {
-        return this.values.join(',');
+        return this.#values.toString();
+    }
+    toNumber(value) {
+        if (Debug.active) console.log(value);
+        let nvalue = Number(value);
+        if (nvalue === NaN || isNaN(nvalue)) {
+            throw new Error(`Invalid number ${value}`);
+        }
+        return nvalue;
     }
 }

@@ -1,6 +1,7 @@
+const Context = require('./context.js');
 const Router = require("./router.js");
 const Expression = require("./expression.js");
-
+const {ExpressionList} = require('./expression_items.js');
 module.exports = class List {
 
     // TODO: Review compiler estructures
@@ -29,6 +30,14 @@ module.exports = class List {
         if (e instanceof Expression) {
             return this._extendExpr(e);
         }
+        if (e instanceof ExpressionList) {
+            let res = [];
+            for (const item of e.items) {
+                res.push(this._resolve(item));
+            }
+            return res;
+        }
+        console.log(e);
         return this.router.go(e);
     }
     _extendAppend(e) {
@@ -61,7 +70,7 @@ module.exports = class List {
     _extendAppendReferences(e) {
         console.log("=================  appendReferences ==================");
         let values = [];
-        const info = Expression.parent.getReferenceInfo(e.value);
+        const info = Context.expressions.getReferenceInfo(e.value);
         let element = e.value.instance().getAloneOperand();
         if (!element.array || element.array.dim < 1) {
             throw new Error(`Could not extend and append a non array element`)

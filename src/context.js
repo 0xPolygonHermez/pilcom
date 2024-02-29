@@ -1,20 +1,57 @@
 const {assert} = require("chai");
-const References = require("./references.js");
-const Expressions = require("./expressions.js");
-const Router = require("./router.js");
-
 module.exports = class Context {
-    constructor (Fr, processor) {
+    static _instance = null;
+
+    constructor (Fr, processor, config = {}) {
+        assert(Context._instance === null);
+        Context._instance = this;
         this.Fr = Fr;
-        this.processor = processor;
+        this._processor = processor;
         this.namespace = '';
         this.subproof = false;
-        this.stack = [];
-        this.config = {debug: {}};
-        this.sourceRef = '';
+        this.stack = [];        
+        this.config = {debug: {}, ...config};
         this.uses = [];
+        this.subproofName = false;
+        this.airId = false;
+        this.airN = false;
     }
-
+    static get config() {
+        return this._instance.config;
+    }
+    static get expressions() {
+        return this._instance._processor.expressions;
+    }
+    static get runtime() {
+        return this._instance._processor.runtime;
+    }
+    static get scope() {
+        return this._instance._processor.scope;
+    }
+    static get sourceRef() {
+        return this._instance._processor.sourceRef;
+    }
+    static get sourceTag() {
+        return this._instance._processor.sourceRef.split('/').slice(-2).join('/');
+    }
+    static get processor() {
+        return this._instance._processor;
+    }
+    static get current() {
+        return this._instance;
+    }
+    static get references() {
+        return this._instance._processor.references;
+    }
+    static get proofLevel() {
+        if (this.airName) {
+            return `AIR:${this.airName}`;
+        }
+        if (this.subproofName) {
+            return `SUBPROOF:${this.subproofName}`;
+        }
+        return 'PROOF';
+    }
     setNamespace(namespace, subproof) {
         this.namespace = namespace;
         if (typeof subproof !== 'undefined') {

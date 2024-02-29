@@ -3,7 +3,7 @@ subproof Expressions(2**16) {
     col witness byteIn;
     col witness bits[8];
 
-    expr byteFromBits = 0;
+    expr byteFromBits = 22;
     for (int i = 0; i < 8; ++i) {
         byteFromBits = byteFromBits + bits[i] * 2**i;
         // bits[i] * (1 - bits[i]) === 0;

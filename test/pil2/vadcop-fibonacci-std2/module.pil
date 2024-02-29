@@ -1,0 +1,15 @@
+const int MODULE_ID = 1;
+
+subproof Module(2**16) {
+
+    subproofval aggregate(sum) gsum_module;
+
+    col fixed L1 = [1,0...];
+    col witness x, q, x_mod;
+
+    // TODO: verify range checks and x_mod < mod
+    x === q * mod + x_mod;
+
+
+    multiset_proves(MODULE_ID, 1, [x, x_mod]);
+}

@@ -40,8 +40,8 @@ module.exports = class PackedExpressions {
     pushChallenge (idx, stage = 1) {
         this.values.push({challenge: {stage, idx}});
     }
-    pushSubproofValue (idx) {
-        this.values.push({subproofValue: {idx}});
+    pushSubproofValue (idx, subproofId) {
+        this.values.push({subproofValue: {idx, subproofId}});
     }
     pushProofValue (idx) {
         this.values.push({proofValue: {idx}});
@@ -66,6 +66,7 @@ module.exports = class PackedExpressions {
     }
     exprToString(id, options) {
         const expr = this.expressions[id];
+        console.log([id, expr, this.expressions.length]);
         const [op] = Object.keys(expr);
         let opes = [];
         for (const ope of Object.values(expr[op])) {
@@ -120,20 +121,21 @@ module.exports = class PackedExpressions {
         }
 
     }
-    getLabel(type, id, options) {
-        options = options ?? {};
-        const labels = options.labels;
-        const labelsByType = options.labelsByType;
-        let label;
-        if (labelsByType && typeof labelsByType[type] === 'object' && typeof labelsByType[type].getLabel === 'function') {
-            label = labelsByType[type].getLabel(id, options);
-        } else if (typeof labels === 'object' && typeof labels.getLabel === 'function') {
-            label = labels.getLabel(type, id, options);
+    getLabel(type, id, options = {}) {
+        const labelSources = [(options.labelsByType ?? {})[type], options.labels];
+        let args = [id, options];
+        for (const labels of labelSources) {
+            if (labels) {
+                if (typeof labels === 'function') {
+                    return labels.apply(null, args);
+                }
+                if (typeof labels.getLabel === 'function') {
+                    return labels.getLabel.apply(labels, args);
+                }
+            }
+            args.unshift(type);
         }
-        if (!label) {
-            label = `${type}@${id}`;
-        }
-        return label;
+        return label = `${type}@${id}`;
     }
 
     *[Symbol.iterator]() {

@@ -1,0 +1,42 @@
+subproof ExpressionTest(2**16) {
+
+    col witness x[4],z;
+    col fixed Y[4];
+    Y[0] = [1..5]...;
+    col fixed _Y = [1..5]...;
+    const int k;
+    const expr isZero = (1 - Y[0]);
+    k = 10;
+    const expr b = 13 + 6 * Y[1];
+    expr a;
+    a = 10 + 5 * Y[2];
+    a = a + 100;
+    a = a + 2 * isZero;
+    a = a - isZero;
+    a === 0;
+    5 * Y[3]' + x[1] + 2 * x[0] + 3 * x[2] +  18 * z === x[1];
+    /*
+    expr ex = x[0] + 2 * x[1] + 4 * x[2] + 2 ** 3 * x[3];
+
+    ex === 0;
+
+    int k = 10;
+    expr a = 1;
+    string s = "1";
+
+
+    ex === 0;
+    assert(k == 10);
+    assert(a == 1);
+    assert(string(1) == "1");
+    assert(string(a) == "1");
+    assert(string(a) == s);
+
+    a = a + 1;
+    dump(a);
+    a = a * 10;
+    dump(a);
+    s = s + "hello";
+    s = s + k;
+    s = s + a;*/
+}

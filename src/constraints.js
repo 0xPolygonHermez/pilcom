@@ -1,9 +1,9 @@
+const {assert, assertLog} = require('./assert.js');
+const Expression = require('./expression.js');
+const Context = require('./context.js');
 module.exports = class Constraints {
-
-    constructor (Fr, expressions) {
-        this.Fr = Fr;
+    constructor () {
         this.constraints = [];
-        this.expressions = expressions;
     }
 
     clone() {
@@ -16,21 +16,24 @@ module.exports = class Constraints {
     }
 
     get(id) {
-        return this.constraints[id];
+        return {...this.constraints[id]};
     }
 
     getExpr(id) {
-        return this.expressions.get(this.constraints[id].exprId);
+        return Context.expressions.get(this.constraints[id].exprId);
     }
 
     isDefined(id) {
         return (typeof this.constraints[id] != 'undefined');
     }
 
-    getPackedExpressionId(id, container, options) {
-        return this.expressions.getPackedExpressionId(id, container, options);
+    getPackedExpressionId(id, container, options = {}) {
+        const res = (options.expressions ?? Context.expressions).getPackedExpressionId(id, container, options);
+        return res;
     }
     define(left, right, boundery, sourceRef) {
+        assertLog(left instanceof Expression, left);
+        assertLog(right instanceof Expression, right);
         if (left.isRuntime()) {
             left.dump('LEFT  CONSTRAINT');
             throw new Error(`left constraint has runtime no resolved elements`);
@@ -43,11 +46,15 @@ module.exports = class Constraints {
             console.log('\x1B[31mWARNING: accessing fixed row acces\x1b[0m');
         }
         const id = this.constraints.length;
-        if (right.eval() !== 0n) {
+        if (right.asIntDefault(false) !== 0n) {
             left.insert('sub', right);
         }
+        // const dumpId = Date.now();
+        // left.dump(`XXXXXXXXX-${dumpId}-1`)
+        // left.instance().dump(`XXXXXXXXX-${dumpId}-2`);
         left.simplify();
-        const exprId = this.expressions.insert(left);
+        const exprId = Context.expressions.insert(left);
+        console.log(`DEFINE CONSTRAINT ${sourceRef}`);
         return this.constraints.push({exprId, sourceRef, boundery}) - 1;
     }
 
@@ -69,7 +76,6 @@ module.exports = class Constraints {
         }
     }
     dump (packed) {
-        console.log('CONSTRAINTS');
         for (let index = 0; index < this.constraints.length; ++index) {
             console.log(this.getDebugInfo(index, packed));
         }
@@ -77,12 +83,13 @@ module.exports = class Constraints {
     getDebugInfo(index, packed, options) {
         const constraint = this.constraints[index];
         const eid = constraint.exprId;
-        const peid = this.expressions.getPackedExpressionId(eid);
+        // const peid = Context.expressions.getPackedExpressionId(eid);
+        const peid = this.getPackedExpressionId(eid, packed, options);
         let info = `INFO ${index}: ${eid} ${peid} ${constraint.sourceRef}`
         options = options ?? {};
 
         if (packed) {
-            info += ' '  + packed.exprToString(peid, {...options, labels: this.expressions, hideClass: true});
+            info += ' '  + packed.exprToString(peid, {...options, labels: Context.expressions, hideClass: true});
         }
         return info;
     }

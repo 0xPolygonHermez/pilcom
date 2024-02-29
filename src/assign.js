@@ -1,46 +1,52 @@
-const References = require("./references.js");
-const Expressions = require("./expressions.js");
 const Expression = require("./expression.js");
+const Context = require('./context.js');
+const {assert, assertLog} = require('./assert.js');
+const NonRuntimeEvaluableItem = require('./expression_items/non_runtime_evaluable_item.js');
+const Debug = require('./debug.js');
 
 module.exports = class Assign {
-    constructor (Fr, parent, context, references, expressions) {
-        this.Fr = Fr;
-        this.context = context;
-        this.references = references;
-        this.expressions = expressions;
-        this.parent = parent;
+    constructor () {
     }
-
     assign (name, indexes, value) {
-        // console.log(value.stack[0].operands[0]);
-        const _value = value.eval();
-        if (typeof _value !== 'undefined') {
-            value = _value;
-        }
-        return this.__assign(name, indexes, value);
+        if (Debug.active) console.log(value);
+        value = this.getValue(value);
+        if (Debug.active) console.log(value);
+        assert(value !== null);
+        return this.#assign(name, indexes, value);
     }
-    __assign(name, indexes, value) {
-        const [type, reference, array] = this.references.getTypeR(name, indexes);
-        const dim = (array && array.dim) ? array.dim : 0;
-        if (this.parent.context.sourceRef === 'assigns.pil:115') {
-            debugger;
+    getValue(value) {
+        const _value = value.eval();
+        if (typeof _value !== 'undefined' && _value !== null && (_value instanceof NonRuntimeEvaluableItem) === false) {
+            return _value;
         }
+        return value;
+    }
+    #assign (name, indexes, value) {
+        // console.log(`ASSIGN(${name})[#${indexes.length ?? 0}] = ${value.constructor ? (value.constructor.name ?? typeof value):typeof value}`);
+        // const array = Context.references.getArray(name, indexes);
+        const reference = Context.references.getReference(name);
+        return reference.set(value, indexes);
+        /*
+        const dim = array.dim ?? 0;
         if (dim > 0) {
+            // array asignation as array or subarray copy
             return this.assignArray(name, indexes, value, array);
         }
-        // console.log([name, type, reference, array]);
-        return this.assignType(type, name, indexes, value);
+        console.log(value);
+        return Context.references.set(name, indexes, value);*/
     }
     assignType(type, name, indexes, value) {
+        if (Debug.active) console.log(type);
         switch (type) {
             case 'int': return this.assignTypeInt(name, indexes, value, type);
             case 'expr': return this.assignTypeExpr(name, indexes, value, type);
         }
     }
     assignArray(name, indexes, value, array) {
+        console.log(`ASSIGN_ARRAY(${name})[#${indexes.length ?? 0}] = ${value.constructor ? (value.constructor.name ?? typeof value):typeof value}`);
         const ref = value.getAloneOperand();
         let valueIndexes = value.__indexes ?? [];
-        const def = this.references.getDefinition(ref.name);
+        const def = Context.references.getDefinition(ref.name);
 
         if (array.dim != def.array.dim) {
             throw new Error(`different array dimension on asignation ${array.dim} vs ${def.array.dim}`);
@@ -49,6 +55,7 @@ module.exports = class Assign {
         // array.lengths[0] != def.array.lengths[0]) {
     }
     assignArrayLevel(level, name, indexes, value, leftArray, rightArray) {
+        console.log(`ASSIGN_ARRAY_LEVEL(${level},${name})[#${indexes.length ?? 0}] = ${value.constructor ? (value.constructor.name ?? typeof value):typeof value}`);
         // console.log(['assignArrayLevel', level, name, indexes]);
         const len = leftArray.lengths[level];
         for (let index = 0; index < len; ++index) {
@@ -56,7 +63,7 @@ module.exports = class Assign {
             _indexes.push(index);
             value.pushAloneIndex(index);
             if (level + 1 === leftArray.dim) {
-                this.__assign(name, _indexes, value.evaluateAloneReference());
+                this.#assign(name, _indexes, value.evaluateAloneReference());
             } else {
                 this.assignArrayLevel(level+1, name, _indexes, value, leftArray, rightArray);
             }
@@ -64,24 +71,27 @@ module.exports = class Assign {
         }
     }
     assignReference (name, value) {
-        this.references.setReference(name, value);
+        console.log(`ASSIGN_REFERENCE(${level},${name}) = ${value.constructor ? (value.constructor.name ?? typeof value):typeof value}`);
+        Context.references.setReference(name, value);
     }
     assignTypeInt(name, indexes, value, type) {
         // TODO: WARNING: e2value an extra evaluation
-        const v = this.expressions.getValue(value);
+        const v = Expression.getValue(value);
         if (typeof v === 'number' || typeof v === 'bigint') {
-            return this.references.set(name, indexes, v);
+            return Context.references.set(name, indexes, v);
         }
     }
     assignTypeExpr(name, indexes, value, type) {
+        console.log(`ASSIGN_TYPE_EXPR(${name},${type})[#${indexes.length ?? 0}] = ${value.constructor ? (value.constructor.name ?? typeof value):typeof value}`);
         if (!(value instanceof Expression)) {
-            this.references.set(name, indexes, value);
+            Context.references.set(name, indexes, value);
             return;
         }
-        value = value.instance({simplify: true});
-
-        console.log(`ASSIGN ${this.context.sourceRef} ${value}`);
-        this.references.set(name, indexes, value);
-        return
+        value = value.instance(true);
+        if (Context.sourceRef === 'std_sum.pil:195') {
+            if (Debug.active) console.log('XXX');
+        }
+        if (Debug.active) console.log(`ASSIGN ${Context.sourceRef} ${value}`);
+        Context.references.set(name, indexes, value);
     }
 }

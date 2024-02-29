@@ -1,0 +1,155 @@
+// PIL State Machine that compute 256 bits operations:
+
+//  ope │ opcode │ cin │ carry │ last │ ROWS  │ NOTES 
+// ─────┼────────┼─────┼───────┼──────┼───────┼───────────────────────────────────
+//  ADD │   0    │  0  │  X    │      │ 2**17 │ could use cIn to ADC
+//  SUB │   1    │  0  │  X    │      │ 2**17 │ 
+//  LT  │   2    │  0  │  X    │  X   │ 2**18 │ 
+//  SLT │   3    │  0  │  X    │  X   │ 2**18 │ 
+//  EQ  │   4    │  0  │  X    │  X   │ 2**18 │ 
+//  AND │   5    │  0  │  X    │  X   │ 2**17 │ use carry to detect any bit one 
+//  OR  │   6    │  0  │       │      │ 2**16 │ 
+//  XOR │   7    │  0  │       │      │ 2**16 │ 
+//  LT4 │   8    │  0  │  X    │  X   │ 2**18 │ TOTAL = 2**20 + 2**19 => 2**21
+// ┄┄┄┄┄│┄┄┄┄┄┄┄┄│┄┄┄┄┄│┄┄┄┄┄┄┄│┄┄┄┄┄┄│┄┄┄┄┄┄┄│┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ 
+
+
+//  ope │ opcode │ cin │ carry │ last │ ROWS  │ NOTES 
+// ─────┼────────┼─────┼───────┼──────┼───────┼───────────────────────────────────
+//  ADD │   0    │  0  │  X    │      │ 2**17 │ could use cIn to ADC
+//  SUB │   1    │  0  │  X    │      │ 2**17 │ 
+//  OR  │   6    │  0  │       │      │ 2**16 │ 
+//  XOR │   7    │  0  │       │      │ 2**16 │ 
+//  LT  │   2    │  0  │  X    │  X   │ 2**18 │ 
+//  SLT │   3    │  0  │  X    │  X   │ 2**18 │ 
+//  EQ  │   4    │  0  │  X    │  X   │ 2**18 │ 
+//  AND │   5    │  0  │  X    │  X   │ 2**17 │ use carry to detect any bit one 
+//  LT4 │   8    │  0  │  X    │  X   │ 2**18 │ TOTAL = 2**20 + 2**19 => 2**21
+// ┄┄┄┄┄│┄┄┄┄┄┄┄┄│┄┄┄┄┄│┄┄┄┄┄┄┄│┄┄┄┄┄┄│┄┄┄┄┄┄┄│┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ 
+
+
+//  bytes/clk │ clk │ cols           │ area │ lookups │ opens │ NOTES 
+// ───────────┼─────┼────────────────┼──────┼─────────┼───────┼───────────────────────────────────
+//      2     │  16 │ 8 + 4*2 = 16   │ 256  │      2  │  17   │ 
+//      4     │   8 │ 8 + 4*4 = 24   │ 192  │      4  │   9   │ 
+//      8     │   4 │ 8 + 4*8 = 40   │ 160  │      8  │   5   │ 
+//     16     │   2 │ 8 + 4*16 = 76  │ 152  │     16  │   3   │ 
+//     32     │   1 │ 8 + 4*32 = 136 │ 136  │     32  │   2   │ 
+
+const int BINARY_ID = 20;
+
+subproof aggregate Binary(2**21, 2**23, 2**25) {
+
+    col witness freeInA[32], freeInB[32], freeInC[32];   // 8 x 1 Byte (2 inputs, 1 output)
+    col witness opcode;                               // operation code
+    col witness carry[33];                             // 9 chunks carries [cin:0,cout:1],[cin:1,cout:2],...,[cin:6,cout:7]
+    col witness result;                               // selector of result binary operation
+
+    // CLK0     1,0,0...0,0|1,0,0...0,0|1,0,....
+    // result   0,0,0...0,1|0,0,0...0,1|0,0,....
+    // 'result  1,0,0...0,0|1,0,0...0,0|1,0,....
+    result * (1 - result) = 0;
+
+    const expr cIn = carry[0];
+    const expr cOut = carry[32];
+
+    for (int index = 0; index < length(carry); index += 1) {
+        carry[index] * (1 - carry[index]) === 0;
+    }
+
+    //  LT4 (opcode = 8)
+    //
+    //  This instruction operates over 4 chunks of 64 bits, so we divide the 256-bit values "a" and "b" in 4 chunks of 64 bits. It verifies
+    //  that the 4 "a" chunks are LESS THAN the 4 "b" chunks, one-to-one.
+    //
+    //  Examples:
+    //      (0x0FFF...FFFF, 0x0FFF...FFFF, 0x0FFF...FFFF, 0x0FFF...FFFF) LT4 (0xFFFF...FFFF, 0xFFFF...FFFF, 0xFFFF...FFFF, 0xFFFF...FFFF) = 1
+    //      (0x0FFF...FFFF, 0x0FFF...FFFF, 0xFFFF...FFFF, 0x0FFF...FFFF) LT4 (0xFFFF...FFFF, 0xFFFF...FFFF, 0xFFFF...FFFF, 0xFFFF...FFFF) = 0
+    //                                     ^^^^^^^^^^^^^                                                    ^^^^^^^^^^^^^
+    //
+    //  previousAreLt4:    [binary value] flag (*) to indicate whether the first three chunks are lower than or not.
+    //                     It is 1 if all of the first three chunks of a are lower than those of b, and 0 otherwise.
+    //                     Before the first comparation is 0, and is set with the result of the first comparation. After that, the value is propagated.
+    //                     In particular, on the comparisons of the second and third chunks, the result of the comparison (cOut) is multiplied by its value,
+    //                     to force it being zero if some of the previous comparison are zero. It works similar to the AND operator.
+    //                     Mathematically, this is:
+    //                          first chunk --> previousAreLt4 = cOut
+    //                         second chunk --> previousAreLt4 = previousAreLt4 * cOut
+    //                          third chunk --> previousAreLt4 = previousAreLt4 * cOut
+    //                         fourth chunk --> no affects to previousAreLt4
+    //
+    //  usePreviousAreLt4: [binary value] flag (**) to use the value of previousAreLt4. It is only active if:
+    //                     (a) we are at the last byte, (b) we are in the LT4 operation and (c) it happens that cOut = 1.
+    //                     In the last clock, we have:
+    //                          · If cOut = 1, then lastChunk(a) < lastChunk(b). Then a LT4 b if the previous chunks are also lower.
+    //                          · If cOut = 0, then lastChunk(a) >= lastChunk(b). Then, it doesn't matter the previous chunks; the result of a LT4 b is cOut = 0.
+    //
+    // reset4:             [binary value] flag (**) to indicate that cIn is reset each 4 clocks in the LT4 operation.
+    //
+    // NOTE: (*)  Flag is validated by lookup values.
+    //
+    // NOTE: (**) To validate the flags usePreviousAreLt4, reset4, useCarry and cOut, check that the composition:
+    //                   cout + 2 * useCarry + 4 *  usePreviousAreLt4 + 8 * reset4
+    //            is in P_FLAGS.
+    //            After the last optimization, these flags MUST BE constrained to be binary.
+    //
+
+    col witness previousAreLt4;
+    col witness usePreviousAreLt4;
+    col witness reset4;
+    col witness useCarry;
+
+    previousAreLt4 * (1 - previousAreLt4) === 0;
+    usePreviousAreLt4 * (1 - usePreviousAreLt4) === 0;
+    reset4 * (1 - reset4) === 0;
+    useCarry * (1 - useCarry) === 0;
+    cOut * (1 - cOut) === 0;
+
+    // RESET = Global.CLK32[0] + Global.CLK32[16];
+
+    cIn' === cOut * ( 1 - RESET' + reset4 * (Global.CLK32[3] + Global.CLK32[7] + Global.CLK32[11] +
+                                             Global.CLK32[19] + Global.CLK32[23] + Global.CLK32[27]));
+
+    // LT4_PROPAGATE (polynomial made up of constant, binary and disjoint polynomials, therefore it's a constant and binary polynomial)
+    //
+    // Each 4 clocks this sm has processed 8 bytes = 64 bits, last clock isn't relevant last clock cOut is ignored because:
+    //      · last cout = 0 => means LT4 = 0 (if the last chunk of a isn't lower than the last of b then we are done).
+    //      · last cout = 1 => means last a chunk is less than b, in this path result only deepends of ge4 value.
+
+    previousAreLt4' === (CLK0 + previousAreLt4) * cOut;
+
+    // P_FLAGS = cOut + 2 * useCarry + 4 * usePreviousAreLt4 + 8 * reset4
+    // In even byte clocks, useCarry = usePreviousAreLt4 = 0 and cOut = cMiddle, therefore P_FLAGS = cMiddle + 8 * reset4
+    for (int index = 0; index < 7; ++index) {
+        lookup_assumes(BINARY_OPS_TABLE_ID ,1 ,[      0, opcode, freeInA[index], freeInB[index], carry[index], freeInC[index], carry[index + 1]]);
+    }
+    lookup_assumes(BINARY_OPS_TABLE_ID ,1 ,[result, opcode, freeInA[7], freeInB[7], carry[7], freeInC[7], carry[8] + 2 * useCarry + 4 * usePreviousAreLt4 + 8 * reset4]);
+
+    useCarry * usePreviousAreLt4 === 0;
+
+    // a === freeInA[0] + 2**8 * freeInA[1] + 2**16 * freeInA[2] + 2**24 * freeInA[3];
+    // b === freeInB[0] + 2**8 * freeInB[1] + 2**16 * freeInB[2] + 2**24 * freeInB[3];
+
+    // TODO: verify on each 8 clocks
+    // c === useCarry * cOut + usePreviousAreLt4 * previousAreLt + (1 - useCarry - usePreviousAreLt4) * (freeInC[0] + 2**8 * freeInC[1] + 2**16 * freeInC[2] + 2**24 * freeInC[3]);
+
+    // In the last byte, when useCarry or usePreviousAreLt4 are 1, the value of c[0] needs to change
+    // to result (0 or 1). In the first clock, freeInC must be changed to match with the lookup
+    // because lookup is a static table (has a 0 for comparators), but useCarry or
+    // usePreviousAreLt4 are dynamic. Otherwise, useCarry and usePreviousAreLt4 are enabled only in the last byte
+    // (verified lookup only enabled when P_LAST = 1).
+
+    // In the last byte, only FACTOR[7] is active, and freeInC only affects to c[7]'.
+
+    // on last clock freeInA[7] = HSB and 3'freeInA[0] = LSB
+    expr a,b,c;
+    for (int clk = 0; clk < 4; clk += 1 ) {
+        for (int index = 0; index < 8; index += ) {
+            a = a * 256 + clk'freeInA[7-index];
+            b = b * 256 + clk'freeInB[7-index];
+            c = c * 256 + clk'freeInC[7-index];
+        }
+    }
+    const expr opCarryOut = usePreviousAreLt * (previousAreLt4 - cOut) + cOut;
+    multiset_proves(BINARY_ID, result,[opcode, a, b, (useCarry + usePreviousAreLt) * (opCarryOut - c) + c, cIn, opCarryOut]);
+}

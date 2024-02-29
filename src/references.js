@@ -1,92 +1,62 @@
-const {assert} = require("chai");
-const {MultiArray} = require("./multi_array.js");
+const {assert, assertLog} = require('./assert.js');
+const MultiArray = require("./multi_array.js");
 const Expression = require("./expression.js");
+const {ExpressionItem, ArrayOf} = require("./expression_items.js");
+const Reference = require('./reference.js');
+const Containers = require('./containers.js');
+const Context = require('./context.js');
+const Exceptions = require('./exceptions.js');
+const Debug = require('./debug.js');
 module.exports = class References {
 
-    constructor (Fr, context, scope) {
-        this.Fr = Fr;
-        this.definitions = {};
+    constructor () {
+        this.references = {};
         this.types = {};
-        this.context = context;
-        this.scope = scope;
         this.visibilityScope = 0;
         this.visibilityStack = [];
-        this.containers = {};
-        this.currentContainer = false;
-        this.scope.setReferences(this);
-        this.aliases = {};
-        this.uses = [];
+        this.containers = new Containers(this);
     }
-    addScopeAlias(alias, value) {
-        // NOTE: there is no need to check for aliases because by grammatical definition,
-        // aliases must be an identifier
-
-        if (this.aliases[alias]) {
-            throw new Error(`Alias ${alias} already defined on ${this.aliases[alias].sourceRef}`);
+    getDefinitionByItem(item, options = {}) {
+        let instance = null;
+        const instances = [...(options.instances ?? []), ...Object.values(this.types).map(x => x.instance)];
+        for (const _instance of instances) {
+            if (Debug.active) console.log(_instance);
+            if (_instance.expressionItemClass === item.constructor) {
+                instance = _instance;
+                break;
+            }
         }
-
-        this.scope.addToScopeProperty('aliases', alias);
-        this.aliases[alias] = {container: value, sourceRef: this.context.sourceRef};
+        if (Debug.active) console.log(instance, item.id);
+        const res = instance.get ? instance.get(item.id): false;
+        if (Debug.active) console.log(res);
+        return res;
     }
-    getAlias(alias, defaultValue) {
-        return this.aliases[alias] ?? defaultValue;
-    }
-    unsetAlias(aliases) {
-        for (const alias of aliases) {
-            assert(this.aliases[alias]);
-            delete this.aliases[alias];
-        }
-    }
-    unsetUses(uses) {
-        let count = uses.length;
-        while (count > 0) {
-            const use1 = this.uses.pop();
-            const use2 = uses.pop();
-            assert(use1 === use2);
-            --count;
-        }
-    }
-    unsetProperty(property, values) {
-        switch (property) {
-            case 'aliases': return this.unsetAlias(values);
-            case 'uses': return this.unsetUses(values);
-        }
-        throw new Error(`unsetProperty was called with invalid property ${property}`);
-    }
-    createContainer(name, alias = false)
-    {
-        if (this.currentContainer !== false) {
-            throw new Error(`Container ${this.currentContainer} is open, must be closed before start new container`);
-        }
-
-        // console.log(`createContainer(${name},${alias}) at ${this.context.sourceRef}`);
-        // if container is defined, contents is ignored but alias must be defined
-        if (alias) {
-            this.addScopeAlias(alias, name);
-        }
-
-        console.log(`CREATE CONTAINER ${name}`);
-        // if container is defined, contents is ignored
-        if (this.containers[name]) {
+/*    getDefinition(name, indexes) {
+        const reference = this.getReference(name);
+        const id = reference.getId(indexes);
+    }*/
+    getArray(name, indexes) {
+        const reference = this.getReference(name);
+        if (!reference.array) {
             return false;
         }
-
+        return reference.array.applyIndexes(reference, indexes);
+    }
+    getNameScope(name) {
         const nameInfo = this.decodeName(name);
-        this.containers[name] = {scope: nameInfo.scope, alias, definitions: {}};
-        this.currentContainer = name;
-        return true;
+        return nameInfo.scope;
     }
-    closeContainer()
-    {
-        this.currentContainer = false;
+    createContainer(name, alias = false) {
+        return this.containers.create(name, alias);
     }
-    pushVisibilityScope()
-    {
+    closeContainer() {
+        this.containers.close();
+    }
+    pushVisibilityScope() {
         this.visibilityStack.push(this.visibilityScope);
-        this.visibilityScope = this.scope.deep;
+        this.visibilityScope = Context.scope.deep;
     }
-    popVisibilityScope()
-    {
+    popVisibilityScope() {
         if (this.visibilityStack.length < 1) {
             throw new Error(`invalid popVisibilitScope`);
         }
@@ -101,17 +71,20 @@ module.exports = class References {
             instance
         }
     }
-    clearType(type) {
+    clearType(type, label) {
         const typeInfo = this.types[type];
         if (typeof typeInfo === 'undefined') {
             throw new Error(`type ${type} not registered`);
         }
-        typeInfo.instance.clear();
+        typeInfo.instance.clear(label);
         // TODO: remove references
-        for (const name in this.definitions) {
-            if (this.definitions[name].type !== type) continue;
-            delete this.definitions[name];
+        for (const name in this.references) {
+            if (this.references[name].type !== type) continue;
+            delete this.references[name];
         }
+    }
+    clearScope(proofScope) {
+        this.containers.clearScope(proofScope);
     }
     isReferencedType(type) {
         return type.at(0) === '&'
@@ -119,21 +92,22 @@ module.exports = class References {
     getReferencedType(type) {
         return this.isReferencedType(type) ? type.substring(1):type;
     }
-
-    _getRegisteredType (type) {
-        const reference = this.isReferencedType(type);
-        const finalType = this.getReferencedType(type);
-        const tdata = this.types[finalType];
-        if (typeof tdata === 'undefined') {
-            throw new Error(`unknown type ${type} [${finalType}]`);
+    getTypeDefinition(type) {
+        const typedef = this.types[type] ?? null;
+        if (typedef === null) {
+            throw new Error(`Invalid or unregistered type ${type}`);
         }
-        if (reference) {
-            tdata.reference = true;
-            tdata.referencedType = finalType;
+        return typedef;
+    }
+    getTypeInstance(type) {
+        const typedef = this.types[type] ?? null;
+        if (typedef === null) {
+            throw new Error(`Invalid or unregistered type ${type}`);
         }
-        return tdata;
+        return typedef.instance;
     }
     decodeName (name) {
+        assert(typeof name === 'string');
         const parts = name.split('.');
         let scope = false;
         if (parts.length === 1) {
@@ -145,156 +119,206 @@ module.exports = class References {
         const absoluteScope = isProofScope || isSubproofScope || isAirScope;
         let res = {isProofScope, isSubproofScope, isAirScope, absoluteScope, parts};
         if (absoluteScope) {
+            // if absolute scope (proof, subproof or air) and has more than 2 parts, means at least 3 parts,
+            // the middle part was container.
             if (parts.length > 2) {
                 return {...res, scope: parts[0], name: parts.slice(-1), container: parts.slice(0, -1).join('.')};
             }
-            return {...res, scope: parts[0], static: true, name: parts.slice(1).join('.')};
+            // if absolute, but only 2 or less parts, no container specified.
+            return {...res, scope: parts[0], isStatic: true, name: parts.slice(1).join('.')};
         }
+        // if no absolute scope, could be an alias if it has 2 parts.
         return {...res, scope, name};
     }
-    getArrayAndSize(lengths) {
-        if (lengths && lengths.length) {
-            let array = new MultiArray(lengths);
-            return [array, array.size];
+    normalizeType(type) {
+        if (this.isReferencedType(type)) {
+            return [true, this.getReferencedType(type)];
         }
-        return [false, 1];
+        return [false, type];
     }
-    declare (name, type, lengths = [], data = null, initValue = null) {
+    getGlobalScope(name, useCurrentContainer = true) {
+        const res = this.decodeName(name);
+        if (res.absoluteScope) {
+            if (res.isProofScope) return 'proof';
+            if (res.isSubproofScope) return 'subproof';
+            if (res.isAirScope) return 'air';
+        }
+        if (useCurrentContainer) {
+            this.containers.getCurrent();
+        }
+        return false;
+    }
+    checkAndGetContainer(nameInfo){
+        const container = this.containers.getCurrent();
+        if (container && nameInfo.scope !== false) {
+            throw new Error(`Static reference ${nameInfo.name} inside container not allowed`);
+        }
+        // containers are scope-free.
+        return container;
+    }
+    isStaticDeclaredPreviously(nameInfo, existingReference) {
+        if (!nameInfo.isStatic) return false;
+            // only created and init once
+        if (existingReference) {
+            if (existingReference.isStatic) {
+                return true;
+            }
+            throw new Error(`Static reference ${nameInfo.name} has been defined on non-static scope`);
+        }
+        return false;
+    }
+    prepareScope(nameInfo, type, existingReference) {
+        if (nameInfo.isStatic) {
+            return [Context.scope.declare(nameInfo.name, type, false, nameInfo.scope), nameInfo.scope];
+        }
+
+        const scopeId = this.hasScope(type) ? Context.scope.declare(nameInfo.name, type, existingReference, false) : 0;
+        if (nameInfo.name === 'Main.jmp') {
+            console.log(scopeId);
+            console.log(existingReference);
+            // EXIT_HERE;
+        }
+        // scope(name, def) => exception !!!
+        //                  => scopeId;
+        if (existingReference !== false && this.isVisible(existingReference)) {
+            if  (existingReference.scopeId === scopeId || existingReference.scope === false || scopeId === false) {
+                throw new Error(`At ${Context.sourceRef} is defined ${nameInfo.name}, but ${existingReference.name} as ${existingReference.type} was defined previously on ${existingReference.data.sourceRef}`)
+            }
+        }
+        return [scopeId, false];
+    }
+    declare(name, type, lengths = [], options = {}, initValue = null) {
         assert(typeof name === 'string');
         assert(!name.includes('::object'));
         assert(!name.includes('.object'));
 
         const nameInfo = this.decodeName(name);
-        console.log(`DECLARE_REFERENCE ${name} ==> ${nameInfo.name} ${type} []${lengths.length} scope:${nameInfo.scope} #${this.scope.deep}`, data);
+        if (name === 'Main.jmp') { console.log(nameInfo); }
+        // console.log(`DECLARE_REFERENCE ${name} ==> ${nameInfo.name} ${type} ${lengths.length ? '[' + lengths.join(',') + '] ': ''}scope:${nameInfo.scope} #${Context.scope.deep} ${initValue}[type: ${initValue instanceof Object ? initValue.constructor.name : typeof initValue}]`, options);
 
-        let [array, size] = this.getArrayAndSize(lengths);
+        let [array, size] = Reference.getArrayAndSize(lengths);
+        if (Debug.active) console.log(name, lengths, array, size);
 
-        const def = this.definitions[nameInfo.name];
-        let scopeId;
+        let refname = nameInfo.name;
+        let internalReference = false;
+        if (nameInfo.absoluteScope === false && nameInfo.parts.length === 2) {
+            const _ref = this.references[nameInfo.parts[1]] ?? false;
+            internalReference = _ref;
+        }
+        const existingReference = this.references[nameInfo.name] ?? internalReference;
+        // When reference is reference to other reference, caller put & before type name (ex: &int)
+
+        const [isReference, finalType] = this.normalizeType(type);
+
+        let scopeId = 0;
         let scope = false;
 
-        if (this.currentContainer !== false) {
-            if (nameInfo.scope !== false) {
-                throw new Error(`Static reference ${name} inside container not allowed`);
+        const container = this.checkAndGetContainer(nameInfo);
+        if (!container) {
+            if (this.isStaticDeclaredPreviously(nameInfo, existingReference)) {
+                return existingReference.getId();
             }
-        } else if (nameInfo.static) {
-            // only created and init once
-            if (def) {
-                if (!def.static) {
-                    throw new Error(`Static reference ${name} has been defined on non-static scope`);
-                }
-                // nothing to do (important: static scope)
-                return def.locator;
-            }
-            scope = nameInfo.scope;
-            scopeId = this.scope.declare(nameInfo.name, type, false, scope);
-        } else {
-            scopeId = this.hasScope(type) ? this.scope.declare(nameInfo.name, type, def ?? false, scope) : 0;
-
-            // scope(name, def) => exception !!!
-            //                  => scopeId;
-            if (typeof def !== 'undefined' && def.scopeId === scopeId) {
-                throw new Error(`${name} was defined previously on ${def.data.sourceRef}`)
-            }
+            [scopeId, scope] = this.prepareScope(nameInfo, finalType, existingReference);
         }
-        // When reference is reference to other reference, caller put & before type name (ex: &int)
-        const reference = this.isReferencedType(type);
 
-        const tdata = reference ? {} : this._getRegisteredType(type);
-        const id = reference ? null : tdata.instance.reserve(size, nameInfo.name, array, data);
-        const cdef = {
-            type,
-            array,
-            reference,
-            referencedType: reference ? type.substring(1) : false,       // to define valid referenced type
-            locator: id,
-            scopeId,
-            scope,
-            container: this.currentContainer,
-            static: nameInfo.static ?? false,
-            data
-        }
-        if (this.currentContainer === false) {
-            this.definitions[nameInfo.name] = cdef;
+        const instance = this.getTypeInstance(finalType);
+
+        /* take constant property from options, the rest is data information */
+        const constProperty = options.const ?? false;
+        let data = {...options};
+        delete data.const;
+
+        const refProperties = {container, scope, isStatic: nameInfo.isStatic, data, const: constProperty};
+
+
+        // TODO: reserve need array for labels?
+        const id = isReference ? null : instance.reserve(size, nameInfo.name, array, data);
+
+        const reference = new Reference(nameInfo.name, type, isReference, array, id, instance, scopeId, refProperties);
+
+        if (container) {
+            this.containers.addReference(nameInfo.name, reference);
         } else {
-            console.log(name);
-            console.log(`ADD TO CONTAINER ${this.currentContainer} ${nameInfo.name}`);
-            if (name === 'Byte4.gsum_result') EXIT_HERE;
-            this.containers[this.currentContainer].definitions[nameInfo.name] = cdef;
+            this.references[nameInfo.name] = reference;
         }
 
         if (initValue !== null) {
-            this.set(nameInfo.name, [], initValue);
+            if (Debug.active) {
+                if (initValue && typeof initValue.toString === 'function') console.log(initValue.toString());
+                else console.log(initValue);
+            }
+            reference.init(initValue);
         }
         return id;
     }
     isDefined(name, indexes = []) {
-        let def = this.getDefinition(name, false);
-        let found = Boolean(def);
-        /*
-        const names = this.context.getNames(name);
-        let found = false;
-        let def;
-        for (const _name of names) {
-            def = this.definitions[_name] ?? false;
-            if (def) {
-                found = _name;
-                break;
-            }
-        }
-
-        console.log(def);
-        console.log(this.visibilityScope);
-        if (def.scopeId && def.type !== 'constant' && def.scopeId < this.visibilityScope) {
-            return false;
-        }
-*/
-        if (found !== false) {
-            if (Array.isArray(indexes) && indexes.length > 0) {
-                return def.array ? def.array.isValidIndexes(indexes) : false;
-            }
-            return true;
-        }
-
-        return false;
+        const reference = this.getReference(name, false);
+        if (!reference) return false;
+        return reference.isValidIndexes(indexes);
     }
     hasScope(type) {
         // TODO: inside function ??
-        // TODO: col reference
-        // return ['im', 'witness', 'fixed', 'public', 'prover', 'challenge'].includes(type) === false;
-        return ['public', 'proofvalue', 'challenge', 'subproofvalue'].includes(type) === false;
+        return ['public', 'proofvalue', 'challenge', 'subproofvalue', 'publictable'].includes(type) === false;
     }
 
     get (name, indexes = []) {
-        const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        return instance.get(info.locator + info.offset);
+        assertLog(typeof name === 'string', name);
+        if (Debug.active) console.log('GET', name, indexes);
+
+        // getReference produce an exception if name not found
+        return this.getReference(name).get(indexes);
     }
     getIdRefValue(type, id) {
-        const tdata = this._getRegisteredType(type);
-        return tdata.instance.getTypedValue(id);
+        return this.getTypeDefinition(type).instance.getItem(id);
     }
     getLabel(type, id, options) {
-        const instance = this.types[type].instance;
-        return instance.getLabel(id, {type, ...options});
+        return this.getTypeDefinition(type).instance.getLabel(id, {type, ...options});
     }
     getTypeR(name, indexes, options) {
-        const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        return [instance.getType(info.locator + info.offset), info.reference, info.array ?? false];
+        const reference = this.getReference(name);
+        const item = reference.getItem(indexes);
+        return [item, reference.isReference];
     }
-    getTypedValue (name, indexes, options) {
+    getItem(name, indexes, options) {
+
+        assert(typeof name === 'string' || (Array.isArray(name) && name.length > 0));
+
+        if (Debug.active) console.log(indexes);
         indexes = indexes ?? [];
         options = options ?? {};
 
-        if (typeof indexes === 'undefined') indexes = [];
+        const reference = this.getReference(name);
+        // TODO: if reference is a 'reference' check if name is correct
+        const item = reference.getItem(indexes, {...options, label: reference.name});
+
+        if (options.preDelta) {
+            EXIT_HERE;
+            console.log(typeof tvalue.value);
+            assert(typeof tvalue.value === 'number' || typeof tvalue.value === 'bigint');
+            tvalue.value += options.preDelta;
+            instance.set(info.locator + info.offset, tvalue.value);
+        }
+        if (options.postDelta) {
+            EXIT_HERE;
+            assert(typeof tvalue.value === 'number' || typeof tvalue.value === 'bigint');
+            instance.set(info.locator + info.offset, tvalue.value + options.postDelta);
+        }
+        return item;
 
         const [instance, info, def] = this._getInstanceAndLocator(name, indexes);
         let tvalue;
         if (info.array) {
             // array info, could not be resolved
-            tvalue = {type: info.type ?? def.type, id: info.locator + info.offset };
+            console.log('***** ARRAY ******');
+            tvalue = new ArrayOf(instance.cls, info.locator + info.offset, info.type ?? def.type, instance);
         } else {
             // no array could be resolved
+            console.log([instance.constructor.name, info.type]);
             tvalue = instance.getTypedValue(info.locator + info.offset, 0, info.type);
+        }
+        // TODO: review
+        if (info.type !== 'function') {
+            assertLog(tvalue instanceof ExpressionItem, {name, infotype: info.type, tvalue});
         }
         if (typeof info.row !== 'undefined') {
             tvalue.row = info.row;
@@ -329,101 +353,164 @@ module.exports = class References {
         }
         return tvalue;
     }
+    _getTypedValue (name, indexes, options) {
+        indexes = indexes ?? [];
+        options = options ?? {};
+
+        if (typeof indexes === 'undefined') indexes = [];
+
+        const [instance, info, def] = this._getInstanceAndLocator(name, indexes);
+        let tvalue;
+        if (info.array) {
+            // array info, could not be resolved
+            console.log('***** ARRAY ******');
+            tvalue = new ArrayOf(instance.cls, info.locator + info.offset, info.type ?? def.type, instance);
+        } else {
+            // no array could be resolved
+            console.log([instance.constructor.name, info.type]);
+            tvalue = instance.getTypedValue(info.locator + info.offset, 0, info.type);
+        }
+        // TODO: review
+        if (info.type !== 'function') {
+            assertLog(tvalue instanceof ExpressionItem, {name, infotype: info.type, tvalue});
+        }
+        if (typeof info.row !== 'undefined') {
+            tvalue.row = info.row;
+        }
+        if (!info.array) {
+            tvalue.id = info.locator;
+        }
+        if (options.full) {
+            tvalue.locator = info.locator;
+            tvalue.instance = instance;
+            tvalue.offset = info.offset;
+        }
+        if (info.dim) {
+            tvalue.dim = info.dim;
+//            tvalue.arrayType = info.arrayType;
+            tvalue.lengths = info.lengths;
+        }
+        if (info.array) {
+            tvalue.dim = 'DEPRECATED';
+            tvalue.lengths = 'DEPRECATED';
+            tvalue.array = info.array;
+        }
+        if (options.preDelta) {
+            if (Debug.active) console.log(typeof tvalue.value);
+            assert(typeof tvalue.value === 'number' || typeof tvalue.value === 'bigint');
+            tvalue.value += options.preDelta;
+            instance.set(info.locator + info.offset, tvalue.value);
+        }
+        if (options.postDelta) {
+            assert(typeof tvalue.value === 'number' || typeof tvalue.value === 'bigint');
+            instance.set(info.locator + info.offset, tvalue.value + options.postDelta);
+        }
+        return tvalue;
+    }
     getTypeInfo (name, indexes = []) {
         return this._getInstanceAndLocator(name, indexes);
     }
     addUse(name) {
-        if (!this.containers[name]) {
-            // TODO: defined must be check containers
-            throw new Exception(`Use not created container ${name}`);
-        }
-        this.scope.addToScopeProperty('uses', name);
-        this.uses.push(name);
+        this.containers.addUse(name);
     }
     searchDefinition(name) {
         const subnames = name.split('.');
-        const container = subnames.length > 1 ? subnames.slice(0, -1).join('.') : false;
+        const explicitContainer = subnames.length > 1 ? subnames.slice(0, -1).join('.') : false;
         const lname = subnames[subnames.length - 1];
 
-        if (name === 'air.gw1') {
-            console.log({subnames, container, lname});
-        }
-        let def = false;
-
-        if (this.currentContainer !== false && !container) {
-            def = this.containers[this.currentContainer].definitions[lname];
-        }
-        if (!def && container) {
-            if (['proof', 'subproof', 'air'].includes(container)) {
-                const scopeId = this.scope.getScopeId(container);
-                if (name === 'air.gw1') {
-                    console.log(scopeId);
-                }
+        let reference = false;
+        if (!explicitContainer) {
+            reference = this.containers.getReferenceInsideCurrent(lname, false);
+        } else {
+            if (['proof', 'subproof', 'air'].includes(explicitContainer)) {
+                const scopeId = Context.scope.getScopeId(explicitContainer);
                 if (scopeId === false) {
-                    throw new Error(`not found scope ${container}`);
+                    throw new Error(`not found scope ${explicitContainer}`);
                 }
-                def = this.definitions[lname];
-                if (name === 'air.gw1') {
-                    console.log(def);
+                reference = this.references[lname];
+                if (explicitContainer === 'air' && !reference) {
+                    reference = this.references[Context.airName+'.'+lname];
                 }
-                if (def && def.scopeId !== scopeId) {
-                    throw new Error(`Not match declaration scope and accessing scope (${container}) of ${name}`);
+                if (reference && reference.scopeId !== scopeId) {
+                    throw new Error(`Not match declaration scope and accessing scope (${containerName}) of ${name}`);
                 }
             }
-            if (!def && this.containers[container]) {
-                def = this.containers[container].definitions[lname];
+            if (!reference && this.containers.isDefined(explicitContainer)) {
+                reference = this.containers.getReferenceInside(explicitContainer, lname, false);
             }
         }
-        if (!def) {
-            def = this.definitions[name];
+        if (!reference) {
+            reference = this.references[name] ?? false;
         }
-        let iuse = this.uses.length;
-        while (!def && iuse > 0) {
-            --iuse;
-            def = this.containers[this.uses[iuse]].definitions[name];
+        if (!reference) {
+            this.containers.getReference(name, false);
         }
-        return def;
+        return reference;
     }
     isVisible(def) {
-        return !def.scopeId || def.type === 'constant' || def.scopeId >= this.visibilityScope; // || def.scopeId <= this.scope.getScopeId('air');
+        if (Debug.active) console.log('ISVISIBLE', (def.constructor ?? {name: '_'}).name, def);
+        return !def.scopeId || !this.hasScope(def.type) || ['constant', 'function'].includes(def.type) ||
+                def.scopeId >= this.visibilityScope; // || def.scopeId <= Context.scope.getScopeId('air');
     }
-    getDefinition(name, defaultValue) {
-        // debugger;
-        const nameInfo = this.decodeName(Array.isArray(name) ? name[0]:name);
-        let names;
+    /**
+     *
+     * @param {string|string[]} name
+     * @param {*} defaultValue
+     * @param {Object} debug
+     * @returns {Reference}
+     */
+    getReference(name, defaultValue, debug = {}) {
+        // if more than one name is sent, use the first one (mainName). Always first name it's directly
+        // name defined on source code, second optionally could be name with subproof, because as symbol is
+        // stored with full name.
+        const mainName = Array.isArray(name) ? name[0]:name;
+        const nameInfo = this.decodeName(mainName);
+        let names = false;
+
         if (nameInfo.scope !== false) {
-            names = [Array.isArray(name) ? name[0]:name];
+            // if scope is specified on mainName, the other names don't make sense
+            names = [mainName];
         } else if (!nameInfo.absoluteScope && nameInfo.parts.length == 2) {
-            // console.log(['getScopeAlias',nameInfo.parts[0]]);
-            const container = this.getAlias(nameInfo.parts[0], {container: false}).container;
+            // absoluteScope means that first scope was proof, subproof or air. If a non absolute
+            // scope is defined perhaps was an alias.
+            const container = this.containers.getFromAlias(nameInfo.parts[0], false);
             if (container) {
+                // if it's an alias associated with container, replace alias with
+                // container associated.
                 names = [container + '.' + nameInfo.parts.slice(1).join('.')];
             }
         }
+
+        if (Debug.active) console.log(names);
         if (!names) {
-            names = this.context.getNames(name);
+            names = Context.current.getNames(name);
         }
-        // console.log(`getDefinition(${name}) on ${this.context.sourceRef} = [${names.join(', ')}]`);
-        let def;
+
+        if (Debug.active) console.log(names);
+        // console.log(`getReference(${name}) on ${this.context.sourceRef} = [${names.join(', ')}]`);
+        let reference = false;
 
         for (const name of names) {
-            def = this.searchDefinition(name);
-            if (typeof def !== 'undefined') break;
+            reference = this.searchDefinition(name);
+            if (reference) break;
         }
-        if (typeof def === 'undefined') {
-            if (typeof defaultValue !== 'undefined') return defaultValue;
-            throw new Error(`Reference ${names.join(',')} not found`);
+        if (!reference) {
+             if (typeof defaultValue !== 'undefined') return defaultValue;
+            throw new Exceptions.ReferenceNotFound(names.join(','));
         }
 
         // constants are visible inside functions
-        if (this.isVisible(def) === false) {
+        if (!nameInfo.absoluteScope && this.isVisible(reference) === false) {
+            console.log(reference);
+            console.log(name);
+            console.log(nameInfo);
             if (typeof defaultValue !== 'undefined') return defaultValue;
-            throw new Error(`Reference ${names.join(',')} not visible from current scope`);
+            throw new Exceptions.ReferenceNotVisible(names.join(','));
         }
-        return def;
+        return reference;
     }
     _getInstanceAndLocator (name, indexes) {
-        const def = this.getDefinition(name);
+        const def = this.getReference(name);
         // TODO: partial access !!!
         // TODO: control array vs indexes
         const tdata = this._getRegisteredType(def.type);
@@ -451,69 +538,72 @@ module.exports = class References {
         return [tdata.instance, {locator: def.locator, ...extraInfo}, def];
     }
     getReferenceType (name) {
-        let dest = this.getDefinition(name);
-        return dest.type ?? false;
+        return this.getReference(name, {type: false}).type;
     }
     setReference (name, value) {
-        let dest = this.getDefinition(name);
-        const _value = value instanceof Expression ? value.getAloneOperand() : value;
+        let reference = this.getReference(name);
         // TODO: reference not knows operand types
-        if (_value.type === 3) {
-            assert(!_value.next);
-            if (_value.op === 'reference') {
-                assert(!_value.array);
-                const src = this.getDefinition(_value.name);
+        if (value instanceof Expression) {
+            value = value.getAloneOperand();
+            if (value instanceof ReferenceItem) {
+                assert(!value.next);
+                assert(!value.array);
+                const src = this.getReference(value.name);
                 if (src.array) {
-                    const __array = src.array.getIndexesTypedOffset(_value.__indexes);
-                    dest.array = __array.array;
-                    dest.locator = src.locator + __array.offset;
+                    const __array = src.array.getIndexesTypedOffset(value.__indexes);
+                    reference.array = __array.array;
+                    reference.locator = src.locator + __array.offset;
 
                 } else {
-                    dest.array = false;
-                    dest.locator = src.locator;
+                    reference.array = false;
+                    reference.locator = src.locator;
                 }
-                dest.type = src.type;
-                dest.scope = src.scope;
-                dest.scopeId = src.scopeId;
-            } else if (_value.op === 'idref') {
-                dest.locator = _value.id;
-                dest.type = _value.refType;
-                dest.scope = false;
-                dest.scopeId = false;
-                dest.array = _value.array;
+                reference.type = src.type;
+                reference.scope = src.scope;
+                reference.scopeId = src.scopeId;
+            } else if (value instanceof ProofItem) {
+                reference.locator = value.id;
+                reference.type = value.refType;
+                reference.scope = false;
+                reference.scopeId = false;
+                reference.array = value.array;
             }
+        } else if (value instanceof ProofItem) {
+            assert(!value.__next);
+            reference.locator = value.id;
+            reference.type = value.refType;
         } else {
-            assert(_value.type == 1);
-            assert(!_value.__next);
-            dest.locator = _value.id;
-            dest.type = _value.refType;
+            throw new Error(`Invalid reference`);
         }
     }
-    restore (name, cdef) {
-        this.definitions[name] = cdef;
+    restore (name, reference) {
+        this.references[name] = reference;
     }
     set (name, indexes, value) {
-        // console.log({name, indexes, value});
-        // if (name === 'N_MAX') debugger;
-        const [instance, info] = this._getInstanceAndLocator(name, indexes);
-        return instance.set(info.locator + info.offset, value);
-    }
+        if (Debug.active) console.log('SET', name, indexes, value);
+        assert(value !== null); // to detect obsolete legacy uses
 
+        // getReference produce an exception if name not found
+        const reference = this.getReference(name);
+        reference.set(value, indexes);
+    }
     unset(name) {
-        let def = this.definitions[name];
+        let def = this.references[name];
         if (def.array) delete def.array;
-        delete this.definitions[name];
+        delete this.references[name];
     }
-
+    unsetProperty(property, values) {
+        this.containers.unsetProperty(property, values);
+    }
     *[Symbol.iterator]() {
-        for (let index in this.definitions) {
+        for (let index in this.references) {
           yield index;
         }
     }
 
     *keyValuesOfTypes(types) {
-        for (let index in this.definitions) {
-            const def = this.definitions[index];
+        for (let index in this.references) {
+            const def = this.references[index];
             // console.log({index, ...def});
             if (!types.includes(def.type)) continue;
             yield [index, def];
@@ -521,19 +611,19 @@ module.exports = class References {
     }
 
     *values() {
-        for (let index in this.definitions) {
-            yield this.definitions[index];
+        for (let index in this.references) {
+            yield this.references[index];
         }
     }
 
     *keyValues() {
-        for (let index in this.definitions) {
-            yield [index, this.definitions[index]];
+        for (let index in this.references) {
+            yield [index, this.references[index]];
         }
     }
     dump () {
-        for (let name in this.definitions) {
-            const def = this.definitions[index];
+        for (let name in this.references) {
+            const def = this.references[index];
             const indexes = def.array === false ? '': def.multiarray.getLengths().join(',');
             // console.log(`${name.padEnd(30)}|${def.type.padEnd(10)}|${indexes}`);
         }

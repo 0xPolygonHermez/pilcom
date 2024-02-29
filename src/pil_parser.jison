@@ -8,6 +8,7 @@
 \s+                                         { /* skip whitespace */ }
 \/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+\/ { /* console.log("MULTILINE COMMENT: "+yytext); */  }
 \/\/.*                                      { /* console.log("SINGLE LINE COMMENT: "+yytext); */ }
+\#pragma\s+[^\r\n]*                         { yytext = yytext.replace(/^#pragma\s+/, ''); return 'PRAGMA'; }
 
 col                                         { return 'COL'; }
 witness                                     { return 'WITNESS'; }
@@ -61,6 +62,7 @@ return                                      { return 'RETURN' }
 first                                       { return 'FIRST' }
 last                                        { return 'LAST' }
 frame                                       { return 'FRAME' }
+debugger                                    { return 'DEBUGGER' }
 
 \.\.\+\.\.                                  { return 'DOTS_ARITH_SEQ' }
 \.\.\*\.\.                                  { return 'DOTS_GEOM_SEQ' }
@@ -165,10 +167,12 @@ frame                                       { return 'FRAME' }
 const DEFAULT_STAGE = 1;
 const util = require('util');
 const Expression = require('../src/expression.js');
+const ExpressionFactory = require('../src/expression_factory.js');
 
 function showcode(title, info) {
     console.log(title+` ${info.last_line}:${info.last_column}`);
 }
+/*
 function runtime_expr(value) {
     let res = new Expression();
     if (value.type) {
@@ -186,8 +190,30 @@ function insert_expr(e, op, ...values) {
     // console.log(values);
     e.insert.apply(e, [op, ...values]);
     return e;
-}
+}*/
 //         console.log(`STATE ${state} ${(this.terminals_[symbol] || symbol)}`);
+function implicit_scope(statements) {
+    if (Array.isArray(statements)) {
+        if (statements.length > 1) {
+            return {type: 'scope_definition', statements};
+        }
+        statements = statements[0];
+    }
+    if (typeof statements.type === 'undefined') {
+        return {type: 'scope_definition', ...statements};
+    }
+    if (statements.type === 'code') {
+        statements.type = 'scope_definition';
+        if (!Array.isArray(statements.statements)) {
+            statements.statements = [statements.statements];
+        }
+        return statements;
+    }
+    if (statements.type === 'scope_definition') {
+        return statements;
+    }
+    return {type: 'scope_definition',  statements};
+}
 %}
 
 %start all_top_level_blocks
@@ -245,8 +271,17 @@ top_level_block
     | subproof_value_declaration
         { $$ = $1 }
 
-    | constant_definition
+/*    | constant_definition
         { $$ = $1 }
+*/
+    | variable_declaration
+        { $$ = $1 }
+
+    | DEBUGGER
+        { $$ = { type: 'debugger' }}
+
+    | PRAGMA
+        { $$ = { type: 'pragma', value: $1 }}
     ;
 
 use_directive
@@ -559,9 +594,9 @@ declare_item
     | subproof_value_declaration
         { $$ = $1 }
 
-    | constant_definition
+/*    | constant_definition
         { $$ = $1 }
-
+*/
     | variable_declaration
         { $$ = $1 }
     ;
@@ -583,7 +618,7 @@ statement_no_closed
         { $$ = { type: 'constraint', left: $1, right: $3 } }
 
     | delayed_function_call
-        { $$ = {...$1, type: 'delayed_function_call'} }
+        { $$ = $1 }
 
     | include_directive
         { $$ = $1 }
@@ -627,13 +662,13 @@ data_object
         { $$ = $1; $$.data[$3] = $5 }
 
     | data_object ',' IDENTIFIER
-        { $$ = $1; $$.data[$3] = runtime_expr({ type: 'expr', op: 'reference', next: false, name: $3 }) }
+        { $$ = $1; $$.data[$3] = ExpressionFactory.fromObject({type: 'reference', name: $3 }) }
 
     | IDENTIFIER ':' data_value
         { $$ = { type: 'object', data: {}}; $$.data[$1] = $3 }
 
     | IDENTIFIER
-        { $$ = { type: 'object', data: {}}; $$.data[$1] = runtime_expr({ type: 'expr', op: 'reference', next: false, name: $1 }) }
+        { $$ = {data: {}}; $$.data[$1] = ExpressionFactory.fromObject({type: 'reference', name: $1 }) }
     ;
 
 data_array
@@ -646,7 +681,7 @@ data_array
 
 function_call
     : name_optional_index '(' multiple_expression_list ')'
-        { $$ = { op: 'call', function: $1, arguments: $3.values } }
+        { $$ = { type: 'call', function: $1, args: $3 } }
     ;
 
 delayed_function_event
@@ -669,7 +704,7 @@ defined_scopes
 
 delayed_function_call
     : ON delayed_function_event defined_scopes name_optional_index '(' multiple_expression_list ')'
-        { $$ = { op: 'delayed_call', event: $2, scope: $3, function: $4, arguments: $6.values } }
+        { $$ = { type: 'delayed_function_call', event: $2, scope: $3, function: $4, args: $6 } }
     ;
 
 
@@ -721,21 +756,28 @@ codeblock_closed
         { $$ = { ...$2, type: 'once', statements: $3 } }
 
     | SWITCH '(' expression ')' case_body
-        { $$ = $1 }
+        { $$ = { type: 'switch', value: $3, cases: $5.cases } }
 
     | IF '(' expression ')' non_delimited_statement %prec IF_NO_ELSE
         { $$ = {type:'if', conditions: [{type: 'if', expression: $3, statements: $5 }] } }
 
     | IF '(' expression ')' non_delimited_statement ELSE non_delimited_statement
         { $$ = { type:'if', conditions: [{type: 'if', expression: $3, statements: $5 }, {type: 'else', statements: $7}]} }
+
+    | DEBUGGER
+        { $$ = { type: 'debugger' }}
+    
+    | PRAGMA
+        { $$ = { type: 'pragma', value: $1 }}
+
     ;
 
 case_body
     : '{' case_list '}'
         { $$ = $2 }
 
-    | '{' case_list DEFAULT statement_list '}'
-        { $$ = $2; $$.cases.push({ else: true, statements: $4 }) }
+    | '{' case_list DEFAULT ':' statement_list '}'
+        { $$ = $2; $$.cases.push({ default: true, statements: implicit_scope($5) }) }
     ;
 
 case_value
@@ -754,10 +796,10 @@ case_value
 
 case_list
     : case_list CASE case_value ':' statement_list_closed
-        { $$ = $1; $$.cases.push({condition: $3, statements: $5 }) }
+        { $$ = $1; $$.cases.push({condition: $3, statements: implicit_scope($5.statements) }) }
 
     | CASE case_value ':' statement_list_closed
-        { $$ = {cases: [{ condition: $2, statements: $4 }]} }
+        { $$ = {cases: [{ condition: $2, statements: implicit_scope($4.statements) }]} }
     ;
 
 for_assignation
@@ -1060,30 +1102,35 @@ sequence
 
 multiple_expression_list
     : %empty    %prec EMPTY
-        { $$ = {values: []} }
+        { $$ = ExpressionFactory.fromObject({ type: 'expression_list', values: [], __debug: 0 }); }
 
     | multiple_expression_list ',' expression %prec ','
-        { $$ = $1; $$.values.push($3) }
+        { $$ = $1; $$.pushItem(ExpressionFactory.fromObject($3)); }
 
     | multiple_expression_list ',' '[' expression_list ']' %prec ','
-        { $$ = $1; $$.values.push({ type: 'expression_list', values: $4.values }) }
+        { $$ = $1; $$.pushItem(ExpressionFactory.fromObject($4)); }
+//        { $$ = $1; $$.pushItem(ExpressionFactory.fromObject({ type: 'expression_list', values: $4.values, __debug: 1 })); }
 
     | '[' expression_list ']' %prec NO_EMPTY
-        { $$ = { type: 'expression_list', values: $2.values } }
+        { $$ = ExpressionFactory.fromObject({ type: 'expression_list', values:
+                    [ExpressionFactory.fromObject($2)], __debug: 4}); }
+//                    [ExpressionFactory.fromObject({ type: 'expression_list', values: [$2.values], __debug: 2})], __debug: 4}); console.log('A',$$) }
 
     | expression
-        { $$ = { type: 'expression_list', values: [$1] } }
+        { $$ = ExpressionFactory.fromObject({ type: 'expression_list', values: [$1], __debug: 3 }); }
     ;
 
 expression_list
     : expression_list ',' DOTS_FILL expression %prec ','
-        { $$ = $1; $$.values.push({ type: 'append', value: $4 }) }
+//        { $$ = $1; $$.values.push({ type: 'append', value: $4 }) }
+        { $$ = $1; $$.values.push($4.insert('spread')) }
 
     | expression_list ',' expression %prec ','
         { $$ = $1; $$.values.push($3) }
 
     | DOTS_FILL expression
-        { $$ = { type: 'expression_list',  values: [{ type: 'append', value: $2}] } }
+//        { $$ = { type: 'expression_list',  values: [{ type: 'append', value: $2}] } }
+        { $$ = { type: 'expression_list',  values: [$2.insert('spread')] } }
 
     | expression
         { $$ = { type: 'expression_list',  values: [$1] } }
@@ -1218,115 +1265,116 @@ constant_definition
 /* */
 expression
     : expression EQ expression
-        { $$ = insert_expr($1, 'eq', $3) }
+        { $$ = $1.insert('eq', ExpressionFactory.fromObject($3)) }
 
     | expression NE expression
-        { $$ = insert_expr($1, 'ne', $3) }
+        { $$ = $1.insert('ne', ExpressionFactory.fromObject($3)) }
 
     | expression LT expression
-        { $$ = insert_expr($1, 'lt', $3) }
+        { $$ = $1.insert('lt', ExpressionFactory.fromObject($3)) }
 
     | expression GT expression
-        { $$ = insert_expr($1, 'gt', $3) }
+        { $$ = $1.insert('gt', ExpressionFactory.fromObject($3)) }
 
     | expression LE expression
-        { $$ = insert_expr($1, 'le', $3) }
+        { $$ = $1.insert('le', ExpressionFactory.fromObject($3)) }
 
     | expression GE expression
-        { $$ = insert_expr($1, 'ge', $3) }
+        { $$ = $1.insert('ge', ExpressionFactory.fromObject($3)) }
 
     | expression IN expression %prec IN
-        { $$ = insert_expr($1, 'in', $3) }
+        { $$ = $1.insert('in', ExpressionFactory.fromObject($3)) }
 
     | expression IS return_type %prec IS
-        { $$ = insert_expr($1, 'is', runtime_expr({op: 'type', vtype: $3.type, dim: $3.dim})) }
+        { $$ = $1.insert('is', ExpressionFactory.fromObject({type: 'istype', vtype: $3.type, dim: $3.dim})); }
 
     | expression AND expression %prec AND
-        { $$ = insert_expr($1, 'and', $3) }
+        { $$ = $1.insert('and', ExpressionFactory.fromObject($3)) }
 
     | expression '?' expression ':' expression %prec '?'
-        { $$ = insert_expr($1, 'if', $3, $5) }
+        { $$ = $1.insert('if', [ExpressionFactory.fromObject($3), ExpressionFactory.fromObject($5)]) }
+//        { $$ = $1.insert('if', ExpressionFactory.fromObjects($3, $5)) }
 
     | expression B_AND expression %prec AND
-        { $$ = insert_expr($1, 'band', $3) }
+        { $$ = $1.insert('band', ExpressionFactory.fromObject($3)) }
 
     | expression B_OR expression %prec AND
-        { $$ = insert_expr($1, 'bor', $3) }
+        { $$ = $1.insert('bor', ExpressionFactory.fromObject($3)) }
 
     | expression B_XOR expression %prec AND
-        { $$ = insert_expr($1, 'bxor', $3) }
+        { $$ = $1.insert('bxor', ExpressionFactory.fromObject($3)) }
 
     | expression OR expression %prec OR
-        { $$ = insert_expr($1, 'or', $3) }
+        { $$ = $1.insert('or', ExpressionFactory.fromObject($3)) }
 
     | expression SHL expression %prec AND
-        { $$ = insert_expr($1, 'shl', $3) }
+        { $$ = $1.insert('shl', ExpressionFactory.fromObject($3)) }
 
     | expression SHR expression %prec OR
-        { $$ = insert_expr($1, 'shr', $3) }
+        { $$ = $1.insert('shr', ExpressionFactory.fromObject($3)) }
 
     | '!' expression %prec '!'
-        { $$ = insert_expr($2, 'not') }
+        { $$ = $2.insert('not') })
 
     | expression '+' expression %prec '+'
-        { $$ = insert_expr($1, 'add', $3) }
+        { $$ = $1.insert('add', ExpressionFactory.fromObject($3)) }
 
     | expression '-' expression %prec '-'
-        { $$ = insert_expr($1, 'sub', $3) }
+        { $$ = $1.insert('sub', ExpressionFactory.fromObject($3)) }
 
     | expression '*' expression %prec '*'
-        { $$ = insert_expr($1, 'mul', $3) }
+        { $$ = $1.insert('mul', ExpressionFactory.fromObject($3)) }
 
     | expression '%' expression %prec '%'
-        { $$ = insert_expr($1, 'mod', $3) }
+        { $$ = $1.insert('mod', ExpressionFactory.fromObject($3)) }
 
     | expression '/' expression %prec '/'
-        { $$ = insert_expr($1, 'div', $3) }
+        { $$ = $1.insert('div', ExpressionFactory.fromObject($3)) }
 
     | expression '\\' expression %prec '\\'
-        { $$ = insert_expr($1, 'intdiv', $3) }
+        { $$ = $1.insert('intdiv', ExpressionFactory.fromObject($3)) }
 
     | expression POW expression %prec POW
-        { $$ = insert_expr($1, 'pow', $3) }
+        { $$ = $1.insert('pow', ExpressionFactory.fromObject($3)) }
 
     | '+' expression %prec UPLUS
         { $$ = $2 }
 
     | '-' expression %prec UMINUS
-        { $$ = insert_expr($2, 'neg') }
+        { $$ = $2.insert('neg') }
 
-    | name_id %prec EMPTY
-        { $$ = runtime_expr({ type: 'expr', op: 'reference', next: false, ...$1 }) }
+    | name_id
+        { $$ = ExpressionFactory.fromObject({ type: 'reference', ...$1 }) }
 
     | INC name_id
-        { $$ = runtime_expr({ type: 'expr', op: 'reference', next: false, ...$2, inc: 'pre'}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'reference', ...$2, inc: 'pre'}) }
 
     | DEC name_id
-        { $$ = runtime_expr({ type: 'expr', op: 'reference', next: false, ...$2, dec: 'pre'}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'reference', ...$2, dec: 'pre'}) }
 
     | name_id INC %prec INC_LEFT
-        { $$ = runtime_expr({ type: 'expr', op: 'reference', next: false, ...$1, inc: 'post'}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'reference', ...$1, inc: 'post'}) }
 
     | name_id DEC %prec DEC_LEFT
-        { $$ = runtime_expr({ type: 'expr', op: 'reference', next: false, ...$1, dec: 'post'}) }
+        { $$ = ExpressionFactory.fromObject({ type: 'reference', ...$1, dec: 'post'}) }
 
     | NUMBER %prec EMPTY
-        { $$ = new Expression(); $$.setValue(BigInt($1)) }
+        { $$ = ExpressionFactory.fromObject({ type: 'number', value: BigInt($1)}) }
 
     | flexible_string %prec EMPTY
-        { $$ = runtime_expr({...$1, op: 'string'}) }
+        { $$ = ExpressionFactory.fromObject({...$1, type: 'string'}) }
 
     | '(' expression ')'
         { $$ = $2 }
 
     | function_call
-        { $$ = runtime_expr({...$1}) }
+        { $$ = ExpressionFactory.fromObject({...$1}) }
 
     | POSITIONAL_PARAM
-        { $$ = runtime_expr({position: $1, op: 'positional_param'}) }
+        { $$ = ExpressionFactory.fromObject({position: $1, type: 'positional_param'}) }
 
     | casting
-        { $$ = runtime_expr({...$1}) }
+        { $$ = ExpressionFactory.fromObject({...$1}) }
     ;
 
 
@@ -1334,60 +1382,62 @@ expression
 
 casting
     : INT '(' expression ')'
-        { $$ = { op: 'cast', cast: 'int', value: $3} }
+        { $$ = { type: 'cast', cast: 'int', value: $3} }
 
     | FE '(' expression ')'
-        { $$ = { op: 'cast', cast: 'fe', value: $3 } }
+        { $$ = { type: 'cast', cast: 'fe', value: $3 } }
 
     | EXPR '(' expression ')'
-        { $$ = { op: 'cast', cast: 'expr', value: $3 } }
+        { $$ = { type: 'cast', cast: 'expr', value: $3 } }
 
     | COL '(' expression ')'
-        { $$ = { op: 'cast', cast: 'col', value: $3 } }
+        { $$ = { type: 'cast', cast: 'col', value: $3 } }
 
     | T_STRING '(' expression ')'
-        { $$ = { op: 'cast', cast: 'string', value: $3 } }
+        { $$ = { type: 'cast', cast: 'string', value: $3 } }
 
     | INT type_array '(' expression ')'
-        { $$ = { ...$2, op: 'cast', cast: 'int', value: $4 } }
+        { $$ = { ...$2, type: 'cast', cast: 'int', value: $4 } }
 
     | FE type_array '(' expression ')'
-        { $$ = { ...$2, op: 'cast', cast: 'fe', value: $4 } }
+        { $$ = { ...$2, type: 'cast', cast: 'fe', value: $4 } }
 
     | EXPR type_array '(' expression ')'
-        { $$ = { ...$2, op: 'cast', cast: 'expr', value: $4 } }
+        { $$ = { ...$2, type: 'cast', cast: 'expr', value: $4 } }
 
     | COL type_array '(' expression ')'
-        { $$ = { ...$2, op: 'cast', cast: 'col', value: $4 } }
+        { $$ = { ...$2, type: 'cast', cast: 'col', value: $4 } }
 
     | T_STRING type_array '(' expression ')'
-        { $$ = { ...$2, op: 'cast', cast: 'string', value: $4 } }
+        { $$ = { ...$2, type: 'cast', cast: 'string', value: $4 } }
     ;
 
 name_id
     : name_optional_index "'" %prec NEXT
-        { $$ = { ...$1, next:1 } }
+        { $$ = { ...$1, rowOffset: ExpressionFactory.fromObject({type: 'row_offset', value: 1, current: $1 }) } }
 
     | name_optional_index "'" NUMBER
-        { $$ = { ...$1, next: Number($3) } }
+        { $$ = { ...$1, rowOffset: ExpressionFactory.fromObject({type: 'row_offset', value: Number($3), current: $1 }) } }
 
     | name_optional_index "'" '(' expression ')'
-        { $$ = { ...$1, next:$4 } }
+        { $$ = { ...$1, rowOffset: ExpressionFactory.fromObject({type: 'row_offset', value: $4, current: $1 }) } }
 
     | name_optional_index "'" POSITIONAL_PARAM
-        { $$ = { ...$1, next: runtime_expr({position: $3, op: 'positional_param'}) } }
+        { $$ = { ...$1, rowOffset: ExpressionFactory.fromObject({type: 'row_offset', current: $1,
+                                        value: ExpressionFactory.fromObject({position: $3, type: 'positional_param'})}) } }
 
     | "'" name_optional_index %prec LOWER_PREC
-        { $$ = { ...$2, prior:1 } }
+        { $$ = { ...$2, rowOffset: ExpressionFactory.fromObject({type: 'row_offset', value: 1, prior: true, current: $2 }) } }
 
     | NUMBER "'" name_optional_index
-        { $$ = { ...$3, prior: Number($1) } }
+        { $$ = { ...$3, rowOffset: ExpressionFactory.fromObject({type: 'row_offset', value: Number($1), prior: true, current: $3 }) } }
 
     | '(' expression ')' "'" name_optional_index
-        { $$ = { ...$5, prior:$2 } }
+        { $$ = { ...$5, rowOffset: ExpressionFactory.fromObject({type: 'row_offset', value: $2, prior: true, current: $5 }) } }
 
     | POSITIONAL_PARAM "'" name_optional_index
-        { $$ = { ...$3, prior:runtime_expr({position: $1, op: 'positional_param'}) } }
+        { $$ = { ...$3, rowOffset: ExpressionFactory.fromObject({type: 'row_offset', current: $3, prior: true,
+                                        value: ExpressionFactory.fromObject({position: $1, type: 'positional_param'})}) } }
 
     | name_optional_index %prec EMPTY
         { $$ = $1 }
@@ -1401,11 +1451,25 @@ name_optional_index
         { $$ = { ...$1, ...$2 } }
     ;
 
+expression_index
+    :   expression
+        { $$ = $1 }
+
+    |   expression DOTS_RANGE expression
+        { $$ = ExpressionFactory.fromObject({type: 'range_index', from: $1, to: $3}); }
+
+    |   expression DOTS_RANGE
+        { $$ = ExpressionFactory.fromObject({type: 'range_index', from: $1}); }
+
+    |   DOTS_RANGE expression
+        { $$ = ExpressionFactory.fromObject({type: 'range_index', to: $2}); }
+    ;
+
 array_index
-    :   array_index '[' expression ']'
+    :   array_index '[' expression_index ']'
         { $$ = { dim: $1.dim + 1, indexes: [...$1.indexes, $3] } }
 
-    |   '[' expression ']'
+    |   '[' expression_index ']'
         { $$ = { dim: 1, indexes: [$2]} }
     ;
 

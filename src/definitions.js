@@ -1,7 +1,6 @@
 module.exports = class Definitions {
 
-    constructor (Fr) {
-        this.Fr = Fr;
+    constructor () {
         this.definitions = {};
     }
     get length () {

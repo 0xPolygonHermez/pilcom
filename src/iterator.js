@@ -1,4 +1,5 @@
 const Expression = require("./expression.js");
+const {assert, assertLog} = require('./assert.js');
 
 module.exports = class Iterator {
 
@@ -7,13 +8,15 @@ module.exports = class Iterator {
     }
     setExpression(expr) {
         console.log(expr);
-        if (expr instanceof Expression === false || expr.isReference() === false) {
+        if ((expr instanceof Expression) === false || expr.isReference() === false) {
             throw new Error(`Invalid iterator`);
         }
         this.index = 0;
-        this.expr = expr.instance();
-        this.reference = this.expr.getReference();
-        this.count = this.reference.array.getLength(0);
+        this.expr = expr.eval();
+        console.log(this.expr);
+        assertLog(this.expr.array, this.expr);
+        // this.reference = this.expr.getReference();
+        // this.count = this.reference.array.getLength(0);
     }
     goFirst() {
         this.index = 0;
@@ -42,7 +45,7 @@ module.exports = class Iterator {
     }
 
     getValue() {
-        return this.reference.array.applyIndex(this.reference, [this.index]);
+        return this.expr.array.applyIndexes(this.expr, [this.index]);
     }
 
     *[Symbol.iterator]() {

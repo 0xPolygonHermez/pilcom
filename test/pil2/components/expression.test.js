@@ -1,251 +1,141 @@
-const chai = require("chai");
+const { F1Field } = require("ffjavascript");
+const fs = require("fs");
+const path = require("path");
+const util = require('util');
+var tmp = require('tmp-promise');
+const Expression  = require('../../../src/expression.js');
+const ExpressionItems  = require('../../../src/expression_items.js');
+
+const deepEqualInAnyOrder = require('deep-equal-in-any-order');
+const chai = require('chai');
 const assert = chai.assert;
-const src = __dirname + "/../../../src/";
-const Expression = require(src + 'expression.js');
+const expect = chai.expect;
+chai.use(deepEqualInAnyOrder);
+const debugConsole = require('../../../src/debug_console.js').init();
 
-
-const toJSON = function (obj) {
-    return JSON.stringify(obj, (_, v) => typeof v === 'bigint' ? v.toString() : v);
-}
-
-describe("Expression", async function () {
+describe("Expressions", async function () {
     this.timeout(10000000);
+    const F = new F1Field(0xffffffff00000001n);
 
+    function checkScopeDefine(scope, name, value) {
+        scope.define(name, value);
+        assert.equal(value, scope.get(name));
+        assert.equal(true, scope.isDefined(name));
+    }
+    function checkScopeSet(scope, name, value) {
+        scope.set(name, value);
+        assert.equal(value, scope.get(name));
+        assert.equal(true, scope.isDefined(name));
+    }
+    it("Empty expressions", async () => {
+        const e1 = new Expression();
+        expect(e1.asIntItem()).to.deep.equalInAnyOrder(new ExpressionItems.IntValue(0n));
+        // expect(e1.asFeItem()).to.deep.equalInAnyOrder(new ExpressionItems.FeValue(0n));
+        expect(e1.asStringItem()).to.deep.equalInAnyOrder(new ExpressionItems.StringValue(''));
+        assert.equal(0n, e1.asInt());
+        // assert.equal(0n, e1.asFe());
+        assert.equal('', e1.asString());
+        assert.equal(false, e1.asBool());
+        expect(e1).to.deep.equalInAnyOrder(new Expression());
+    })
+    it("Setting as int", async () => {
+        {
+            const e1 = new Expression();
+            e1._set(new ExpressionItems.IntValue(10n));
+            expect(e1.asIntItem()).to.deep.equalInAnyOrder(new ExpressionItems.IntValue(10n));
+            assert.equal(10n, e1.asInt());
+            assert.equal(true, e1.asBool());
+        }
+        {
+            const e2 = new Expression();
+            e2._set(new ExpressionItems.IntValue(0n));
+            expect(e2.asIntItem()).to.deep.equalInAnyOrder(new ExpressionItems.IntValue(0n));
+            assert.equal(0n, e2.asInt());
+            assert.equal(false, e2.asBool());
+        }
+    })
+    it("Setting as string", async () => {
+        {
+            const e1 = new Expression();
+            const stringExample = "Hello, world !!";
+            e1._set(new ExpressionItems.StringValue(stringExample));
+            expect(e1.asStringItem()).to.deep.equalInAnyOrder(new ExpressionItems.StringValue(stringExample));
+            assert.equal(stringExample, e1.asString());
+            assert.equal(true, e1.asBool());
+        }
+        {
+            const e2 = new Expression();
+            const emptyString = "";
+            e2._set(new ExpressionItems.StringValue(emptyString));
+            expect(e2.asStringItem()).to.deep.equalInAnyOrder(new ExpressionItems.StringValue(emptyString));
+            assert.equal(emptyString, e2.asString());
+            assert.equal(false, e2.asBool());
+        }
+    })
+    // TODO: settinga as template
+    it("Adding", async () => {
+        const e1 = new Expression();
+        e1._set(new ExpressionItems.IntValue(10n));
+        expect(e1.asIntItem()).to.deep.equalInAnyOrder(new ExpressionItems.IntValue(10n));
+        assert.equal(10n, e1.asInt());
+        assert.equal(true, e1.asBool());
+    })
+/*
     it("Basic test", async () => {
-        let e = new Expression();
-        assert.equal(e.isAlone(), false);
+        const F = new F1Field(0xffffffff00000001n);
+        let scope = new Scope(F);
 
-        e.setValue(0);
-        assert.equal(e.isAlone(), true);
-
-        assert.throws(() => {e.setValue(0)}, Error, 'Set only could be used with empty stack');
-        assert.throws(() => {e.setRuntime({name: 'mary', indexes: [1], next: 2})}, Error, 'Set only could be used with empty stack');
-        assert.throws(() => {e.setIdReference(10, 'imC', 0, 2)}, Error, 'Set only could be used with empty stack');
-
-        let expected = [{op: false, operands: [{type: 0, value: 0}]}];
-        assert.equal(toJSON(e.stack), toJSON(expected));
-
-        e = new Expression();
-
-        assert.equal(e.isAlone(), false);
-
-        e.setRuntime({name: 'joe', indexes: [5], next: 7});
-        assert.equal(e.isAlone(), true);
-
-        assert.throws(() => {e.setValue(0)}, Error, 'Set only could be used with empty stack');
-        assert.throws(() => {e.setRuntime({name: 'mary', indexes: [1], next: 2})}, Error, 'Set only could be used with empty stack');
-        assert.throws(() => {e.setIdReference(10, 'imC', 0, 2)}, Error, 'Set only could be used with empty stack');
-
-        expected = [{op: false, operands: [{type: 3, name: 'joe', indexes: [5], next: 7}]}];
-        assert.equal(toJSON(e.stack), toJSON(expected));
-
-        e = new Expression();
-
-        assert.equal(e.isAlone(), false);
-
-        e.setIdReference(12, 'witness', 1, -1);
-        assert.equal(e.isAlone(), true);
-
-        assert.throws(() => {e.setValue(0)}, Error, 'Set only could be used with empty stack');
-        assert.throws(() => {e.setRuntime({name: 'mary', indexes: [1], next: 2})}, Error, 'Set only could be used with empty stack');
-        assert.throws(() => {e.setIdReference(10, 'imC', 0, 2)}, Error, 'Set only could be used with empty stack');
-
-        expected = [{op: false, operands: [{type:1, id: 12, refType: 'witness', offset: 1, next: -1}]}];
-        assert.equal(toJSON(e.stack), toJSON(expected));
+        assert.equal(false, scope.isDefined('myFirstVar'));
+        scope.define('myFirstVar', 13);
+        assert.equal(13, scope.get('myFirstVar'));
+        assert.equal(true, scope.isDefined('myFirstVar'));
+        scope.set('myFirstVar', 14);
+        assert.equal(14, scope.get('myFirstVar'));
     });
+    it("Scope Test", async () => {
+        const F = new F1Field(0xffffffff00000001n);
+        let scope = new Scope(F);
 
-    it("Insert test", async () => {
-        let a = new Expression();
-        assert.equal(a.isAlone(), false);
-
-        a.setValue(10);
-        assert.equal(a.isAlone(), true);
-
-        let b = new Expression();
-        b.setValue(20);
-
-        a.insert('+', b);
-        let expected = [{op:'+',operands:[{type:0, value: 10},{type:0, value: 20}]}];
-        assert.equal(toJSON(a.stack), toJSON(expected));
-
-        b.stack[0].operands[0].value = 30;
-        assert.equal(toJSON(a.stack), toJSON(expected));
-
-        a.insert('*', b);
-        expected = [...expected, {op:'*',operands:[{type:2, offset:1},{type:0, value: 30}]}];
-        assert.equal(toJSON(a.stack), toJSON(expected));
-
-        a.insert('-', a);
-        let count = expected.length;
-        expected = [...expected, ...expected, {op:'-',operands:[{type:2, offset:count+1},{type:2, offset: 1}]}];
-        assert.equal(toJSON(a.stack), toJSON(expected));
+        assert.equal(false, scope.isDefined('myFirstVar'));
+        scope.define('myFirstVar', 13);
+        assert.equal(13, scope.get('myFirstVar'));
+        assert.equal(true, scope.isDefined('myFirstVar'));
+        scope.push();
+        assert.equal(13, scope.get('myFirstVar'));
+        assert.equal(true, scope.isDefined('myFirstVar'));
+        scope.set('myFirstVar', 14);
+        assert.equal(14, scope.get('myFirstVar'));
+        scope.define('myFirstVar', 20);
+        assert.equal(20, scope.get('myFirstVar'));
+        assert.equal(true, scope.isDefined('myFirstVar'));
+        scope.define('mySecondVar', 25);
+        assert.equal(25, scope.get('mySecondVar'));
+        assert.equal(true, scope.isDefined('mySecondVar'));
+        scope.set('mySecondVar', 27);
+        assert.equal(27, scope.get('mySecondVar'));
+        assert.throws(
+            () => scope.define('myFirstVar', 50),
+            'myFirstVar already defined on this scope ....'
+        );
+        assert.equal(20, scope.get('myFirstVar'));
+        assert.equal(true, scope.isDefined('myFirstVar'));
+        scope.pop();
+        assert.equal(14, scope.get('myFirstVar'));
+        assert.equal(true, scope.isDefined('myFirstVar'));
     });
-    it("Direct insert test", async () => {
-        let a = new Expression();
-        a.setValue(10);
+    it("Scope Pop destroy variables", async () => {
+        const F = new F1Field(0xffffffff00000001n);
+        let scope = new Scope(F);
 
-        let b = new Expression();
-        b.setValue(20);
-
-        let c = new Expression();
-        c.insert('+', a, b);
-        let expected = [{op:'+',operands:[{type:0, value:10},{type:0, value: 20}]}];
-        assert.equal(toJSON(c.stack), toJSON(expected));
-
-        b.stack[0].operands[0].value = 30;
-        assert.equal(toJSON(c.stack), toJSON(expected));
-
-        c.insert('*', b);
-        expected = [...expected, {op:'*',operands:[{type:2, offset:1},{type:0, value: 30}]}];
-        assert.equal(toJSON(c.stack), toJSON(expected));
-
-        c.insert('-', c);
-        let count = expected.length;
-        expected = [...expected, ...expected, {op:'-',operands:[{type:2, offset:count+1},{type:2, offset: 1}]}];
-        assert.equal(toJSON(c.stack), toJSON(expected));
-
-        d = new Expression();
-        d.insert('neg', a);
-        expected = [{op:'neg',operands:[{type:0, value:10}]}];
-        assert.equal(toJSON(d.stack), toJSON(expected));
-    })
-
-    it("Multiple insert test", async () => {
-        let a = new Expression();
-        a.setValue(10);
-
-        let b = new Expression();
-        b.setValue(20);
-
-        let c = new Expression();
-        c.insert('+', a, b);
-        let expected = [{op:'+',operands:[{type:0, value:10},{type:0, value: 20}]}];
-        assert.equal(toJSON(c.stack), toJSON(expected));
-
-        b.stack[0].operands[0].value = 30;
-        assert.equal(toJSON(c.stack), toJSON(expected));
-
-        c.insert('*', b);
-        expected = [...expected, {op:'*',operands:[{type:2, offset:1},{type:0, value: 30}]}];
-        assert.equal(toJSON(c.stack), toJSON(expected));
-
-        c.insert('-', c);
-        let count = expected.length;
-        expected = [...expected, ...expected, {op:'-',operands:[{type:2, offset:count+1},{type:2, offset: 1}]}];
-        assert.equal(toJSON(c.stack), toJSON(expected));
-
-
-        let d1 = new Expression();
-        d1.setRuntime({name: 'JohnSmith', indexes: [2,5,7], next: 10});
-
-        let d2 = new Expression();
-        d2.setIdReference(103, 'fe', -18746, 0);
-
-
-
-        let d = new Expression();
-        d.insert('+', d1, d2);
-        let expectedD = [{op:'+',operands:[{type:3, name: 'JohnSmith', indexes: [2, 5, 7], next: 10},
-                                           {type:1, id: 103, refType: 'fe', offset: -18746, next: 0}]}];
-        expected = expectedD;
-        assert.equal(toJSON(d.stack), toJSON(expected));
-
-        a.insert('*', d);
-        expected = [{op:false,operands:[{type:0, value: 10}]},...expected, {op:'*',operands:[{type:2, offset: 2},{type:2, offset: 1}]}];
-        assert.equal(toJSON(a.stack), toJSON(expected));
-
-        a = new Expression();
-        a.insert('fx', d);
-        expected = [...expectedD, {op:'fx',operands:[{type:2, offset: 1}]}];
-        assert.equal(toJSON(a.stack), toJSON(expected));
-    })
-
-    it("Clone test", async () => {
-        let a = new Expression();
-        a.setValue(10);
-
-        let b = new Expression();
-        b.setRuntime({name: 'Joe', indexes: [2, 10, 13], next: -10});
-
-        let c = new Expression();
-        c.insert('+', a, b);
-        let expected = [{op:'+',operands:[{type:0, value: 10},{type:3, name: "Joe", indexes: [2, 10, 13], next: -10}]}];
-        assert.equal(toJSON(c.stack), toJSON(expected));
-
-        b.stack[0].operands[0].indexes[2] = 30;
-        assert.equal(toJSON(c.stack), toJSON(expected));
-
-        b = new Expression();
-        b.setIdReference(100, 'int', 180, -13);
-
-        c.insert('*', b);
-        expected = [...expected, {op:'*',operands:[{type:2, offset:1},{type:1, id: 100, refType: 'int', offset:180, next: -13}]}];
-        assert.equal(toJSON(c.stack), toJSON(expected));
-
-        d = c.clone();
-        assert.equal(toJSON(d.stack), toJSON(expected));
-        c.stack[0].operands[0].type = 29;
-        c.stack[0].operands[1].type = 18;
-        c.stack[0].op = 'xx';
-        c.stack[1].operands[0].type = 56;
-        c.stack[1].operands[1].type = 57;
-        c.stack[1].op = 'yy';
-        assert.equal(toJSON(d.stack), toJSON(expected));
-
-        // clone himself
-        d = d.clone();
-        assert.equal(toJSON(d.stack), toJSON(expected));
-    })
-
-    it("Insert himself", async () => {
-        let a = new Expression();
-        a.setValue(10);
-
-        a.insert('+', a, a);
-        let expectedA = {op:'+',operands:[{type:0, value: 10},{type:0, value: 10},{type:0, value: 10}]};
-        let expected = [expectedA];
-        assert.equal(toJSON(a.stack), toJSON(expected));
-
-        let b = new Expression();
-        b.setValue(38);
-        b.insert('*', a, a);
-        expected = [{op:false, operands:[{type:0, value:38}]},...expected, ...expected, {op:'*',operands:[{type:2, offset: 3},{type:2, offset:2},{type:2, offset:1}]}];
-        assert.equal(toJSON(b.stack), toJSON(expected));
-
-        b.insert('**', a, a);
-        expected = [...expected, expectedA, expectedA, {op:'**',operands:[{type:2, offset:3},{type:2, offset:2},{type:2, offset:1}]}];
-        assert.equal(toJSON(b.stack), toJSON(expected));
-    })
-
-    it("Exceptions test", async () => {
-        let a = new Expression();
-        a.setValue(10);
-        assert.throws(() => {a.pushStack(0)}, Error, 'pushStack parameter must be an Expression');
-        assert.throws(() => {a.pushStack(this)}, Error, 'pushStack parameter must be an Expression');
-        assert.throws(() => {a.pushStack()}, Error, 'pushStack parameter must be an Expression');
-
-        let b = new Expression();
-        assert.throws(() => {a.insert('+', b)}, Error, 'insert without operands');
-
-        let b2 = new Expression();
-        assert.throws(() => {a.insert('+', b, b2)}, Error, 'insert without operands');
-        assert.throws(() => {b2.setValue(b)}, Error, 'object(Expression) as value not allowed');
-    });
-
-    it("Unary insert", async () => {
-        let a = new Expression();
-        a.setValue(10);
-        let expected = [{op:false, operands:[{type:0, value: 10}]}];
-        assert.equal(toJSON(a.stack), toJSON(expected));
-
-        a.insert('not');
-        expected = [{op:'not', operands:[{type:0, value: 10}]}];
-        assert.equal(toJSON(a.stack), toJSON(expected));
-
-        a.insert('not');
-        expected = [...expected, {op:'not', operands:[{type:2, offset: 1}]}];
-        assert.equal(toJSON(a.stack), toJSON(expected));
-    })
-
-
+        scope.push();
+        checkScopeDefine(scope, 'mySecondVar', 25);
+        checkScopeSet(scope, 'mySecondVar', 27);
+        scope.pop();
+        assert.equal(false, scope.isDefined('mySecondVar'));
+        assert.equal(null, scope.get('mySecondVar'));
+        assert.throws(
+            () => scope.set('mySecondVar', 29),
+            'mySecondVar not defined on this scope ....'
+        );
+    });*/
 });

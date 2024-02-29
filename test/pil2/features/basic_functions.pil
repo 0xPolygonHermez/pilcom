@@ -1,0 +1,76 @@
+subproof Functions(2**23) {
+    col witness w;
+    int values[12][20];
+
+    function defer_definition_2(int b, int a) {
+        // b = vb, a = va
+        // a <= vb | b <= vb (now a value is vb, definition at same time)
+        // [a,b] <= [vb,va]
+        return sum1(a, b);
+    }
+
+    function defer_definition(int a, int b) {
+        return sum1(a, b);
+    }
+
+    function stotal_ (int a[]): int {
+        return sum(0, a);
+    }
+    function stotal (int a[]): int {
+        return stotal_(a);
+    }
+    function sum1(int a, int b) : int {
+        return a + b;
+    }
+
+    function sum(int a, int bs[]) : int {
+        int total = a;
+        int count_ = a;
+        int count = length(bs);
+        for (int index = 0; index < count; index = index + 1) {
+            int count__ = index;
+            // total = sum1(total, bs[index]);
+            total = total + bs[index];
+        }
+        int count___ = 34;
+        return total;
+    }
+
+    function fact(int k): int {
+        if (k < 2) {
+            return 1;
+        }
+        return k * fact(k - 1);
+    }
+
+    function procedure(int value) {
+        col witness p1;
+
+        p1 === value;
+    }
+    int k[10];
+    k[0] = 109;
+    expr e1 = 12;
+    int res = sum1(18, e1);
+    assert_eq(res, 30);
+    int res2 = sum(20, values[7]);
+    assert_eq(res2, 20);
+
+    int res3 = sum(25, k);
+    assert_eq(res3, 109 + 25);
+
+    int k2[4];
+    k2[0] = 110;
+    k2[1] = 220;
+    k2[2] = 330;
+    k2[3] = 440;
+
+    int res4 = stotal(k2);
+    assert_eq(res4, 1100);
+
+    int res5 = defer_definition(13, 35);
+    assert_eq(res5, 48);
+
+    int res6 = defer_definition_2(13, 35);
+    assert_eq(res6, 48);
+}

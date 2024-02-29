@@ -1,10 +1,14 @@
-const LabelRanges = require("./label_ranges.js");
+const LabelRanges = require('./label_ranges.js');
+const ExpressionItem = require('./expression_items/expression_item.js');
+const {assert,assertLog} = require('./assert.js');
 module.exports = class Ids {
 
-    constructor (type) {
+    constructor (type, definitionClass, itemClass) {
         this.lastId = 0;
         this.datas = [];
         this.type = type;
+        this.definitionClass = definitionClass;
+        this.itemClass = itemClass;
         this.labelRanges = new LabelRanges();
     }
     get length() {
@@ -31,9 +35,13 @@ module.exports = class Ids {
     get(id, offset) {
         return this.getTypedValue(id, offset)
     }
-
     getTypedValue(id, offset = 0) {
-        return { type: this.type, value: id + offset, data: this.datas[id + offset] };
+        OBSOLETE;
+        return this.getItem(id, offset);
+    }
+    getItem(id, offset = 0) {
+            // return { type: this.type, value: id + offset, data: this.datas[id + offset] };
+        return new this.itemClass(id + offset);
     }
 
     isDefined(id) {

@@ -35,6 +35,11 @@ module.exports = class LabelRanges {
         }
         return cloned;
     }
+    dump() {
+        for (const range of this.ranges) {
+            console.log(`[${range.from}-${range.to}] ${range.label}`);
+        }
+    }
 
     *[Symbol.iterator]() {
         for (let index = 0; index < this.ranges.length; ++index) {

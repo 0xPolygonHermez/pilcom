@@ -22,5 +22,5 @@ subproof Byte4(2**16) {
     }
     byteFromBits === byteIn;
 
-    multiset_proves(BYTE4_ID, result, [out]);
+    multiset_provide(BYTE4_ID, result, [out, byteIn]);
 }

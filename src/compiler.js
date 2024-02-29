@@ -12,6 +12,7 @@ const Indexable = require("./indexable.js");
 const Ids = require("./ids.js");
 const Constraints = require("./constraints.js");
 const Processor = require("./processor.js");
+const Context = require("./context.js");
 const { mainModule } = require("process");
 
 
@@ -30,7 +31,6 @@ class Compiler {
     constructor(Fr) {
         this.Fr = Fr;
         this.constants = new Definitions(Fr);
-        this.processor = new Processor(Fr, this);
     }
 
     initContext() {
@@ -42,10 +42,11 @@ class Compiler {
         this.includePaths = (this.config && this.config.includePaths) ? (Array.isArray(this.config.includePaths) ? this.config.includePaths: [this.config.includePaths]): [];
         this.relativeFileName = '';
     }
-    async compile(fileName, config = {}) {
+    compile(fileName, config = {}) {
         const isMain = true;
+        this.config = {...config};
         this.initContext();
-        this.config = config;
+        this.processor = new Processor(this.Fr, this, this.config);
         if (this.config.namespaces) {
             this.namespaces = {};
             for (const name of this.config.namespaces) {
@@ -57,7 +58,7 @@ class Compiler {
                 this.constants.define(name, this.Fr.e(this.config.defines[name]));
             }
         }
-        let sts = await this.parseSource(fileName, true);
+        let sts = this.parseSource(fileName, true);
         this.processor.startExecution(sts);
         if (config.processorTest) {
             return this.processor;
@@ -83,45 +84,22 @@ class Compiler {
             oldParseError(str, hash);
         };
         pil_parser.Parser.prototype.parseError = myErr;
-
         let parser = new pil_parser.Parser();
         const parserPerformAction = parser.performAction;
         const parserStateInfo = parser.productions_;
         let compiler = this;
-        /*
-        state = stack[stack.length - 1];
-        if (this.defaultActions[state]) {
-            action = this.defaultActions[state];
-        } else {
-            if (symbol === null || typeof symbol == 'undefined') {
-                symbol = lex();
-            }
-            action = table[state] && table[state][symbol];
-        }
-        ===>
-        const __symbol_info__ = this.terminals_[symbol] + ( lexer.match &&
-                              lexer.match != this.terminals_[symbol] ? ` (${lexer.match})`:'');
-console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1)+"\x1B[0m");
-        */
+
         parser.performAction = function (yytext, yyleng, yylineno, yy, yystate, $$, _$ ) {
             const result = parserPerformAction.apply(this, arguments);
             const first = _$[$$.length - 1 - parserStateInfo[yystate][1]];
             const last = _$[$$.length - 1];
             const sourceRef = `${compiler.relativeFileName}:${last.last_line}`;
-//            if (sourceRef === 'mem_align.pil:48') {
-/*            if (sourceRef === 'sequence.pil:5') {
-                console.log(arguments);
-                console.log(this);
-                console.log(yy);
-                console.log(yyleng);
-                EXIT_HERE;
-            }*/
-            // console.log(`ST_${yystate} ${parserStateInfo[yystate][0]} ${sourceRef}`);
+            Context.processor.sourceRef = sourceRef;
             if (typeof this.$ !== 'object')  {
                 return result;
             }
 
-            this.$.debug = `${compiler.relativeFileName}:${last.last_line}`;
+            this.$.debug = `${compiler.relativeFileName}:${last.last_line}:${first.first_column}:${last.last_line}:${last.last_column}`;
             // this.$.__debug = `${compiler.relativeFileName} (${first.first_line}, ${first.first_column}) (${last.last_line}, ${last.last_column})`;
             // this.$.__contents = compiler.srcLines[first.first_line - 1].substring(first.first_column + 1, last.last_column);
             this.$.__yystate = `${yystate} ${yylineno}`
@@ -129,19 +107,38 @@ console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1
         }
         return parser;
     }
-    async parseSource(fileName, isMain = false) {
+    parseSource(fileName, isMain = false, options = {}) {
 
-        const [src, fileDir, fullFileName, relativeFileName] = await this.loadSource(fileName, isMain);
+        let libraries = [];
+        if (isMain && this.config.includes) {
+            this.fileDir = process.cwd();
+            for (const include of this.config.includes) {
+                libraries.push({type: 'include', file: include, debug:'', contents: this.loadInclude({file: include})});
+            }   
+        }
+        const [_src, fileDir, fullFileName, relativeFileName] = this.loadSource(fileName, isMain. options);
 
+        const preSrc = options.preSrc ?? '';
+        const postSrc = options.postSrc ?? '';
+        const src = preSrc + _src + postSrc;
         this.relativeFileName = relativeFileName;
         this.fileDir = fileDir;
 
+    
         const parser = this.instanceParser(src, fullFileName);
-        const sts = parser.parse(src);
-
-        for (let i=0; i<sts.length; i++) {
-            if (sts[i].type !== 'include') continue;
-            sts[i].contents = await this.loadInclude(sts[i]);
+        let sts;
+        try {
+            sts = parser.parse(src);
+            for (let i=0; i<sts.length; i++) {
+                if (sts[i].type !== 'include') continue;
+                sts[i].contents = this.loadInclude(sts[i]);
+            }
+            for (const library of libraries.reverse()) {
+                sts.unshift(library);
+            }   
+        } catch (e) {
+            console.log('ERROR ON '+Context.processor.sourceRef);
+            throw e;
         }
         return sts;
     }
@@ -149,7 +146,7 @@ console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1
         const parser = this.instanceParser(expression, "template expression");
         return parser.parse(expression);
     }
-    async loadInclude(s) {
+    loadInclude(s, options = {}) {
 
         const includeFile = this.asString(s.file);
         const fullFileNameI = this.config.includePaths ? s.file : path.resolve(this.fileDir, includeFile);
@@ -160,12 +157,12 @@ console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1
         const previous = [this.cwd, this.relativeFileName, this.fileDir];
 
         this.cwd = this.fileDir;
-        const sts = await this.parseSource(fullFileNameI, false);
+        const sts = this.parseSource(fullFileNameI, false, options);
 
         [this.cwd, this.relativeFileName, this.fileDir] = previous;
         return sts;
     }
-    async loadSource(fileName, isMain) {
+    loadSource(fileName, isMain) {
         let fullFileName, fileDir, src;
         let relativeFileName = '';
         let includePathIndex = 0;
@@ -211,7 +208,7 @@ console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1
                 }
             }
             // console.log(`LOADING FILE ${fullFileName} .............`)
-            src = await fs.promises.readFile(fullFileName, "utf8") + "\n";
+            src = fs.readFileSync(fullFileName, "utf8") + "\n";
             // console.log('END LOADING ...');
         }
         return [src, fileDir, fullFileName, relativeFileName];
@@ -225,8 +222,8 @@ console.log('\x1B[93mSTATE '+state+' SYMBOL '+__symbol_info__+" #"+(yylineno + 1
     }
 }
 
-module.exports = async function compile(Fr, fileName, ctx, config = {}) {
+module.exports = function compile(Fr, fileName, ctx, config = {}) {
 
     let compiler = new Compiler(Fr);
-    return await compiler.compile(fileName, config);
+    return compiler.compile(fileName, config);
 }
